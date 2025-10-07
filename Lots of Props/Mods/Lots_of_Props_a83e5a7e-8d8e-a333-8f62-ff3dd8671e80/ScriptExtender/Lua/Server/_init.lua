@@ -22,7 +22,6 @@ end
 Ext.Events.SessionLoaded:Subscribe(OnSessionLoaded)
 
 RequireFiles("Server/", {
-    "Handlers",
     "Broadcast",
     "Subscribe",
 })
