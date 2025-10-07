@@ -1,0 +1,33 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<save>
+	<version major="4" minor="8" revision="0" build="400" lslib_meta="v1,bswap_guids,lsf_keys_adjacency" />
+	<region id="Templates">
+		<node id="Templates">
+			<children>
+				<node id="GameObjects">
+					<attribute id="MapKey" type="FixedString" value="8bc16a4a-f135-485b-a226-641012b7450a" />
+					<attribute id="Name" type="LSString" value="LOP_Gizmo_Rotate" />
+					<attribute id="LevelName" type="FixedString" value="" />
+					<attribute id="Type" type="FixedString" value="item" />
+					<attribute id="ParentTemplateId" type="FixedString" value="347586d3-e55e-4cea-8d26-168d17e233c6" />
+					<attribute id="VisualTemplate" type="FixedString" value="04e24d6c-fa91-4163-9954-ee43664137fd" />
+					<attribute id="DisplayName" type="TranslatedString" handle="h06a17555ge62dg785eg6b35g4d1d52cdc6ea" version="2" />
+					<children>
+						<node id="Bounds">
+							<children>
+								<node id="Bound">
+									<attribute id="Type" type="uint8" value="1" />
+									<attribute id="Shape" type="uint8" value="1" />
+									<attribute id="Min" type="fvec3" value="-0.6228127 -0.6228127 -0.6228127" />
+									<attribute id="Max" type="fvec3" value="0.6228127 0.6228127 0.6228127" />
+									<attribute id="Radius" type="float" value="0.000866025" />
+									<attribute id="Height" type="float" value="0.002" />
+								</node>
+							</children>
+						</node>
+					</children>
+				</node>
+			</children>
+		</node>
+	</region>
+</save>
