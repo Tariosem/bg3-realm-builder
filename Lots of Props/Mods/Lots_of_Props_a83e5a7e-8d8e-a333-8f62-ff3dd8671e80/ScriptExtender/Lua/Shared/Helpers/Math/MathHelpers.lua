@@ -32,31 +32,17 @@ LHCS = {
     Z = {0, 0, 1},
 }
 
-RHCS = {
-    X = {1, 0, 0},
-    Y = {0, 1, 0},
-    Z = {0, 0, -1},
-}
-
 for k, v in pairs(LHCS) do
     LHCS[k] = Vec3.new(v)
-end
-for k, v in pairs(RHCS) do
-    RHCS[k] = Vec3.new(v)
 end
 
 GLOBAL_COORDINATE = LHCS
 
-function ChangeToLHCS()
-    Warning("Changed to Left Handed Coordinate System (Y up, Z forward)")
-    GLOBAL_COORDINATE = LHCS
-end
-
-function ChangeToRHCS()
-    Warning("Changed to Right Handed Coordinate System (Z up, Y forward)")
-    GLOBAL_COORDINATE = RHCS
-end
-
+--- make orthonormal basis from a normal vector
+---@param n Vec3
+---@return number[] u
+---@return number[] v
+---@return number[] n
 function MakeOrthonormalBasis(n)
     local a
     if n[1] < 0.9 then
@@ -119,23 +105,6 @@ function GetCenterPosition(uuids)
     
     local center = Ext.Math.Div(sum, #positions)
     return center[1], center[2], center[3]
-end
-
----@param quat quat
----@param axis "X"|"Y"|"Z"|Vec3
----@return Vec3
-function QuatToDirection(quat, axis)
-    local axisVec
-    if type(axis) == "string" then
-        local a = GLOBAL_COORDINATE[axis:upper()] or GLOBAL_COORDINATE.Z
-        axisVec = a
-    elseif type(axis) == "table" then
-        axisVec = {axis[1] or axis.x or 0, axis[2] or axis.y or 0, axis[3] or axis.z or 0}
-    else
-        axisVec = GLOBAL_COORDINATE.Z
-    end
-
-    return Vec3.new(Ext.Math.QuatRotate(quat, axisVec))
 end
 
 --- @param direction Vec3
@@ -205,7 +174,6 @@ function IsInRect(point, rectMin, rectMax)
 
     return point.x >= minX and point.x <= maxX and point.y >= minY and point.y <= maxY
 end
-
 
 --- @param childUuid string
 --- @param parentUuid string

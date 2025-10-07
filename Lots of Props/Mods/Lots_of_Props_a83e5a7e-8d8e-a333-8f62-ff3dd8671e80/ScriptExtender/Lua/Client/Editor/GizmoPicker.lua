@@ -120,9 +120,9 @@ function GizmoPicker:GetAxes(origin, rotation)
             origin, rotation = self:GetTransform()
         end
         if rotation then
-            axisX = QuatToDirection(rotation, "X")
-            axisY = QuatToDirection(rotation, "Y")
-            axisZ = QuatToDirection(rotation, "Z")
+            axisX = rotation:Rotate(GLOBAL_COORDINATE.X)
+            axisY = rotation:Rotate(GLOBAL_COORDINATE.Y)
+            axisZ = rotation:Rotate(GLOBAL_COORDINATE.Z)
         end
     else
         axisX = Vec3.new(axisX)

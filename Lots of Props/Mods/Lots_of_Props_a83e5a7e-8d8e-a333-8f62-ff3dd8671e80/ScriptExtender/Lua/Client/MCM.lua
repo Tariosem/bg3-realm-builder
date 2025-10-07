@@ -27,12 +27,18 @@ MCM.Keybinding.SetCallback("key_toggle_items_browser", function()
     if itemsBrowser then
         if itemsBrowser.panel.Open then
             itemsBrowser.panel.Open = false
+            if itemsBrowser.panel.OnClose then
+                itemsBrowser.panel:OnClose()
+            end
         else
             itemsBrowser:Focus()
         end
     end
     if effectsBrowser and effectsBrowser.panel.Open then
         effectsBrowser.panel.Open = false
+        if effectsBrowser.panel.OnClose then
+            effectsBrowser.panel:OnClose()
+        end
     end
 end)
 
@@ -45,12 +51,18 @@ MCM.Keybinding.SetCallback("key_toggle_effects_browser", function()
     if effectsBrowser then
         if effectsBrowser.panel.Open then
             effectsBrowser.panel.Open = false
+            if effectsBrowser.panel.OnClose then
+                effectsBrowser.panel:OnClose()
+            end
         else
             effectsBrowser:Focus()
         end
     end
     if itemsBrowser and itemsBrowser.panel.Open then
         itemsBrowser.panel.Open = false
+        if itemsBrowser.panel.OnClose then
+            itemsBrowser.panel:OnClose()
+        end
     end
 end)
 

@@ -209,6 +209,7 @@ function KeybindRegistry:__init(callback)
     self.Conditions = {}
     self.Modifiers = nil
     self.Description = nil
+    self.Order = 0
 end
 
 function KeybindRegistry:AddCondition(condition)
@@ -437,7 +438,6 @@ local defaultBind = {
         ["ClearSelection"] = { Key = "ESCAPE" },
         ["Duplicate"] = { Key = "D", Modifiers = { "LShift" } },
         ["BoxSelect"] = { Key = "B" },
-        ["Debug"] = { Key = "3" },
         ["Undo"] = { Key = "Z", Modifiers = { "LCtrl" } },
         ["Redo"] = { Key = "Y", Modifiers = { "LCtrl" } },
         ["OpenVisualTab"] = { Key = "TAB", Modifiers = { "LShift" } },

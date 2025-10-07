@@ -272,11 +272,6 @@ local BoneName = {
     Tail8_endBone = "Tail8_endBone",
 }
 
-
-local function Sanitize(str)
-    return string.lower(str:gsub("[^%w]", ""))
-end
-
 function FindBestMatchBone(input)
     if not input or type(input) ~= "string" or input == "" then
         return nil, {}
@@ -288,7 +283,7 @@ function FindBestMatchBone(input)
 
     ---
 
-    local cleanInput = Sanitize(input)
+    local cleanInput = ToLowerAlphaOnly(input)
     
     local aliasMatch = BoneAlias[cleanInput]
     if aliasMatch then

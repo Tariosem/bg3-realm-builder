@@ -32,21 +32,6 @@ function TableContains(tbl, value)
     return false
 end
 
---- @param arr any
---- @param predicate function(value, index):boolean
---- @return integer index 0 if not found
-function ArrayFind(arr, predicate)
-    if type(arr) ~= "table" or type(predicate) ~= "function" then
-        return 0
-    end
-    for i, v in ipairs(arr) do
-        if predicate(v, i) then
-            return i
-        end
-    end
-    return 0
-end
-
 function SplitBySemicolon(str, trimWhitespace)
     if type(str) ~= "string" then
         return {}
@@ -251,10 +236,6 @@ function TakeTail(str, count)
     return string.sub(str, -count)
 end
 
-function EndsWith(str, suffix)
-    return suffix == "" or str:sub(-#suffix) == suffix
-end
-
 function GetLastPath(path)
     return path:match("([^/]+)$") or path
 end
@@ -341,7 +322,6 @@ function FormatThousand(num)
     return sign .. formatted .. (dec or "")
 end
 
---- janky
 ---@param s string
 ---@param t string
 ---@param thereshold integer|nil
@@ -372,7 +352,7 @@ end
 --- @field MinFuzzyLength integer
 --- @field FuzzyThreshold integer
 
-local function DefaultFilterOptions(opts)
+local function ValidateFilterOptions(opts)
     if type(opts) == "table" then
         opts.CaseSensitive = opts.CaseSensitive or false
         opts.Fuzzy = opts.Fuzzy or false
@@ -419,7 +399,7 @@ function Filter(keywords, items, fields, options, candidates)
         end
     end
 
-    options = DefaultFilterOptions(options)
+    options = ValidateFilterOptions(options)
 
     for candidate in pairs(candidates) do
         local entry = items[candidate]

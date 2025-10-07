@@ -41,10 +41,18 @@ function DrawLine(startPos, endPos, userID)
         if not EntityExists(fxHandle) then
             return
         end
-        Osi.SetVisible(fxHandle, 1)
+        
         TeleportTo(fxHandle, startPos[1], startPos[2], startPos[3])
         RotateTo(fxHandle, table.unpack(DirectionToQuat(dir)))
 
+        BroadcastToChannel(NetMessage.SetVisualTransform, {
+            Guid = fxHandle,
+            Transforms = {
+                [fxHandle] = {
+                    Scale = {0, 0, 0}
+                }
+            }
+        })
         PostTo(userID, NetMessage.SetVisualTransform, {
             Guid = fxHandle,
             Transforms = {
@@ -53,6 +61,7 @@ function DrawLine(startPos, endPos, userID)
                 }
             }
         })
+        Osi.SetVisible(fxHandle, 1)
     end)
 
     return fxHandle

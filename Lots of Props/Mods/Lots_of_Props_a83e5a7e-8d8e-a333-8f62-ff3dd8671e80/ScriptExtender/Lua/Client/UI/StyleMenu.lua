@@ -124,8 +124,7 @@ function StyleMenu:RenderColorPickers()
 
     local colorTrees = {}
 
-    --- @type GuiColorCategories
-    local colorPriority = {
+    local colorOrder = {
         "Color.Text",
         "Color.Window",
         "Color.Border",
@@ -139,13 +138,16 @@ function StyleMenu:RenderColorPickers()
         "Color.Other"
     }
 
+    local colorOrderMap = {}
+    for i, v in ipairs(colorOrder) do
+        colorOrderMap[v] = i
+    end
+
     local colorsMap = GetAllGuiColorNames()
     --- @type table <index, {Key:GuiColor, Value:GuiColorCategory}>
     local colorsArray = MapToSortedArrayByFunc(colorsMap, function(a, b)
-        local aIndex = ArrayFind(colorPriority, function(v) return v == a.Value end)
-        local bIndex = ArrayFind(colorPriority, function(v) return v == b.Value end)
-        if aIndex == 0 then aIndex = #colorPriority + 1 end
-        if bIndex == 0 then bIndex = #colorPriority + 1 end
+        local aIndex = colorOrderMap[a.Value] or (#colorOrder + 1)
+        local bIndex = colorOrderMap[b.Value] or (#colorOrder + 1)
         if aIndex == bIndex then
             return a.Key < b.Key
         end
@@ -240,8 +242,7 @@ function StyleMenu:RenderStyleSliders()
 
     local styleVarTrees = {}
 
-    --- @type GuiStyleVarCategories
-    local styleVarPriority = {
+    local styleVarOrder = {
         "Var.Global",
         "Var.Window",
         "Var.Child",
@@ -267,13 +268,16 @@ function StyleMenu:RenderStyleSliders()
         Size = {1, 20}
     }
 
+    local styleVarOrderMap = {}
+    for i, v in ipairs(styleVarOrder) do
+        styleVarOrderMap[v] = i
+    end
+
     local varsMap = GetAllGuiStyleVarNames()
     --- @type table <index, {Key:GuiStyleVar, Value:GuiStyleVarCategory}>
     local varsArray = MapToSortedArrayByFunc(varsMap, function(a, b)
-        local aIndex = ArrayFind(styleVarPriority, function(v) return v == a.Value end)
-        local bIndex = ArrayFind(styleVarPriority, function(v) return v == b.Value end)
-        if aIndex == 0 then aIndex = #styleVarPriority + 1 end
-        if bIndex == 0 then bIndex = #styleVarPriority + 1 end
+        local aIndex = styleVarOrderMap[a.Value] or (#styleVarOrder + 1)
+        local bIndex = styleVarOrderMap[b.Value] or (#styleVarOrder + 1)
         if aIndex == bIndex then
             return a.Key < b.Key
         end

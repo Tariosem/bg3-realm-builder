@@ -192,7 +192,7 @@ function ItemIconBrowser:RenderIcon(entry, cell)
     end
 
     iconImage.OnDragEnd = function()
-        Timer:Ticks(5, function (timerID)
+        Timer:Ticks(20, function (timerID)
             local cursorPos, cursorRot = GetCursorPosAndRot()
             if not cursorPos or not cursorRot then return end
             local data = {

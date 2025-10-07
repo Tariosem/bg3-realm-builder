@@ -37,8 +37,8 @@ function GetCursorPos()
 end
 
 --- @param picker EclPlayerPickingHelper?
---- @return Vec3
---- @return Vec4
+--- @return Vec3?
+--- @return Quat?
 function GetCursorPosAndRot(picker)
     if not picker then
         picker = Ext.ClientUI.GetPickingHelper(1)
@@ -48,14 +48,10 @@ function GetCursorPosAndRot(picker)
     local rot = DirectionToQuat(normal, nil, "Y")
 
     if pos[1] == 0 and pos[2] == 0 and pos[3] == 0 then
-        local ray = ScreenToWorldRay()
-        if ray then
-            pos = ray.Origin + ray.Direction * 5.0
-            rot = DirectionToQuat(ray.Direction, nil, "Y")
-        end
+        return nil, nil
     end
 
-    return Vec3.new(pos), Vec4.new(rot)
+    return Vec3.new(pos), Quat.new(rot)
 end
 
 function CalcNDC(x, y, screenW, screenH)

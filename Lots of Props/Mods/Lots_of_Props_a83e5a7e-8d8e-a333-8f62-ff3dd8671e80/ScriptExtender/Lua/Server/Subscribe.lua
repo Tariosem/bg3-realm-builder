@@ -435,6 +435,11 @@ end)
 
 local visualizeStack = {}
 local lastColor = nil
+local edges = {
+    {1,2},{2,3},{3,4},{4,1},
+    {5,6},{6,7},{7,8},{8,5},
+    {1,5},{2,6},{3,7},{4,8},
+}
 
 RegisterNetListener(NetChannel.Visualize, function (channel, data, userID)
     local entityHandles = {}
@@ -453,12 +458,7 @@ RegisterNetListener(NetChannel.Visualize, function (channel, data, userID)
             {max[1], max[2], max[3]},
             {min[1], max[2], max[3]},
         }
-        local edges = {
-            {1,2},{2,3},{3,4},{4,1},
-            {5,6},{6,7},{7,8},{8,5},
-            {1,5},{2,6},{3,7},{4,8},
-        }
-
+        
         for _, edge in ipairs(edges) do
             local handle = DrawLine(corners[edge[1]], corners[edge[2]], userID)
             table.insert(entityHandles, handle)
@@ -490,11 +490,7 @@ RegisterNetListener(NetChannel.Visualize, function (channel, data, userID)
             }
         end
 
-        local edges = {
-            {1,2},{2,3},{3,4},{4,1},
-            {5,6},{6,7},{7,8},{8,5},
-            {1,5},{2,6},{3,7},{4,8},
-        }
+
 
         for _, edge in ipairs(edges) do
             local handle = DrawLine(worldCorners[edge[1]], worldCorners[edge[2]], userID)
@@ -502,12 +498,13 @@ RegisterNetListener(NetChannel.Visualize, function (channel, data, userID)
         end
     elseif data.Type == "Point" then
         local pos = data.Position
-        local pointEntity = Osi.CreateAt(LOP_PROP_AXIS_FX, pos[1], pos[2], pos[3], 0, 0, "")
+        local pointEntity = Osi.CreateAt(LOP_PROP_AXIS_FX, pos[1], pos[2], pos[3], 0, 0, "") --[[@as string]]
         if data.Rotation then
             RotateTo(pointEntity, table.unpack(data.Rotation))
         end
         table.insert(entityHandles, pointEntity)
 
+        Osi.SetVisible(pointEntity, 0)
         if data.Scale then
             Timer:Ticks(10, function()
                 BroadcastToChannel(NetMessage.SetVisualTransform, {
@@ -518,6 +515,7 @@ RegisterNetListener(NetChannel.Visualize, function (channel, data, userID)
                         }
                     }
                 })
+                Osi.SetVisible(pointEntity, 1)
             end)
         end
     elseif data.Type == "Line" then

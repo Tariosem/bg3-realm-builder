@@ -38,16 +38,11 @@ NetChannel.Duplicate = function(Guid) end
 
 ---@param TemplateId string
 ---@param Target GUIDSTRING?
----@param x number?
----@param y number?
----@param z number?
----@param p number?
----@param yaw number?
----@param r number?
----@param w number?
+---@param Position Vec3
+---@param Rotation Quat
 ---@param PropInfo PropData
 ---@param Type "Preview"?
-NetChannel.Spawn = function(TemplateId, Target, x, y, z, p, yaw, r, w, PropInfo, Type) end
+NetChannel.Spawn = function(TemplateId, Target, Position, Rotation, PropInfo, Type) end
 
 --- @param Type "Point"|"Line"|"Box"|"OBB"
 --- @param Position Vec3

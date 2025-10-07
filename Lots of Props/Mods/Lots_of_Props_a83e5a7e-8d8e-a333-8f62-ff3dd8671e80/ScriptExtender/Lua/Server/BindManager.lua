@@ -118,7 +118,7 @@ function BindManager:Unbind(child)
     self:StopOffsetTimer(child)
     self.BindStores[child] = nil
     self.BindTree:Remove(child)
-    if next(self.BindTree:Find(parent)) == nil then
+    if next(self.BindTree:Find(parent) or {}) == nil then
         self.BindTree:Remove(parent)
     end
 

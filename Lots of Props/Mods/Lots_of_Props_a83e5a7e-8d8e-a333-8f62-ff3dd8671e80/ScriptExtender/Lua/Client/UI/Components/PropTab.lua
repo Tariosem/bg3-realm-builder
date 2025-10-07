@@ -212,8 +212,8 @@ function PropTab:RenderMainEditor()
         local data = {
             Guid = self.guid,
             TemplateId = PropStore[self.guid] and PropStore[self.guid].TemplateId or self.templateId,
-            Position = CGetPosition(self.guid),
-            Rotation = CGetRotation(self.guid),
+            Position = {CGetPosition(self.guid)},
+            Rotation = {CGetRotation(self.guid)},
         }
         Post(NetChannel.Spawn, data)
     end
@@ -692,11 +692,7 @@ function PropTab:Add(guid, templateId, parent, opts, iconTintColor)
     return propTab
 end
 
-function PropTab:OnChange(changebrowser)
-    if self.OnChange then
-        self.OnChange(changebrowser)
-    end
-end
+function PropTab:OnChange(changebrowser) end
 
 function PropTab:OnAttach() end
 function PropTab:OnDetach() end

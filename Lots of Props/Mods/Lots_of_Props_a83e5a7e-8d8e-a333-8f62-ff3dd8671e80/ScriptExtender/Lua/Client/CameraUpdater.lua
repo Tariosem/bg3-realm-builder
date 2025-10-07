@@ -100,19 +100,7 @@ Ext.RegisterConsoleCommand("CameraBindTimer", function (cmd, args)
     if args == "Cancel" then
         DeactiveCameraTimer()
     elseif args == "Start" then
-        if CameraUpdateTimer == nil then
-            CameraUpdateTimer = Timer:EveryFrame(function()
-                local x, y, z = GetCameraPosition()
-                local p, yaw, r, w = GetCameraRotation()
-
-                local data = {
-                    CameraPosition = {x, y, z},
-                    CameraRotation = {p, yaw, r, w}
-                }
-
-                Post("UpdateCamera", data)
-            end)
-        end
+        StartUpdateingCamera()
     elseif args == "Status" then
         if CameraUpdateTimer then
             _P("CameraBindTimer: Timer is active.")

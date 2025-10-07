@@ -401,7 +401,7 @@ function PropsMenu:CreatePropTab(prop, opts)
     end
 
     if propTab then
-        propTab.OnChange = function (changeLib)
+        propTab.OnChange = function(changeLib)
             if not propTab.isValid then return end
 
             if self.iconBrowser and changeLib then
@@ -412,9 +412,8 @@ function PropsMenu:CreatePropTab(prop, opts)
             end
 
             if self.imageRefs and self.imageRefs[prop.Guid] then
-                self.imageRefs[prop.Guid].Tint = propTab.IconTintColor or {1,1,1,1}
-            end
-            
+                self.imageRefs[prop.Guid].Tint = PropStore[prop.Guid].IconTintColor or {1,1,1,1}
+            end            
         end
 
         propTab.OnAttach = function()
