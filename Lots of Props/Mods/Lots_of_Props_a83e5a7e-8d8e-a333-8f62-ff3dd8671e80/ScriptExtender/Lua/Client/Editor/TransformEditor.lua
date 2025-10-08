@@ -4,7 +4,7 @@
 --- @field Gizmo Gizmo|nil
 --- @field Target GUIDSTRING|GUIDSTRING[]|nil
 --- @field History HistoryManager
---- @field Subscriptions table<string, Subscription>
+--- @field Subscriptions table<string, LOPSubscription>
 --- @field Debug boolean
 --- @field Select fun(self: TransformEditor, guid: GUIDSTRING|table<GUIDSTRING, any>)
 --- @field InitGizmo fun(self: TransformEditor)
@@ -267,7 +267,7 @@ function TransformEditor:Filter(guids)
             table.insert(groups.Character, guid)
         elseif entity and entity.IsItem then
             table.insert(groups.Item, guid)
-        else
+        elseif TableContains(self.Target or {}, guid) then
             table.remove(self.Target, table.find(self.Target, guid))
             if self.Target and #self.Target == 0 then
                 if self.IsDragging then
@@ -433,7 +433,7 @@ function TransformEditor:RegisterEvents()
         if gizmo.Mode == "Translate" then
             local requests = CountMap(self.StartTransforms)
             ClientSubscribe(NetMessage.Visualization, function (data)
-                --Debug("TransformEditor: Visualization received for", data.Guid, "entities")
+                Debug("TransformEditor: Visualization received for", data.Guid, "entities")
                 for _,guid in ipairs(data.Guid) do
                     Timer:Ticks(10, function (timerID)
                         gizmo:Visualize(guid)
@@ -451,21 +451,10 @@ function TransformEditor:RegisterEvents()
                 Post(NetChannel.Visualize, { Type = visualType, Position = transform.Translate, Rotation = rot, Duration = -1})
             end
             if CountMap(gizmo.SelectedAxis) == 1  then
-                local function GetDefaultColor(axis)
-                    if axis == "X" then
-                        return {1, 0.3, 0.3, 0.6}
-                    elseif axis == "Y" then
-                        return {0.3, 1, 0.3, 0.6}
-                    elseif axis == "Z" then
-                        return {0.3, 0.3, 1, 0.6}
-                    else
-                        return {0.8, 0.8, 0.8, 0.6}
-                    end
-                end
                 local color = nil
                 local selectedAxis = nil
                 for axis,_ in pairs(gizmo.SelectedAxis) do
-                    color = GetDefaultColor(axis)
+                    color = GizmoVisualizer.HoveredColor[axis] or {0.9, 0.9, 0.9, 0.8}
                     selectedAxis = axis
                 end
                 for _,guid in pairs(NormalizeGuidList(self.Target) or {}) do
@@ -519,17 +508,31 @@ function TransformEditor:RegisterEvents()
             return
         end
 
-        delta = delta * self.Step
+        delta = 1 + (delta - 1) * self.Step
 
         local transforms = {}
+        local selectedAxes = gizmo.SelectedAxis or { X = true, Y = true, Z = true } -- default to uniform
+        local cnt = CountMap(selectedAxes)
         for _, guid in pairs(NormalizeGuidList(self.Target) or {}) do
             local newTransform = {}
             local startTransform = self.StartTransforms[guid]
             local baseScale = startTransform.Scale or {1,1,1}
-            local newScale = baseScale + delta
-            newTransform.Scale = newScale
+            local newScale = Vec3.new(baseScale)
 
+            local factor = 1 + (delta - 1) * self.Step
+            factor = math.max(0.01, factor)
+            if cnt == 3 then
+                newScale = Vec3.new{ baseScale[1] * factor, baseScale[2] * factor, baseScale[3] * factor }
+            else
+                newScale = Vec3.new{ baseScale[1], baseScale[2], baseScale[3] }
+                if selectedAxes.X then newScale[1] = math.max(0.01, baseScale[1] * factor) end
+                if selectedAxes.Y then newScale[2] = math.max(0.01, baseScale[2] * factor) end
+                if selectedAxes.Z then newScale[3] = math.max(0.01, baseScale[3] * factor) end
+            end
+
+            newTransform.Scale = newScale
             transforms[guid] = newTransform
+            ::continue::
         end
         self:SetTransform(self.Target, transforms, true)
     end

@@ -346,11 +346,11 @@ function Levenshtein(s, t, thereshold)
 end
 
 --- @class LOPFilterOptions
---- @field CaseSensitive boolean
---- @field Fuzzy boolean
---- @field MatchAll boolean
---- @field MinFuzzyLength integer
---- @field FuzzyThreshold integer
+--- @field CaseSensitive boolean?
+--- @field Fuzzy boolean?
+--- @field MatchAll boolean?
+--- @field MinFuzzyLength integer?
+--- @field FuzzyThreshold integer?
 
 local function ValidateFilterOptions(opts)
     if type(opts) == "table" then
@@ -376,7 +376,7 @@ end
 --- @param items table
 --- @param fields table
 --- @param options LOPFilterOptions
---- @param candidates? array<key>
+--- @param candidates? any[]
 --- @return table filteredCandidates
 function Filter(keywords, items, fields, options, candidates)
     if not keywords or (type(keywords) ~= "string" and type(keywords) ~= "table") then

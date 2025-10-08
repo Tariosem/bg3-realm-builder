@@ -351,7 +351,7 @@ local GradientModes = {
 --- @class RadianceOpts
 --- @field Reverse boolean
 --- @field Cycles number
---- @field CycleMode CycleModes
+--- @field CycleMode 'forward'|'pingpong'|'reverse'
 --- @field Horizontal boolean
 --- @field Vertical boolean
 --- @field SkipWhitespace boolean

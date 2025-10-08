@@ -1,41 +1,68 @@
-KeybindEvents = KeybindEvents or {}
+DEFAULT_KEYBINDS = DEFAULT_KEYBINDS or {}
 
-KeybindEvents.TransformToolbar = {
-    ["MultiSelect"] = "MultiSelect",
-    ["Select"] = "Select",
-    ["Clear Selection"] = "Clear Selection",
-    ["Duplicate"] = "Duplicate",
-    ["Hide Selection"] = "Hide Selection",
-    ["Show Selection"] = "Show Selection",
-    ["Apply Gravity"] = "Apply Gravity",
-    ["Freeze Gravity"] = "Freeze Gravity",
-    ["Box Select"] = "Box Select",
+DEFAULT_KEYBINDS.TransformToolbar = {
+    ["MultiSelect"] = { Key = "M"},
+    ["Select"] = { Key = "2" },
+    ["ClearSelection"] = { Key = "ESCAPE" },
+    ["Duplicate"] = { Key = "D", Modifiers = { "LShift" } },
+    ["BoxSelect"] = { Key = "B" },
+    ["Undo"] = { Key = "Z", Modifiers = { "LCtrl" }},
+    ["Redo"] = { Key = "X", Modifiers = { "LCtrl" } },
+    ["OpenVisualTab"] = { Key = "TAB", Modifiers = { "LShift" } },
 }
 
-KeybindEvents.TransformEditor = {
-    ["Translate Mode"] = "Translate Mode",
-    ["Rotate Mode"] = "Rotate Mode",
-    ["Scale Mode"] = "Scale Mode",
+DEFAULT_KEYBINDS.TransformEditor = {
+    ["TranslateMode"] = { Key = "G" },
+    ["RotateMode"] = { Key = "R" },
+    ["ScaleMode"] = { Key = "L" },
+    ["FollowTarget"] = { Key = "KP_PERIOD" },
+    ["DeleteSelection"] = { Key = "X" },
+    ["DeleteAllGizmos"] = { Key = "X", Modifiers = { "LShift" }}
 }
 
-
-DefaultKeybinds = DefaultKeybinds or {}
-
-
-DefaultKeybinds.TransformToolbar = {
-    ["MultiSelect"] = { Key = "M" },
-    ["Select"] = { Key = "3" },
-    ["Clear Selection"] = { Key = "ESCAPE" },
-    ["Duplicate"] = { Key = "D", Modifiers = "LShift" },
-    ["Hide Selection"] = { Key = "H" },
-    ["Show Selection"] = { Key = "S" },
-    ["Apply Gravity"] = { Key = "G", Modifiers = "LCtrl" },
-    ["Freeze Gravity"] = { Key = "G", Modifiers = "LShift" },
-    ["Box Select"] = { Key = "B" },
+DEFAULT_KEYBINDS.BindUtility = {
+    ["BindPopup"] = { Key = "K", Modifiers = { "LShift" } },
+    ["BindTo"] = { Key = "B", Modifiers = { "LShift" } },
+    ["Unbind"] = { Key = "U" },
+    ["Snap"] = { Key = "S", Modifiers = { "LCtrl" } },
+    ["LookAt"] = { Key = "F" },
 }
 
-DefaultKeybinds.TransformEditor = {
-    ["Translate Mode"] = { Key = "G" },
-    ["Rotate Mode"] = { Key = "R" },
-    ["Scale Mode"] = { Key = "L" },
+KEYBIND_MODULE_RENDER_ORDER = {
+    "Generic",
+    "TransformToolbar",
+    "TransformEditor",
+    "BindUtility",
+}
+
+KEYBIND_EVENT_RENDER_ORDER = {
+    TransformToolbar = {
+        "MultiSelect",
+        "BoxSelect",
+        "Select",
+        "ClearSelection",
+        "Duplicate",
+        "Undo",
+        "Redo",
+        "OpenVisualTab",
+        "HideSelection",
+        "ShowSelection",
+        "ApplyGravity",
+        "FreezeGravity",
+    },
+    TransformEditor = {
+        "TranslateMode",
+        "RotateMode",
+        "ScaleMode",
+        "FollowTarget",
+        "DeleteSelection",
+        "DeleteAllGizmos",
+    },
+    BindUtility = {
+        "BindPopup",
+        "BindTo",
+        "Unbind",
+        "Snap",
+        "LookAt",
+    },
 }

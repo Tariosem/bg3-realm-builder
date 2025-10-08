@@ -209,7 +209,6 @@ function KeybindRegistry:__init(callback)
     self.Conditions = {}
     self.Modifiers = nil
     self.Description = nil
-    self.Order = 0
 end
 
 function KeybindRegistry:AddCondition(condition)
@@ -423,36 +422,10 @@ function KeybindManager:CreateModule(moduleName)
     return module
 end
 
-local defaultBind = {
-    TransformEditor = {
-        ["TranslateMode"] = { Key = "G" },
-        ["RotateMode"] = { Key = "R" },
-        ["ScaleMode"] = { Key = "L" },
-        ["FollowTarget"] = { Key = "KP_PERIOD" },
-        ["DeleteSelection"] = { Key = "X" },
-        ["DeleteAllGizmos"] = { Key = "X", Modifiers = { "LShift" }}
-    },
-    TransformToolbar = {
-        ["MultiSelect"] = { Key = "M" },
-        ["Select"] = { Key = "2" },
-        ["ClearSelection"] = { Key = "ESCAPE" },
-        ["Duplicate"] = { Key = "D", Modifiers = { "LShift" } },
-        ["BoxSelect"] = { Key = "B" },
-        ["Undo"] = { Key = "Z", Modifiers = { "LCtrl" } },
-        ["Redo"] = { Key = "Y", Modifiers = { "LCtrl" } },
-        ["OpenVisualTab"] = { Key = "TAB", Modifiers = { "LShift" } },
-    },
-    BindUtility = {
-        ["BindPopup"] = { Key = "K", Modifiers = { "LShift" } },
-        ["BindTo"] = { Key = "B", Modifiers = { "LShift" } },
-        ["Unbind"] = { Key = "U" },
-        ["Snap"] = { Key = "S", Modifiers = { "LCtrl" } },
-        ["LookAt"] = { Key = "F" },
-    }
-}
+
 
 RegisterOnSessionLoaded(function()
-    KeybindManager:Load(defaultBind)
+    KeybindManager:Load(DEFAULT_KEYBINDS)
     KeybindManager:LoadFromFile()
 end)
 

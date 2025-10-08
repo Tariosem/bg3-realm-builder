@@ -17,7 +17,7 @@ function Ray:At(t)
     return self.Origin + self.Direction * t
 end
 
----@param mat4 ModelMatrix
+---@param mat4 Matrix
 ---@return Vec3 orgin
 ---@return Vec3 direction
 function Ray:ToLocalByMatrix(mat4)
@@ -308,43 +308,21 @@ function Ray:IntersectSphere(center, radius)
     end
 end
 
+local PhysicsGroupFlags = Ext.Enums.PhysicsGroupFlags
+local PhysicsType = Ext.Enums.PhysicsType
+
 local configurableIntersect = {
-    PhysicsType = "Static",
-    PhysicsGroupFlags = "Scenery",
-    PhysicsGroupFlags2 = "TimelinePreview",
+    PhysicsType = PhysicsType.Dynamic | PhysicsType.Static,
+    PhysicsGroupFlags = PhysicsGroupFlags.Item 
+        | PhysicsGroupFlags.Character
+        | PhysicsGroupFlags.Scenery
+        | PhysicsGroupFlags.VisibleItem,
+    PhysicsGroupFlagsExclude = PhysicsGroupFlags.Terrain,
     Function = "RaycastClosest"
 }
 
 if GLOBAL_DEBUG_WINDOW then
     local header = GLOBAL_DEBUG_WINDOW:AddCollapsingHeader("Raycast Options")
-
-    local ptcombo = header:AddCombo("PhysicsType")
-    ptcombo.Options = {"Static", "Dynamic"}
-    ptcombo.OnChange = function (ev)
-        configurableIntersect.PhysicsType = GetCombo(ev)
-    end
-
-    local enums = {}
-    for name,value in pairs(Ext.Enums.PhysicsGroupFlags) do
-        table.insert(enums, name)
-    end
-    for i = #enums,1,-1 do
-        if tonumber(enums[i]) then
-            table.remove(enums, i)
-        end
-    end
-    table.sort(enums)
-    local pgcombo = header:AddCombo("PhysicsGroupFlags")
-    pgcombo.Options = enums
-    pgcombo.OnChange = function (ev)
-        configurableIntersect.PhysicsGroupFlags = GetCombo(ev)
-    end
-
-    local pg2Combo = header:AddCombo("PhysicsGroupFlags2")
-    pg2Combo.Options = enums
-    pg2Combo.OnChange = function (ev)
-        configurableIntersect.PhysicsGroupFlags2 = GetCombo(ev)
-    end
 
     local funcCombo = header:AddCombo("Function")
     funcCombo.Options = {"RaycastClosest", "RaycastAll"}
@@ -355,7 +333,7 @@ end
 
 --- @return PhxPhysicsHit
 function Ray:IntersectDebug()
-    return Ext.Level[configurableIntersect.Function](self.Origin, self.Direction, configurableIntersect.PhysicsType, configurableIntersect.PhysicsGroupFlags, configurableIntersect.PhysicsGroupFlags2, 1)
+    return Ext.Level[configurableIntersect.Function](self.Origin, self.Direction, configurableIntersect.PhysicsType, configurableIntersect.PhysicsGroupFlags, configurableIntersect.PhysicsGroupFlagsExclude, 1)
 end
 
 ---@param entity EntityHandle|GUIDSTRING

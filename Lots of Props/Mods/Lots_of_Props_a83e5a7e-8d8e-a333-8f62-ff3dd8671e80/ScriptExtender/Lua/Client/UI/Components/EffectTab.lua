@@ -6,7 +6,7 @@ EffectTab = _Class("EffectTab")
 --- @class EffectTab
 function EffectTab:__init(uuid, parent, displayName)
     self.guid = uuid or ""
-    local templateData = GetDataFromUuid(self.guid)
+    local templateData = GetDataFromUuid(self.guid) or {}
     self.displayName = displayName or templateData.DisplayName or "Unknown"
 
     self.panel = nil
@@ -146,7 +146,7 @@ function EffectTab:RenderEffects()
 
     for _, fxName in ipairs(fxNames) do
         local cell = self.effectsTimelineRow:AddCell()
-        local data = GetDataFromUuid(fxName)
+        local data = GetDataFromUuid(fxName) --[[@as table]]
         local effectIcon = cell:AddImageButton(fxName .. "Static", self.icon)
         effectIcon.Image.Size = {64 * SCALE_FACTOR, 64 * SCALE_FACTOR}
         effectIcon.UserData = { 
@@ -693,7 +693,7 @@ function EffectTab:PlayEffect(userdata)
 
     local info = userdata.UserData
     local tags = {}
-    local fxNameData = GetDataFromUuid(info.FxName)
+    local fxNameData = GetDataFromUuid(info.FxName) --[[@as table]]
     local data = {
         Object = objs,
         Target = targets,

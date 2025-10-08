@@ -462,7 +462,7 @@ function ItemManager:CategorizeItem(entry, statsObj, templateName)
 end
 
 --- @class LOP_Weapon:LOPItem
---- @field Boosts LOP_Boosts
+--- @field Boosts string
 --- @field Damage string
 --- @field Passives string[]
 
@@ -504,7 +504,7 @@ end
 --- @class LOP_Armor:LOPItem
 --- @field ArmorClass integer
 --- @field Passives string[]
---- @field Boosts LOP_Boosts
+--- @field Boosts string
 
 --- @param statsObj Armor
 --- @return LOP_Armor?

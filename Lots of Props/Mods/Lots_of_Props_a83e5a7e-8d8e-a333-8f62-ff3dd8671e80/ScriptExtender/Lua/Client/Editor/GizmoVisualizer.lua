@@ -1,47 +1,43 @@
+GizmoVisualizer = {
+    GizmoScale = 0.1,
+    Scale = {
+        1,
+        1,
+        1,
+    },
+    ScaleMultiplier = {
+        1.0,
+        1.0,
+        1.0,
+    },
+    DefaultColor = {
+        X = HexToRGBA("9AAA3333"),
+        Y = HexToRGBA("9A33AA33"),
+        Z = HexToRGBA("9A3333AA"),
+    },
+    HighlightColor = {
+        X = HexToRGBA("E6FFC1C1"),
+        Y = HexToRGBA("E6BBFFBB"),
+        Z = HexToRGBA("E6A6A6FF"),
+    },
+    HoveredColor = {
+        X = HexToRGBA("EEEE4444"),
+        Y = HexToRGBA("EE44EE44"),
+        Z = HexToRGBA("EE4444EE"),
+    },
+}
+
 local function GetHighlightColor(axis)
-        if axis == "X" then
-        return {1, 0.8, 0.8, 0.6}
-    elseif axis == "Y" then
-        return {0.8, 1, 0.8, 0.6}
-    elseif axis == "Z" then
-        return {0.8, 0.8, 1, 0.6}
-    else
-        return {1, 1, 1, 0.6}
-    end
+    return GizmoVisualizer.HighlightColor[axis] or {0.9, 0.9, 0.9, 0.8}
 end
 
 local function GetHoveredColor(axis)
-    if axis == "X" then
-        return {1, 0.5, 0.5, 0.8}
-    elseif axis == "Y" then
-        return {0.5, 1, 0.5, 0.8}
-    elseif axis == "Z" then
-        return {0.5, 0.5, 1, 0.8}
-    else
-        return {0.9, 0.9, 0.9, 0.8}
-    end
+    return GizmoVisualizer.HoveredColor[axis] or {0.9, 0.9, 0.9, 0.8}
 end
 
 local function GetDefaultColor(axis)
-    if axis == "X" then
-        return {1, 0.3, 0.3, 0.7}
-    elseif axis == "Y" then
-        return {0.3, 1, 0.3, 0.7}
-    elseif axis == "Z" then
-        return {0.3, 0.3, 1, 0.7}
-    else
-        return {0.8, 0.8, 0.8, 0.5}
-    end
+    return GizmoVisualizer.DefaultColor[axis] or {0.6, 0.6, 0.6, 0.6}
 end
-
-local GIZMO_INDEX = {
-    X = 1,
-    Y = 2,
-    Z = 3,
-    [1] = "X",
-    [2] = "Y",
-    [3] = "Z",
-}
 
 --- @param axis any
 --- @param guid any
@@ -83,55 +79,55 @@ local function SetGizmoAxisTextureColorParam(axis, guid, Value)
     return corRendrable
 end
 
-GizmoVisualizer = {
-    GizmoScale = 0.1
-}
+function GizmoVisualizer.ScaleGizmo(axis, guid, renderable)
+    if tonumber(axis) then
+        axis = IndexAxisMap[axis]
+    end
+    local rend = renderable
+    local scale = GizmoVisualizer.Scale[AxisIndexMap[axis]] or 1.0
+    local toScale = ToVec3(scale)
+    toScale[AxisIndexMap[axis]] = toScale[AxisIndexMap[axis]] * (GizmoVisualizer.ScaleMultiplier[AxisIndexMap[axis]] or 1.0)
+    for _,r in ipairs(rend or {}) do
+        r:SetWorldScale(toScale)
+    end
+end
 
 function GizmoVisualizer.HideGizmoAxis(axis, guid)
     if tonumber(axis) then
-        axis = GIZMO_INDEX[axis]
+        axis = IndexAxisMap[axis]
     end
     local rend = SetGizmoAxisTextureColorParam(axis, guid, ToVec4(0))
     for _,r in ipairs(rend or {}) do
-        r:SetWorldScale({0,0,0})
+        r:SetWorldScale(ToVec3(0))
     end
 end
 
 function GizmoVisualizer.HighLightGizmoAxis(axis, guid)
     if tonumber(axis) then
-        axis = GIZMO_INDEX[axis]
+        axis = IndexAxisMap[axis]
     end
     local rend = SetGizmoAxisTextureColorParam(axis, guid, GetHighlightColor(axis))
-    local scale = GizmoVisualizer:UpdateScale(guid)
-    for _,r in ipairs(rend or {}) do
-        r:SetWorldScale({scale, scale, scale})
-    end
+    GizmoVisualizer.ScaleGizmo(axis, guid, rend)
 end
 
 function GizmoVisualizer.HoverGizmoAxis(axis, guid)
     if tonumber(axis) then
-        axis = GIZMO_INDEX[axis]
+        axis = IndexAxisMap[axis]
     end
     local rend = SetGizmoAxisTextureColorParam(axis, guid, GetHoveredColor(axis))
-    local scale = GizmoVisualizer:UpdateScale(guid)
-    for _,r in ipairs(rend or {}) do
-        r:SetWorldScale({scale, scale, scale})
-    end
+    GizmoVisualizer.ScaleGizmo(axis, guid, rend)
 end
 
 function GizmoVisualizer.ResetGizmoAxis(axis, guid)
     if tonumber(axis) then
-        axis = GIZMO_INDEX[axis]
+        axis = IndexAxisMap[axis]
     end
     local rend = SetGizmoAxisTextureColorParam(axis, guid, GetDefaultColor(axis))
-    local scale = GizmoVisualizer:UpdateScale(guid)
-    for _,r in ipairs(rend or {}) do
-        r:SetWorldScale({scale, scale, scale})
-    end
+    GizmoVisualizer.ScaleGizmo(axis, guid, rend)
 end
 
 function GizmoVisualizer:VisualizeRotateSymbol(guid, axis)
-    local rotateScale = self:UpdateScale(guid)
+    local rotateScale = GizmoVisualizer.Scale[AxisIndexMap[axis]] or 1.0
     local scale = ToVec3((0.6 * rotateScale) / 0.81)
 
     for _,ax in pairs({"X", "Y", "Z"}) do
@@ -154,6 +150,8 @@ function GizmoVisualizer:UpdateScale(guid)
     local camPos = Vec3.new(cam.Transform.Transform.Translate)
     local dist = Ext.Math.Distance(position, camPos)
     local scale = dist * k
+
+    self.Scale = {scale, scale, scale}
 
     return scale
 end

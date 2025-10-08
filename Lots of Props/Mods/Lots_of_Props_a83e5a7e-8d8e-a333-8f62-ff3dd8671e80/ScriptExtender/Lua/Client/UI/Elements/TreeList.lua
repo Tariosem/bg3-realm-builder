@@ -15,7 +15,7 @@
 --- @field ShowAndShowPath fun(self:TreeList, key:any)
 --- @field ClearSelection fun(self:TreeList)
 --- @field ClearList fun(self:TreeList)
---- @field OnSelect fun(self:TreeList, selectedItems:table<key, boolean>)
+--- @field OnSelect fun(self:TreeList, selectedItems:table<any, boolean>)
 --- @field OnDragStart fun(self:TreeList, dragKey:any)
 --- @field OnDragDrop fun(self:TreeList, from:any, to:any)
 --- @field OnDragEnd fun(self:TreeList, dragKey:any)
@@ -631,7 +631,7 @@ function TreeList:RenderCustomTopBar(panel)
     panel.Visible = false
 end
 
----@param selectedItems table<key, boolean>
+---@param selectedItems table<any, boolean>
 function TreeList:OnSelect(selectedItems) end
 
 function TreeList:OnDragStart(dragKey) end

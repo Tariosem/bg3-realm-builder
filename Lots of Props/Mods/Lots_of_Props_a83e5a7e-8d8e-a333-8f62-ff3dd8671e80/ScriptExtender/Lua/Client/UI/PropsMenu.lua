@@ -1,3 +1,4 @@
+--- @class PropsMenu
 PropsMenu = _Class("PropMenu")
 
 function PropsMenu:__init(parent)

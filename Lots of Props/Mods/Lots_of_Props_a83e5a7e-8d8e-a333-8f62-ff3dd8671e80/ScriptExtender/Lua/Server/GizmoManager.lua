@@ -21,7 +21,7 @@ function GizmoManager:CreateGizmo(target, gizmoType, gizmoSpace, userID)
         return ""
     end
 
-    Debug("GizmoManager: Creating gizmo of type "..tostring(gizmoType).." in "..tostring(gizmoSpace).." space for GUID: "..tostring(target))
+    --Debug("GizmoManager: Creating gizmo of type "..tostring(gizmoType).." in "..tostring(gizmoSpace).." space for GUID: "..tostring(target))
 
     local guids = NormalizeGuidList(target)
 

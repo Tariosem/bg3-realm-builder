@@ -1,3 +1,4 @@
+--- @class ConfirmPopup
 ConfirmPopup = {
     panel = nil,
     isVisible = false,

@@ -302,7 +302,6 @@ RegisterNetListener("UpdateDummies", function (channel, data, userID)
 end)
 
 RegisterNetListener("SetAttributes", function (channel, data, userID)
-
     local toSet = NormalizeGuidList(data.Guid)
     local gravity = data.Gravity
     local isVisible = data.Visible
@@ -382,6 +381,8 @@ RegisterNetListener("BF_DeleteAll", function (channel, data, userID)
 end)
 
 RegisterNetListener("CreateStat", function (channel, data, userID)
+
+    data.DisplayName = data.DisplayName .. tostring(userID)
 
     if data.Type == "StatusData" then
         EM:PlayStatus(data)
@@ -490,8 +491,6 @@ RegisterNetListener(NetChannel.Visualize, function (channel, data, userID)
             }
         end
 
-
-
         for _, edge in ipairs(edges) do
             local handle = DrawLine(worldCorners[edge[1]], worldCorners[edge[2]], userID)
             table.insert(entityHandles, handle)
@@ -504,8 +503,8 @@ RegisterNetListener(NetChannel.Visualize, function (channel, data, userID)
         end
         table.insert(entityHandles, pointEntity)
 
-        Osi.SetVisible(pointEntity, 0)
         if data.Scale then
+            Osi.SetVisible(pointEntity, 0)
             Timer:Ticks(10, function()
                 BroadcastToChannel(NetMessage.SetVisualTransform, {
                     Guid = pointEntity,
@@ -518,6 +517,15 @@ RegisterNetListener(NetChannel.Visualize, function (channel, data, userID)
                 Osi.SetVisible(pointEntity, 1)
             end)
         end
+    elseif data.Type == "Scale" then
+        local pos = data.Position
+        local scale = data.Scale or 1.0
+        local pointEntity = Osi.CreateAt(GIZMO_ITEM.Scale, pos[1], pos[2], pos[3], 0, 0, "") --[[@as string]]
+        if data.Rotation then
+            RotateTo(pointEntity, table.unpack(data.Rotation))
+        end
+        Osi.SetVisible(pointEntity, 0)
+        table.insert(entityHandles, pointEntity)
     elseif data.Type == "Line" then
         local handle = DrawLine(data.Position, data.EndPosition, userID)
         table.insert(entityHandles, handle)

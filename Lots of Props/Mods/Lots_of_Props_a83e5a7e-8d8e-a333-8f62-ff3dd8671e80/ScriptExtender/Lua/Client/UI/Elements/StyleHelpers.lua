@@ -16,7 +16,7 @@ end
 --- @param max number
 --- @param step number
 --- @param isInteger? boolean
---- @return ExtuiSliderInt|ExtuiSlider
+--- @return ExtuiSliderInt|ExtuiSliderScalar
 function AddSliderWithStep(parent, IDContext, defaultValue, min, max, step, isInteger)
     if not IDContext then
         IDContext = Uuid_v4()
@@ -34,7 +34,7 @@ function AddSliderWithStep(parent, IDContext, defaultValue, min, max, step, isIn
     else
         stepInput = parent:AddInputScalar("", step)
         decreButton = AddSliderStepButton(parent, "<", -step, nil, "<")
-        slider = parent:AddSlider("", defaultValue or 0, min or 0, max or 100)
+        slider = parent:AddSlider("", defaultValue or 0, min or 0, max or 100) --[[@as ExtuiSliderScalar]]
         increButton = AddSliderStepButton(parent, ">", step, nil, ">")
     end
     local resetButton = parent:AddButton("Reset")

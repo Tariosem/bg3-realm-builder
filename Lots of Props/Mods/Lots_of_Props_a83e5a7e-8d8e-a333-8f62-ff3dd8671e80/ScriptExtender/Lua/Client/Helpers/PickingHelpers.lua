@@ -2,12 +2,21 @@
 function GetPickingGuid()
     local mouseRay = ScreenToWorldRay()
 
-    local pick = HandleToUuid(Ext.ClientUI.GetPickingHelper(1).Inner.Inner[1].GameObject) --[[@as GUIDSTRING|nil]]
-    if pick then --Debug("Returning pick" .. pick) 
-    return pick end
+    local pickHandle = Ext.ClientUI.GetPickingHelper(1).Inner.Inner[1].GameObject
+
+    if pickHandle then
+        Debug("Picked handle: ", pickHandle and pickHandle.DisplayName and pickHandle.DisplayName.Name:Get() or tostring(pickHandle))
+        local pickUuid = HandleToUuid(pickHandle)
+        if pickUuid then
+            return pickUuid
+        end
+    end
+
     local returnGuid = nil
     local entity = nil
 
+
+    if not mouseRay then return nil end
     local allPartyMembers = GetAllPartyMembers()
     local closestPartyMemberhit = nil
     for _, guid in ipairs(allPartyMembers) do
@@ -82,7 +91,7 @@ function ScreenToWorldRay(cameraHandle, mouseX, mouseY, screenW, screenH)
         return nil
     end
 
-    local camera = cameraHandle.Camera
+    local camera = cameraHandle.Camera --[[@as CameraComponent]]
     local controller = camera.Controller
 
     local ndcX, ndcY = CalcNDC(mouseX, mouseY, screenW, screenH)
@@ -140,7 +149,7 @@ function WorldToScreenPoint(worldPos, cameraHandle, screenW, screenH)
         return {0, 0}
     end
 
-    local camera = cameraHandle.Camera
+    local camera = cameraHandle.Camera --[[@as CameraComponent]]
     local controller = camera.Controller
 
     local worldPos4 = Vec4.new({worldPos[1], worldPos[2], worldPos[3], 1.0})

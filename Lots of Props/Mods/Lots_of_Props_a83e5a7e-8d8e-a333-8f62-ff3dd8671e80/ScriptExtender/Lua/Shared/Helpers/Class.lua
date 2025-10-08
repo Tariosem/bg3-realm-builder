@@ -2,7 +2,7 @@
 --- @field __name string
 --- @field __parent Class
 --- @field __index table
---- @field __init fun(self:Class, ...):void
+--- @field __init fun(self:Class, ...):nil
 --- @field new fun(self:Class, ...):Class
 --- @field isInstance fun(self:Class, obj:any):boolean
 

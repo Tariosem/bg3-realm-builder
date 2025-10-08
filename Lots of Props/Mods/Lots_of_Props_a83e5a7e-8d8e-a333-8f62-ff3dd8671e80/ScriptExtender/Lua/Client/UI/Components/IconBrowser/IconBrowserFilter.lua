@@ -168,7 +168,9 @@ function IconBrowser:AddTagsFilter()
         self.tagsFilterTopTable = topTable
     end
     if not topTable.UserData then
+        --- @diagnostic disable-next-line
         local undoAllIncBtn = leftCe:AddSelectable(GetLoca("Uninclude All"))
+        --- @diagnostic disable-next-line
         local undoAllExcBtn = rightCe:AddSelectable(GetLoca("Unexclude All"))
         undoAllIncBtn.DontClosePopups = true
         undoAllIncBtn:SetStyle("SelectableTextAlign", 0.5)
@@ -436,7 +438,7 @@ function IconBrowser:AddTagsFilter()
 
         if self.dataManager.dynamicTags and self.dataManager.dynamicTags[currentTag] then
             selection:Tooltip():AddText(self.dataManager.dynamicTags[currentTag]).TextWrapPos = self.browserWidth
-            if hasIcon then
+            if hasIcon and tagIcon then
                 tagIcon:Tooltip():AddText(self.dataManager.dynamicTags[currentTag]).TextWrapPos = self.browserWidth
             end
         end

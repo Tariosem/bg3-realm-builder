@@ -25,6 +25,7 @@ Vec4 = {}
 Vec2 = {}
 
 AxisIndexMap = {X=1, Y=2, Z=3, W=4, x=1, y=2, z=3, w=4}
+IndexAxisMap = { [1]="X", [2]="Y", [3]="Z", [4]="W" }
 
 Vector.__index = function(t, k)
     if AxisIndexMap[k] then return rawget(t, AxisIndexMap[k])

@@ -46,12 +46,24 @@ end
 
 function KeybindMenu:RenderContents()
     local modules = KeybindManager.Modules
+    local order = KEYBIND_MODULE_RENDER_ORDER or {}
 
-    local sorted = MapToSortedArrayByKey(modules)
+    local orderedSet = {}
+    for _, name in ipairs(order) do
+        orderedSet[name] = true
+    end
 
-    for _, s in ipairs(sorted) do
-        local module = s.Value
-        self:RenderModule(module)
+    for _, name in ipairs(order) do
+        local module = modules[name]
+        if module then
+            self:RenderModule(module)
+        end
+    end
+
+    for name, module in pairs(modules) do
+        if not orderedSet[name] then
+            self:RenderModule(module)
+        end
     end
 end
 
@@ -87,13 +99,27 @@ function KeybindMenu:RenderModule(module)
     applyTableStyle(tTable)
     applyHeaderStyle(header)
 
-    local sorted = MapToSortedArrayByKey(module:GetEvents())
+    local events = module:GetEvents()
+    local order = KEYBIND_EVENT_RENDER_ORDER[name] or {}
 
-    for _, s in ipairs(sorted) do
-        local eventName = s.Key
-        local registry = s.Value
-        local row = tTable:AddRow()
-        self:RenderEvent(row, module.Name, eventName, module, registry)
+    local orderedSet = {}
+    for _, ev in ipairs(order) do
+        orderedSet[ev] = true
+    end
+
+    for _, eventName in ipairs(order) do
+        local registry = events[eventName]
+        if registry then
+            local row = tTable:AddRow()
+            self:RenderEvent(row, module.Name, eventName, module, registry)
+        end
+    end
+
+    for eventName, registry in pairs(events) do
+        if not orderedSet[eventName] then
+            local row = tTable:AddRow()
+            self:RenderEvent(row, module.Name, eventName, module, registry)
+        end
     end
 end
 

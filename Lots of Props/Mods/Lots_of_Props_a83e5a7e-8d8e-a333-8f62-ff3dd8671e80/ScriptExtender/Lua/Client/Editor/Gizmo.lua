@@ -7,14 +7,15 @@
 --- @field IsDragging boolean
 --- @field Guid Guid -- Gizmo entity guid
 --- @field Picker GizmoPicker
---- @field Subscription table<string, Subscription>
+--- @field Subscription table<string, LOPSubscription>
 --- @field DetectTimer table<string, TimerID>
 --- @field new fun(editor: TransformEditor): Gizmo
 --- @field OnDragStart fun(self: Gizmo)
 --- @field OnDragTranslate fun(self: Gizmo, delta: Vec3)
 --- @field OnDragRotate fun(self: Gizmo, delta: { Angle:number, Axis:Vec3 })
---- @field OnDragScale fun(self: Gizmo, delta: Vec3)
+--- @field OnDragScale fun(self: Gizmo, delta: number)
 --- @field OnDragEnd fun(self: Gizmo)
+--- @field OnDragCancel fun(self: Gizmo)
 Gizmo = _Class("Gizmo")
 
 function Gizmo:__init(editor)
@@ -285,20 +286,53 @@ end
 
 --- @param startHit Hit
 --- @param hit Hit
---- @param axis 'X'|'Y'|'Z'|nil
+--- @param selectedAxes table<'X' | 'Y' | 'Z', boolean>
 --- @param origin Vec3
 --- @return number
-local function CalcScaleChange(startHit, hit, axis, origin)
+local function CalcScaleChange(startHit, hit, selectedAxes, axes, origin)
     local sV = startHit.Position - origin
     local eV = hit.Position - origin
-    local sLen = sV:Length()
-    local eLen = eV:Length()
-    if math.abs(sLen) < 0.0001 then
-        Warning("Gizmo: CalcScaleChange: start length too small, cannot scale")
-        return 0
+    local cnt = CountMap(selectedAxes or {})
+    local eps = 1e-4
+    if cnt == 0 then return 1.0 end
+
+    if cnt == 1 then
+        local axisKey = nil
+        for a,_ in pairs(selectedAxes) do axisKey = a end
+        local axisVec = axes[axisKey]
+        local sProj = sV:Dot(axisVec)
+        local eProj = eV:Dot(axisVec)
+        if math.abs(sProj) < eps then
+            Warning("Gizmo: CalcScaleChange: start projection too small, cannot scale along single axis")
+            return 1.0
+        end
+        return eProj / sProj
+    elseif cnt == 2 then
+        -- scale in plane: use lengths in the two-axis plane
+        local a1,a2 = nil,nil
+        for a,_ in pairs(selectedAxes) do
+            if not a1 then a1 = a else a2 = a end
+        end
+        local axis1 = axes[a1]
+        local axis2 = axes[a2]
+        local s1 = sV:Dot(axis1); local s2 = sV:Dot(axis2)
+        local e1 = eV:Dot(axis1); local e2 = eV:Dot(axis2)
+        local sLen = math.sqrt(s1*s1 + s2*s2)
+        local eLen = math.sqrt(e1*e1 + e2*e2)
+        if math.abs(sLen) < eps then
+            Warning("Gizmo: CalcScaleChange: start plane length too small, cannot scale in plane")
+            return 1.0
+        end
+        return eLen / sLen
+    else
+        local sLen = sV:Length()
+        local eLen = eV:Length()
+        if math.abs(sLen) < eps then
+            Warning("Gizmo: CalcScaleChange: start length too small, cannot scale")
+            return 1.0
+        end
+        return eLen / sLen
     end
-    local scaleChange = (eLen - sLen) / math.abs(sLen)
-    return scaleChange
 end
 
 
@@ -343,16 +377,12 @@ function Gizmo:GetDelta(ray)
         delta = { Angle = angle, Axis = axisVec }
 
     elseif self.Mode == "Scale" then
-        delta = Vec3.new{0,0,0}
-        local scale = CalcScaleChange(startHit, hit, nil, gizmoOrigin)
-        for axis,_ in pairs(self.SelectedAxis) do
-            if axis == "X" then
-                delta[1] = scale
-            elseif axis == "Y" then
-                delta[2] = scale
-            elseif axis == "Z" then
-                delta[3] = scale
-            end
+        delta = Vec3.new{1,1,1}
+        local scale = CalcScaleChange(startHit, hit, self.SelectedAxis, axes, gizmoOrigin)
+        delta = scale
+        for a,_ in pairs(self.SelectedAxis) do
+            local index = AxisIndexMap[a]
+            GizmoVisualizer.ScaleMultiplier[index] = scale
         end
     end
         
@@ -380,6 +410,7 @@ function Gizmo:SetupDragging()
         local mouseRay = ScreenToWorldRay()
         if not mouseRay then Warning("Gizmo:SetupDragging: Failed to get mouse ray") return end
         local hit = self:GetHit(mouseRay)
+        if not hit then hit = Hit.new(pickerPos, nil, 0, nil) end
         local dir = hit.Position - pickerPos
         local quat = DirectionToQuat(dir, Ext.Math.QuatRotate(pickerRot, GLOBAL_COORDINATE.Y), axis)
 
@@ -415,7 +446,7 @@ function Gizmo:SetupDragging()
             delta = delta --[[@as Vec3]]
             self:OnDragTranslate(delta)
         elseif self.Mode == "Scale" then
-            delta = delta --[[@as Vec3]]
+            delta = delta --[[@as number]]
             self:OnDragScale(delta)
         end
 
@@ -437,6 +468,7 @@ function Gizmo:StopWithoutCallbacks()
     self.Visualizations = {}
     Post("SetVisualize", { Visible = false, Count = -1})
     Post(NetChannel.Visualize, { Type = "Clear" })
+    GizmoVisualizer.ScaleMultiplier = {1.0, 1.0, 1.0}
 end
 
 function Gizmo:OnDragStart() end
@@ -463,6 +495,7 @@ end
 
 function Gizmo:Visualize(guid)
     guid = guid or self.Guid
+    GizmoVisualizer:UpdateScale(guid)
     if self.SelectedAxis then
         for axis,_ in pairs(self.SelectedAxis) do
             GizmoVisualizer.HighLightGizmoAxis(axis, guid)

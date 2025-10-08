@@ -276,3 +276,11 @@ function LookAtParent(childUuid, parentUuid)
     local quat = DirectionToQuat(direction, up)
     return quat
 end
+
+function RotateAroundPivot(point, pivot, axis, angle)
+    local translatedPoint = Ext.Math.Sub(point, pivot)
+    local rotatedPoint = Ext.Math.QuatRotateAxisAngle(Quat.Identity, axis, angle)
+    rotatedPoint = Ext.Math.QuatRotate(rotatedPoint, translatedPoint)
+    local finalPoint = Ext.Math.Add(rotatedPoint, pivot)
+    return finalPoint
+end

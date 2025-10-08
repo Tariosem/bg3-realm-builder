@@ -4,6 +4,10 @@ local onStatsLoadedFuncs = {}
 --- @class UNSUBSCRIBE_SYMBOL
 UNSUBSCRIBE_SYMBOL = {}
 
+--- @class LOPSubscription
+--- @field Unsubscribe function
+--- @field ID integer
+
 --- priority: lower number = higher priority
 --- @param func function
 --- @param priority number|nil

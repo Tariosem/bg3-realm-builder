@@ -32,6 +32,9 @@ Matrix = {}
 Matrix.__index = Matrix
 
 function Matrix:Abs() return Matrix.new(AbsMatrix(self)) end
+function Matrix:Transpose() return Matrix.new(Ext.Math.Transpose(self)) end
+function Matrix:Determinant() return Ext.Math.Determinant(self) end
+function Matrix:Inverse() return Matrix.new(Ext.Math.Inverse(self)) end
 
 function Matrix.__mul(a, b)
     local t = type(b)

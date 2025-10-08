@@ -326,7 +326,7 @@ function CustomEffectTab:RenderEffects()
         effectIcon.UserData = effectObj
         effectIcon.UserData.isMultiEffect = false
         local userData = effectIcon.UserData
-        local oriData = GetDataFromUuid(effectObj.FxName)
+        local oriData = GetDataFromUuid(effectObj.FxName) or {}
         table.insert(self.effectsInfos, effectIcon)
         effectIcon.CanDrag = true
         effectIcon.DragDropType = "EffectInfo"
@@ -613,8 +613,8 @@ function CustomEffectTab:RenderEffects()
                 Icon = (libData and libData.Icon) or data.Icon or "Item_Unknown",
                 TargetBone = (libData and libData.TargetBone) or data.TargetBone or "",
                 SourceBone = (libData and libData.SourceBone) or data.SourceBone or "",
-                isBeam = (libData and libData.isBeam) or data.isBeam or false,
-                isLoop = (libData and libData.isLoop) or data.isLoop or false,
+                isBeam = data.isBeam or false,
+                isLoop = data.isLoop or false,
                 isMultiEffect = (libData and libData.isMultiEffect) or data.isMultiEffect or false,
             }
             if entry.Icon == "" or entry.Icon == "Item_Unknown" then
@@ -638,6 +638,7 @@ function CustomEffectTab:RenderEffects()
             return
         end
         local data = GetDataFromUuid(fxName)
+        data = data or {}
         local entry = {
             FxNames = fxName,
             DisplayName = data.DisplayName or fxName,

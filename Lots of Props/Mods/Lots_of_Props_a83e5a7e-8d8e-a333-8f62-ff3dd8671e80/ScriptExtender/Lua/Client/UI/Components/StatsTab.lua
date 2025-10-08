@@ -527,7 +527,7 @@ function StatsTab:RenderEmptyIcon(row, effectType)
                 data = GetDataFromName(input)
             end
             if not data then return end
-            local data = {
+            local dropdata = {
                 Uuid = data.Uuid,
                 TemplateName = data.TemplateName,
                 DisplayName = data.DisplayName or input,
@@ -535,7 +535,7 @@ function StatsTab:RenderEmptyIcon(row, effectType)
                 isMultiEffect = data.isMultiEffect or false
             }
             emptyInput.Text = ""
-            self:ProcessDropData(effectType, data)
+            self:ProcessDropData(effectType, dropdata)
         end
     end
 end

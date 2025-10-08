@@ -1,3 +1,8 @@
+--- @class LOP_CategorizableObject
+--- @field Group string
+--- @field Tags string[]
+--- @field Note string
+
 --- @class ManagerBase
 --- @field Data table<string, table>
 --- @field CountGroupsAndTags fun(self):table<string, number>, table<string, number>, table<string, string[]>, table<string, string[]>
@@ -5,7 +10,9 @@
 --- @field RemoveTagFromData fun(self, uuid:string, tag:string)
 --- @field ChangeDataGroup fun(self, uuid:string, group:string)
 --- @field ChangeDataNote fun(self, uuid:string, note:string)
+--- @field CheckHostValidEquipmentVisual fun(self, guid:string)
 --- @field Clear fun(self)
+--- @field new fun(self)
 --- @field populated boolean
 --- @field tagIcons table<string, string>
 --- @field tagTree TreeTable

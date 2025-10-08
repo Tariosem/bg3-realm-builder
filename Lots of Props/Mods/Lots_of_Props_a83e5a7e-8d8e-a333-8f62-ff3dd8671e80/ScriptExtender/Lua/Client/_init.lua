@@ -8,7 +8,7 @@ end
 
 ---@param channel any
 ---@param callback fun(data:table):any
----@return Subscription
+---@return LOPSubscription
 function ClientSubscribe(channel, callback)
     --Debug("Subscribe to channel: " .. channel)
     local unsubscribed = false
@@ -95,12 +95,14 @@ LOP_ItemManager = ItemManager.new()
 
 LOP_MultiEffectManager = MultiEffectManager.new()
 
+--- @param uuid GUIDSTRING
+--- @return GameObjectTemplate|ResourceMultiEffectInfo|ResourceEffectInfo|nil
 function GetDataFromUuid(uuid)
     if not uuid or uuid == "" then
         return nil
     end
     TakeTailTemplate(uuid)
-    return LOP_ItemManager.Data[uuid] or LOP_MultiEffectManager.Data[uuid] or nil
+    return LOP_ItemManager.Data[uuid] or LOP_MultiEffectManager.Data[uuid] or {}
 end
 
 function GetDataFromName(name)

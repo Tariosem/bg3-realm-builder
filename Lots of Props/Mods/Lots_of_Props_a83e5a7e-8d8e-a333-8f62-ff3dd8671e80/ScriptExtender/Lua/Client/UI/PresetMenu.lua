@@ -1,6 +1,7 @@
 PRESETMENU_WIDTH = 1000 * SCALE_FACTOR
 PRESETMENU_HEIGHT = 1200 * SCALE_FACTOR
 
+--- @class PresetMenu
 PresetMenu = _Class("PresetMenu")
 
 function PresetMenu:__init(parent)
@@ -265,6 +266,10 @@ function PresetMenu:SavePreset(name, overwrite)
 
         local template = TakeTailTemplate(propInfo.TemplateId)
         local templateData = GetDataFromUuid(template)
+        if not templateData then
+            Warning("PresetMenu:SavePreset: Template data not found for " .. tostring(propInfo.TemplateId))
+            goto continue
+        end
         local modId, modName = templateData.ModId, templateData.Mod
         if modId and modId ~= "" and modName and modName ~= "" then
             modList[modId] = { Name = modName , Author = templateData.ModAuthor }

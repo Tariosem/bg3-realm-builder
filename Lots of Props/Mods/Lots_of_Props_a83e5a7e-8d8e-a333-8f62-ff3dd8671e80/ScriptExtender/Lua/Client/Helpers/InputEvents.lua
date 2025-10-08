@@ -1,12 +1,12 @@
----@param key EclLuaKeyInputEvent
+---@param key EclLuaKeyInputEvent?
 ---@param callback fun(e:EclLuaKeyInputEvent): any
----@return Subscription
+---@return LOPSubscription
 function SubscribeKeyInput(key, callback)
+    key = key or {}
     local SubscribeStartTime = Ext.Timer.MonotonicTime()
     local lastCallTime = 0
     local id = 0
     local unsubscribed = false
-    local once = key.Once or false
     local unsub = function()
         if id ~= -1 then
             unsubscribed = true
@@ -30,7 +30,7 @@ function SubscribeKeyInput(key, callback)
 
         local returnValue = callback(e)
 
-        if once or returnValue == UNSUBSCRIBE_SYMBOL then
+        if returnValue == UNSUBSCRIBE_SYMBOL then
             unsub()
         end
     end)
@@ -38,14 +38,14 @@ function SubscribeKeyInput(key, callback)
     return { Unsubscribe = unsub, ID = id}
 end
 
----@param key EclLuaMouseButtonEvent
+---@param key EclLuaMouseButtonEvent?
 ---@param callback fun(e:EclLuaMouseButtonEvent): any
 function SubscribeMouseInput(key, callback)
+    key = key or {}
     local SubscribeStartTime = Ext.Timer.MonotonicTime()
     local lastCallTime = 0
     local id = 0
     local unsubscribed = false
-    local once = key.Once or false
     local unsub = function()
         if id ~= -1 then
             unsubscribed = true
@@ -67,7 +67,7 @@ function SubscribeMouseInput(key, callback)
 
         local returnValue = callback(e)
 
-        if once or returnValue == UNSUBSCRIBE_SYMBOL then
+        if returnValue == UNSUBSCRIBE_SYMBOL then
             unsub()
         end
     end)
@@ -77,16 +77,14 @@ function SubscribeMouseInput(key, callback)
 
 end
 
----@param key EclLuaMouseWheelEvent
+---@param key EclLuaMouseWheelEvent?
 ---@param callback fun(e:EclLuaMouseWheelEvent): any
----@return Subcription
+---@return LOPSubscription
 function SubscribeMouseWheel(key, callback)
-    Debug("SubscribeMouseWheel", Ext.DumpExport(key))
+    key = key or {}
     local SubscribeStartTime = Ext.Timer.MonotonicTime()
-    local lastCallTime = 0
     local id = 0
     local unsubscribed = false
-    local once = key.Once or false
     local unsub = function()
         if id ~= -1 then
             unsubscribed = true
@@ -103,7 +101,7 @@ function SubscribeMouseWheel(key, callback)
 
         local returnValue = callback(e)
 
-        if once or returnValue == UNSUBSCRIBE_SYMBOL then
+        if returnValue == UNSUBSCRIBE_SYMBOL then
             unsub()
         end
     end)
@@ -134,7 +132,7 @@ local function excludeModfiers(modifs)
 end
 
 --- @param callback fun(e: SimplifiedInputEvent): any
---- @return Subscription
+--- @return LOPSubscription
 function SubscribeKeyAndMouse(callback)
     local isCalling = false
     local subs = {}
@@ -190,24 +188,29 @@ function SubscribeKeyAndMouse(callback)
     return { Unsubscribe = unsub }
 end
 
+---@param input ExtuiInputText
+---@param callback fun(input:string)
+---@return LOPSubscription sub
+function SetupInputEnterCallback(input, callback)
+    local sub = nil
 
---- @param input ExtuiInputText
---- @param callback fun(text:string)
---- @return Subscription
-function QuickSubcribeEnterInput(input, callback)
-    return SubscribeKeyInput({
-        Key = "Return",
-        Pressed = true,
-        Once = true
-    }, function(e)
+    sub = SubscribeKeyInput({}, function (e)
         local ok, focused = pcall(IsFocused, input)
         if not ok then
+            Warning("[SetupInputEnterCallback] Failed to check focus state of input, unsubscribing key input listener.")
             return UNSUBSCRIBE_SYMBOL
         end
 
-        if focused then
-            callback(input.Text)
+        local inputText = input.Text
+        if not inputText or inputText == "" then
+            return
+        end
+
+        if e.Key == "RETURN" and focused then
+            callback(inputText)
             return UNSUBSCRIBE_SYMBOL
         end
     end)
+
+    return sub
 end

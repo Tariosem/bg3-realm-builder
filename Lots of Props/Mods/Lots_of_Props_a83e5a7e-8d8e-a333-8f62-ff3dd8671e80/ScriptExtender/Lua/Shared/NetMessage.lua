@@ -51,7 +51,7 @@ NetMessage.AttributeChanged = function(Guid, Visible, Gravity, CanInteract, Move
 ---@param Gizmo GUIDSTRING gizmo
 ---@param Mode "Translate"|"Rotate"|"Scale"|nil
 ---@param Space "Global"|"Local"|"View"|"Relative"|nil
----@param UserID USERID|nil
+---@param UserID string|nil
 NetMessage.ServerGizmo = function(Type, Guid, Gizmo, Mode, Space, UserID) end
 
 ---@param BindInfos {Guid: GUIDSTRING, BindParent: GUIDSTRING|nil, KeepLookingAt: boolean|nil, NotFollowParent: boolean|nil}[]

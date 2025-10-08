@@ -10,8 +10,8 @@ PICKER_CONSTANTS.CENTER_BB = {
 }
 
 PICKER_CONSTANTS.TRANSLATE_PLANE_SQUARE = {
-    Inner = 0.2,
-    HalfSize = 0.8
+    Inner = 0,
+    HalfSize = 0.4
 }
 
 PICKER_CONSTANTS.TRANSLATE_AXIS_CYLINDER = {
@@ -87,7 +87,7 @@ end
 --- @field Gizmo Gizmo
 --- @field new fun(gizmo: Gizmo): GizmoPicker
 --- @field GetTransform fun(self: GizmoPicker): (Vec3?, Quat?, table<'X'|'Y'|'Z'|'Visual', AABound>?)
---- @field GetAxes fun(self: GizmoPicker): table<'X' | 'Y' | 'Z', Vec3>
+--- @field GetAxes fun(self: GizmoPicker, origin: Vec3?, rotation: Quat?): table<'X'|'Y'|'Z', Vec3>
 --- @field Hit fun(self: GizmoPicker, ray: Ray): (GizmoPickerHit|nil)
 --- @field HitRotationTorus fun(self: GizmoPicker, ray: Ray): (Hit|nil)
 --- @field ClosestPointOnAxis fun(self: GizmoPicker, ray: Ray, axis: 'X' | 'Y' | 'Z'): (Vec3|nil)
@@ -162,8 +162,12 @@ function GizmoPicker:Hit(ray)
     -- Check center OBBs next
     local closestHit = nil
     local hitAxes = nil
+    local centerHalfSizes = Vec3.new(params.CENTER_BB.HalfSizes)
+    if self.Gizmo.Mode == "Scale" then
+        centerHalfSizes = centerHalfSizes * 3
+    end
 
-    local centerHit = ray:IntersectOBB(origin, params.CENTER_BB.HalfSizes, rotation)
+    local centerHit = ray:IntersectOBB(origin, centerHalfSizes, rotation)
     if centerHit and centerHit.Position then
         hitAxes = {X=true, Y=true, Z=true}
         closestHit = centerHit
@@ -264,7 +268,7 @@ function GizmoPicker:ClosestPointOnAxis(ray, axis)
     local dir = axisMap[axis]
     if not dir or not origin then
         Warning("GizmoPicker:ClosestPointOnAxis: Invalid axis: ", tostring(axis))
-        return self.Origin
+        return self.Position
     end
     
     local gizmoRay = Ray.new(origin, dir)

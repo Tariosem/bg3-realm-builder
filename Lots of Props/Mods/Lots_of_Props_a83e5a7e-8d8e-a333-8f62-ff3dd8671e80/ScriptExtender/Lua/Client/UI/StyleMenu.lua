@@ -1,6 +1,8 @@
 STYLEMENU_WIDTH = 1000
 STYLEMENU_HEIGHT = 1200
 
+--- @class StyleMenu
+--- @field panel ExtuiWindow|ExtuiTabItem
 StyleMenu = _Class("StyleMenu")
 
 function StyleMenu:__init(parent)
@@ -144,7 +146,7 @@ function StyleMenu:RenderColorPickers()
     end
 
     local colorsMap = GetAllGuiColorNames()
-    --- @type table <index, {Key:GuiColor, Value:GuiColorCategory}>
+    --- @type table <number, {Key:GuiColor, Value:GuiColorCategory}>
     local colorsArray = MapToSortedArrayByFunc(colorsMap, function(a, b)
         local aIndex = colorOrderMap[a.Value] or (#colorOrder + 1)
         local bIndex = colorOrderMap[b.Value] or (#colorOrder + 1)
@@ -175,6 +177,7 @@ function StyleMenu:RenderColorPickers()
         end
         self.saveFuncs[name] = function()
             if not colorPicker.UserData.Changed then return end
+            --- @diagnostic disable-next-line
             CONFIG.Theme.Color[name] = colorPicker.Color
         end
         colorPickers[name] = colorPicker
@@ -274,7 +277,7 @@ function StyleMenu:RenderStyleSliders()
     end
 
     local varsMap = GetAllGuiStyleVarNames()
-    --- @type table <index, {Key:GuiStyleVar, Value:GuiStyleVarCategory}>
+    --- @type table <number, {Key:GuiStyleVar, Value:GuiStyleVarCategory}>
     local varsArray = MapToSortedArrayByFunc(varsMap, function(a, b)
         local aIndex = styleVarOrderMap[a.Value] or (#styleVarOrder + 1)
         local bIndex = styleVarOrderMap[b.Value] or (#styleVarOrder + 1)
@@ -348,6 +351,7 @@ function StyleMenu:RenderStyleSliders()
         end
         self.saveFuncs[name] = function()
             if not slider.UserData.Changed then return end
+            --- @diagnostic disable-next-line
             CONFIG.Theme.Style[name] = {slider.Value[1], slider.Value[2] or 0}
         end
         styleVarSlider[name] = slider

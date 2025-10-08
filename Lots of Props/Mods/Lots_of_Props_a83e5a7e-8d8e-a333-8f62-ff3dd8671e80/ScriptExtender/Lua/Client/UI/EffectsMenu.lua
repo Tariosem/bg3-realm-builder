@@ -279,24 +279,21 @@ function EffectsMenu:RenderCustomEffects()
 
     local customEffectsRow = customEffectsTable:AddRow("CustomEffectsRow")
 
-    local sortedUuids = {}
-    for uuid, _ in pairs(self.customEffects) do
-        table.insert(sortedUuids, uuid)
+    local sortedNames = {}
+    for displayName, _ in pairs(self.customEffects) do
+        table.insert(sortedNames, displayName)
     end
-    table.sort(sortedUuids, function(a, b)
-        local nameA = self.customEffects[a] and self.customEffects[a].DisplayName or ""
-        local nameB = self.customEffects[b] and self.customEffects[b].DisplayName or ""
+    table.sort(sortedNames, function(a, b)
         if self.nameAscend then
-            return nameA < nameB
+            return a < b
         else
-            return nameA > nameB
+            return a > b
         end
     end)
     
-    for i, uuid in pairs(sortedUuids) do
-        local customEffect = self.customEffects[uuid]
+    for i, displayName in pairs(sortedNames) do
+        local customEffect = self.customEffects[displayName]
         if not customEffect then
-            --Error("[EffectsMenu] Custom effect with UUID " .. uuid .. " not found in customEffects table")
             goto continue
         end
         local effectCell = customEffectsRow:AddCell()
@@ -305,7 +302,7 @@ function EffectsMenu:RenderCustomEffects()
         effectButton.Image.Size = {imageSize, imageSize}
         table.insert(images, effectButton)
         local effectButtonTooltipText = effectButton:Tooltip():AddText(customEffect.Description or customEffect.DisplayName)
-        local tab = self.customEffectsTabs[uuid] or nil
+        local tab = self.customEffectsTabs[displayName] or nil
 
         local function effectButtonOnClick() end
 
@@ -313,12 +310,12 @@ function EffectsMenu:RenderCustomEffects()
             --_P("[EffectsMenu] Tab for custom effect " .. customEffect.DisplayName .. " changed, updating button.")
             if not tab or not tab.isExist then
                 --_P("[EffectsMenu] Tab for custom effect " .. customEffect.DisplayName .. " is invalid, removing button.")
-                self:ClearRef(uuid)
-                self.customEffects[uuid] = nil
+                self:ClearRef(displayName)
+                self.customEffects[displayName] = nil
                 self:RenderCustomEffects()
                 return
             end
-            local newName = self:RegisterNewName(uuid, tab.displayName)
+            local newName = self:RegisterNewName(displayName, tab.displayName)
             tab.displayName = newName
             effectButton:Destroy()
             effectButton = effectCell:AddImageButton(tab.displayName, tab.icon, ToVec2(imageSize))
@@ -326,14 +323,14 @@ function EffectsMenu:RenderCustomEffects()
             effectButton.OnClick = effectButtonOnClick
             effectNameText:Destroy()
             effectNameText = effectCell:AddText(tab.displayName)
-            self.customEffects[uuid].DisplayName = tab.displayName
-            self.customEffects[uuid].Icon = tab.icon
-            self.customEffects[uuid].Note = tab.Note
-            self.customEffects[uuid].Group = tab.Group
-            self.customEffects[uuid].Tags = tab.Tags
-            self.customEffects[uuid].Description = tab.description
+            self.customEffects[displayName].DisplayName = tab.displayName
+            self.customEffects[displayName].Icon = tab.icon
+            self.customEffects[displayName].Note = tab.Note
+            self.customEffects[displayName].Group = tab.Group
+            self.customEffects[displayName].Tags = tab.Tags
+            self.customEffects[displayName].Description = tab.description
             if self.autoSave then
-                self:Save(uuid)
+                self:Save(displayName)
             end
         end
 
@@ -342,9 +339,9 @@ function EffectsMenu:RenderCustomEffects()
                 --_P("[EffectsMenu] Tab for custom effect " .. customEffect.DisplayName .. " already exists, selecting it.")
                 tab:Focus()
             else
-                tab = CustomEffectTab:Add(uuid, self.panel, customEffect.DisplayName, self.customEffects, customEffect.StatsType)
+                tab = CustomEffectTab:Add(displayName, self.panel, customEffect.DisplayName, self.customEffects, customEffect.StatsType)
                 if tab then
-                    self.customEffectsTabs[uuid] = tab
+                    self.customEffectsTabs[displayName] = tab
                     tab.OnChange = effectTabOnChange
                     tab:Focus()
                 else
@@ -355,7 +352,7 @@ function EffectsMenu:RenderCustomEffects()
 
         if tab then
             tab.OnChange = effectTabOnChange
-            self.customEffectsTabs[uuid] = tab
+            self.customEffectsTabs[displayName] = tab
         else
             --Error("[EffectsMenu] Failed to create tab for custom effect " .. customEffect.DisplayName)
         end
@@ -388,34 +385,33 @@ function EffectsMenu:RenderCustomEffects()
     end
 
     effectButton.OnClick = function()
-        local newUuid = self:RegisterNewEntry()
-        local tab = CustomEffectTab:Add(newUuid, self.panel, self.customEffects[newUuid].DisplayName, self.customEffects)
-        self.customEffectsTabs[newUuid] = tab
+        local newName = self:RegisterNewEntry()
+        local tab = CustomEffectTab:Add(newName, self.panel, self.customEffects[newName].DisplayName, self.customEffects)
+        self.customEffectsTabs[newName] = tab
         self:RenderCustomEffects()
     end
 
     spellButton.OnClick = function()
-        local newUuid = self:RegisterNewEntry(GetLoca("New Spell"))
-        self.customEffects[newUuid].Icon = "GenericIcon_Intent_Damage"
-        local tab = SpellTab:Add(newUuid, self.panel, self.customEffects[newUuid].DisplayName, self.customEffects)
-        self.customEffectsTabs[newUuid] = tab
-        self.customEffects[newUuid].StatsType = "SpellData"
+        local newName = self:RegisterNewEntry(GetLoca("New Spell"))
+        self.customEffects[newName].Icon = "GenericIcon_Intent_Damage"
+        local tab = SpellTab:Add(newName, self.panel, self.customEffects[newName].DisplayName, self.customEffects)
+        self.customEffectsTabs[newName] = tab
+        self.customEffects[newName].StatsType = "SpellData"
         self:RenderCustomEffects()
     end
 
     statusButton.OnClick = function()
-        local newUuid = self:RegisterNewEntry(GetLoca("New Status"))
-        self.customEffects[newUuid].Icon = "PassiveFeature_CosmicOmen"
-        local tab = StatusTab:Add(newUuid, self.panel, self.customEffects[newUuid].DisplayName, self.customEffects)
-        self.customEffectsTabs[newUuid] = tab
-        self.customEffects[newUuid].StatsType = "StatusData"
+        local newName = self:RegisterNewEntry(GetLoca("New Status"))
+        self.customEffects[newName].Icon = "PassiveFeature_CosmicOmen"
+        local tab = StatusTab:Add(newName, self.panel, self.customEffects[newName].DisplayName, self.customEffects)
+        self.customEffectsTabs[newName] = tab
+        self.customEffects[newName].StatsType = "StatusData"
         self:RenderCustomEffects()
     end
 end
 
 function EffectsMenu:RegisterNewEntry(basename)
     local entry = {
-        Uuid = Uuid_v4(),
         DisplayName = self:GetNewName(basename),
         Icon = "GenericIcon_Intent_Utility",
         fxNames = {},
@@ -423,71 +419,47 @@ function EffectsMenu:RegisterNewEntry(basename)
         Group = "",
         Tags = {},
     }
-    self.customEffects[entry.Uuid] = entry
-    return entry.Uuid
+    self.customEffects[entry.DisplayName] = entry
+    return entry.DisplayName
 end
 
-function EffectsMenu:_findSmallestAvailableNumber(basename, excludeUuid)
-    local existingNumbers = {}
-
-    for uuid, effect in pairs(self.customEffects) do
-        if uuid ~= excludeUuid and effect.DisplayName then
-            local effectBasename = effect.DisplayName:match("^(.-)%s%(%d+%)$") or effect.DisplayName
-            if effectBasename == basename then
-                local number = effect.DisplayName:match("%((%d+)%)$")
-                if number then
-                    existingNumbers[tonumber(number)] = true
-                elseif effect.DisplayName == basename then
-                    existingNumbers[1] = true
-                end
-            end
-        end
+function EffectsMenu:RegisterNewName(oldName, newName)
+    if oldName == newName then
+        return oldName
     end
 
-    local number = 1
-    while existingNumbers[number] do
-        number = number + 1
+    if not self.customEffects[oldName] then
+        Error("[EffectsMenu] Old name " .. oldName .. " not found in customEffects table")
+        return nil
     end
 
-    return number
-end
-
-function EffectsMenu:RegisterNewName(uuid, name)
-    local basename = name:match("^(.-)%s%(%d+%)$") or name
-    local discardName = self.customEffects[uuid] and self.customEffects[uuid].DisplayName or nil
-    local discardBasename = discardName and discardName:match("^(.-)%s%(%d+%)$") or discardName
-
-    --_P("Registering new name: " .. basename .. ", discardName: " .. tostring(discardName))
-
-    local availableNumber = self:_findSmallestAvailableNumber(basename, uuid)
-
-    local finalName
-    if availableNumber == 1 then
-        finalName = basename
-    else
-        finalName = basename .. " (" .. availableNumber .. ")"
+    local availableName = newName
+    local cnt = 1
+    while self.customEffects[availableName] do
+        cnt = cnt + 1
+        availableName = newName .. " (" .. cnt .. ")"
     end
 
-    self.nameCnt[basename] = availableNumber
+    self.customEffects[availableName] = self.customEffects[oldName]
+    self.customEffects[availableName].DisplayName = availableName
+    self.customEffects[oldName] = nil
 
-    return finalName
+    return availableName
 end
 
 function EffectsMenu:GetNewName(basename)
-    basename = basename or GetLoca("New Effect")
-
-    local availableNumber = self:_findSmallestAvailableNumber(basename, nil)
-    
-    self.nameCnt[basename] = availableNumber
-    
-    if availableNumber == 1 then
-        return basename
-    else
-        return basename .. " (" .. availableNumber .. ")"
+    local name = basename or GetLoca("New Effect")
+    while self.customEffects[name] do
+        if not self.nameCnt[name] then
+            self.nameCnt[name] = 1
+        end
+        self.nameCnt[name] = self.nameCnt[name] + 1
+        name = basename .. " (" .. self.nameCnt[name] .. ")"
     end
+    return name
 end
 
-function EffectsMenu:Save(uuid)
+function EffectsMenu:Save(diaplayName)
     if not self.customEffects or next(self.customEffects) == nil then
         Warning("[EffectsMenu] No custom effects to save.")
         return false
@@ -495,20 +467,19 @@ function EffectsMenu:Save(uuid)
 
     local toSave = {}
 
-    if not uuid then
-        for iuuid, effect in pairs(self.customEffects) do
-            toSave[iuuid] = self.customEffects[iuuid]
+    if not diaplayName then
+        for name, effect in pairs(self.customEffects) do
+            toSave[name] = self.customEffects[name]
         end
     else
-        if not self.customEffects[uuid] then
-            Warning("[EffectsMenu] No custom effect found with UUID: " .. uuid)
+        if not self.customEffects[diaplayName] then
             return false
         end
-        toSave[uuid] = self.customEffects[uuid]
+        toSave[diaplayName] = self.customEffects[diaplayName]
     end
 
     
-    for iuuid, effect in pairs(toSave) do
+    for name, effect in pairs(toSave) do
         if not effect then goto continue end
         local filePath = GetCustomEffectPath(effect.DisplayName)
         local jsonData = Ext.Json.Stringify(effect)
@@ -540,7 +511,7 @@ function EffectsMenu:ClearRefs()
     end
 end
 
-function EffectsMenu:ClearRef(uuid)
+function EffectsMenu:ClearRef(name)
     local refFilePath = GetEffectReferencePath()
     local refData = Ext.IO.LoadFile(refFilePath)
     if not refData then
@@ -553,9 +524,8 @@ function EffectsMenu:ClearRef(uuid)
         Error("[EffectsMenu] Failed to parse custom effects reference file: " .. refFilePath)
         return false
     end
-    local effect = self.customEffects[uuid]
+    local effect = self.customEffects[name]
     if not effect then
-        Warning("[EffectsMenu] No custom effect found with UUID: " .. uuid)
         return false
     end
 
@@ -596,7 +566,7 @@ function EffectsMenu:Load()
         if jsonData then
             local effect = Ext.Json.Parse(jsonData)
             if effect then
-                self.customEffects[effect.Uuid] = effect
+                self.customEffects[effect.DisplayName] = effect
             else
                 Error("[EffectsMenu] Failed to parse custom effect file: " .. filePath)
             end
@@ -610,7 +580,7 @@ function EffectsMenu:ClearAll()
     ConfirmPopup:DangerConfirm(
         GetLoca("Are you sure?"),
         function()
-            for uuid, tab in pairs(self.customEffectsTabs) do
+            for name, tab in pairs(self.customEffectsTabs) do
                 if tab then
                     tab:Destroy()
                 end
