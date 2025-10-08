@@ -250,7 +250,7 @@ function SaveDefaultVisualValues(guid, templateName, retryCnt)
                 end
 
                 
-                local light = GetLightEntity(entity, compIndex)
+                local light = VisualHelpers.GetLightEntity(entity, compIndex)
                 if light then
                    for propName, propInfo in pairs(entityPropNameMap) do
                         if light[propName] then

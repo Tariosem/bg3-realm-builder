@@ -326,7 +326,9 @@ function VisualTab:RenderMaterialEditor()
             goto continue
         end
 
-        local material = desc.Renderable.ActiveMaterial --[[@as AppliedMaterial]]
+        local renderable = desc.Renderable --[[@as RenderableObject]]
+
+        local material = renderable.ActiveMaterial --[[@as AppliedMaterial]]
         local baseMaterialName = GetLastPath(material.Material.Parent.Name)
         local materialRes = Ext.Resource.Get(material.MaterialName, "Material")
         local materialName = baseMaterialName
@@ -341,13 +343,23 @@ function VisualTab:RenderMaterialEditor()
         --local materialName = material.MaterialName
         local materialNode = self.materialHeader:AddTree(materialName)
 
+        materialNode.OnHoverEnter = function()
+            local liveRenderable = VisualHelpers.GetRenderable(UuidToHandle(self.guid), descIndex)
+            if not liveRenderable then return end
+            local rotation = liveRenderable.WorldTransform.RotationQuat
+            local center = liveRenderable.WorldTransform.Translate
+            local bb = liveRenderable.BaseBound
+            local halfSizes = Vec3.new({ bb.Max[1] - bb.Min[1], bb.Max[2] - bb.Min[2], bb.Max[3] - bb.Min[3]})
+            Post(NetChannel.Visualize, { Type = "OBB", Position = center, Rotation = rotation, HalfSizes = halfSizes  })
+        end
+
         local scalarParams = material.Material.Parameters.ScalarParameters
         local vector2Params = material.Material.Parameters.Vector2Parameters
         local vector3Params = material.Material.Parameters.Vector3Parameters
         local vector4Params = material.Material.Parameters.VectorParameters
         
         if #scalarParams > 0 then
-            local scalarParamNode = materialNode:AddTree(GetLoca("Scalar Parameters"))
+            local scalarParamNode = materialNode--materialNode:AddTree(GetLoca("Scalar Parameters"))
             scalarParamNode.IDContext = materialName .. "ScalarParameters"
             for paramIndex, param in ipairs(scalarParams) do
                 self:RenderScalarParameter(param, scalarParamNode, descIndex, baseMaterialName)
@@ -355,7 +367,7 @@ function VisualTab:RenderMaterialEditor()
         end
 
         if #vector2Params > 0 then
-            local vector2ParamNode = materialNode:AddTree(GetLoca("Vector2 Parameters"))
+            local vector2ParamNode = materialNode--materialNode:AddTree(GetLoca("Vector2 Parameters"))
             vector2ParamNode.IDContext = materialName .. "Vector2Parameters"
             for paramIndex, param in ipairs(vector2Params) do
                 self:RenderVectorParameter(param, vector2ParamNode, descIndex, baseMaterialName, "Vector2")
@@ -363,7 +375,7 @@ function VisualTab:RenderMaterialEditor()
         end
 
         if #vector3Params > 0 then
-            local vector3ParamNode = materialNode:AddTree(GetLoca("Vector3 Parameters"))
+            local vector3ParamNode = materialNode--materialNode:AddTree(GetLoca("Vector3 Parameters"))
             vector3ParamNode.IDContext = materialName .. "Vector3Parameters"
             for paramIndex, param in ipairs(vector3Params) do
                 self:RenderVectorParameter(param, vector3ParamNode, descIndex, baseMaterialName, "Vector3")
@@ -371,7 +383,7 @@ function VisualTab:RenderMaterialEditor()
         end
 
         if #vector4Params > 0 then
-            local vector4ParamNode = materialNode:AddTree(GetLoca("Vector4 Parameters"))
+            local vector4ParamNode = materialNode--materialNode:AddTree(GetLoca("Vector4 Parameters"))
             vector4ParamNode.IDContext = materialName .. "Vector4Parameters"
             for paramIndex, param in ipairs(vector4Params) do
                 self:RenderVectorParameter(param, vector4ParamNode, descIndex, baseMaterialName, "Vector4")
@@ -385,7 +397,7 @@ function VisualTab:RenderMaterialEditor()
 end
 
 function VisualTab:RenderEffectEditor()
-    local entity = Ext.Entity.Get(self.guid)
+    local entity = Ext.Entity.Get(self.guid) --[[@as EntityHandle]]
     if entity.Effect == nil then
         return
     end
@@ -437,12 +449,12 @@ function VisualTab:RenderEffectEditor()
 end
 
 ---@param node any
----@param component LightComponent
+---@param component AspkComponent
 ---@param compIndex any
 function VisualTab:RenderLightEntity(node, component, compIndex)
     local entityNode = node
 
-    local lightEntity = component.LightEntity
+    local lightEntity = component.LightEntity --[[@as LightComponent]]
     if not lightEntity or not lightEntity.Light then
         return
     end
@@ -501,14 +513,11 @@ function VisualTab:RenderLightEntity(node, component, compIndex)
             elseif valueNode == otherNode then
                 valueNode = valueNode:AddTree(scalarPropNameMap[propName].displayName or propName)
             end
-            local valueResetButton = valueNode:AddButton(GetLoca("Reset"))
-            valueResetButton.IDContext = key .. "Reset"
             self.resetValues[key] = self.resetValues[key] or property
             local initValue = self.resetValues[key]
             local currentValue = property
-
             local slider = AddSliderWithStep(valueNode, nil, currentValue, scalarPropNameMap[propName].min, scalarPropNameMap[propName].max, scalarPropNameMap[propName].step)
-            slider.UserData.StepInput.SameLine = true
+            slider.UserData.ResetButton.Visible = false
             slider.OnChange = function()
                 local liveLight = GetLiveLightEntity()
                 if not liveLight then return end
@@ -518,6 +527,8 @@ function VisualTab:RenderLightEntity(node, component, compIndex)
                 end
                 saveLightEntityProperty(key, propName, slider.Value[1])
             end
+            local valueResetButton = valueNode:AddButton(GetLoca("Reset"))
+            valueResetButton.IDContext = key .. "Reset"
 
             slider.OnRightClick = function()
                 local liveLight = GetLiveLightEntity()
@@ -554,7 +565,6 @@ function VisualTab:RenderLightEntity(node, component, compIndex)
             if valueNode == otherNode then
                 valueNode = valueNode:AddTree(vec3PropNameMap[propName].displayName or propName)
             end
-            local valueResetButton = valueNode:AddButton(GetLoca("Reset"))
             self.resetValues[key] = self.resetValues[key] or {property[1], property[2], property[3]}
             local initValue = self.resetValues[key]
             local currentValue = property
@@ -565,6 +575,7 @@ function VisualTab:RenderLightEntity(node, component, compIndex)
             valueNode:AddText("Y").SameLine = true
             local sliderZ = AddSliderWithStep(valueNode, "Z", currentValue[3], -100, 100, 0.1)
             valueNode:AddText("Z").SameLine = true
+            local valueResetButton = valueNode:AddButton(GetLoca("Reset"))
 
             local colorEdit = valueNode:AddColorEdit("Color", {currentValue[1], currentValue[2], currentValue[3]})
             local function sliderOnChange()
@@ -625,12 +636,14 @@ function VisualTab:RenderLightEntity(node, component, compIndex)
 end
 
 ---@param node any
----@param component AspkLightComponent
+---@param component AspkComponent
 ---@param compIndex integer
 function VisualTab:RenderLightComponent(node, component, compIndex)
     local compNode = node
 
-    local properties = component.Properties
+    local lComp = component --[[@as AspkLightComponent]]
+
+    local properties = lComp.Properties
 
     local function saveLightProperty(key, propName, value)
         self.modifiedParams[key] = {
@@ -664,12 +677,12 @@ function VisualTab:RenderLightComponent(node, component, compIndex)
             self:CheckKey(overrideKey)
             local colorNode = compNode:AddTree("Color")
             self.resetValues[key] = self.resetValues[key] or property.Frames[1].Color
-            self.resetValues[overrideKey] = self.resetValues[overrideKey] or component.OverrideLightTemplateColor
+            self.resetValues[overrideKey] = self.resetValues[overrideKey] or lComp.OverrideLightTemplateColor
             local initColor = self.resetValues[key]
             local initBool = self.resetValues[overrideKey]
             local currentColor = property.Frames[1].Color
             local colorResetButton = colorNode:AddButton(GetLoca("Reset"))
-            local overrideEntityCheck = colorNode:AddCheckbox(GetLoca("Override Entity Color"), component.OverrideLightTemplateColor)
+            local overrideEntityCheck = colorNode:AddCheckbox(GetLoca("Override Entity Color"), lComp.OverrideLightTemplateColor)
             overrideEntityCheck.OnChange = function(checkbox)
                 local entity = Ext.Entity.Get(self.guid)
                 if not entity.Effect then return end
@@ -694,7 +707,7 @@ function VisualTab:RenderLightComponent(node, component, compIndex)
                 if not entity.Effect then return end
                 local frames = entity.Effect.Timeline.Components[compIndex].Properties[propName].Frames
                 local colorValue = {picker.Color[1], picker.Color[2], picker.Color[3], picker.Color[4]}
-                ChangeFrames(frames, colorValue, true)
+                VisualHelpers.ChangeFrames(frames, colorValue, true)
                 saveLightProperty(key, propName, colorValue)
             end
 
@@ -704,7 +717,7 @@ function VisualTab:RenderLightComponent(node, component, compIndex)
                 local component = entity.Effect.Timeline.Components[compIndex]
                 local frames = component.Properties[propName].Frames
                 component.OverrideLightTemplateColor = initBool
-                ChangeFrames(frames, initColor, true)
+                VisualHelpers.ChangeFrames(frames, initColor, true)
                 colorPicker.Color = {initColor[1], initColor[2], initColor[3], initColor[4]}
                 overrideEntityCheck.Checked = initBool
                 self.modifiedParams[key] = nil
@@ -762,7 +775,7 @@ function VisualTab:RenderLightComponent(node, component, compIndex)
                     if not entity.Effect then return end
                     local keyFrames = entity.Effect.Timeline.Components[compIndex].Properties[propName].KeyFrames
                     for keyFrameIndex, keyFrame in ipairs(keyFrames) do
-                        ChangeABCDFrames(keyFrame.Frames, sliderA.Value[1], sliderB.Value[1], sliderC.Value[1], sliderD.Value[1])
+                        VisualHelpers.ChangeABCDFrames(keyFrame.Frames, sliderA.Value[1], sliderB.Value[1], sliderC.Value[1], sliderD.Value[1])
                     end
                     saveLightProperty(key, propName, {sliderA.Value[1], sliderB.Value[1], sliderC.Value[1], sliderD.Value[1]})
                 end
@@ -772,7 +785,7 @@ function VisualTab:RenderLightComponent(node, component, compIndex)
                     if not entity.Effect then return end
                     local keyFrames = entity.Effect.Timeline.Components[compIndex].Properties[propName].KeyFrames
                     for keyFrameIndex, keyFrame in ipairs(keyFrames) do
-                        ChangeABCDFrames(keyFrame.Frames, sliderA.Value[1], sliderB.Value[1], sliderC.Value[1], sliderD.Value[1])
+                        VisualHelpers.ChangeABCDFrames(keyFrame.Frames, sliderA.Value[1], sliderB.Value[1], sliderC.Value[1], sliderD.Value[1])
                     end
                     saveLightProperty(key, propName, {sliderA.Value[1], sliderB.Value[1], sliderC.Value[1], sliderD.Value[1]})
                 end
@@ -782,7 +795,7 @@ function VisualTab:RenderLightComponent(node, component, compIndex)
                     if not entity.Effect then return end
                     local keyFrames = entity.Effect.Timeline.Components[compIndex].Properties[propName].KeyFrames
                     for keyFrameIndex, keyFrame in ipairs(keyFrames) do
-                        ChangeABCDFrames(keyFrame.Frames, sliderA.Value[1], sliderB.Value[1], sliderC.Value[1], sliderD.Value[1])
+                        VisualHelpers.ChangeABCDFrames(keyFrame.Frames, sliderA.Value[1], sliderB.Value[1], sliderC.Value[1], sliderD.Value[1])
                     end
                     saveLightProperty(key, propName, {sliderA.Value[1], sliderB.Value[1], sliderC.Value[1], sliderD.Value[1]})
                 end
@@ -792,7 +805,7 @@ function VisualTab:RenderLightComponent(node, component, compIndex)
                     if not entity.Effect then return end
                     local keyFrames = entity.Effect.Timeline.Components[compIndex].Properties[propName].KeyFrames
                     for keyFrameIndex, keyFrame in ipairs(keyFrames) do
-                        ChangeABCDFrames(keyFrame.Frames, sliderA.Value[1], sliderB.Value[1], sliderC.Value[1], sliderD.Value[1])
+                        VisualHelpers.ChangeABCDFrames(keyFrame.Frames, sliderA.Value[1], sliderB.Value[1], sliderC.Value[1], sliderD.Value[1])
                     end
                     saveLightProperty(key, propName, {sliderA.Value[1], sliderB.Value[1], sliderC.Value[1], sliderD.Value[1]})
                 end
@@ -802,7 +815,7 @@ function VisualTab:RenderLightComponent(node, component, compIndex)
                     if not entity.Effect then return end
                     local keyFrames = entity.Effect.Timeline.Components[compIndex].Properties[propName].KeyFrames
                     for keyFrameIndex, keyFrame in ipairs(keyFrames) do
-                        ChangeABCDFrames(keyFrame.Frames, initValue[1], initValue[2], initValue[3], initValue[4])
+                        VisualHelpers.ChangeABCDFrames(keyFrame.Frames, initValue[1], initValue[2], initValue[3], initValue[4])
                     end
                     sliderA.Value = {initValue[1], initValue[1], initValue[1], initValue[1]}
                     sliderB.Value = {initValue[2], initValue[2], initValue[2], initValue[2]}
@@ -816,7 +829,7 @@ function VisualTab:RenderLightComponent(node, component, compIndex)
                     if not entity.Effect then return end
                     local keyFrames = entity.Effect.Timeline.Components[compIndex].Properties[propName].KeyFrames
                     for keyFrameIndex, keyFrame in ipairs(keyFrames) do
-                        ChangeABCDFrames(keyFrame.Frames, 0, 0, 0, 0)
+                        VisualHelpers.ChangeABCDFrames(keyFrame.Frames, 0, 0, 0, 0)
                     end
                     sliderA.Value = {0, 0, 0, 0}
                     sliderB.Value = {0, 0, 0, 0}
@@ -851,8 +864,8 @@ function VisualTab:RenderLightComponent(node, component, compIndex)
                 local boolName = overrideMap[propName]
                 local overrideKey = "Light::" .. compIndex .. "::" .. boolName
                 self:CheckKey(overrideKey)
-                local initBool = self.resetValues[overrideKey] or component[boolName]
-                local overrideCheck = valueNode:AddCheckbox(GetLoca(boolName), component[boolName] or false)
+                local initBool = self.resetValues[overrideKey] or lComp[boolName]
+                local overrideCheck = valueNode:AddCheckbox(GetLoca(boolName), lComp[boolName] or false)
                 overrideCheck.OnChange = function(checkbox)
                     local entity = Ext.Entity.Get(self.guid)
                     if not entity.Effect then return end
@@ -884,6 +897,7 @@ function VisualTab:RenderLightComponent(node, component, compIndex)
             local initValue = self.resetValues[key]
             local currentValue = property.KeyFrames[1].Frames[1].Value
             local valueSlider = AddSliderWithStep(valueNode, key, currentValue, -100, 100, 0.1)
+            valueSlider.UserData.ResetButton.Visible = false
             if not overrideMap[propName] then
                 valueSlider.UserData.StepInput.SameLine = true
             end
@@ -892,7 +906,7 @@ function VisualTab:RenderLightComponent(node, component, compIndex)
                 if not entity.Effect then return end
                 local keyFrames = entity.Effect.Timeline.Components[compIndex].Properties[propName].KeyFrames
                 for keyFrameIndex, keyFrame in ipairs(keyFrames) do
-                    ChangeFrames(keyFrame.Frames, slider.Value[1])
+                    VisualHelpers.ChangeFrames(keyFrame.Frames, slider.Value[1])
                 end
                 saveLightProperty(key, propName, slider.Value[1])
             end
@@ -902,7 +916,7 @@ function VisualTab:RenderLightComponent(node, component, compIndex)
                 if not entity.Effect then return end
                 local keyFrames = entity.Effect.Timeline.Components[compIndex].Properties[propName].KeyFrames
                 for keyFrameIndex, keyFrame in ipairs(keyFrames) do
-                    ChangeFrames(keyFrame.Frames, initValue)
+                    VisualHelpers.ChangeFrames(keyFrame.Frames, initValue)
                 end
                 valueSlider.Value = {initValue, initValue, initValue, initValue}
                 if resetBoolFunc then
@@ -928,10 +942,12 @@ function VisualTab:RenderLightComponent(node, component, compIndex)
 end
 
 ---@param node any
----@param component AspkParticleSystemComponent
+---@param component AspkComponent
 ---@param compIndex integer
 function VisualTab:RenderParticleSystemComponent(node, component, compIndex)
     local compNode = node
+
+    local psComp = component --[[@as AspkParticleSystemComponent]]
 
     local function saveParticleProperty(key, propName, value)
         self.modifiedParams[key] = {
@@ -951,7 +967,7 @@ function VisualTab:RenderParticleSystemComponent(node, component, compIndex)
         Color = "Color",
     }
 
-    for propName, property in pairs(component) do
+    for propName, property in pairs(psComp) do 
         if scalarPropNameMap[propName] and type(property) == "number" then
             local key = "ParticleSystem::" .. compIndex .. "::" .. propName
             self:CheckKey(key)
@@ -961,7 +977,7 @@ function VisualTab:RenderParticleSystemComponent(node, component, compIndex)
             local initValue = self.resetValues[key]
             local currentValue = property
             local slider = AddSliderWithStep(valueNode, nil, currentValue, scalarPropNameMap[propName].min, scalarPropNameMap[propName].max, scalarPropNameMap[propName].step)
-            slider.UserData.StepInput.SameLine = true
+            slider.UserData.ResetButton.Visible = false
             slider.OnChange = function(slider)
                 local entity = Ext.Entity.Get(self.guid)
                 if not entity.Effect then return end
@@ -1054,7 +1070,7 @@ function VisualTab:RenderScalarParameter(param, parent, descIndex, materialName)
 
     local resetButton = paramNode:AddButton(GetLoca("Reset"))
     local sliderScalar = AddSliderWithStep(paramNode, key, currentValue, GetARange(currentValue))
-    sliderScalar.UserData.StepInput.SameLine = true
+    sliderScalar.UserData.ResetButton.Visible = false
 
     local parameterName = param.ParameterName
     local function saveScalarParam(parameterName)
@@ -1067,12 +1083,12 @@ function VisualTab:RenderScalarParameter(param, parent, descIndex, materialName)
     end
 
     sliderScalar.OnChange = function(slider)
-        SetMaterialParameters(self.guid, descIndex, parameterName, slider.Value[1], "Scalar")
+        VisualHelpers.SetMaterialParameters(self.guid, descIndex, parameterName, slider.Value[1], "Scalar")
         saveScalarParam(parameterName)
     end
 
     resetButton.OnClick = function()
-        SetMaterialParameters(self.guid, descIndex, parameterName, oriValue, "Scalar")
+        VisualHelpers.SetMaterialParameters(self.guid, descIndex, parameterName, oriValue, "Scalar")
         sliderScalar.Value = {oriValue, oriValue, oriValue, oriValue}
         self.modifiedParams[key] = nil
     end
@@ -1101,18 +1117,18 @@ function VisualTab:RenderVectorParameter(param, parent, descIndex, materialName,
     local resetButton = paramNode:AddButton(GetLoca("Reset"))
     local key = materialName .. "::" .. descIndex .. "::" .. parameterName
     self:CheckKey(key)
-    
+
     self.resetValues[key] = self.resetValues[key] or param.Value
     local oriValue = self.resetValues[key]
-    
+
     local sliders = {}
     local axes = {"X", "Y", "Z", "W"}
     local numAxes = paramType == "Vector2" and 2 or (paramType == "Vector3" and 3 or 4)
-    
+
     for i = 1, numAxes do
         sliders[axes[i]] = AddSliderWithStep(paramNode, axes[i], param.Value[i], GetARange(param.Value[i]))
     end
-    
+
     local colorPicker = nil
     if paramType == "Vector3" or paramType == "Vector4" then
         colorPicker = paramNode:AddColorEdit("")
@@ -1123,13 +1139,13 @@ function VisualTab:RenderVectorParameter(param, parent, descIndex, materialName,
             colorPicker.NoAlpha = true
         end
     end
-    
+
     local function updateMaterial()
         local value = {}
         for i = 1, numAxes do
             value[i] = sliders[axes[i]].Value[1]
         end
-        SetMaterialParameters(self.guid, descIndex, parameterName, value, paramType)
+        VisualHelpers.SetMaterialParameters(self.guid, descIndex, parameterName, value, paramType)
         if colorPicker then
             colorPicker.Color = numAxes == 3 and {value[1], value[2], value[3], 1} or value
         end
@@ -1140,11 +1156,11 @@ function VisualTab:RenderVectorParameter(param, parent, descIndex, materialName,
             Value = value
         }
     end
-    
+
     for i = 1, numAxes do
         sliders[axes[i]].OnChange = updateMaterial
     end
-    
+
     if colorPicker then
         colorPicker.OnChange = function(picker)
             for i = 1, numAxes do
@@ -1155,7 +1171,7 @@ function VisualTab:RenderVectorParameter(param, parent, descIndex, materialName,
     end
     
     resetButton.OnClick = function()
-        SetMaterialParameters(self.guid, descIndex, parameterName, oriValue, paramType)
+        VisualHelpers.SetMaterialParameters(self.guid, descIndex, parameterName, oriValue, paramType)
         for i = 1, numAxes do
             sliders[axes[i]].Value = ToVec4(oriValue[i])
         end
@@ -1172,9 +1188,9 @@ function VisualTab:RenderVectorParameter(param, parent, descIndex, materialName,
         if not self:CheckVisual() then return end
         local material = entity.Visual.Visual.ObjectDescs[descIndex].Renderable.ActiveMaterial.Material
         local paramList = paramType == "Vector2" and material.Parameters.Vector2Parameters or (paramType == "Vector3" and material.Parameters.Vector3Parameters or material.Parameters.VectorParameters)
-        for paramIdx, param in pairs(paramList) do
-            if parameterName == param.ParameterName then
-                local value = param.Value
+        for paramIdx, iparam in pairs(paramList) do
+            if parameterName == iparam.ParameterName then
+                local value = iparam.Value
                 for i = 1, numAxes do
                     sliders[axes[i]].Value = ToVec4(value[i])
                 end
@@ -1201,15 +1217,19 @@ function VisualTab:RenderScaleSliders(parent, descIndex, materialName)
     local oriScale = self.resetValues[key]
     local currentScale = tempRenderable.WorldTransform.Scale
 
-    local scaleResetButton = scaleNode:AddButton(GetLoca("Reset"))
+    scaleNode:AddText(GetLoca("Uniform Scale"))
     local uniformScaleSlider = AddSliderWithStep(scaleNode, materialName .. "UniformScale", currentScale[1], 0.1, 100, 0.1)
-    scaleNode:AddText(GetLoca("Uniform Scale")).SameLine = true
+    scaleNode:AddText("X")
     local scaleXSlider = AddSliderWithStep(scaleNode, materialName .. "ScaleX", currentScale[1], 0.1, 100, 0.1)
-    scaleNode:AddText("X").SameLine = true
+    scaleXSlider.SameLine = true
+    scaleNode:AddText("Y")
     local scaleYSlider = AddSliderWithStep(scaleNode, materialName .. "ScaleY", currentScale[2], 0.1, 100, 0.1)
-    scaleNode:AddText("Y").SameLine = true
+    scaleYSlider.SameLine = true
+    scaleNode:AddText("Z")
     local scaleZSlider = AddSliderWithStep(scaleNode, materialName .. "ScaleZ", currentScale[3], 0.1, 100, 0.1)
-    scaleNode:AddText("Z").SameLine = true
+    scaleZSlider.SameLine = true
+
+    local scaleResetButton = scaleNode:AddButton(GetLoca("Reset"))
 
     scaleResetButton.IDContext = materialName .. "ScaleResetButton"
     uniformScaleSlider.IDContext = materialName .. "UniformScaleSlider"
@@ -1470,7 +1490,7 @@ function VisualTab:LoadPreset(name)
         end
     end
 
-    ApplyVisualParams(self.guid, presetParams)
+    VisualHelpers.ApplyVisualParams(self.guid, presetParams)
 
     self.currentPreset = name
     self.modifiedParams = DeepCopy(presetParams)

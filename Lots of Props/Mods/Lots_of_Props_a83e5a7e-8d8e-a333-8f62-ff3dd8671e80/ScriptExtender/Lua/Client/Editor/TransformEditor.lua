@@ -433,7 +433,6 @@ function TransformEditor:RegisterEvents()
         if gizmo.Mode == "Translate" then
             local requests = CountMap(self.StartTransforms)
             ClientSubscribe(NetMessage.Visualization, function (data)
-                Debug("TransformEditor: Visualization received for", data.Guid, "entities")
                 for _,guid in ipairs(data.Guid) do
                     Timer:Ticks(10, function (timerID)
                         gizmo:Visualize(guid)

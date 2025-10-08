@@ -10,7 +10,6 @@
 --- @field ExpandTime number
 --- @field ExpandType AnimationEasing
 --- @field SideBarWidth number
---- @field MainAreaWidth number
 --- @field AnimationFPS number
 --- @field CollapseDirection '"Left"' | '"Right"'
 --- @field HoverToExpand boolean
@@ -20,9 +19,9 @@
 --- @field SetSideBarWidth function
 --- @field StopAnimation function
 --- @field DisableOuterCollapse boolean
---- @field OnExpand fun()|nil
---- @field OnCollapse fun()|nil
---- @field OnWidthChange fun()|nil On sidebar width change
+--- @field OnExpand fun()
+--- @field OnCollapse fun()
+--- @field OnWidthChange fun() On sidebar width change
 
 --- @param parent ExtuiTreeParent
 --- @param table ExtuiTable
@@ -147,7 +146,6 @@ function AddCollapsingTable(parent, mainAreaTitle, sideBarTitle, opts)
         ExpandTime = opts.ExpandTime or 400,                        --- @type number
         ExpandType = opts.ExpandType or "EaseOutBack",              --- @type AnimationEasing
         SideBarWidth = opts.SideBarWidth or (200 * SCALE_FACTOR),   --- @type number
-        MainAreaWidth = opts.MainAreaWidth or (400 * SCALE_FACTOR), --- @type number
 
         AnimationFPS = opts.AnimationFPS or 90,                     --- @type number
 
@@ -156,9 +154,9 @@ function AddCollapsingTable(parent, mainAreaTitle, sideBarTitle, opts)
         AutoCollapse = opts.AutoCollapse or 0,                      --- @type number
         DisableOuterCollapse = opts.DisableOuterCollapse or false,  --- @type boolean
 
-        OnExpand = opts.OnExpand,                                   --- @type fun()|nil
-        OnCollapse = opts.OnCollapse,                               --- @type fun()|nil
-        OnWidthChange = opts.OnWidthChange,                         --- @type fun()|nil
+        OnExpand = opts.OnExpand or function() end,                 --- @type fun()
+        OnCollapse = opts.OnCollapse or function() end,             --- @type fun()
+        OnWidthChange = opts.OnWidthChange or function() end,       --- @type fun()
     }
 
     --- @type CollapsingTableStyle
@@ -310,9 +308,10 @@ function AddCollapsingTable(parent, mainAreaTitle, sideBarTitle, opts)
             duration,
             easingType,
             function()
-                --[[collapseButton.Disabled = false;]] ud.SideBarWidth = newWidth
+                --[[collapseButton.Disabled = false;]]
+                ud.SideBarWidth = newWidth
             end,
-            function(newWidth, progress) 
+            function(newWidth, progress)
                 table.ColumnDefs[sideBarIndex].Width = newWidth --[[@as number]]
                 local newAlpha = fromAlpha + (toAlpha - fromAlpha) * progress
                 sideBar:SetStyle("Alpha", newAlpha)
@@ -397,29 +396,30 @@ function AddCollapsingTable(parent, mainAreaTitle, sideBarTitle, opts)
         sideBar:SetStyle("Alpha", 1)
     end
 
-    table.UserData.__index = function(t, k)
-        if k == "Collapsed" then
-            return collapseStatus
-        elseif rawget(t, k) ~= nil then
-            return rawget(t, k)
-        else
-            Error("CollapsingTableStyle has no member named " .. tostring(k))
-        end
-    end
-
-    table.UserData.__newindex = function(t, k, v)
-        if k == "Collapsed" then
-            if v ~= collapseStatus then
-                toggleTable()
+    setmetatable(ud, {
+        __index = function(t, k)
+            if k == "Collapsed" then
+                return collapseStatus
+            elseif rawget(t, k) ~= nil then
+                return rawget(t, k)
+            else
+                Error("CollapsingTableStyle has no member named " .. tostring(k))
             end
-        elseif k == "SideBarWidth" then
-            setSideBarWidth(v)
-        elseif rawget(t, k) ~= nil then
-            rawset(t, k, v)
-        else
-            Error("CollapsingTableStyle has no member named " .. tostring(k))
+        end,
+        __newindex = function(t, k, v)
+            if k == "Collapsed" then
+                if v ~= collapseStatus then
+                    toggleTable()
+                end
+            elseif k == "SideBarWidth" then
+                setSideBarWidth(v)
+            elseif rawget(t, k) ~= nil then
+                rawset(t, k, v)
+            else
+                Error("CollapsingTableStyle has no member named " .. tostring(k))
+            end
         end
-    end
+    })
 
     return table.UserData
 end

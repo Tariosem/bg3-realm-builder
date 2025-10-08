@@ -276,9 +276,13 @@ function PropTab:RenderMonitorTab()
         end
     end)
 
-    self.positionTextMonitor = monitorTab:AddInputScalar(GetLoca("World Position"))
-    self.positionTextMonitor.ReadOnly = true
-    self.positionTextMonitor.Components = 3
+    local positionMonitor = monitorTab:AddDrag(GetLoca("Position"))
+    positionMonitor.Components = 3
+    positionMonitor.Disabled = true
+    positionMonitor.OnChange = function (se)
+        local newPos = { se.Value[1], se.Value[2], se.Value[3] }
+        TransformEditor:SetTransform(self.guid, { Translate = newPos }, true)
+    end
 
     self.positionTimer = Timer:Every(1000, function()
         if not self.isValid then
@@ -292,7 +296,7 @@ function PropTab:RenderMonitorTab()
         local xp, yp, zp = CGetPosition(self.guid)
         
         if not xp or not yp or not zp then
-            self.positionTextMonitor.Value = self.LastTranslation or {0, 0, 0, 0}
+            positionMonitor.Value = self.LastTranslation or {0, 0, 0, 0}
             return
         end
 
@@ -301,16 +305,18 @@ function PropTab:RenderMonitorTab()
         local z = FormatDecimal(zp, 2)
 
         if x and y and z then
-            self.positionTextMonitor.Value = {x, y, z, 0}
+            positionMonitor.Value = {x, y, z, 0}
             self.LastTranslation = {xp, yp, zp, 0}
         else
-            self.positionTextMonitor.Value = {0, 0, 0, 0}
+            positionMonitor.Value = {0, 0, 0, 0}
         end
+        positionMonitor.Max = {self.LastTranslation[1] + 100, self.LastTranslation[2] + 100, self.LastTranslation[3] + 100, 100}
+        positionMonitor.Min = {self.LastTranslation[1] - 100, self.LastTranslation[2] - 100, self.LastTranslation[3] - 100, 100}
     end)
 
-    self.rotationTextMonitor = monitorTab:AddInputScalar(GetLoca("Quat Rotation"))
-    self.rotationTextMonitor.ReadOnly = true
-    self.rotationTextMonitor.Components = 4
+    local rotationMonitor = monitorTab:AddDrag(GetLoca("Rotation"))
+    rotationMonitor.Disabled = true
+    rotationMonitor.Components = 3
 
     self.rotationTimer = Timer:Every(1000, function()
         if not self.isValid then
@@ -321,19 +327,26 @@ function PropTab:RenderMonitorTab()
             return
         end
 
-        local pitch, yaw, roll, w = GetQuatRotation(self.guid)
-        
-        if not pitch or not yaw or not roll or not w then
-            self.rotationTextMonitor.Value = self.LastQuatRotation or {0, 0, 0, 0}
+        local RADs = QuatToEuler({GetQuatRotation(self.guid)})
+        for i=1,3 do
+            RADs[i] = RadianToDegree(RADs[i])
+        end
+
+        local pitch, yaw, roll = RADs[1], RADs[2], RADs[3]
+        if not pitch or not yaw or not roll then
+            rotationMonitor.Value = self.LastQuatRotation or {0, 0, 0, 0}
             return
         end
 
         local pitchT = FormatDecimal(pitch, 2)
         local yawT = FormatDecimal(yaw, 2)
         local rollT = FormatDecimal(roll, 2)
-        local wT = FormatDecimal(w, 2)
-        self.rotationTextMonitor.Value = {pitchT, yawT, rollT, wT}
-        self.LastQuatRotation = {pitch, yaw, roll, w}
+        if pitchT and yawT and rollT then
+            rotationMonitor.Value = {pitchT, yawT, rollT, 0}
+            self.LastQuatRotation = {pitch, yaw, roll, 0}
+        else
+            rotationMonitor.Value = {0, 0, 0, 0}
+        end
     end)
 
     self.debugDumpButton = monitorTab:AddButton(GetLoca("Debug"))

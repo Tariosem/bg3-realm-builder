@@ -39,7 +39,7 @@ function TreeList:__init(parent, label, tree)
     self.selectedItems = {}
     self.tree = tree
 
-    self.treeRefs = {} -- save tree tables for collections
+    self.treeRefs = {} -- save tree selectables
     self.leafRefs = {} -- save leaf selectables for items
     self.nodeRefs = {} -- save all cells for nodes
     self.collapsedTree = {}
@@ -54,7 +54,6 @@ function TreeList:SetupKeyListeners()
             if e.Event == "KeyDown" then
                 self.MultiSelect = true
                 self.GroupSelect = false
-                self.lastSelectedKey = nil
             elseif e.Event == "KeyUp" then
                 self.MultiSelect = false
             end
@@ -64,7 +63,6 @@ function TreeList:SetupKeyListeners()
                 self.MultiSelect = false
             elseif e.Event == "KeyUp" then
                 self.GroupSelect = false
-                self.lastSelectedKey = nil
             end
         end
     end)
@@ -193,9 +191,13 @@ function TreeList:ShowAndShowPath(key)
 end
 
 -- Depth-first
---- @param func fun(key:any, node:any)
+--- @param func fun(key:any, node:ExtuiTableCell)
 function TreeList:TraverseAllNodes(func)
-    local stack = {TreeTable.GetRootKey()}
+    local stack = {}
+    local root = self.tree:Find(TreeTable.GetRootKey())
+    for childKey,_ in pairs(root) do
+        table.insert(stack, childKey)
+    end
     while #stack > 0 do
         local current = table.remove(stack)
         local node = self.tree:Find(current)
@@ -408,11 +410,13 @@ function TreeList:RenderTree(key, node)
     return tree
 end
 
+---@param key any
+---@param selected boolean|nil
 function TreeList:ToggleSelected(key, selected)
     local ref = self.leafRefs[key]
     if ref then
-        ref.Selected = selected
-        if selected then
+        ref.Selected = selected or not self.selectedItems[key]
+        if ref.Selected then
             self.selectedItems[key] = true
         else
             self.selectedItems[key] = nil
@@ -461,8 +465,8 @@ function TreeList:SetUpLeaf(selectable, key, item)
         local previewTable = selectable.DragPreview:AddTable("##DragPreview", 1)
         self:ApplyTreeTableStyle(previewTable)
         local row = previewTable:AddRow()
-        for key, item in pairs(self.selectedItems) do
-            self:RenderLeaf(key, row:AddCell())
+        for ikey, iitem in pairs(self.selectedItems) do
+            self:RenderLeaf(ikey, row:AddCell())
         end
         self:OnDragStart(key)
     end
@@ -480,20 +484,17 @@ function TreeList:SetUpLeaf(selectable, key, item)
 
     selectable.OnClick = function(sel)
         if self.MultiSelect then
-            self:ToggleSelected(key, not self.selectedItems[key])
+            self:ToggleSelected(key)
         elseif self.GroupSelect then
             if self.lastSelectedKey and self.indexRefs and self.leafRefs[self.lastSelectedKey] then
                 local lastSelectedKey = self.lastSelectedKey
                 local startIdx = self.indexRefs[lastSelectedKey]
                 local endIdx = self.indexRefs[key]
-                Debug("Group select from", lastSelectedKey, "to", key)
 
                 if startIdx and endIdx then
                     if startIdx > endIdx then
                         startIdx, endIdx = endIdx, startIdx
                     end
-
-                    self:ClearSelection()
 
                     for i = startIdx, endIdx do
                         local indexkey = self.indexRefsReverse[i]
@@ -501,19 +502,17 @@ function TreeList:SetUpLeaf(selectable, key, item)
                     end
                 else
                     Warning("Failed to determine range for group select")
-                    self:ToggleSelected(key, true)
+                    self:ToggleSelected(key)
                 end
             else
-                self:ToggleSelected(key, true)
+                self:ToggleSelected(key)
             end
-            self.lastSelectedKey = key
-            Debug("Last selected key set to", self.lastSelectedKey)
         else
-            local oriStatus = self.selectedItems[key]
             self:ClearSelection()
-            self:ToggleSelected(key, not oriStatus)
+            self:ToggleSelected(key)
         end
 
+        self.lastSelectedKey = key
         self:OnSelect(self.selectedItems)
 
         if userOnClick then
@@ -575,14 +574,14 @@ function TreeList:SetUpTree(tree, key, item)
     tree.OnClick = function(sel)
         sel.Selected = false
 
-        local function recurSel(parent)
-            local parentNode = self.tree:Find(parent)
+        local function recurSel(pparent)
+            local parentNode = self.tree:Find(pparent)
             if parentNode then
-                for key, cont in pairs(parentNode) do
-                    if self.leafRefs[key] then
-                        self:ToggleSelected(key, true)
+                for ikey, cont in pairs(parentNode) do
+                    if self.leafRefs[ikey] then
+                        self:ToggleSelected(ikey)
                     else
-                        recurSel(key)
+                        recurSel(ikey)
                     end
                 end
             end

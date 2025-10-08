@@ -393,6 +393,8 @@ end)
 
 RegisterNetListener("StopStatus", function (channel, data, userID)
 
+    data.DisplayName = data.DisplayName .. tostring(userID)
+
     if data.Type == "All" then
         EM:RemoveAllStatuses()
         return

@@ -30,7 +30,16 @@ function CustomEffectTab:RenderProfile()
     local l2, r2 = row:AddCell(), row:AddCell()
     local l3, r3 = row:AddCell(), row:AddCell()
 
-    self.displayNameButton = l1:AddButton(GetLoca("Display Name"))
+    self.displayNameButton = AddSelectableButton(l1, GetLoca("Display Name"), function()
+        local text = self.displayNameInput.Text
+        if text and text ~= "" then
+            self.displayName = text
+            self:OnChange()
+            self:Refresh()
+        else
+            self.displayNameInput.Text = self.displayName
+        end
+    end)
     self.displayNameButton:Tooltip():AddText(GetLoca("Change how this effect's name is displayed in the UI"))
 
     self.displayNameInput = r1:AddInputText("", self.displayName)
@@ -40,35 +49,11 @@ function CustomEffectTab:RenderProfile()
         local ok, focus = pcall(function() return IsFocused(self.displayNameInput) end)
         if not ok then return UNSUBSCRIBE_SYMBOL end
         if focus then
-            self.displayNameButton.OnClick()
+            self.displayNameButton:OnClick()
         end
     end)
 
-    self.iconNameButton = l2:AddButton(GetLoca("Icon"))
-    self.iconNameButton:Tooltip():AddText(GetLoca("Change this effect's icon, you can choose icon from browsers"))
-    self.iconNameInput = r2:AddInputText("", self.icon)
-    self.iconNameInput.SameLine = true
-
-    self.iconNameInputKeySub = SubscribeKeyInput({ Key = "RETURN"}, function()
-        local ok, focus = pcall(function() return IsFocused(self.iconNameInput) end)
-        if not ok then return UNSUBSCRIBE_SYMBOL end
-        if focus then
-            self.iconNameButton.OnClick()
-        end
-    end)
-
-    self.displayNameButton.OnClick = function()
-        local text = self.displayNameInput.Text
-        if text and text ~= "" then
-            self.displayName = text
-            self:OnChange()
-            self:Refresh()
-        else
-            self.displayNameInput.Text = self.displayName
-        end
-    end
-
-    self.iconNameButton.OnClick = function()
+    self.iconNameButton = AddSelectableButton(l2, GetLoca("Icon"), function()
         local icon = CheckIcon(self.iconNameInput.Text, self.icon)
         if icon and icon ~= "" then
             self.icon = icon
@@ -86,13 +71,22 @@ function CustomEffectTab:RenderProfile()
         else
             self.iconNameInput.Text = self.Icon
         end
-    end
+    end)
 
-    self.descButton = l3:AddButton(GetLoca("Description"))
-    self.descInput = r3:AddInputText("", self.description or "")
-    self.descInput.SameLine = true
+    self.iconNameButton:Tooltip():AddText(GetLoca("Change this effect's icon, you can choose icon from browsers"))
+    self.iconNameInput = r2:AddInputText("", self.icon)
+    self.iconNameInput.SameLine = true
 
-    self.descButton.OnClick = function()
+    self.iconNameInputKeySub = SubscribeKeyInput({ Key = "RETURN"}, function()
+        local ok, focus = pcall(function() return IsFocused(self.iconNameInput) end)
+        if not ok then return UNSUBSCRIBE_SYMBOL end
+        if focus then
+            self.iconNameButton:OnClick()
+        end
+    end)
+
+
+    self.descButton = AddSelectableButton(l3, GetLoca("Description"), function()
         local text = self.descInput.Text
         if text and text ~= "" then
             self.description = text
@@ -100,7 +94,9 @@ function CustomEffectTab:RenderProfile()
         else
             self.descInput.Text = self.description or ""
         end
-    end
+    end)
+    self.descInput = r3:AddInputText("", self.description or "")
+    self.descInput.SameLine = true
 
     self.descInputKeySub = SubscribeKeyInput({ Key = "RETURN"}, function()
         local ok, focus = pcall(function() return IsFocused(self.descInput) end)

@@ -1,9 +1,9 @@
 GizmoVisualizer = {
     GizmoScale = 0.1,
     Scale = {
-        1,
-        1,
-        1,
+        1.0,
+        1.0,
+        1.0,
     },
     ScaleMultiplier = {
         1.0,
@@ -56,7 +56,7 @@ local function SetGizmoAxisTextureColorParam(axis, guid, Value)
         --Warning("GetGizmoAxisTextureColorParam: Invalid visual for gizmo with GUID: " .. tostring(guid))
         return nil
     end
-    visual.VisualFlags = "DisableLOD"
+    visual.VisualFlags = Ext.Enums.VisualFlags.DisableLOD | visual.VisualFlags
 
     local objDescs = visual.ObjectDescs
 

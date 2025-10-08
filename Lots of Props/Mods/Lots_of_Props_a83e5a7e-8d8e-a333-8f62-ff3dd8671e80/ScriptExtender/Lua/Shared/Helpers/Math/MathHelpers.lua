@@ -163,6 +163,22 @@ function DirectionToQuat(direction, up, forwardAxis)
     return Ext.Math.QuatNormalize(quat)
 end
 
+--- @param quat quat
+function QuatToEuler(quat)
+    local mat = Ext.Math.QuatToMat4(quat)
+    local euler = Ext.Math.ExtractEulerAngles(mat)
+
+    return euler
+end
+
+function DegreeToRadian(degree)
+    return degree * (math.pi / 180)
+end
+
+function RadianToDegree(radian)
+    return radian * (180 / math.pi)
+end
+
 --- @param point Vec2
 --- @param rectMin Vec2
 --- @param rectMax Vec2
@@ -277,7 +293,19 @@ function LookAtParent(childUuid, parentUuid)
     return quat
 end
 
+---@param point Vec3
+---@param pivot Vec3
+---@param axis "X"|"Y"|"Z"|Vec3
+---@param angle number in radians
+---@return Vec3
 function RotateAroundPivot(point, pivot, axis, angle)
+    if type(axis) == "string" then
+        axis = GLOBAL_COORDINATE[axis:upper()]
+        if not axis then
+            Error("Invalid axis: " .. tostring(axis))
+            return point
+        end
+    end
     local translatedPoint = Ext.Math.Sub(point, pivot)
     local rotatedPoint = Ext.Math.QuatRotateAxisAngle(Quat.Identity, axis, angle)
     rotatedPoint = Ext.Math.QuatRotate(rotatedPoint, translatedPoint)

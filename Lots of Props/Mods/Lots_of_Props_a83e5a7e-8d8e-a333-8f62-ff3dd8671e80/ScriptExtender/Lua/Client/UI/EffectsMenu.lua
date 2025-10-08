@@ -20,8 +20,6 @@ function EffectsMenu:__init(parent)
     self.searchNote = ""
     self.nameAscend = true
 
-    self.nameCnt = {}
-
     self.autoSave = CONFIG.EffectsMenu.autoSave and CONFIG.EffectsMenu.autoSave or false
     self:Load()
 end
@@ -293,9 +291,7 @@ function EffectsMenu:RenderCustomEffects()
     
     for i, displayName in pairs(sortedNames) do
         local customEffect = self.customEffects[displayName]
-        if not customEffect then
-            goto continue
-        end
+        if not customEffect then goto continue end
         local effectCell = customEffectsRow:AddCell()
         local effectButton = effectCell:AddImageButton(customEffect.DisplayName, customEffect.Icon)
         local effectNameText = effectCell:AddText(customEffect.DisplayName)
@@ -316,6 +312,7 @@ function EffectsMenu:RenderCustomEffects()
                 return
             end
             local newName = self:RegisterNewName(displayName, tab.displayName)
+            displayName = newName
             tab.displayName = newName
             effectButton:Destroy()
             effectButton = effectCell:AddImageButton(tab.displayName, tab.icon, ToVec2(imageSize))
@@ -323,7 +320,7 @@ function EffectsMenu:RenderCustomEffects()
             effectButton.OnClick = effectButtonOnClick
             effectNameText:Destroy()
             effectNameText = effectCell:AddText(tab.displayName)
-            self.customEffects[displayName].DisplayName = tab.displayName
+            self.customEffects[displayName].DisplayName = newName
             self.customEffects[displayName].Icon = tab.icon
             self.customEffects[displayName].Note = tab.Note
             self.customEffects[displayName].Group = tab.Group
@@ -449,12 +446,10 @@ end
 
 function EffectsMenu:GetNewName(basename)
     local name = basename or GetLoca("New Effect")
+    local cnt = 1
     while self.customEffects[name] do
-        if not self.nameCnt[name] then
-            self.nameCnt[name] = 1
-        end
-        self.nameCnt[name] = self.nameCnt[name] + 1
-        name = basename .. " (" .. self.nameCnt[name] .. ")"
+        cnt = cnt + 1
+        name = basename .. " (" .. cnt .. ")"
     end
     return name
 end

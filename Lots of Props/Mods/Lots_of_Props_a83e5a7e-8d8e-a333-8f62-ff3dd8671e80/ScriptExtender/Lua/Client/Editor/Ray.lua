@@ -5,6 +5,9 @@
 --- @field At fun(self:Ray, t:number):Vec3
 --- @field IntersectPlane fun(self:Ray, planePoint:Vec3, planeNormal:Vec3):Hit|nil
 --- @field IntersectAABB fun(self:Ray, min:Vec3, max:Vec3):Hit|nil, Hit[]|nil
+--- @field IntersectOBB fun(self:Ray, obbCenter:Vec3, halfsizes:Vec3, rotation:Quat):Hit|nil, Hit[]|nil
+--- @field IntersectSphere fun(self:Ray, center:Vec3, radius:number):Hit|nil
+--- @field IntersectRing fun(self:Ray, planePoint:Vec3, planeNormal:Vec3, innerRadius:number, outerRadius:number):Hit|nil
 --- @field IntersectCylinder fun(self:Ray, pos:Vec3, radius:number, height:number, axis:"X"|"Y"|"Z"|Vec3):Hit
 Ray = _Class("Ray")
 
@@ -17,43 +20,12 @@ function Ray:At(t)
     return self.Origin + self.Direction * t
 end
 
----@param mat4 Matrix
----@return Vec3 orgin
----@return Vec3 direction
-function Ray:ToLocalByMatrix(mat4)
-    local invMat = Matrix.new(mat4):Inverse()
-    local origin4 = invMat * Vec4.new{self.Origin.x, self.Origin.y, self.Origin.z, 1}
-    local dir4 = invMat * Vec4.new{self.Direction.x, self.Direction.y, self.Direction.z, 0}
-
-    local origin = Vec3.new{origin4.x, origin4.y, origin4.z}
-    local dir = Vec3.new{dir4.x, dir4.y, dir4.z}:Normalize() --[[@as Vec3]]
-
-    return origin, dir
-end
-
-function Ray:ToLocalByPlane(planePoint, planeNormal)
-    planeNormal = Vec3.new(planeNormal):Normalize() --[[@as Vec3]]
-    planePoint = Vec3.new(planePoint)
-
-    local u, v, w = MakeOrthonormalBasis(planeNormal)
-
-    local originX = Ext.Math.Dot(self.Origin - planePoint, u)
-    local originY = Ext.Math.Dot(self.Origin - planePoint, v)
-    local originZ = Ext.Math.Dot(self.Origin - planePoint, w)
-
-    local dirX = Ext.Math.Dot(self.Direction, u)
-    local dirY = Ext.Math.Dot(self.Direction, v)
-    local dirZ = Ext.Math.Dot(self.Direction, w)
-
-    return Vec3.new(originX, originY, originZ), Vec3.new(dirX, dirY, dirZ):Normalize()
-end
-
 function Ray:__tostring()
     return string.format("Ray(Origin: %s, Direction: %s)", tostring(self.Origin), tostring(self.Direction))
 end
 
 --- @param Other Ray
---- @param noLimit boolean?
+--- @param noLimit boolean? 
 --- @return Vec3 C1 -- Closest point on this ray
 --- @return Vec3 C2 -- Closest point on Other ray
 --- @return number Distance -- Distance between C1 and C2
@@ -190,8 +162,9 @@ function Ray:IntersectOBB(obbCenter, halfsizes, rotation)
     halfsizes = Vec3.new(halfsizes)
     rotation = Quat.new(rotation)
 
-    local dirLocal = rotation:Inverse():Rotate(self.Direction)
-    local originLocal = rotation:Inverse():Rotate(self.Origin - obbCenter)
+    local invRot = rotation:Inverse()
+    local dirLocal = invRot:Rotate(self.Direction)
+    local originLocal = invRot:Rotate(self.Origin - obbCenter)
 
     local rayLocal = Ray.new(originLocal, dirLocal)
     local negaHalfsize = -halfsizes --[[@as Vec3]]
@@ -291,7 +264,7 @@ function Ray:IntersectSphere(center, radius)
     local b = 2.0 * Ext.Math.Dot(oc, self.Direction)
     local c = Ext.Math.Dot(oc, oc) - radius * radius
     local discriminant = b * b - 4 * a * c
-    if discriminant < 0 then 
+    if discriminant < 0 then
         return nil
     else
         local t = (-b - math.sqrt(discriminant)) / (2.0 * a)

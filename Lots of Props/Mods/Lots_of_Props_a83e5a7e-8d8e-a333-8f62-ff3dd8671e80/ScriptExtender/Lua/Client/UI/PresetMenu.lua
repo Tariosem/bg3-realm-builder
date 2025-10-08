@@ -36,7 +36,7 @@ function PresetMenu:__init(parent)
             return
         end
         local modifiedParams = preset.ModifiedParams
-        ApplyVisualParams(guid, modifiedParams)
+        VisualHelpers.ApplyVisualParams(guid, modifiedParams)
     end)
 
     self.InitSubs = { self.presetSub, self.applyVisualPresetSub, self.receiveViusalPresetDataSub }

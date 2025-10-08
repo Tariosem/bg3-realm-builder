@@ -37,24 +37,26 @@ function AddSliderWithStep(parent, IDContext, defaultValue, min, max, step, isIn
         slider = parent:AddSlider("", defaultValue or 0, min or 0, max or 100) --[[@as ExtuiSliderScalar]]
         increButton = AddSliderStepButton(parent, ">", step, nil, ">")
     end
+    stepInput.Visible = false
     local resetButton = parent:AddButton("Reset")
     decreButton.UserData.Slider = slider
     increButton.UserData.Slider = slider
-
-    slider.UserData = { Step = step }
 
     stepInput.IDContext = IDContext .. "_StepInput"
     increButton.IDContext = IDContext .. "_IncreButton"
     slider.IDContext = IDContext .. "_Slider"
     decreButton.IDContext = IDContext .. "_DecreButton"
 
+    slider.UserData = {}
     local ud = slider.UserData
     ud.StepInput = stepInput
     ud.DecreButton = decreButton
     ud.IncreButton = increButton
     ud.Parent = parent
+    ud.ResetButton = resetButton
+    ud.Step = step
 
-    decreButton.SameLine = true
+    --decreButton.SameLine = true
     increButton.SameLine = true
     slider.SameLine = true
     --stepInput.SameLine = true

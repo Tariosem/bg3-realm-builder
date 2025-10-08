@@ -164,6 +164,7 @@ function PropsMenu:RenderSideBar()
             if not TableContains(self.selectedGuids, propData.Guid) then
                 table.insert(self.selectedGuids, propData.Guid)
             end
+            Debug(self.selectedGuids)
             self:SetupSelectablePopup(rightClickPopup)
             rightClickPopup:Open()
         end
@@ -435,6 +436,10 @@ function PropsMenu:CreatePropTab(prop, opts)
 end
 
 function PropsMenu:FocusPropTab(guid, doDetach)
+    local propTab = self.propTabs[guid]
+    if guid == self.presentingProp and propTab.isVisible == false then
+        self.presentingProp = nil
+    end
     if guid == self.presentingProp and not doDetach then
         return
     end
@@ -461,7 +466,7 @@ function PropsMenu:FocusPropVisualTab(guid)
     local propTab = self.propTabs[guid]
     if propTab and propTab.isValid then
 
-        if propTab.visualTab.isWindow then
+        if propTab.visualTab.isWindow and propTab.visualTab.isVisible then
             FocusWindow(propTab.visualTab.panel)
         else
             propTab.visualTab.isAttach = false

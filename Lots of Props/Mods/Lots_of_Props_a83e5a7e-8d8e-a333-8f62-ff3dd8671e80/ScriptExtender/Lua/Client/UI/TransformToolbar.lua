@@ -238,7 +238,8 @@ function TransformToolbar:SetupBoxSelect()
     local boxSelectStart = nil
     local boxSelectEnd = nil
     local boxSelectTimer = nil
-    local boxSelectWindow = nil
+    local boxSelectWindow = Ext.IMGUI.NewWindow("BoxSelect##" .. tostring(self))
+    boxSelectWindow.Visible = false
 
     local function collectAABBCorners(aabb)
         local min = aabb.Min
@@ -318,11 +319,7 @@ function TransformToolbar:SetupBoxSelect()
     end
 
     local function initBoxSelectWindow()
-        if boxSelectWindow then
-            boxSelectWindow:Destroy()
-            boxSelectWindow = nil
-        end
-        boxSelectWindow = Ext.IMGUI.NewWindow("BoxSelect")
+        boxSelectWindow.Visible = true
         boxSelectWindow:SetSize({0,0})
         boxSelectWindow:SetPos({0,0})
         boxSelectWindow.NoTitleBar = true
@@ -361,8 +358,9 @@ function TransformToolbar:SetupBoxSelect()
                 boxSelectTimer = nil
             end
             if boxSelectWindow then
-                boxSelectWindow:Destroy()
-                boxSelectWindow = nil
+                boxSelectWindow.Visible = false
+                boxSelectWindow:SetSize({0,0})
+                boxSelectWindow:SetPos({-1,-1})
             end
             boxSelectStart = nil
             boxSelectEnd = nil
@@ -566,7 +564,7 @@ function TransformToolbar:CreateBindPopup(guid)
     local screenWidth, screenHeight = GetScreenSize()
     local camera = GetCamera()
     local pivot = WorldToScreenPoint({CGetPosition(guid)}, camera, screenWidth, screenHeight)
-    Debug("Creating bind popup for", guid, "at", pivot[1], pivot[2])
+    if not pivot then pivot = {screenWidth / 2, screenHeight / 2} end
     pivot = { pivot[1] / screenWidth, pivot[2] / screenHeight }
     notif.NoAnimation = true
     notif.AutoFadeOut = false

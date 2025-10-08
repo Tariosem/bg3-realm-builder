@@ -19,6 +19,7 @@ local allNearbyComboRefs = {}
 --- @field new fun(parent:ExtuiTreeParent):NearbyCombo
 --- @field SortFunc fun(a:NearbyEntry, b:NearbyEntry):boolean -- always a < b, order depends on Ascending
 --- @field UpdateOptions fun(self:NearbyCombo)
+--- @field SetSelected fun(self:NearbyCombo, guid:GUIDSTRING)
 --- @field GetSelected fun(self:NearbyCombo): GUIDSTRING?, string
 --- @field OnChange fun(self:NearbyCombo, Guid:GUIDSTRING, displayName:string)
 NearbyCombo = _Class("NearbyCombo")
