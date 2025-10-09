@@ -5,6 +5,7 @@ NetChannelName = {
     SetAttributes = "SetAttributes",
     Duplicate = "Duplicate",
     Spawn = "Spawn",
+    Delete = "Delete",
     ManageGizmo = "ManageGizmo",
     Bind = "Bind",
     SpawnPreset = "SpawnPreset",
@@ -36,6 +37,9 @@ NetChannel.BunchOsirisRequest = function(Calls, RequestId) return {} end
 ---@param Guid GUIDSTRING[]|GUIDSTRING
 NetChannel.Duplicate = function(Guid) end
 
+--- @param Guid GUIDSTRING|GUIDSTRING[]
+NetChannel.Delete = function(Guid) end
+
 ---@param TemplateId string
 ---@param Target GUIDSTRING?
 ---@param Position Vec3
@@ -44,7 +48,7 @@ NetChannel.Duplicate = function(Guid) end
 ---@param Type "Preview"?
 NetChannel.Spawn = function(TemplateId, Target, Position, Rotation, PropInfo, Type) end
 
---- @param Type "Point"|"Line"|"Box"|"OBB"
+--- @param Type "Point"|"Line"|"Box"|"OBB"|"Clear"
 --- @param Position Vec3
 --- @param EndPosition Vec3|nil
 --- @param Rotation Quat|nil
@@ -69,7 +73,7 @@ NetChannel.SetAttributes = function(Guid, Visible, Gravity, CanInteract, Moveabl
 --- @param Guid GUIDSTRING gizmo entity
 --- @param Target GUIDSTRING[]|GUIDSTRING target entities
 --- @param GizmoType "Translate"|"Rotate"|"Scale"
---- @param GizmoSpace "Global"|"Local"|"View"|"Relative"
+--- @param GizmoSpace "Global"|"Local"|"View"|"Parent"
 NetChannel.ManageGizmo = function(Type, Guid, Target, GizmoType, GizmoSpace) end
 
 ---@param Type "Bind"|"SetType"|"Unbind"|"UpdateOffset"

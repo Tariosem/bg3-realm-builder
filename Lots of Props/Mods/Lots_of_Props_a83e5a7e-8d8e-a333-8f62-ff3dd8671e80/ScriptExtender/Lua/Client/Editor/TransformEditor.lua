@@ -1,6 +1,4 @@
 --- @class TransformEditor
---- @field Mode "Translate" | "Rotate" | "Scale"
---- @field Space "World" | "Local" | "Relative"
 --- @field Gizmo Gizmo|nil
 --- @field Target GUIDSTRING|GUIDSTRING[]|nil
 --- @field History HistoryManager
@@ -24,7 +22,7 @@ local AVAILABLE_SPACES = {
     World = true,
     Local = true,
     View = true,
-    Relative = true,
+    Parent = true,
 }
 
 local AVAILABLE_MODES = {
@@ -32,109 +30,6 @@ local AVAILABLE_MODES = {
     Rotate = true,
     Scale = true,
 }
-
-local function EqualTransforms(a, b)
-    if not a or not b then return false end
-    if not a.Translate or not b.Translate then return false end
-    if not a.RotationQuat or not b.RotationQuat then return false end
-    if not a.Scale or not b.Scale then return false end
-
-    local EPS = 0.0001
-    for i=1,3 do
-        if math.abs(a.Translate[i] - b.Translate[i]) > EPS then
-            return false
-        end
-    end
-
-    for i=1,4 do
-        if math.abs(a.RotationQuat[i] - b.RotationQuat[i]) > EPS then
-            return false
-        end
-    end
-
-    for i=1,3 do
-        if math.abs(a.Scale[i] - b.Scale[i]) > EPS then
-            return false
-        end
-    end
-
-    return true
-end
-
-local function SaveTransform(guid)
-    local toSave = {
-        Translate = {CGetPosition(guid)},
-        RotationQuat = {CGetRotation(guid)},
-        Scale = Vec3.new(CGetScale(guid))
-    }
-    if not toSave.Translate or #toSave.Translate ~= 3 then
-        toSave.Translate = {CGetPosition(CGetHostCharacter())}
-    end
-    if not toSave.RotationQuat or #toSave.RotationQuat ~= 4 then
-        toSave.RotationQuat = {0,0,0,1}
-    end
-    return toSave
-end
-
----@param guids GUIDSTRING[]
----@param transforms table<GUIDSTRING, {Translate: Vec3|nil, RotationQuat: Vec4|nil, Scale: Vec3|nil}>
-local function SetVisualTransform(guids, transforms)
-    local entities = {}
-
-    for _,guid in pairs(guids) do
-        if type(guid) ~= "string" or guid == "" then
-            Warning("TransformEditor: Invalid GUID provided: ", guid)
-            goto continue
-        end
-        local entity = Ext.Entity.Get(guid) --[[@as EntityHandle]]
-        if entity.PartyMember then
-            local dummy = GetDummyByUuid(guid)
-            if dummy and #dummy:GetAllComponentNames() ~= 0 then
-                entity = dummy
-            end
-        end
-
-        if entity then
-            entities[guid] = entity
-        else
-            Warning("TransformEditor: Entity not found: ", guid)
-        end
-        ::continue::
-    end
-
-    for guid,entity in pairs(entities) do
-        if not entity or not entity.Visual or not entity.Visual.Visual then return end
-        local transform = transforms[guid]
-        if not transform then
-            --Warning("TransformEditor: No transform provided for guid: "..tostring(guid))
-            return
-        end
-        local visual = entity.Visual.Visual
-        if transform.Translate then
-            visual:SetWorldTranslate(transform.Translate)
-        end
-        if transform.RotationQuat then
-            visual:SetWorldRotate(transform.RotationQuat)
-        end
-        if transform.Scale then
-            visual:SetWorldScale(transform.Scale)
-        end
-    end
-    Post(NetChannel.Bind, { Type = "UpdateOffset", Guid = guids })
-end
-
---- @param guids GUIDSTRING[]
---- @param transforms table<GUIDSTRING, {Translate: Vec3|nil, RotationQuat: Vec4|nil, Scale: Vec3|nil}>
-local function SetItemTransform(guids, transforms)
-    SetVisualTransform(guids, transforms)
-    Post(NetChannel.SetTransform, {Guid=guids, Transforms = transforms})
-end
-
-local templateTypeHandler = {
-    Character = SetVisualTransform,
-    Item = SetItemTransform,
-}
-
 local function checkIFSame(array, map)
     if not map or not array then return false end
     if #array ~= table.count(map) then return false end
@@ -257,66 +152,6 @@ function TransformEditor:SetMode(mode)
     end
 end
 
---- @param guids GUIDSTRING[]
---- @return table<"Character"|"Item", GUIDSTRING[]>
-function TransformEditor:Filter(guids)
-    local groups = { Character = {}, Item = {} }
-    for _, guid in ipairs(guids) do
-        local entity = UuidToHandle(guid)
-        if entity and entity.IsCharacter then
-            table.insert(groups.Character, guid)
-        elseif entity and entity.IsItem then
-            table.insert(groups.Item, guid)
-        elseif TableContains(self.Target or {}, guid) then
-            table.remove(self.Target, table.find(self.Target, guid))
-            if self.Target and #self.Target == 0 then
-                if self.IsDragging then
-                    self.IsDragging = false
-                end
-                self:Clear()
-            end
-        end
-    end
-    return groups
-end
-
---- @param guids GUIDSTRING|GUIDSTRING[]
---- @param transform {Translate: Vec3|nil, RotationQuat: Vec4|nil, Scale: Vec3|nil}|table<GUIDSTRING, {Translate: Vec3|nil, RotationQuat: Vec4|nil, Scale: Vec3|nil}>
---- @param notRecordHistory boolean|nil
-function TransformEditor:SetTransform(guids, transform, notRecordHistory)
-    guids = NormalizeGuidList(guids)
-    local groups = self:Filter(guids)
-    local originTransform = {}
-    for _,guid in pairs(guids) do
-        originTransform[guid] = SaveTransform(guid)
-    end
-
-    if transform.Translate or transform.RotationQuat or transform.Scale then
-        local t = {}
-        for _,guid in pairs(guids) do
-            t[guid] = transform
-        end
-        transform = t
-    end
-
-    local function doTransform(isReset)
-        for t, handler in pairs(templateTypeHandler) do
-            handler(groups[t], isReset and originTransform or transform)
-        end
-    end
-    doTransform()
-    if not notRecordHistory then
-        HistoryManager:PushCommand({
-            Undo = function()
-                doTransform(true)
-            end,
-            Redo = function()
-                doTransform(false)
-            end
-        })
-    end
-end
-
 function TransformEditor:RegisterEvents()
     if self.Registered then return end
     self.Registered = true
@@ -391,7 +226,7 @@ function TransformEditor:RegisterEvents()
             if e.Key == teMod:GetKeyByEvent("TranslateMode").Key then resetTransform.Translate = {CGetPosition(CGetHostCharacter())} end
             if e.Key == teMod:GetKeyByEvent("ScaleMode").Key then resetTransform.Scale = {1,1,1} end
 
-            self:SetTransform(self.Target, resetTransform)
+            self:SetTransformCommand(self.Target, resetTransform)
         end
     end)
 
@@ -404,12 +239,12 @@ function TransformEditor:RegisterEvents()
         local rot = Quat.Identity
         if space == "Local" then
             rot = {CGetRotation(guid)}
-        elseif space == "Relative" then
+        elseif space == "Parent" then
             local parent = PropStore:GetBindParent(guid)
             if parent and EntityExists(parent) then
                 rot = {CGetRotation(parent)}
             else
-                Debug("TransformEditor: Relative space but no valid parent found")
+                Debug("TransformEditor: Parent space but no valid parent found")
                 rot = Quat.Identity
             end
         elseif space == "View" then
@@ -425,7 +260,7 @@ function TransformEditor:RegisterEvents()
     self.Gizmo.OnDragStart = function(gizmo)
         self.IsDragging = true
         for _,guid in pairs(NormalizeGuidList(self.Target) or {}) do
-            self.StartTransforms[guid] = SaveTransform(guid)
+            self.StartTransforms[guid] = EntityHelpers.SaveTransform(guid)
         end
     end
 
@@ -479,13 +314,13 @@ function TransformEditor:RegisterEvents()
             local finalDelta = delta
             if gizmo.Space == "Local" then
                 finalDelta = Quat.new(startTransform.RotationQuat):Rotate(delta)
-            elseif gizmo.Space == "Relative" then
+            elseif gizmo.Space == "Parent" then
                 local parent = PropStore:GetBindParent(guid)
                 if parent and EntityExists(parent) then
                     local parentRot = Quat.new({CGetRotation(parent)}) or Quat.Identity
                     finalDelta = parentRot:Rotate(delta)
                 else
-                    Debug("TransformEditor: Relative space but no valid parent found")
+                    Debug("TransformEditor: Parent space but no valid parent found")
                     finalDelta = {0,0,0}
                 end
             end
@@ -498,7 +333,7 @@ function TransformEditor:RegisterEvents()
             transforms[guid] = newTransform
             ::continue::
         end
-        self:SetTransform(self.Target, transforms, true)
+        self:SetTransformCommand(self.Target, transforms, true)
     end
 
     self.Gizmo.OnDragScale = function(gizmo, delta)
@@ -533,7 +368,7 @@ function TransformEditor:RegisterEvents()
             transforms[guid] = newTransform
             ::continue::
         end
-        self:SetTransform(self.Target, transforms, true)
+        self:SetTransformCommand(self.Target, transforms, true)
     end
 
     self.Gizmo.OnDragRotate = function(gizmo, delta)
@@ -555,13 +390,12 @@ function TransformEditor:RegisterEvents()
             local angle = delta.Angle or 0
             if gizmo.Space == "Local" then
                 axis = curRot:Rotate(axis)
-            elseif gizmo.Space == "Relative" then
+            elseif gizmo.Space == "Parent" then
                 local parent = PropStore:GetBindParent(guid)
                 if parent and EntityExists(parent) then
                     local parentRot = Quat.new({CGetRotation(parent)}) or Quat.Identity
                     axis = parentRot:Rotate(axis)
                 else
-                    --Debug("TransformEditor: Relative space but no valid parent found")
                     axis = Vec3.new{0,0,0}
                 end
             end
@@ -572,11 +406,11 @@ function TransformEditor:RegisterEvents()
 
             transforms[guid] = newTransform
         end
-        self:SetTransform(self.Target, transforms, true)
+        self:SetTransformCommand(self.Target, transforms, true)
     end
     
     self.Gizmo.OnDragCancel = function(gizmo)
-        self:SetTransform(self.Target, self.StartTransforms, true)
+        self:SetTransformCommand(self.Target, self.StartTransforms, true)
         self.StartTransforms = {}
         self.IsDragging = false
     end
@@ -588,8 +422,8 @@ function TransformEditor:RegisterEvents()
         local changed = {}
         for _,guid in pairs(NormalizeGuidList(self.Target) or {}) do
             if not EntityExists(guid) then goto continue end
-            local save = SaveTransform(guid)
-            if EqualTransforms(save, self.StartTransforms[guid]) then
+            local save = EntityHelpers.SaveTransform(guid)
+            if EntityHelpers.EqualTransforms(save, self.StartTransforms[guid]) then
                 undoTransforms[guid] = nil
             else
                 redoTransforms[guid] = save
@@ -601,10 +435,10 @@ function TransformEditor:RegisterEvents()
         if next(redoTransforms) then
             HistoryManager:PushCommand({
                 Undo = function()
-                    self:SetTransform(changed, undoTransforms, true)
+                    self:SetTransformCommand(changed, undoTransforms, true)
                 end,
                 Redo = function()
-                    self:SetTransform(changed, redoTransforms, true)
+                    self:SetTransformCommand(changed, redoTransforms, true)
                 end
             })
         end

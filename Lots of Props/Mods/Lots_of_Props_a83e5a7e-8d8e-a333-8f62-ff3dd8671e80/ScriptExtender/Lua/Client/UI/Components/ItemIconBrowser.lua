@@ -89,6 +89,7 @@ function ItemIconBrowser:RenderIcon(entry, cell)
             self:RenderItemSpawnTab(spawnPopup, iconImage, entry)
             spawnRendered = true
         end
+        if not spawnPopup then return end
         spawnPopup:Open()
     end
 
@@ -194,15 +195,12 @@ function ItemIconBrowser:RenderIcon(entry, cell)
     iconImage.OnDragEnd = function()
         Timer:Ticks(20, function (timerID)
             local cursorPos, cursorRot = GetCursorPosAndRot()
-            if not cursorPos or not cursorRot then return end
-            local data = {
-                Guid = entry.Uuid,
-                TemplateId = entry.TemplateId,
-                Type = "Spawn",
-                Position = cursorPos,
-                Rotation = cursorRot
-            }
-            Post(NetChannel.Spawn, data)
+            if not cursorPos or not cursorRot then
+                local host = CGetHostCharacter()
+                cursorPos = {CGetPosition(host)}
+                cursorRot = {CGetRotation(host)}
+            end
+            Commands.SpawnCommand(entry.TemplateId, cursorPos, cursorRot)
         end)
     end
 
@@ -272,6 +270,7 @@ function ItemIconBrowser:RenderAttrPopup(iconImage, cell, entry, popup)
     local attributePopup = nil
 
     local function addAttrTitle(text)
+        if not attributePopup then return end
         local title = attributePopup:AddText(text)
         title:SetColor("Text", HexToRGBA("FFFFA743"))
         attributePopup:AddSeparator()
@@ -279,6 +278,7 @@ function ItemIconBrowser:RenderAttrPopup(iconImage, cell, entry, popup)
     end
 
     local function addAttrSubTitle(text)
+        if not attributePopup then return end
         local tab = attributePopup:AddDummy(20, 10)
         local title = attributePopup:AddText(text)
         title.SameLine = true
@@ -287,7 +287,7 @@ function ItemIconBrowser:RenderAttrPopup(iconImage, cell, entry, popup)
     end
 
     iconImage.OnClick = function()
-        if popupRendered then
+        if popupRendered and attributePopup then
             attributePopup:Open()
             return
         end
@@ -393,14 +393,18 @@ function ItemIconBrowser:RenderItemSpawnTab(popup, iconImage, entry)
     local spawnButton = spawnTab:AddButton(GetLoca("Spawn"))
 
     local function spawnHandle(isPreview)
-        local data = {
-            Guid = entry.Uuid,
-            TemplateId = entry.TemplateId,
-            Type = isPreview and "Preview" or "Spawn",
-            Position = {CGetPosition(self.selectedGuid)},
-            Rotation = {CGetRotation(self.selectedGuid)}
-        }
-        Post(NetChannel.Spawn, data)
+        if isPreview then
+            local data = {
+                Guid = entry.Uuid,
+                TemplateId = entry.TemplateId,
+                Type = "Preview",
+                Position = {CGetPosition(self.selectedGuid)},
+                Rotation = {CGetRotation(self.selectedGuid)}
+            }
+            Post(NetChannel.Spawn, data)
+        else
+            Commands.SpawnCommand(entry.TemplateId, {CGetPosition(self.selectedGuid)}, {CGetRotation(self.selectedGuid)})
+        end
     end
 
     ApplyConfirmButtonStyle(spawnButton)
@@ -437,6 +441,7 @@ function ItemIconBrowser:RenderItemSpawnTab(popup, iconImage, entry)
     warningImage:Tooltip():AddText(GetLoca("Not all items can be added to the inventory."))
     ApplyConfirmButtonStyle(cheatButton)
     cheatButton.OnClick = function()
+        if not countInput then return end
         local captureValue = math.floor(countInput.Value[1])
         ConfirmPopup:QuickConfirm(
             string.format(GetLoca("Add %d '%s'?"), captureValue,

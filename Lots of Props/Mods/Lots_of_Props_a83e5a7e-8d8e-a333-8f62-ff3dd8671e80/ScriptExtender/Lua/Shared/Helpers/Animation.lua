@@ -162,9 +162,9 @@ EasingFuncs = {
 --- @param duration number ms
 --- @param easing AnimationEasing|string
 --- @param onComplete fun()|nil
---- @param onFrame fun(value: number|number[], eased: number)|nil
+--- @param onUpdate fun(value: number|number[], eased: number)|nil
 --- @return RunningAnimation?
-function AnimateValue(fps, fromValue, toValue, duration, easing, onComplete, onFrame)
+function AnimateValue(fps, fromValue, toValue, duration, easing, onComplete, onUpdate)
     if type(fromValue) == "table" or type(toValue) == "table" then
         if type(fromValue) ~= "table" or type(toValue) ~= "table" then
             Warning("Invalid input format") 
@@ -189,9 +189,9 @@ function AnimateValue(fps, fromValue, toValue, duration, easing, onComplete, onF
     local maxErrors = 5
 
     local pcallOnUpdate = function(value, eased)
-        if onFrame then
+        if onUpdate then
             local ok, err = pcall(function()
-                onFrame(value, eased)
+                onUpdate(value, eased)
             end)
             if not ok then
                 --Error(err)

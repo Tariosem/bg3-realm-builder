@@ -5,5 +5,7 @@ RequireFiles("Client/Editor/", {
     "GizmoPicker",
     "Gizmo",
     "HistoryManager",
+    "Commands",
     "TransformEditor",
+    "TransformOperator",
 })

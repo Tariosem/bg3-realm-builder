@@ -1,3 +1,67 @@
+EntityHelpers = EntityHelpers or {}
+
+function EntityHelpers.EqualTransforms(a, b)
+    if not a or not b then return false end
+    if not a.Translate or not b.Translate then return false end
+    if not a.RotationQuat or not b.RotationQuat then return false end
+    if not a.Scale or not b.Scale then return false end
+
+    local EPS = 0.0001
+    for i=1,3 do
+        if math.abs(a.Translate[i] - b.Translate[i]) > EPS then
+            return false
+        end
+    end
+
+    for i=1,4 do
+        if math.abs(a.RotationQuat[i] - b.RotationQuat[i]) > EPS then
+            return false
+        end
+    end
+
+    for i=1,3 do
+        if math.abs(a.Scale[i] - b.Scale[i]) > EPS then
+            return false
+        end
+    end
+
+    return true
+end
+
+function EntityHelpers.SaveTransform(guid)
+    local toSave = {
+        Translate = {CGetPosition(guid)},
+        RotationQuat = {CGetRotation(guid)},
+        Scale = Vec3.new(CGetScale(guid))
+    }
+    if not toSave.Translate or #toSave.Translate ~= 3 then
+        toSave.Translate = {CGetPosition(CGetHostCharacter())}
+    end
+    if not toSave.RotationQuat or #toSave.RotationQuat ~= 4 then
+        toSave.RotationQuat = {0,0,0,1}
+    end
+    return toSave
+end
+
+--- @return table<"Character"|"Item"|"Unmapped", GUIDSTRING[]>
+function EntityHelpers.FilterUuidsByType(guids)
+    local groups = { Character = {}, Item = {}, Unmapped = {} }
+    for _, guid in ipairs(guids) do
+        local entity = UuidToHandle(guid)
+        if entity and entity.IsCharacter then
+            table.insert(groups.Character, guid)
+        elseif entity and entity.IsItem then
+            table.insert(groups.Item, guid)
+        elseif entity then
+            table.insert(groups.Unmapped, guid)
+            Debug("Unmapped entity type for "..tostring(guid))
+        else
+            Debug("Entity not found for "..tostring(guid))
+        end
+    end
+    return groups
+end
+
 function GetTemplateId(guid)
     if not guid or guid == "" then
         return nil

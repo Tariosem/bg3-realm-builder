@@ -10,6 +10,7 @@
 --- @field ExpandTime number
 --- @field ExpandType AnimationEasing
 --- @field SideBarWidth number
+--- @field MainAreaWidth number
 --- @field AnimationFPS number
 --- @field CollapseDirection '"Left"' | '"Right"'
 --- @field HoverToExpand boolean
@@ -146,6 +147,7 @@ function AddCollapsingTable(parent, mainAreaTitle, sideBarTitle, opts)
         ExpandTime = opts.ExpandTime or 400,                        --- @type number
         ExpandType = opts.ExpandType or "EaseOutBack",              --- @type AnimationEasing
         SideBarWidth = opts.SideBarWidth or (200 * SCALE_FACTOR),   --- @type number
+        MainAreaWidth = opts.MainAreaWidth or (400 * SCALE_FACTOR), --- @type number
 
         AnimationFPS = opts.AnimationFPS or 90,                     --- @type number
 

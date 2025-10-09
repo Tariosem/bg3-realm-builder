@@ -113,7 +113,7 @@ end
 
 --- @class SimplifiedInputEvent
 --- @field Event "KeyDown"|"KeyUp"
---- @field Key  SDLScanCode|"1"|"2"|"3"
+--- @field Key  SDLScanCode|"LMB"|"RMB"|"MMB" (mouse buttons)
 --- @field Pressed boolean
 --- @field Repeat boolean
 --- @field Modifiers? SDLKeyModifier
@@ -121,6 +121,12 @@ end
 
 local toExclude = {
     Caps = true,
+}
+
+local MouseToCode = {
+    [1] = "LMB",
+    [2] = "MMB",
+    [3] = "RMB",
 }
 
 local function excludeModfiers(modifs)
@@ -162,7 +168,7 @@ function SubscribeKeyAndMouse(callback)
 
         local event = {
             Event = e.Pressed and "KeyDown" or "KeyUp",
-            Key = tostring(e.Button),
+            Key = MouseToCode[e.Button],
             Pressed = e.Pressed,
             Repeat = e.Clicks > 1,
         }

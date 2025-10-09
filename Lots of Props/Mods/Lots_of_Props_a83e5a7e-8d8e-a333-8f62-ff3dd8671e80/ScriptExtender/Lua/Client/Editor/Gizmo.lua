@@ -351,7 +351,7 @@ function Gizmo:GetDelta(ray)
     if self.Mode == "Translate" then
         local worlddelta = hit.Position - startHit.Position
         delta = worlddelta
-        if self.Space == "Local" or self.Space == "Relative" then
+        if self.Space == "Local" or self.Space == "Parent" then
             -- reverse rotate delta by picker rotation
             -- let editor handle local translation
             local rot = Quat.new(self.Picker.Rotation)
@@ -368,7 +368,7 @@ function Gizmo:GetDelta(ray)
         local angle = CalcRotationChange(startDir, dir, axes[axis], gizmoOrigin)
 
         local axisVec = axes[axis]
-        if self.Space == "Local" or self.Space == "Relative" then
+        if self.Space == "Local" or self.Space == "Parent" then
             -- same as above
             local rot = Quat.new(self.Picker.Rotation)
             axisVec = rot:Inverse():Rotate(axes[axis])
@@ -524,4 +524,13 @@ function Gizmo:Hide(guid)
     for _,axis in pairs({"X","Y","Z"}) do
         GizmoVisualizer.HideGizmoAxis(axis, guid)
     end
+end
+
+function Gizmo:Enable()
+    self:SetupLiseners()
+end
+
+function Gizmo:Disable()
+    self:StopListeners()
+    self:Hide()
 end

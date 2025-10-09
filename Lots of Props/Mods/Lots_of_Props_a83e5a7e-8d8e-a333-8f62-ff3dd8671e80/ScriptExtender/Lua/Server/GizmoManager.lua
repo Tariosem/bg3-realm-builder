@@ -110,7 +110,7 @@ function GizmoManager:UpdateGizmoTransform(guid)
     local targetPos = {CGetPosition(stickTarget[1])}
     local targetRot = gizmoData.Space == "World" and {0,0,0,1} or {CGetRotation(stickTarget[1])}
 
-    if gizmoData.Space == "Relative" then
+    if gizmoData.Space == "Parent" then
         local parent = BindManager:GetParent(stickTarget[1])
         if parent and parent == TreeTable.GetRootKey() then
         elseif parent and EntityExists(parent) then

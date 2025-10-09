@@ -171,14 +171,6 @@ function QuatToEuler(quat)
     return euler
 end
 
-function DegreeToRadian(degree)
-    return degree * (math.pi / 180)
-end
-
-function RadianToDegree(radian)
-    return radian * (180 / math.pi)
-end
-
 --- @param point Vec2
 --- @param rectMin Vec2
 --- @param rectMax Vec2

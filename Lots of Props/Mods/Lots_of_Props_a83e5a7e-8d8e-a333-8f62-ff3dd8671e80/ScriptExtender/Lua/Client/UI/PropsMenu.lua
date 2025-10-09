@@ -60,7 +60,7 @@ function PropsMenu:Render()
 
     self:RenderMenu()
 
-    self.mainPanel = AddCollapsingTable(self.panel, nil, nil, { SideBarWidth = 200 * SCALE_FACTOR})
+    self.mainPanel = AddCollapsingTable(self.panel)
     self.mainPanel.ToggleButton.Visible = false
     self.mainPanel.Table.BordersInnerV = true
 

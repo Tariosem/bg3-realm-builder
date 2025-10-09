@@ -1,76 +1,14 @@
 --- @class TransformToolbar
 --- @field parent ExtuiTabBar
---- @field TransformEditor TransformEditor
 --- @field EventsToKeybinds table<string, SDLScanCode|string>
 --- @field new fun(): TransformToolbar
 TransformToolbar = _Class("TransformToolbar")
 
 function TransformToolbar:__init()
-    self.TransformEditor = TransformEditor
     self.Subscriptions = {}
     self.Selecting = {}
+    self.isInputing = false
     self:RegisterKeyInputEvents()
-end
-
-local function bindCommand(targets, parent)
-    Post(NetChannel.Bind, { Type = "Bind", Parent = parent, Guid = targets })
-
-    HistoryManager:PushCommand({
-        Undo = function()
-            Post(NetChannel.Bind, { Type = "Unbind", Guid = targets, Parent = nil })
-        end,
-        Redo = function()
-            Post(NetChannel.Bind, { Type = "Bind", Parent = parent, Guid = targets })
-        end
-    })
-
-end
-
-local function unbindCommand(targets)
-    local oriParents = {}
-    for _,guid in ipairs(targets) do
-        local parent = PropStore:GetBindParent(guid)
-        if parent then
-            oriParents[guid] = parent
-        end
-    end
-
-    Post(NetChannel.Bind, { Type = "Unbind", Guid = targets, Parent = nil })
-    HistoryManager:PushCommand({
-        Undo = function()
-            for guid,parent in pairs(oriParents) do
-                Post(NetChannel.Bind, { Type = "Bind", Guid = {guid}, Parent = parent })
-            end
-        end,
-        Redo = function()
-            Post(NetChannel.Bind, { Type = "Unbind", Guid = targets, Parent = nil })
-        end
-    })
-end
-
-local function snapCommand(targets, onlyRotation, onlyPosition)
-    local parents = {}
-    for _,guid in ipairs(targets) do
-        local parent = PropStore:GetBindParent(guid)
-        if parent then
-            parents[guid] = parent
-        end
-    end
-    local targetPos = {}
-    for guid,parent in pairs(parents) do
-        targetPos[guid] = {Translate = {CGetPosition(parent)}, RotationQuat = {CGetRotation(parent)}}
-    end
-    if onlyRotation then
-        for guid,pos in pairs(targetPos) do
-            pos.Translate = nil
-        end
-    elseif onlyPosition then
-        for guid,pos in pairs(targetPos) do
-            pos.RotationQuat = nil
-        end
-    end
-
-    TransformEditor:SetTransform(targets, targetPos)
 end
 
 function TransformToolbar:RegisterKeyInputEvents()
@@ -82,31 +20,43 @@ function TransformToolbar:RegisterKeyInputEvents()
         if guid and guid ~= "" then
             if self.MultiSelecting then
                 self.Selecting[guid] = {}
-                self.TransformEditor:Select(self.Selecting)
+                TransformEditor:Select(self.Selecting)
             else
-                self.TransformEditor:Select(guid)
+                TransformEditor:Select(guid)
             end
         else
         end
     end
 
+    local restrainInputing = function(e)
+        return not self.Operator and not self.isInputing
+    end
+    local restrainOpening = function(e)
+        return self.TopToolBar and self.TopToolBar.Open
+    end
+
     local ttMod = KeybindManager:CreateModule("TransformToolbar")
     local buMod = KeybindManager:CreateModule("BindUtility")
-    buMod:AddModuleCondition(function (e)
-        return self.TopToolBar and self.TopToolBar.Open
-    end)
-    ttMod:AddModuleCondition(function (e)
-        return self.TopToolBar and self.TopToolBar.Open
-    end)
     self.KeybindModule = ttMod
     self.BindUtilityModule = buMod
+
+    buMod:AddModuleCondition(restrainOpening)
+    ttMod:AddModuleCondition(restrainOpening)
+
+    ttMod:AddModuleCondition(restrainInputing)
+    buMod:AddModuleCondition(restrainInputing)
+
+    ttMod:RegisterEvent("FocusInput", function (e)
+        if e.Event ~= "KeyDown" then return end
+        self:SetupOperator()
+    end)
 
     ttMod:RegisterEvent("MultiSelect", function (e)
         if e.Event == "KeyDown" then
             self.MultiSelecting = true
             Debug("MultiSelecting enabled")
         elseif e.Event == "KeyUp" then
-            self.TransformEditor:Select(self.Selecting)
+            TransformEditor:Select(self.Selecting)
             self.MultiSelecting = false
             self.Selecting = {}
             Debug("MultiSelecting disabled")
@@ -121,17 +71,17 @@ function TransformToolbar:RegisterKeyInputEvents()
 
     ttMod:RegisterEvent("ClearSelection", function (e)
         if e.Event ~= "KeyDown" then return end
-        self.TransformEditor:Clear()
+        TransformEditor:Clear()
         self.Selecting = {}
     end)
 
     ttMod:RegisterEvent("MoveToCursor", function (e)
         if e.Event ~= "KeyDown" then return end
 
-        local targets = NormalizeGuidList(self.TransformEditor.Target)
+        local targets = NormalizeGuidList(TransformEditor.Target)
         local pos, rot = GetCursorPosAndRot()
 
-        TransformEditor:SetTransform(targets, {Translate = pos, RotationQuat = rot})
+        Commands.SetTransformCommand(targets, {Translate = pos, RotationQuat = rot})
     end)
 
     ttMod:RegisterEvent("Duplicate", function (e)
@@ -151,36 +101,36 @@ function TransformToolbar:RegisterKeyInputEvents()
 
     buMod:RegisterEvent("BindTo", function (e)
         if e.Event ~= "KeyDown" then return end
-        if not self.TransformEditor.Target or #self.TransformEditor.Target == 0 then return end
+        if not TransformEditor.Target or #TransformEditor.Target == 0 then return end
         local parent = GetPickingGuid()
         if not parent or parent == "" then
             Debug("No valid target to bind to")
             return
         end
-        local targets = NormalizeGuidList(self.TransformEditor.Target)
-        bindCommand(targets, parent)
+        local targets = NormalizeGuidList(TransformEditor.Target)
+        Commands.BindCommand(targets, parent)
     end)
 
     buMod:RegisterEvent("Unbind", function (e)
         if e.Event ~= "KeyDown" then return end
-        if not self.TransformEditor.Target or #self.TransformEditor.Target == 0 then return end
+        if not TransformEditor.Target or #TransformEditor.Target == 0 then return end
 
-        local targets = NormalizeGuidList(self.TransformEditor.Target)
+        local targets = NormalizeGuidList(TransformEditor.Target)
 
-        unbindCommand(targets)
+        Commands.UnbindCommand(targets)
     end)
 
     buMod:RegisterEvent("Snap", function (e)
         if e.Event ~= "KeyDown" then return end
-        if not self.TransformEditor.Target or #self.TransformEditor.Target == 0 then return end
+        if not TransformEditor.Target or #TransformEditor.Target == 0 then return end
 
-        local targets = NormalizeGuidList(self.TransformEditor.Target)
-        snapCommand(targets)
+        local targets = NormalizeGuidList(TransformEditor.Target)
+        Commands.SnapCommand(targets)
     end)
 
     buMod:RegisterEvent("BindPopup", function (e)
         if e.Event ~= "KeyDown" then return end
-        local targets = NormalizeGuidList(self.TransformEditor.Target)
+        local targets = NormalizeGuidList(TransformEditor.Target)
         if #targets == 0 then 
             targets = {GetPickingGuid()}
         end
@@ -199,8 +149,8 @@ function TransformToolbar:RegisterKeyInputEvents()
 
         mod:RegisterEvent(eventName, function (e)
             if e.Event ~= "KeyDown" then return end
-            if not self.TransformEditor.Target or #self.TransformEditor.Target == 0 then return end
-            local targets = NormalizeGuidList(self.TransformEditor.Target)
+            if not TransformEditor.Target or #TransformEditor.Target == 0 then return end
+            local targets = NormalizeGuidList(TransformEditor.Target)
             local paramsOn = { Type = netType, Guid = targets }
             local paramsOff = { Type = netType, Guid = targets }
             paramsOn[field] = valueOn
@@ -365,7 +315,7 @@ function TransformToolbar:SetupBoxSelect()
             boxSelectStart = nil
             boxSelectEnd = nil
 
-            self.TransformEditor:Select(self.Selecting)
+            TransformEditor:Select(self.Selecting)
 
             --for guid,_ in pairs(self.Selecting) do
             --    VisualHelpers.VisualizeAABB(UuidToHandle(guid))
@@ -378,42 +328,8 @@ function TransformToolbar:DuplicateSelection()
     local toPost = {
         Guid = {},
     }
-    local targets = NormalizeGuidList(self.TransformEditor.Target)
-    local selectionSet = {}
-    for _,guid in ipairs(targets) do
-        selectionSet[guid] = true
-    end
-    for _,guid in ipairs(targets) do
-        local entity = UuidToHandle(guid)
-        if entity and entity.IsItem then
-            table.insert(toPost.Guid, guid)
-        end
-    end
-    if #toPost.Guid == 0 then Debug("No valid entity to duplicate") return end
-
-    local duplications = {}
-    local cnt = #toPost.Guid
-
-    Post(NetChannel.Duplicate, toPost)
-
-    ClientSubscribe("ServerProps", function(data)
-        for _, prop in ipairs(data) do
-            table.insert(duplications, prop.Guid)
-            cnt = cnt - 1
-        end
-        if cnt <= 0 then
-            self.TransformEditor:Select(selectionSet)
-            HistoryManager:PushCommand({
-                Undo = function()
-                    Post("Delete", {Guid = duplications})
-                end,
-                Redo = function()
-                    Post("Duplicate", toPost)
-                end
-            })
-            return UNSUBSCRIBE_SYMBOL
-        end
-    end)
+    local targets = NormalizeGuidList(TransformEditor.Target)
+    Commands.DuplicateCommand(targets)
 end
 
 function TransformToolbar:Render()
@@ -427,7 +343,7 @@ function TransformToolbar:RenderTopBar()
     self.TopToolBar = panel
 
     panel.OnClose = function()
-        self.TransformEditor:Clear()
+        TransformEditor:Clear()
         self.Selecting = {}
         self.KeybindConfigWindow.Open = false
         self.BindManagerWindow.Open = false
@@ -442,9 +358,7 @@ function TransformToolbar:RenderTopBar()
     panel.NoMove = true
     panel.NoTitleBar = true
 
-    local table = panel:AddTable("TopBar", 3)
-    table.ColumnDefs[1] = { WidthFixed = true }
-    table.ColumnDefs[2] = { WidthStretch = true }
+    local table = AddMiddleAlignTable(panel, "TopBar")
     table.ColumnDefs[3] = { WidthFixed = true }
 
     local row = table:AddRow()
@@ -454,7 +368,7 @@ function TransformToolbar:RenderTopBar()
 
     local closeButton = rightCell:AddButton("X")
     closeButton.OnClick = function()
-       panel.Open = false 
+       panel.Open = false
     end
 
     local openKeybindConfig = leftCell:AddButton("Configs")
@@ -464,19 +378,43 @@ function TransformToolbar:RenderTopBar()
         end
     end
 
+    local operatorInput = leftCell:AddInputText("Operator Input")
+    operatorInput.ReadOnly = true
+    operatorInput.SameLine = true
+    operatorInput.IDContext = "TransformOperatorInput"
+    operatorInput.Hint = GetLoca("Use the keybind for operator input")
+    local inputTooltip = operatorInput:Tooltip()
+    inputTooltip:AddBulletText("G/R/S: ") inputTooltip:AddText("Switch to Move/Rotate/Scale mode")
+    inputTooltip:AddBulletText("X/Y/Z (Modifier : Shift ): ") inputTooltip:AddText("Constrain to X/Y/Z axis, hold Shift to exclude axis")
+    
+
+    operatorInput.OnChange = function (input)
+        self:SetupOperator()
+        local newText = input.Text
+        if tonumber(newText) then
+            newText = "NUM_" .. newText
+        end
+        self.Operator:ParseInput({ Key = newText:upper() })
+        input.Text = ""
+        if self.Operator then
+            input.Hint = tostring(self.Operator)
+        end
+    end
+    self.OperatorInput = operatorInput
+
     local spaceCombo = centerCell:AddCombo("Space")
     spaceCombo.ItemWidth = 300 * SCALE_FACTOR
     local indexToMode = {
         "World",
         "Local",
         "View",
-        "Relative",
+        "Parent",
     }
     local localizedMode = {
         GetLoca("Global"),
         GetLoca("Local"),
         GetLoca("View"),
-        GetLoca("Relative"),
+        GetLoca("Parent"),
     }
 
     ClientSubscribe(NetMessage.ServerGizmo, function (data)
@@ -496,7 +434,11 @@ function TransformToolbar:RenderTopBar()
         if mode == "View" then
             StartUpdateingCamera()
         end
-        self.TransformEditor:SetSpace(mode)
+        TransformEditor:SetSpace(mode)
+    end
+    self.spaceCombo = spaceCombo
+    self.GetCurrentSpace = function()
+        return indexToMode[spaceCombo.SelectedIndex + 1]
     end
 
 end
@@ -538,14 +480,14 @@ function TransformToolbar:RenderOtherConfigOptions(panel)
     local stepSlider = AddSliderWithStep(row1:AddCell(), "Step", 1, 0.1, 3, 0.05)
     stepSlider.UserData.StepInput.Visible = false
     stepSlider.OnChange = function (e)
-        self.TransformEditor.Step = e.Value[1]
+        TransformEditor.Step = e.Value[1]
     end
 
     row2:AddCell():AddText("Gizmo Size")
     local gizmoSizeSlider = AddSliderWithStep(row2:AddCell(), "Gizmo Size", 0.1, 0.01, 2, 0.01)
     gizmoSizeSlider.UserData.StepInput.Visible = false
     gizmoSizeSlider.OnChange = function (e)
-        local editor = self.TransformEditor
+        local editor = TransformEditor
         if editor.Gizmo then
             editor.Gizmo:SetScale(e.Value[1])
         end
@@ -553,6 +495,40 @@ function TransformToolbar:RenderOtherConfigOptions(panel)
 
     local tips = panel:AddText("Tips: Use Alt + Mode Key to reset the transform.")
     tips:SetColor("Text", HexToRGBA("FFFFAA00"))
+end
+
+function TransformToolbar:SetupOperator()
+    if not TransformEditor.Target or #TransformEditor.Target == 0 or self.isInputing then return end
+    self.isInputing = true
+    if not self.Operator then
+        self.Operator = TransformOperator.new(TransformEditor.Target)
+        self.Operator.Space = self:GetCurrentSpace()
+    end
+    TransformEditor:Select(nil)
+    
+    local inputSub = SubscribeKeyAndMouse(function (e)
+        FocusWindow(self.TopToolBar)
+        if e.Key == "Escape" or e.Key == "RMB" then
+            self.Operator:Cancel()
+            self.isInputing = false
+            self.Operator = nil
+            self.OperatorInput.Text = ""
+            self.OperatorInput.Hint = GetLoca("Use the keybind for operator input")
+            return UNSUBSCRIBE_SYMBOL
+        elseif e.Key == "RETURN" or e.Key == "LMB" or e.Key == "KP_ENTER" then
+            self.Operator:Confirm()
+            self.isInputing = false
+            self.Operator = nil
+            self.OperatorInput.Text = ""
+            self.OperatorInput.Hint = GetLoca("Use the keybind for operator input")
+            return UNSUBSCRIBE_SYMBOL
+        else
+            self.Operator:ParseInput(e)
+        end
+        if self.OperatorInput then
+            self.OperatorInput.Text = tostring(self.Operator)
+        end
+    end)
 end
 
 function TransformToolbar:CreateBindPopup(guid)
@@ -600,7 +576,7 @@ function TransformToolbar:CreateBindPopup(guid)
         nearByCombo.OnChange = function (sel, selectedGuid, displayName)
             if not selectedGuid or selectedGuid == "" then return end
             if selectedGuid == curParent then return end
-            bindCommand({guid}, selectedGuid)
+            Commands.BindCommand({guid}, selectedGuid)
             image:Destroy()
             image = left:AddImage(GetIcon(selectedGuid), IMAGESIZE.SMALL )
             image.SameLine = true
@@ -609,17 +585,17 @@ function TransformToolbar:CreateBindPopup(guid)
         local snapButton = right:AddButton("Snap")
         snapButton.SameLine = true
         snapButton.OnClick = function()
-            snapCommand({guid}, false, true)
+            Commands.SnapCommand({guid}, false, true)
         end
         snapButton.OnRightClick = function()
-            snapCommand({guid}, true, false)
+            Commands.SnapCommand({guid}, true, false)
         end
         snapButton:Tooltip():AddText("Left Click: Snap Position\nRight Click: Snap Rotation")
 
 
         local unbindButton = panel:AddButton("Unbind")
         unbindButton.OnClick = function()
-            unbindCommand({guid})
+            Commands.UnbindCommand({guid})
             nearByCombo.SelectedIndex = -1
             image:Destroy()
             image = left:AddImage(GetIcon(), IMAGESIZE.SMALL)

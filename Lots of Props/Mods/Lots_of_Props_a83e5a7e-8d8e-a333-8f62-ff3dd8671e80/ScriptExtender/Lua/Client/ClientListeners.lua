@@ -49,10 +49,9 @@ ClientSubscribe(NetMessage.SetVisualTransform, function (data)
     end
 end)
 
-ClientSubscribe(NetMessage.SetLineColor, function (data)
-    local guid = data.Guid
-    if not data.Color or #data.Color ~= 4 then
-        --Warning("SetLineColor: Invalid color provided")
+function SetLineFxColor(guid, color)
+    if not color or #color ~= 4 then
+        --Warning("SetLineFxColor: Invalid color provided")
         return
     end
 
@@ -62,11 +61,13 @@ ClientSubscribe(NetMessage.SetLineColor, function (data)
     local visual = VisualHelpers.GetEntityVisual(entity)
     if not visual then return end
 
-    local color = data.Color
-
     for _,obj in pairs(visual.ObjectDescs) do
         local renderable = obj.Renderable
         renderable.ActiveMaterial.Material:SetVector4("Color", color)
     end
-    --Debug("SetLineColor: Set color of "..tostring(guid).." to "..table.concat(color, ", "))
+    --Debug("SetLineFxColor: Set color of "..tostring(guid).." to "..table.concat(color, ", "))
+end
+
+ClientSubscribe(NetMessage.SetLineColor, function (data)
+    SetLineFxColor(data.Guid, data.Color)
 end)

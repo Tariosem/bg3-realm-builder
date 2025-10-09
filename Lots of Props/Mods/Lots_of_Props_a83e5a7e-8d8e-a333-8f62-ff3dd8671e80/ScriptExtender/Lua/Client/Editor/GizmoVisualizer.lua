@@ -96,7 +96,18 @@ function GizmoVisualizer.HideGizmoAxis(axis, guid)
     if tonumber(axis) then
         axis = IndexAxisMap[axis]
     end
-    local rend = SetGizmoAxisTextureColorParam(axis, guid, ToVec4(0))
+    local visual = VisualHelpers.GetEntityVisual(guid)
+    if not visual then return end
+    local objs = visual.ObjectDescs or {}
+    if #objs == 0 then return end
+
+    local rend = {}
+    for _,obj in ipairs(objs) do
+        if obj.Renderable and obj.Renderable.ActiveMaterial then
+            table.insert(rend, obj.Renderable)
+        end
+    end
+
     for _,r in ipairs(rend or {}) do
         r:SetWorldScale(ToVec3(0))
     end

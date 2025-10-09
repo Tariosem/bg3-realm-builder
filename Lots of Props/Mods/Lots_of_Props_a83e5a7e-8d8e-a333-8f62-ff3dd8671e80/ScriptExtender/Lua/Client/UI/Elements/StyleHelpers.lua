@@ -485,7 +485,7 @@ function SetCombo(Combo, Value, ifNotFoundAdd, noTrigger)
     end
 end
 
----@param window any
+---@param window ExtuiWindow
 function FocusWindow(window)
     if not IsWindowValid(window) then return end
 
@@ -638,16 +638,18 @@ end
 
 ---@param parent ExtuiTreeParent
 ---@return ExtuiTable
-function AddMiddleAlignTable(parent)
-    local table = parent:AddTable(Uuid_v4(), 3)
-    table.ColumnDefs[1] = { WidthStretch = false, WidthFixed = true }
-    table.ColumnDefs[2] = { WidthStretch = true }
-    table.ColumnDefs[3] = { WidthStretch = false, WidthFixed = true }
+function AddMiddleAlignTable(parent, label)
+    label = label or "MiddleAlignTable"
+    local table = parent:AddTable(label .. "##" .. math.random(1, 10000), 3)
+    table.ColumnDefs[1] = { WidthStretch = true }
+    table.ColumnDefs[2] = { WidthFixed = true }
+    table.ColumnDefs[3] = { WidthStretch = true }
     return table
 end
 
-function AddRightAlighTable(parent)
-    local table = parent:AddTable(Uuid_v4(), 2)
+function AddRightAlighTable(parent, label)
+    label = label or "RightAlignTable"
+    local table = parent:AddTable(label .. "##" .. math.random(1, 10000), 2)
     table.ColumnDefs[1] = { WidthStretch = true }
     table.ColumnDefs[2] = { WidthStretch = false, WidthFixed = true }
     return table

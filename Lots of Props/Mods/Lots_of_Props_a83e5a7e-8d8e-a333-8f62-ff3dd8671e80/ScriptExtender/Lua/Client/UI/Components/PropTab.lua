@@ -209,13 +209,7 @@ function PropTab:RenderMainEditor()
 
     self.duplicateButton = self.mainEditor:AddButton(GetLoca("Duplicate"))
     self.duplicateButton.OnClick = function()
-        local data = {
-            Guid = self.guid,
-            TemplateId = PropStore[self.guid] and PropStore[self.guid].TemplateId or self.templateId,
-            Position = {CGetPosition(self.guid)},
-            Rotation = {CGetRotation(self.guid)},
-        }
-        Post(NetChannel.Spawn, data)
+        Commands.DuplicateCommand(self.guid)
     end
 
     self.addToFavoritesButton = self.mainEditor:AddButton(GetLoca("Add to Favorites"))
@@ -281,7 +275,7 @@ function PropTab:RenderMonitorTab()
     positionMonitor.Disabled = true
     positionMonitor.OnChange = function (se)
         local newPos = { se.Value[1], se.Value[2], se.Value[3] }
-        TransformEditor:SetTransform(self.guid, { Translate = newPos }, true)
+        Commands.SetTransformCommand(self.guid, { Translate = newPos }, true)
     end
 
     self.positionTimer = Timer:Every(1000, function()
@@ -329,7 +323,7 @@ function PropTab:RenderMonitorTab()
 
         local RADs = QuatToEuler({GetQuatRotation(self.guid)})
         for i=1,3 do
-            RADs[i] = RadianToDegree(RADs[i])
+            RADs[i] = math.deg(RADs[i])
         end
 
         local pitch, yaw, roll = RADs[1], RADs[2], RADs[3]

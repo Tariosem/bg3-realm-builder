@@ -149,7 +149,7 @@ function PresetMenu:Render()
         end
     end
 
-    local collapsingTable = AddCollapsingTable(self.panel, nil, "Presets", { SideBarWidth = 150 * SCALE_FACTOR, MainAreaTitleAlign = 0.45})
+    local collapsingTable = AddCollapsingTable(self.panel, nil, "Presets", { MainAreaTitleAlign = 0.45})
     if collapsingTable then
         self.previewWindow = collapsingTable.MainArea
     else
@@ -929,9 +929,7 @@ function PresetMenu:RenderPresetObjectInfo(parent, propInfo, presetName, presetT
     local function load()
         local data = packData()
         if not data then return end
-        data.Type = nil
-        data.PropInfo = propInfo
-        Post(NetChannel.Spawn, data)
+        Commands.SpawnCommand(data.TemplateId, data.Positon, data.Rotation, data.PropInfo)
     end
 
 

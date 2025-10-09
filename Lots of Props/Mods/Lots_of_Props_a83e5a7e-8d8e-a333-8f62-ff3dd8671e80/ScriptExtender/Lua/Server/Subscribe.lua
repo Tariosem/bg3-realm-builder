@@ -106,7 +106,7 @@ RegisterNetListener("Preview", function (channel, data, userID)
     PostTo(userID, "PreviewProp", {Guid = preview, Type = "Preview"})
 end)
 
-RegisterNetListener("Delete", function (channel, data, userID)
+RegisterNetListener(NetChannel.Delete, function (channel, data, userID)
     local toDelete = NormalizeGuidList(data.Guid)
     local deleted = {}
     for _, guid in ipairs(toDelete) do
@@ -116,7 +116,6 @@ RegisterNetListener("Delete", function (channel, data, userID)
                     table.insert(deleted, guid)
                 end
             end
-
             Osi.RequestDelete(guid)
         end
     end
