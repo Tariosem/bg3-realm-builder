@@ -1,0 +1,29 @@
+RequireFiles("Server/", {
+    "OsirisHelpers",
+    "PropsManager",
+    "EffectsManager",
+    "BindManager",
+})
+
+PM = PropsManager:init("PropsManager") --[[@as PropsManager]]
+
+EM = EffectsManager:init("EffectsManager") --[[@as EffectsManager]]
+
+BM = BindManager
+
+DebugUuid = nil
+
+function OnSessionLoaded()
+end
+
+Ext.Events.SessionLoaded:Subscribe(OnSessionLoaded)
+
+RequireFiles("Server/", {
+    "Broadcast",
+    "Subscribe",
+})
+
+Ext.RegisterConsoleCommand("LOPDEBUG", function()
+end)
+
+--Ext.Require("Server/Test/_init.lua") 
