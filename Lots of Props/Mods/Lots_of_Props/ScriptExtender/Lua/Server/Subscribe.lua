@@ -132,14 +132,23 @@ RegisterNetListener(NetChannel.SpawnPreset, function(channel, data, userID)
         Error("SpawnPreset: Preset not found: " .. data.Name)
         return
     end
-    local props = preset.Props or {}
     local presetType = preset.PresetType or "Relative"
     local broadCastGuids = {}
     if IsCamera(data.Parent) then
         SetCameraPosition(data.Parent, data.Position)
         SetCameraRotation(data.Parent, data.Rotation)
     end
-    for _, prop in ipairs(props) do
+    local tree = nil --[[@as TreeTable]]
+    if preset.Tree then
+        tree = TreeTable.FromTableStatic(preset.Tree)
+    else
+        Error("SpawnPreset: Preset tree not found: " .. data.Name)
+        return
+    end
+
+    local props = preset.Props
+
+    for savedguid, prop in pairs(props) do
         if not prop.TemplateId then
             goto continue
         end
@@ -166,6 +175,9 @@ RegisterNetListener(NetChannel.SpawnPreset, function(channel, data, userID)
         end
     
         local guid = PM:CreateProp(templateId, x, y, z, p, yaw, r, w)
+        if tree then
+            prop.Path = tree:GetPath(savedguid, true) or nil
+        end
 
         if guid then
             if not prop.Group or prop.Group == "" then
@@ -559,7 +571,7 @@ RegisterNetListener(NetChannel.Visualize, function (channel, data, userID)
         RotateTo(handle, table.unpack(data.Rotation or {0,0,0,1}))
         table.insert(entityHandles, handle)
     elseif data.Type == "Clear" then
-        Debug("Clear visualize for user: " .. tostring(userID))
+        --Debug("Clear visualize for user: " .. tostring(userID))
         local stack = visualizeStack[tostring(userID)]
         for _, handles in ipairs(stack or {}) do
             for _, hhandle in ipairs(handles) do

@@ -26,6 +26,7 @@ PropStore = {
 --- @field CanInteract boolean
 --- @field Persistent boolean
 --- @field LevelName string
+--- @field Path string[]?
 --- @field Position Vec3?
 --- @field Rotation Quat?
 --- @field Scale Vec3?
@@ -148,7 +149,13 @@ function PropStore:AddProp(guid, data)
     self:RegisterDisplayName(GetDisplayNameForTemplateId(data.TemplateId), guid)
 
     if not self.Tree:Find(guid) then
-        self.Tree:AddLeaf(guid, PropDatas[guid])
+        if data.Path then
+            if self.Tree:AddPath(data.Path) then
+                self.Tree:AddLeaf(guid, "end", data.Path[#data.Path])
+            else
+                self.Tree:AddLeaf(guid, "end")
+            end
+        end
     end
 
     if not PropDatas[guid].Tags then
@@ -187,7 +194,7 @@ function PropStore:GetProps(guids)
 end
 
 function PropStore:GetAll()
-    return PropDatas
+    return DeepCopy(PropDatas)
 end
 
 function PropStore:CountGroupAndTag()

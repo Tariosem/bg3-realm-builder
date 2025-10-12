@@ -54,7 +54,7 @@ function EntityHelpers.FilterUuidsByType(guids)
             table.insert(groups.Item, guid)
         elseif entity then
             table.insert(groups.Unmapped, guid)
-            Debug("Unmapped entity type for "..tostring(guid))
+            --Debug("Unmapped entity type for "..tostring(guid))
         else
             Debug("Entity not found for "..tostring(guid))
         end
@@ -79,6 +79,8 @@ function GetTemplateId(guid)
     return entity.OriginalTemplate.OriginalTemplate
 end
 
+--- @param guids GUIDSTRING|GUIDSTRING[]
+--- @return GUIDSTRING[] copy
 function NormalizeGuidList(guids)
     local returnData = {}
     if type(guids) == "string" then

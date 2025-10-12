@@ -165,6 +165,10 @@ function PropsManager:SetProp(guid, propInfo)
     if propInfo.IconTintColor and type(propInfo.IconTintColor) == "table" then
         self.Props[guid].IconTintColor = propInfo.IconTintColor
     end
+
+    if propInfo.Path then
+        self.Props[guid].Path = propInfo.Path
+    end
 end
 
 function PropsManager:AddProp(guid)
@@ -391,7 +395,8 @@ function PropsManager:GetPropForClients(guid)
         Note = propData.Note or nil,
         Tags = propData.Tags or nil,
         Parent = propData.Parent or nil,
-        IconTintColor = propData.IconTintColor or {1,1,1,1}
+        IconTintColor = propData.IconTintColor or {1,1,1,1},
+        Path = propData.Path or ""
     }
 
     local jsonProps = {item}

@@ -20,6 +20,8 @@ GLOBAL_AVAILABLE_OPERATORS = {
     ["/"] = true,
     ["^"] = true,
     ["%"] = true,
+    ["("] = true,
+    [")"] = true,
 }
 
 --- @param expr string

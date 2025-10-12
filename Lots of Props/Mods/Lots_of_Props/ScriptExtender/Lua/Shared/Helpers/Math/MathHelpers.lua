@@ -244,7 +244,7 @@ function GetLocalRelativeTransform(parentUuid, posOffset, rotOffset)
 
     local parentQuat = {pqx, pqy, pqz, pqw}
     posOffset = posOffset or {0, 0, 0}
-    rotOffset = rotOffset or Quat.Identity
+    rotOffset = rotOffset or Quat.Identity()
 
     local worldOffset = Ext.Math.QuatRotate(parentQuat, posOffset)
     local finalPosition = {px + worldOffset[1], py + worldOffset[2], pz + worldOffset[3]}
@@ -272,13 +272,13 @@ function LookAtParent(childUuid, parentUuid)
 
     if not cx or not cy or not cz or not px or not py or not pz then
         --Warning("Failed to get position")
-        return Quat.Identity
+        return Quat.Identity()
     end
 
     local direction = Ext.Math.Normalize({px - cx, py - cy, pz - cz})
     if Ext.Math.Length(direction) < 0.001 then
         --Warning("Direction vector too small")
-        return Quat.Identity
+        return Quat.Identity()
     end
 
     local quat = DirectionToQuat(direction, up)
@@ -299,7 +299,7 @@ function RotateAroundPivot(point, pivot, axis, angle)
         end
     end
     local translatedPoint = Ext.Math.Sub(point, pivot)
-    local rotatedPoint = Ext.Math.QuatRotateAxisAngle(Quat.Identity, axis, angle)
+    local rotatedPoint = Ext.Math.QuatRotateAxisAngle(Quat.Identity(), axis, angle)
     rotatedPoint = Ext.Math.QuatRotate(rotatedPoint, translatedPoint)
     local finalPoint = Ext.Math.Add(rotatedPoint, pivot)
     return finalPoint

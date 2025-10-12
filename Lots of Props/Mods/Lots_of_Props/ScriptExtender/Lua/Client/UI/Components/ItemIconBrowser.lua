@@ -98,7 +98,7 @@ function ItemIconBrowser:RenderIcon(entry, cell)
     --local previewTimer = nil
     --local previewConfirmSub = nil
     --local previewRotateSub = nil
-    --local previewRotateOffset = Quat.Identity
+    --local previewRotateOffset = Quat.Identity()
 
     iconImage.OnDragStart = function()
         iconImage.DragPreview:AddImage(entry.Icon, IMAGESIZE.MEDIUM)
@@ -160,9 +160,9 @@ function ItemIconBrowser:RenderIcon(entry, cell)
             if not CGetRotation(previewItem) then return end
             local up = QuatToDirection({CGetRotation(previewItem)}, "Y")
             if e.ScrollY > 0 then
-                previewRotateOffset = previewRotateOffset * Quat.new(Ext.Math.QuatRotateAxisAngle(Quat.Identity, up, math.rad(-15)))
+                previewRotateOffset = previewRotateOffset * Quat.new(Ext.Math.QuatRotateAxisAngle(Quat.Identity(), up, math.rad(-15)))
             elseif e.ScrollY < 0 then
-                previewRotateOffset = previewRotateOffset * Quat.new(Ext.Math.QuatRotateAxisAngle(Quat.Identity, up, math.rad(15)))
+                previewRotateOffset = previewRotateOffset * Quat.new(Ext.Math.QuatRotateAxisAngle(Quat.Identity(), up, math.rad(15)))
             end
         end)
 
@@ -176,7 +176,7 @@ function ItemIconBrowser:RenderIcon(entry, cell)
                 local mouseRay = ScreenToWorldRay()
                 local hit = mouseRay:IntersectPlane({CGetPosition(previewItem)}, QuatToDirection({CGetRotation(previewItem)}, "Y"))
                 position = hit.Position
-                rotation = Quat.Identity
+                rotation = Quat.Identity()
             else
                 position, rotation = GetCursorPosAndRot()
             end
@@ -194,7 +194,7 @@ function ItemIconBrowser:RenderIcon(entry, cell)
 
     iconImage.OnDragEnd = function()
         Timer:Ticks(20, function (timerID)
-            local cursorPos, cursorRot = GetCursorPosAndRot()
+            local cursorPos, cursorRot = GetPickingHitPosAndRot()
             if not cursorPos or not cursorRot then
                 local host = CGetHostCharacter()
                 cursorPos = {CGetPosition(host)}

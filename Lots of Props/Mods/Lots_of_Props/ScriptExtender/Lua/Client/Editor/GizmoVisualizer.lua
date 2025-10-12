@@ -11,9 +11,9 @@ GizmoVisualizer = {
         1.0,
     },
     DefaultColor = {
-        X = HexToRGBA("9AAA3333"),
-        Y = HexToRGBA("9A33AA33"),
-        Z = HexToRGBA("9A3333AA"),
+        X = HexToRGBA("D1AA3333"),
+        Y = HexToRGBA("D133AA33"),
+        Z = HexToRGBA("D13333AA"),
     },
     HighlightColor = {
         X = HexToRGBA("E6FFC1C1"),

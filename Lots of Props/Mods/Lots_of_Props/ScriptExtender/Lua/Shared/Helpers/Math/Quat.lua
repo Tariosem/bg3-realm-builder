@@ -24,12 +24,13 @@ Quat.__mul = function(a, b)
         return Vec3.new(Ext.Math.QuatRotate(a, b))
     else
         Warning("Quat: Invalid multiplication with table of size " .. tostring(#b))
-        return Quat.Identity
+        return Quat.Identity()
     end
 end
 
 Quat.__tostring = function(a) return string.format("Quat(%s)", table.concat(a, ", ")) end
 
+function Quat.Identity() return Quat.new(0,0,0,1) end
 function Quat:Inverse() return Quat.new(Ext.Math.QuatInverse(self)) end
 function Quat:Normalize() return Quat.new(Ext.Math.QuatNormalize(self)) end
 function Quat:Rotate(v) return Vec3.new(Ext.Math.QuatRotate(self, v)) end
@@ -57,7 +58,7 @@ function Quat.new(...)
 
     if not t then
         --Warning("WrapQuat: invalid args")
-        t = Quat.Identity
+        t = Quat.Identity()
     end
 
     return setmetatable(t, Quat) --[[@as Quat]]
@@ -66,10 +67,9 @@ end
 function Quat.FromEuler(euler)
     if #euler ~= 3 then
         Warning("WrapQuatFromEuler: Invalid table length, expected 3 got "..tostring(#euler))
-        return Quat.Identity
+        return Quat.Identity()
     end
     return Quat.new(Ext.Math.QuatFromEuler(euler))
 end
 
-Quat.Identity = Quat.new({0,0,0,1})
 Quat.IsQuat = true

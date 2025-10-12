@@ -1,7 +1,19 @@
 PRESETMENU_WIDTH = 1000 * SCALE_FACTOR
 PRESETMENU_HEIGHT = 1200 * SCALE_FACTOR
 
+--- @class PropPresetData
+--- @field PresetType "Relative"|"Absolute"
+--- @field Name string
+--- @field Level string
+--- @field ModList table<string, {Name:string, Author:string}>
+--- @field Tree TreeTable
+--- @field Description string|nil
+--- @field Highlight boolean|nil
+--- @field HighlightColor Vec4|nil
+
+
 --- @class PresetMenu
+--- @field presets table<string, PropPresetData>
 PresetMenu = _Class("PresetMenu")
 
 function PresetMenu:__init(parent)
@@ -16,10 +28,6 @@ function PresetMenu:__init(parent)
     self.isRelative = true
 
     self.presetSub = ClientSubscribe("ServerPreset", function(data)
-        self.presets = {}
-        for _, presetName in ipairs(data.Presets) do
-            self.presets[presetName] = true
-        end
     end)
 
     self.applyVisualPresetSub = ClientSubscribe("ApplyVisualPreset", function(data)
@@ -280,27 +288,22 @@ function PresetMenu:SavePreset(name, overwrite)
 
         if self.visibleOnly then
             if propInfo.Visible then
-                table.insert(props, propInfo)
+                props[propInfo.Guid] = propInfo
             end
         else
-            table.insert(props, propInfo)
+            props[propInfo.Guid] = propInfo
         end
 
         ::continue::
     end
 
-    table.sort(props, function(a, b)
-        local nameA = a.DisplayName or "Unknown"
-        local nameB = b.DisplayName or "Unknown"
-        return nameA < nameB
-    end)
-
     self.presets[name] = {
         PresetType = self.isRelative and "Relative" or "Absolute",
         Name = name,
-        Props = props,
         Level = _C().Level.LevelName,
         ModList = modList,
+        Props = props,
+        Tree = PropStore.Tree:ToTable(),
     }
 
     self:SaveToFile(name)
@@ -596,8 +599,6 @@ function PresetMenu:RenderPresetInfo(name)
 
     local presetData = self.presets[name]
 
-    
-
     local title = self.presetInfoWindow:AddSelectable(name)
     title.Selected = true
     title:SetStyle("SelectableTextAlign", 0.5, 0)
@@ -605,9 +606,7 @@ function PresetMenu:RenderPresetInfo(name)
 
     if presetData.HighlightColor then
         self.previewTable.BordersOuter = true
-        --self.previewTable.RowBg = true
         self.previewTable:SetColor("TableBorderStrong", AdjustColor(presetData.HighlightColor, 0.2))
-        --self.previewTable:SetColor("TableRowBg", AdjustColor(presetData.HighlightColor, -0.1, -0.1, -0.6))
         title:SetColor("Header", AdjustColor(presetData.HighlightColor, -0.05))
         title:SetColor("HeaderHovered", presetData.HighlightColor)
     end
@@ -724,17 +723,12 @@ function PresetMenu:RenderPresetInfo(name)
 
     local propInfoWindow = self.presetInfoWindow
 
-    local copiedPropsInfo = DeepCopy(presetData.Props)
-    table.sort(copiedPropsInfo, function(a, b)
-        local nameA = a.DisplayName or "Unknown"
-        local nameB = b.DisplayName or "Unknown"
-        return nameA < nameB
-    end)
+    local propsTree = TreeTable.FromTableStatic(presetData.Tree)
+    local propsInfos = presetData.Props or {}
 
-    local propTable = propInfoWindow:AddTable("PropTable", self.lastCols or 10)
-    propTable:SetStyle("CellPadding", self.cellsPadding[1], self.cellsPadding[2])
-    local propRow = propTable:AddRow()
-
+    local rootTable = propInfoWindow:AddTable("PropTable", self.lastCols or 10)
+    rootTable:SetStyle("CellPadding", self.cellsPadding[1], self.cellsPadding[2])
+    local rootRow = rootTable:AddRow()
 
     local propHeaders = {}
 
@@ -747,8 +741,8 @@ function PresetMenu:RenderPresetInfo(name)
         if maxCols < 1 then
             maxCols = 1
         end
-        if propTable then
-            propTable.Columns = maxCols
+        if rootTable then
+            rootTable.Columns = maxCols
         end
         self.lastCols = maxCols
     end
@@ -765,7 +759,9 @@ function PresetMenu:RenderPresetInfo(name)
 
     self.cellsPaddingSlider.OnChange = function()
         self.cellsPadding = { self.cellsPaddingSlider.Value[1], self.cellsPaddingSlider.Value[2] }
-        propTable:SetStyle("CellPadding", self.cellsPadding[1], self.cellsPadding[2])
+        if rootTable then
+            rootTable:SetStyle("CellPadding", self.cellsPadding[1], self.cellsPadding[2])
+        end
         cT.OnWidthChange()
     end
 
@@ -778,19 +774,18 @@ function PresetMenu:RenderPresetInfo(name)
         end
     end
 
-    for _, propInfo in ipairs(copiedPropsInfo) do
-        local cell = propRow:AddCell()
-        local newHeader = self:RenderPresetObjectInfo(cell, propInfo, name, presetType)
-        if newHeader then
-            table.insert(propHeaders, newHeader)
-        end
+    local propsRow = rootTable:AddRow()
+
+    for guid, propInfo in pairs(propsInfos) do
+        local cell = propsRow:AddCell()
+        local header = self:RenderPresetObjectInfo(cell, propInfo, name, presetData.PresetType, propsTree:GetPath(guid, true, true))
+        table.insert(propHeaders, header)
     end
 
     propInfoWindow:AddText("Click to spawn preview, right-click to spawn.").TextWrapPos = 950 * SCALE_FACTOR
-
 end
 
-function PresetMenu:RenderPresetObjectInfo(parent, propInfo, presetName, presetType)
+function PresetMenu:RenderPresetObjectInfo(parent, propInfo, presetName, presetType, path)
     local group = propInfo.Group or presetName
     local tags = propInfo.Tags or {}
     local note = propInfo.Note or ""
@@ -801,8 +796,8 @@ function PresetMenu:RenderPresetObjectInfo(parent, propInfo, presetName, presetT
     end
     local displayName = propInfo.DisplayName or "Unknown"
     local guid = propInfo.Guid or "Unknown"
-    local pos = propInfo.Position or {"N/A", "N/A", "N/A"}
-    local rot = propInfo.Rotation or {"N/A", "N/A", "N/A", "N/A"}
+    local pos = propInfo.Position or {0, 0, 0}
+    local rot = propInfo.Rotation or {0, 0, 0, 1}
     local visible = propInfo.Visible and GetLoca("Visible") or GetLoca("Hidden")
     local gravity = propInfo.Gravity and GetLoca("On") or GetLoca("Off")
     local persistent = propInfo.Persistent and GetLoca("Yes") or GetLoca("No")
@@ -827,7 +822,9 @@ function PresetMenu:RenderPresetObjectInfo(parent, propInfo, presetName, presetT
         iconTooltip:AddSeparator():SetColor("Separator", {0.3, 0.3, 0.3, 1})
     end
 
-    local displayNameText = iconTooltip:AddSelectable(displayName)
+    local pathText = table.concat(path or {}, "/")
+    local finalDisplayName = (pathText ~= "" and pathText .. " / " or "") .. displayName
+    local displayNameText = iconTooltip:AddSelectable(finalDisplayName)
     displayNameText.Highlight = true
     displayNameText:SetStyle("SelectableTextAlign", 0.5, 0)
 

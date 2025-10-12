@@ -29,7 +29,7 @@ local keyToSpace = {
 --- @field Space TransformEditorSpace
 --- @field Num string
 --- @field Axis table<'X'|'Y'|'Z', boolean>
---- @field new fun(targets: GUIDSTRING[]|GUIDSTRING, space:TransformEditorSpace?, mode:TransformEditorMode?): TransformOperator
+--- @field new fun(targets: GUIDSTRING[]|GUIDSTRING, space:TransformEditorSpace?, mode:TransformEditorMode?, axis:table<'X'|'Y'|'Z', boolean>?): TransformOperator
 TransformOperator = _Class("TransformOperator")
 
 --- @param guid GUIDSTRING
@@ -87,17 +87,17 @@ function TransformOperator:GetAxesBySpace(guid, space)
     return self.AxesCache[guid][space]
 end
 
-function TransformOperator:__init(targets, space, mode)
+function TransformOperator:__init(targets, space, mode, axis)
     self.Targets = NormalizeGuidList(targets)
     self.AxesCache = {}
     self:InitStartTransforms()
 
-    self.Mode = "Translate"
+    self.Mode = mode or "Translate"
     self.Space = space or "Local"
     self.Num = "0"
     self.Negative = false
 
-    self.Axis = { X = true }
+    self.Axis = axis or { X = true }
     self.Visualizations = {}
     self:Visualize()
 end
@@ -181,14 +181,25 @@ function TransformOperator:ChangeVisualization()
     Commands.SetTransformCommand(visualizations, transforms, true)
 end
 
-function TransformOperator:SetAxis(axis)
-    self.Axis = { [axis] = true }
-    self:Visualize()
-end
+function TransformOperator:SetAxis(axis, shiftDown)
+    if self.Mode ~= "Scale" then
+        if self.Axis and CountMap(self.Axis) == 1 and self.Axis[axis] then
+            return -- same axis, do nothing
+        else
+            self.Axis = { [axis] = true }
+        end
+        self:Visualize()
+        return
+    end
 
-function TransformOperator:ExcludeAxis(axis)
-    self.Axis = { X = true, Y = true, Z = true }
-    self.Axis[axis] = nil
+    if self.Axis and CountMap(self.Axis) == 1 and self.Axis[axis] then
+        self.Axis = { X = true, Y = true, Z = true }
+    elseif shiftDown then
+        self.Axis = { X = true, Y = true, Z = true }
+        self.Axis[axis] = nil
+    else
+        self.Axis = { [axis] = true }
+    end
     self:Visualize()
 end
 
@@ -204,18 +215,18 @@ function TransformOperator:ParseInput(e)
     local shiftDown = table.find(e.Modifiers or {}, "LShift") or table.find(e.Modifiers or {}, "RShift")
 
     if GLOBAL_COORDINATE[e.Key] then
-        if shiftDown then
-            self:ExcludeAxis(e.Key)
-        else
-            self:SetAxis(e.Key)
-        end
+        self:SetAxis(e.Key, shiftDown)
     elseif keyToMode[e.Key] then
         self.Mode = keyToMode[e.Key]
         if self.Mode == 'Scale' then
             self.Axis = { X = true, Y = true, Z = true }
             self:SetSpace("Local")
+        elseif CountMap(self.Axis) > 1 then
+            self.Axis = { [next(self.Axis)] = true }
         end
     elseif keyToSpace[e.Key] then
+        -- only supports scale in local space
+        if self.Mode == "Scale" then return end
         self:SetSpace(keyToSpace[e.Key])
 
     elseif KeybindHelpers.ParseInputToCharInput(e) then
@@ -255,12 +266,13 @@ function TransformOperator:__tostring()
     for k,v in pairs(self.Axis) do
         if v then table.insert(axes, k) end
     end
-    local axisStr = self.Mode == "Scale" and table.concat(axes, "") or next(self.Axis) or "None"
+    table.sort(axes)
+    local axisStr = table.concat(axes, "/")
     local unit = keyToUnit[self.Mode] or "unit"
     local numberStr = self.Negative and ("- (" .. self.Num .. ")") or self.Num
     local spaceStr = GetLoca(self.Space)
 
-    return string.format("%s %s%s along %s axis in %s space for %d target(s)", verb, numberStr, unit, axisStr, spaceStr, #self.Targets)
+    return string.format("%s [%s%s] along %s axis in %s space for %d target(s)", verb, numberStr, unit, axisStr, spaceStr, #self.Targets)
 end
 
 function TransformOperator:Apply()
@@ -287,9 +299,11 @@ end
 function TransformOperator:ApplyTranslate(guid, num)
     if self.Mode ~= "Translate" then return self.StartTransforms[guid] and self.StartTransforms[guid].Translate or {CGetPosition(guid)} end
     local axes = self:GetAxesBySpace(guid, self.Space)
-    local dir = axes[next(self.Axis)]
-    if not dir then
-        return {CGetPosition(guid)}
+    local dir = Vec3.new(0,0,0)
+    for k,v in pairs(self.Axis) do
+        if v and axes[k] then
+            dir = dir + axes[k]
+        end
     end
     dir = Ext.Math.Normalize(dir)
     local moveVec = Ext.Math.Mul(dir, num)
@@ -306,7 +320,7 @@ function TransformOperator:ApplyRotate(guid, num)
         return {CGetRotation(guid)}
     end
     local angle = math.rad(num)
-    local rotQuat = Ext.Math.QuatRotateAxisAngle(Quat.Identity, axis, angle)
+    local rotQuat = Ext.Math.QuatRotateAxisAngle(Quat.Identity(), axis, angle)
     local startRot = self.StartTransforms[guid] and self.StartTransforms[guid].RotationQuat or {CGetRotation(guid)}
     local newRot = Ext.Math.QuatMul(rotQuat, startRot)
     return Ext.Math.QuatNormalize(newRot)

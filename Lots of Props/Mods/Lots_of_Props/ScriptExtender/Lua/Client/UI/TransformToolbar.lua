@@ -46,35 +46,30 @@ function TransformToolbar:RegisterKeyInputEvents()
     ttMod:AddModuleCondition(restrainInputing)
     buMod:AddModuleCondition(restrainInputing)
 
-    ttMod:RegisterEvent("FocusInput", function (e)
-        if e.Event ~= "KeyDown" then return end
-        if TransformEditor.IsDragging then return end
-        self:SetupOperator()
-    end)
-
-    local stepBefore = nil
-    SubscribeKeyInput({ Key = "LSHIFT" }, function(e)
+    self.Subscriptions["NumericInput"] = SubscribeKeyInput({}, function (e)
+        if not restrainInputing(e) then return end
+        if not restrainOpening(e) then return end
         if e.Repeat then return end
-        if stepBefore and e.Event == "KeyUp" then
-            TransformEditor.Step = stepBefore
-            stepBefore = nil
-            Debug("Step:", TransformEditor.Step)
-        elseif e.Event == "KeyDown" and not stepBefore then
-            stepBefore = TransformEditor.Step
-            TransformEditor.Step = math.max(TransformEditor.Step / 10, 0.01)
-            Debug("Step:", TransformEditor.Step)
+        if e.Event ~= "KeyDown" then return end
+        if not TransformEditor.Gizmo then return end
+        if not TransformEditor.Gizmo.IsDragging then return end
+        if not TransformEditor.Target or #TransformEditor.Target == 0 then return end
+
+        if tonumber(KeybindHelpers.ParseInputToCharInput(e)) then
+            local selectedAxis = TransformEditor.Gizmo and TransformEditor.Gizmo.SelectedAxis
+            TransformEditor.Gizmo:CancelDragging()
+
+            self:SetupOperator(TransformEditor.Gizmo.Mode, self:GetCurrentSpace(), selectedAxis)
         end
     end)
 
     ttMod:RegisterEvent("MultiSelect", function (e)
         if e.Event == "KeyDown" then
             self.MultiSelecting = true
-            Debug("MultiSelecting enabled")
         elseif e.Event == "KeyUp" then
             TransformEditor:Select(self.Selecting)
             self.MultiSelecting = false
             self.Selecting = {}
-            Debug("MultiSelecting disabled")
         end
     end)
 
@@ -94,7 +89,7 @@ function TransformToolbar:RegisterKeyInputEvents()
         if e.Event ~= "KeyDown" then return end
 
         local targets = NormalizeGuidList(TransformEditor.Target)
-        local pos, rot = GetCursorPosAndRot()
+        local pos, rot = GetPickingHitPosAndRot()
 
         Commands.SetTransformCommand(targets, {Translate = pos, RotationQuat = rot})
     end)
@@ -398,12 +393,22 @@ function TransformToolbar:RenderTopBar()
     operatorInput.Disabled = true
     operatorInput.SameLine = true
     operatorInput.IDContext = "TransformOperatorInput"
-    operatorInput.Hint = GetLoca("Use the keybind for operator input")
+    operatorInput.Hint = GetLoca("Input any number key when dragging gizmo to start transform operator")
     local inputTooltip = operatorInput:Tooltip()
+    inputTooltip:AddSeparatorText("Transform Operator Input"):SetStyle("SeparatorTextAlign", 0.5, 0)
+    inputTooltip:AddText("You can input commands like 'GX1', just like in blender.")
     inputTooltip:AddBulletText("G/R/S: ") inputTooltip:AddText("Switch to Move/Rotate/Scale mode")
-    inputTooltip:AddBulletText("X/Y/Z (Modifier : Shift ): ") inputTooltip:AddText("Constrain to X/Y/Z axis, hold Shift to exclude axis")
+    inputTooltip:AddBulletText("X/Y/Z: ") inputTooltip:AddText("Constrain to X/Y/Z axis")
     inputTooltip:AddBulletText("Shift + '-' :") inputTooltip:AddText("Toggle negative number input")
     inputTooltip:AddBulletText("F1/F2/F3/F4 :") inputTooltip:AddText("Switch to Global/Local/View/Parent space")
+    inputTooltip:AddBulletText("Supported Operators:") inputTooltip:AddText(" + - * / % ^ ( )")
+    inputTooltip:AddBulletText("Enter | LMB :") inputTooltip:AddText("Confirm the operation")
+    inputTooltip:AddBulletText("Esc | RMB :") inputTooltip:AddText("Cancel the operation")
+
+    local notice = inputTooltip:AddText("Note: Scale only supports Local space.")
+    notice.Font = "Tiny"
+    notice:SetColor("Text", HexToRGBA("C4B5B5B5"))
+
 
     operatorInput.OnChange = function (input)
         self:SetupOperator()
@@ -501,34 +506,40 @@ function TransformToolbar:RenderOtherConfigOptions(panel)
     tips:SetColor("Text", HexToRGBA("FFFFAA00"))
 end
 
-function TransformToolbar:SetupOperator()
+function TransformToolbar:SetupOperator(mode, space, axis)
     if not TransformEditor.Target or #TransformEditor.Target == 0 or self.isInputing then return end
+    TransformEditor.Disabled = true
+    TransformEditor:HideAndDisableGizmo()
+    local targets = NormalizeGuidList(TransformEditor.Target)
     self.isInputing = true
     if not self.Operator then
-        self.Operator = TransformOperator.new(TransformEditor.Target, self:GetCurrentSpace())
-        self.Operator.Space = self:GetCurrentSpace()
+        if mode == "Scale" then axis = {X = true, Y = true, Z = true} end
+        self.Operator = TransformOperator.new(targets, space, mode, axis)
     end
-    TransformEditor:Select(nil)
     
     local inputSub = SubscribeKeyAndMouse(function (e)
         FocusWindow(self.TopToolBar)
-        if e.Key == "Escape" or e.Key == "RMB" then
+        local isDone = false
+        if e.Key == "ESCAPE" or e.Key == "RMB" then
             self.Operator:Cancel()
-            self.isInputing = false
-            self.Operator = nil
-            self.OperatorInput.Text = ""
-            self.OperatorInput.Hint = GetLoca("Use the keybind for operator input")
-            return UNSUBSCRIBE_SYMBOL
+            isDone = true
         elseif e.Key == "RETURN" or e.Key == "LMB" or e.Key == "KP_ENTER" then
             self.Operator:Confirm()
-            self.isInputing = false
-            self.Operator = nil
-            self.OperatorInput.Text = ""
-            self.OperatorInput.Hint = GetLoca("Use the keybind for operator input")
-            return UNSUBSCRIBE_SYMBOL
+            isDone = true
         else
             self.Operator:ParseInput(e)
         end
+
+        if isDone then
+            self.isInputing = false
+            self.Operator = nil
+            self.OperatorInput.Text = ""
+            self.OperatorInput.Hint = GetLoca("Input any number key when dragging gizmo to start transform operator")
+            TransformEditor:ShowAndEnableGizmo()
+            TransformEditor.Disabled = false
+            return UNSUBSCRIBE_SYMBOL
+        end
+
         if self.OperatorInput then
             self.OperatorInput.Text = tostring(self.Operator)
         end

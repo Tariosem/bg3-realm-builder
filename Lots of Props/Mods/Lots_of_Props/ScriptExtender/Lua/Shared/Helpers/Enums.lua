@@ -251,7 +251,7 @@ BuildBodyTypeCache()
 
 -- From https://github.com/AtilioA/BG3-MCM/blob/main/Mod%20Configuration%20Menu/Mods/BG3MCM/ScriptExtender/Lua/Shared/Helpers/Keybindings/KeyPresentationMapping.lua
 
---- @enum SimplifiedInputCode
+--- @enum SimplifiedInputCode 
 Enums.SimplifiedInputCode = Enums.SDLScanCode
 Enums.SimplifiedInputCode.LMB = "LMB"
 Enums.SimplifiedInputCode.MMB = "MMB"

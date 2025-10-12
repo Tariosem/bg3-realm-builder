@@ -13,7 +13,9 @@
 --- @field GetRootKey fun():string
 --- @field AddTree fun(self:TreeTable, key:any, parent?:any):table|nil
 --- @field AddLeaf fun(self:TreeTable, key:any, value:any, parent?:any):any|nil
+--- @field AddPath fun(self:TreeTable, path:any[]):boolean
 --- @field Find fun(self:TreeTable, key:any):any|nil
+--- @field GetPath fun(self:TreeTable, key:any):table
 --- @field Remove fun(self:TreeTable, key:any):boolean
 --- @field RemoveButKeepChildren fun(self:TreeTable, key:any):boolean
 --- @field Reparent fun(self:TreeTable, key:any, newParent?:any):boolean
@@ -208,6 +210,38 @@ function TreeTable:AddTree(key, parent)
     return node
 end
 
+function TreeTable:AddPath(path)
+    if #path == 0 or (#path == 1 and path[1] == ROOT) then
+        return false
+    end
+    
+    local currentParent = ROOT
+    for _, segment in ipairs(path) do
+        local existingNode = self:Find(segment)
+        if existingNode and not self:IsLeaf(segment) then
+            -- existing node is already a tree; ensure it's under the expected parent
+            if self:GetParentKey(segment) ~= currentParent then
+                self:Reparent(segment, currentParent)
+            end
+        elseif existingNode and self:IsLeaf(segment) then
+            -- existing key is a leaf: convert it to a tree under the desired parent
+            local newNode = self:ForceAddTree(segment, currentParent)
+            if not newNode then
+                --Debug("Failed to force-add path segment '" .. segment .. "' under parent '" .. tostring(currentParent) .. "'. Aborting.")
+                return false
+            end
+        else
+            local newNode = self:AddTree(segment, currentParent)
+            if not newNode then
+                --Debug("Failed to add path segment '" .. segment .. "' under parent '" .. tostring(currentParent) .. "'. Aborting.")
+                return false
+            end
+        end
+        currentParent = segment
+    end
+
+    return true
+end
 
 --- @param key any
 --- @param parent? any
@@ -331,7 +365,8 @@ function TreeTable:IsDescendant(descendantKey, ancestorKey)
     return self:IsAncestor(ancestorKey, descendantKey)
 end
 
-function TreeTable:GetPath(key)
+--- return a list of keys from root to the specified key
+function TreeTable:GetPath(key, excludeSelf, excludeRoot)
     local path = {}
     local currentKey = key
     local visited = {}
@@ -344,8 +379,13 @@ function TreeTable:GetPath(key)
         visited[currentKey] = true
         currentKey = self._parentRefs[currentKey]
     end
+    if excludeSelf then
+        table.remove(path)
+    end
+    if excludeRoot and path[1] == ROOT then
+        table.remove(path, 1)
+    end
     return path
-
 end
 
 function TreeTable:AreSiblings(key1, key2)
@@ -890,8 +930,17 @@ function TreeTable:SortNodesByDepth(order, candidates, ignoreRoot)
     return nodes
 end
 
+function TreeTable:SaveAllLeaves()
+    local leaves = {}
+    for key, _ in pairs(self._leafRefs) do
+        leaves[key] = self._nodeRefs[key]
+    end
+    return leaves
+end
+
+--- return a copy of the internal table
 function TreeTable:ToTable()
-    return self._table
+    return DeepCopy(self._table)
 end
 
 function TreeTable:FromTable(tbl)

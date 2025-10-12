@@ -99,6 +99,7 @@ end
 --- @field ClosestPlane fun(self: GizmoPicker, ray: Ray): (TransformAxis|nil, Hit|nil)
 --- @field HitPlaneByAxes fun(self: GizmoPicker, ray: Ray, axes: table<TransformAxis, boolean>): (Hit|nil, number|nil)
 --- @field HitPlanePerpToAxis fun(self: GizmoPicker, ray: Ray, axis: TransformAxis): (Hit|nil)
+--- @field ProjectPointOnPlane fun(self: GizmoPicker, point: Vec3, planeNormal: Vec3): (Vec3|nil)
 GizmoPicker = _Class("GizmoPicker")
 
 function GizmoPicker:__init(gizmo, position, rotation)
@@ -383,4 +384,27 @@ function GizmoPicker:ClosestAxis(ray)
     end
 
     return closestAxis or "X"
+end
+
+function GizmoPicker:ProjectPointOnPlane(point, planeNormal)
+    local origin, rotation = self:GetTransform()
+    if not origin or not rotation then return nil end
+    local toPoint = point - origin
+    local distance = Ext.Math.Dot(toPoint, planeNormal)
+    return point - planeNormal * distance
+end
+
+--- @param point Vec3
+--- @param axis TransformAxis
+--- @return Vec3|nil
+function GizmoPicker:ProjectPointOnPlanePerpToAxis(point, axis)
+    local axes = self:GetAxes()
+
+    local planeNormal = axes[axis]
+    if not planeNormal then
+        Warning("GizmoPicker:ProjectPointOnPlanePerpToAxis: Failed to calculate plane normal", axes)
+        return nil
+    end
+
+    return self:ProjectPointOnPlane(point, planeNormal)
 end

@@ -1,8 +1,59 @@
---- @class KeybindEntry
+--- @alias KeybindingIdentifier string format like "A|LCtrl|LShift"
+
+--- @class Keybinding
 --- @field Key SimplifiedInputCode
 --- @field Modifiers SDLKeyModifier[]|nil
+--- @field new fun(key:SimplifiedInputCode, modifiers:SDLKeyModifier[]|nil):Keybinding
+--- @field CreateIdentifier fun(self: Keybinding): KeybindingIdentifier
+--- @field FromIdentifier fun(identifier: KeybindingIdentifier): Keybinding
 
---- @type table<string, table<string, KeybindEntry>>
+Keybinding = _Class("Keybinding")
+
+function Keybinding:__init(key, modifiers)
+    self.Key = key
+    self.Modifiers = modifiers or {}
+end
+
+function Keybinding:CreateIdentifier()
+    if #self.Modifiers == 0 then
+        return self.Key
+    end
+    return self.Key .. "|" .. table.concat(self.Modifiers, "|")
+end
+
+function Keybinding.FromIdentifier(identifier)
+    local parts = string.split(identifier, "|")
+    local key = parts[1]
+    local modifiers = {}
+    for i = 2, #parts do
+        table.insert(modifiers, parts[i])
+    end
+    return Keybinding.new(key, modifiers)
+end
+
+Keybinding.__eq = function(a, b)
+    if a.Key ~= b.Key then
+        return false
+    end
+
+    if #a.Modifiers ~= #b.Modifiers then
+        return false
+    end
+
+    for i = 1, #a.Modifiers do
+        if a.Modifiers[i] ~= b.Modifiers[i] then
+            return false
+        end
+    end
+
+    return true
+end
+
+Keybinding.__tostring = function(t)
+    return t:CreateIdentifier()
+end
+
+--- @type table<string, table<string, Keybinding>>
 DEFAULT_KEYBINDS = {}
 
 DEFAULT_KEYBINDS.TransformToolbar = {
@@ -11,7 +62,6 @@ DEFAULT_KEYBINDS.TransformToolbar = {
     ["ClearSelection"] = { Key = "ESCAPE" },
     ["Duplicate"] = { Key = "D", Modifiers = { "LShift" } },
     ["BoxSelect"] = { Key = "B" },
-    ["SlowDown"] = { Key = "LGUI" },
     ["HideSelection"] = { Key = "H" },
     ["ShowSelection"] = { Key = "H", Modifiers = { "LShift" } },
     ["ApplyGravity"] = { Key = "G", Modifiers = { "LShift" } },
@@ -19,7 +69,6 @@ DEFAULT_KEYBINDS.TransformToolbar = {
     ["Undo"] = { Key = "Z", Modifiers = { "LCtrl" }},
     ["Redo"] = { Key = "X", Modifiers = { "LCtrl" } },
     ["OpenVisualTab"] = { Key = "TAB", Modifiers = { "LShift" } },
-    ["FocusInput"] = { Key = "GRAVE" }
 }
 
 DEFAULT_KEYBINDS.TransformEditor = {
@@ -125,9 +174,16 @@ for i=0, 9 do
     KeybindHelpers.ShiftKeyToChar["KP_" .. i] = tostring(i)
 end
 
---- @param e SimplifiedInputEvent
+--- @param e SimplifiedInputEvent|EclLuaKeyInputEvent
 function KeybindHelpers.ParseInputToCharInput(e)
-    local isShift = table.find(e.Modifiers or {}, "LShift") or table.find(e.Modifiers or {}, "RShift")
+    local isShift = false
+    if type(e.Modifiers) ~= "table" then
+        local mask = e.Modifiers or 0
+        isShift = ((mask & Enums.SDLKeyModifier.LShift) ~= 0) or ((mask & Enums.SDLKeyModifier.RShift) ~= 0)
+    else
+        local mods = e.Modifiers or {}
+        isShift = (table.find(mods, "LShift") ~= nil) or (table.find(mods, "RShift") ~= nil)
+    end
 
     if isShift then
         return KeybindHelpers.ShiftKeyToChar[e.Key] or e.Key

@@ -415,10 +415,8 @@ function AddCollapsingTable(parent, mainAreaTitle, sideBarTitle, opts)
                 end
             elseif k == "SideBarWidth" then
                 setSideBarWidth(v)
-            elseif rawget(t, k) ~= nil then
-                rawset(t, k, v)
             else
-                Error("CollapsingTableStyle has no member named " .. tostring(k))
+                rawset(t, k, v)
             end
         end
     })

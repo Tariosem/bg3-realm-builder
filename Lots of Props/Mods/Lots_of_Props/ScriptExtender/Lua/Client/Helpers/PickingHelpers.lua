@@ -37,18 +37,22 @@ function GetPickingEntity()
     return Ext.ClientUI.GetPickingHelper(1).Inner.Inner[1].GameObject
 end
 
+---@param picker EclPlayerPickingHelper?
 ---@return number x
 ---@return number y
-function GetCursorPos()
-    local picker = Ext.ClientUI.GetPickingHelper(1)
+function GetCursorPos(picker)
+    if not picker then
+        picker = Ext.ClientUI.GetPickingHelper(1)
+    end
     local pos = picker.WindowCursorPos
     return pos[1], pos[2]
 end
 
+--- Returns the hit position and rotation from a picking helper. If the picking helper has no valid hit, it returns the position and rotation of the host character.
 --- @param picker EclPlayerPickingHelper?
 --- @return Vec3?
 --- @return Quat?
-function GetCursorPosAndRot(picker)
+function GetPickingHitPosAndRot(picker)
     if not picker then
         picker = Ext.ClientUI.GetPickingHelper(1)
     end
@@ -57,7 +61,8 @@ function GetCursorPosAndRot(picker)
     local rot = DirectionToQuat(normal, nil, "Y")
 
     if pos[1] == 0 and pos[2] == 0 and pos[3] == 0 then
-        return nil, nil
+        local host = CGetHostCharacter()
+        return Vec3.new(CGetPosition(host)), Quat.new(CGetRotation(host))
     end
 
     return Vec3.new(pos), Quat.new(rot)
