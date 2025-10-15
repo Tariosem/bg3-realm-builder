@@ -1,11 +1,9 @@
 RequireFiles("Server/", {
     "OsirisHelpers",
-    "PropsManager",
+    "EntityManager",
     "EffectsManager",
     "BindManager",
 })
-
-PM = PropsManager:init("PropsManager") --[[@as PropsManager]]
 
 EM = EffectsManager:init("EffectsManager") --[[@as EffectsManager]]
 
@@ -19,7 +17,7 @@ end
 Ext.Events.SessionLoaded:Subscribe(OnSessionLoaded)
 
 RequireFiles("Server/", {
-    "Broadcast",
+    "ServerListeners",
     "Subscribe",
 })
 

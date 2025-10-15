@@ -2,8 +2,9 @@
 --- @field RelativePosition number[]? server only
 --- @field RelativeRotation number[]? server only
 --- @field KeepLookingAt boolean
---- @field NotFollowParent boolean
+--- @field FollowParent boolean
 --- @field BindParent GUIDSTRING
+
 
 --- @class BindManager
 --- @field BindTree TreeTable
@@ -17,10 +18,16 @@ BindManager = {
 
 ---@param child GUIDSTRING
 ---@param parent GUIDSTRING
----@param keepLookingAt boolean
----@param notFollowParent boolean
+---@param attributes BindInfo
 ---@return boolean
-function BindManager:Bind(child, parent, keepLookingAt, notFollowParent)
+function BindManager:Bind(child, parent, attributes)
+    local keepLookingAt = attributes and attributes.KeepLookingAt or nil
+    local followParent = attributes and attributes.FollowParent or nil
+
+    if followParent == nil then
+        followParent = true
+    end
+
     if not child or not parent then
         Warning("Invalid child or parent guid")
         return false
@@ -48,11 +55,12 @@ function BindManager:Bind(child, parent, keepLookingAt, notFollowParent)
 
     local currentParent = self.BindTree:GetParentKey(child)
     if currentParent == parent then
-        -- Already bound to this parent
+        if type(keepLookingAt) ~= "nil" then self.BindStores[child].KeepLookingAt = keepLookingAt end
+        if type(followParent) ~= "nil" then self.BindStores[child].FollowParent = followParent end
         return true
     elseif currentParent then
         if keepLookingAt == nil then keepLookingAt = self.BindStores[child] and self.BindStores[child].KeepLookingAt or false end
-        if notFollowParent == nil then notFollowParent = self.BindStores[child] and self.BindStores[child].NotFollowParent or false end
+        if followParent == nil then followParent = self.BindStores[child] and self.BindStores[child].FollowParent or true end
         self:Unbind(child)
     end
 
@@ -62,8 +70,12 @@ function BindManager:Bind(child, parent, keepLookingAt, notFollowParent)
             Guid = child,
             Parent = parent
         }
-        local userId = GetCamaraUserID(parent)
-        PostTo(userId, "CameraBind", postBack)
+        local userId = GetCamaraUserID(parent) --[[@as number]]
+        NetChannel.CameraBind:SendToClient({
+            Type = "Bind",
+            Guid = child,
+            Parent = parent,
+        }, userId)
         return true
     end
 
@@ -83,8 +95,8 @@ function BindManager:Bind(child, parent, keepLookingAt, notFollowParent)
 
     self.BindStores[child].RelativePosition = GetLocalRelativePosOffset(child, parent)
     self.BindStores[child].RelativeRotation = GetLocalRelativeRotOffset(child, parent)
-    self.BindStores[child].KeepLookingAt = keepLookingAt
-    self.BindStores[child].NotFollowParent = notFollowParent
+    self.BindStores[child].KeepLookingAt = keepLookingAt and keepLookingAt or false
+    self.BindStores[child].FollowParent = followParent
 
     Debug(self.BindTree._table)
 
@@ -111,8 +123,8 @@ function BindManager:Unbind(child)
             Type = "Unbind",
             Guid = child
         }
-        local userId = GetCamaraUserID(parent)
-        PostTo(userId, "CameraBind", postBack)
+        local userId = GetCamaraUserID(parent) --[[@as number]]
+        NetChannel.CameraBind:SendToClient(postBack, userId)
     end
 
     self:StopOffsetTimer(child)
@@ -165,7 +177,7 @@ function BindManager:UpdateBind(child)
 
     local success = false
     
-    if store.NotFollowParent then
+    if not store.FollowParent then
         success = self:HandleNotFollowParent(child, parent, store)
     else
         success = self:HandleFollowParent(child, parent, store)
@@ -189,7 +201,7 @@ function BindManager:HandleNotFollowParent(child, parent, store)
         RotateTo(child, table.unpack(lookAt))
 
         if CIsCharacter(child) then
-            BroadcastToChannel(NetMessage.SetVisualTransform, {
+            NetChannel.SetVisualTransform:Broadcast({
                 Guid = child,
                 Transforms = {
                     [child] = {
@@ -222,7 +234,7 @@ function BindManager:HandleFollowParent(child, parent, store)
     local rotSuccess = RotateTo(child, table.unpack(finalRot))
     
     if CIsCharacter(child) then
-        BroadcastToChannel(NetMessage.SetVisualTransform, {
+        NetChannel.SetVisualTransform:Broadcast({
             Guid = child,
             Transforms = {
                 [child] = {
@@ -306,7 +318,7 @@ function BindManager:BroadcastBindState(guids)
                 Guid = child,
                 BindParent = self.BindTree:GetParentKey(child),
                 KeepLookingAt = store.KeepLookingAt,
-                NotFollowParent = store.NotFollowParent,
+                FollowParent = store.FollowParent,
             })
         else
             table.insert(data, {
@@ -318,7 +330,7 @@ function BindManager:BroadcastBindState(guids)
 
     if #data == 0 then return end
 
-    BroadcastToChannel(NetMessage.BindProps, {
+    NetChannel.BindProps:Broadcast({
         BindInfos = data,
     })
 end
@@ -331,7 +343,7 @@ function BindManager:ClearAllBinds()
     self.BindStores = {}
     self.OffsetTimers = {}
 
-    BroadcastToChannel(NetMessage.BindProps, {
+    NetChannel.BindProps:Broadcast({
         Type = "Unbind",
         BindInfos = {},
     })

@@ -1,87 +1,89 @@
 NetChannel = NetChannel or {}
-NetChannelName = {
-    Visualize = "Visualize",
-    SetTransform = "SetTransform",
-    SetAttributes = "SetAttributes",
-    Duplicate = "Duplicate",
-    Spawn = "Spawn",
-    Delete = "Delete",
-    ManageGizmo = "ManageGizmo",
-    Bind = "Bind",
-    SpawnPreset = "SpawnPreset",
-    OsirisRequest = "OsirisRequest",
-    BunchOsirisRequest = "BunchOsirisRequest",
-    SetVisualize = "SetVisualize",
-}
 
+--- @class NetChannel
+--- @field SetHandler fun(channel:self, handler: fun(data:any, userID:number))
+--- @field SetRequestHandler fun(channel:self, handler: fun(data:any, userID:number):any)
+--- @field RequestToServer fun(channel:self , data:any, callback: fun(response:any))
+--- @field SendToServer fun(channel:self , data:any)
+--- @field SendToClient fun(channel:self , data:any, user:number)
+--- @field RequestToClient fun(channel:self , data:any, user:number, callback: fun(response:any))
+--- @field Broadcast fun(channel:self , data:any)
+--- @field OnMessage fun(channel:self, data:LuaNetMessageEvent)
 
-setmetatable(NetChannel, {
-    __newindex = function (t, k, v)
-        rawset(t, k, NetChannelName[k])
-    end
-})
+--- @class DuplicateChannel : NetChannel
+--- @field RequestToServer fun(channel:self , data: {Guid: GUIDSTRING[]|GUIDSTRING}, callback: fun(response: {GuidToTemplayteId: table<GUIDSTRING, string>}))
+NetChannel.Duplicate = Ext.Net.CreateChannel(ModuleUUID, "Duplicate")
 
---- scam IDE
+--- @class DeleteChannel : NetChannel
+--- @field SendToServer fun(channel:self , data: {Guid: GUIDSTRING[]|GUIDSTRING})
+NetChannel.Delete = Ext.Net.CreateChannel(ModuleUUID, "Delete")
 
---- @param Function any
---- @param Args any
---- @param RequestId any
---- @return any result
-NetChannel.OsirisRequest = function(Function, Args, RequestId) return end
+--- @class SpawnChannel : NetChannel
+--- @field RequestToServer fun(channel:self , data: {TemplateId: string, Position: Vec3, Rotation: Quat, EntInfo: EntityData?, Type: "Preview"|"Spawn"}, callback: fun(response: {Guid: GUIDSTRING, TemplateId: string}))
+NetChannel.Spawn = Ext.Net.CreateChannel(ModuleUUID, "Spawn")
 
----@param Calls table<number, {Function: string, Args: any[]}>
----@param RequestId any
----@return table<number, {Function: string, Result: any}>
-NetChannel.BunchOsirisRequest = function(Calls, RequestId) return {} end
+--- @class ManageEntityChannel : NetChannel
+--- @field SendToServer fun(channel:self , data: {Guid: GUIDSTRING?, Action: "Add"|"Remove"|"Clear"|"Scan"|"BFDA"})
+NetChannel.ManageEntity = Ext.Net.CreateChannel(ModuleUUID, "ManageEntity")
 
----@param Guid GUIDSTRING[]|GUIDSTRING
-NetChannel.Duplicate = function(Guid) end
+NetChannel.AddItem = Ext.Net.CreateChannel(ModuleUUID, "AddItem")
 
---- @param Guid GUIDSTRING|GUIDSTRING[]
-NetChannel.Delete = function(Guid) end
+NetChannel.GetTemplate = Ext.Net.CreateChannel(ModuleUUID, "GetTemplate")
 
----@param TemplateId string
----@param Target GUIDSTRING?
----@param Position Vec3
----@param Rotation Quat
----@param PropInfo PropData
----@param Type "Preview"?
-NetChannel.Spawn = function(TemplateId, Target, Position, Rotation, PropInfo, Type) end
+--- @class VisualizeData
+--- @field Type "Point"|"Line"|"Box"|"OBB"|"Clear
+--- @field Position Vec3|nil
+--- @field EndPosition Vec3|nil
+--- @field Rotation Quat|nil
+--- @field HalfSizes Vec3|nil
+--- @field Min Vec3|nil
+--- @field Max Vec3|nil
+--- @field Duration number|nil in ms
 
---- @param Type "Point"|"Line"|"Box"|"OBB"|"Clear"
---- @param RequestId any?
---- @param Position Vec3
---- @param EndPosition Vec3|nil
---- @param Rotation Quat|nil
---- @param HalfSizes Vec3|nil
---- @param Min Vec3|nil
---- @param Max Vec3|nil
-NetChannel.Visualize = function(Type, RequestId, Position, EndPosition, Min, Max, HalfSizes, Rotation) end
+--- @class VisualizeChannel : NetChannel
+--- @field RequestToServer fun(channel:self , data: VisualizeData, callback: fun(response: GUIDSTRING[]))
+NetChannel.Visualize = Ext.Net.CreateChannel(ModuleUUID, "Visualize")
 
---- @param Guid GUIDSTRING|GUIDSTRING[]
---- @param Transforms table<GUIDSTRING, Transform>
-NetChannel.SetTransform = function(Guid, Transforms) end
+--- @class SetTransformChannel : NetChannel
+--- @field SendToServer fun(channel:self , data: {Guid: GUIDSTRING[]|GUIDSTRING, Transforms: table<GUIDSTRING, Transform>})
+NetChannel.SetTransform = Ext.Net.CreateChannel(ModuleUUID, "SetTransform")
 
---- @param Guid GUIDSTRING|GUIDSTRING[]
---- @param Visible boolean
---- @param Gravity boolean
---- @param CanInteract boolean
---- @param Moveable boolean
-NetChannel.SetAttributes = function(Guid, Visible, Gravity, CanInteract, Moveable) end
+--- @class SetAttributesChannel : NetChannel
+--- @field SendToServer fun(channel:self , data: {Guid: GUIDSTRING[]|GUIDSTRING, Attributes: table<'Moveable'|'Persistent'|'Gravity'|'Visible', boolean>})
+NetChannel.SetAttributes = Ext.Net.CreateChannel(ModuleUUID, "SetAttributes")
 
---- @param GizmoType TransformEditorMode
-NetChannel.ManageGizmo = function(GizmoType) end
+--- @class ManageGizmoChannel : NetChannel
+--- @field RequestToServer fun(channel:self , data: {GizmoType: TransformEditorMode, Clear: boolean?}, callback: fun(response: {Guid: GUIDSTRING}))
+NetChannel.ManageGizmo = Ext.Net.CreateChannel(ModuleUUID, "ManageGizmo")
 
----@param Type "Bind"|"SetType"|"Unbind"|"UpdateOffset"
----@param Guid GUIDSTRING|GUIDSTRING[]
----@param Parent GUIDSTRING
----@param NotFollowParent boolean
----@param KeepLookingAt boolean
-NetChannel.Bind = function(Type, Guid, Parent, NotFollowParent, KeepLookingAt) end
+--- @class BindChannel : NetChannel
+--- @field SendToServer fun(channel:self , data: {Type: "Bind"|"Unbind"|"UpdateOffset", Guid: GUIDSTRING|GUIDSTRING[], Parent: GUIDSTRING, Attributes: table<'FollowParent'|'KeepLookingAt', boolean>})
+NetChannel.Bind = Ext.Net.CreateChannel(ModuleUUID, "Bind")
 
----@param PresetData PropData[]
----@param Parent any
----@param Position any
----@param Rotation any
----@param Type any
-NetChannel.SpawnPreset = function(PresetData, Parent, Position, Rotation, Type) end
+--- @class SpawnPresetChannel : NetChannel
+--- @field SendToServer fun(channel:self , data: {PresetData: EntityData[], Parent: GUIDSTRING|nil, Position: Vec3|nil, Rotation: Quat|nil, Type: "Preview"|"Spawn"})
+NetChannel.SpawnPreset = Ext.Net.CreateChannel(ModuleUUID, "SpawnPreset")
+
+--- @class OsirisRequestChannel : NetChannel
+--- @field SendToServer fun(channel:self , data: { Deactive: boolean?, CameraPosition: Vec3|nil, CameraRotation: Quat|nil })
+NetChannel.UpdateCamera = Ext.Net.CreateChannel(ModuleUUID, "UpdateCamera")
+
+--- @class UpdateDummiesChannel : NetChannel
+--- @field SendToServer fun(channel:self , data: { Deactive: boolean?, DummyInfos: table<GUIDSTRING, {Position: Vec3, Rotation: Quat}>|nil })
+NetChannel.UpdateDummies = Ext.Net.CreateChannel(ModuleUUID, "UpdateDummies")
+
+--- @class PlayEffectChannel
+--- @field SendToServer fun(self, data: EffectData)
+NetChannel.PlayEffect = Ext.Net.CreateChannel(ModuleUUID, "PlayEffect")
+
+--- @class StopEffectChannel
+--- @field SendToServer fun(self, data: {Type: "All"|"FxName"|"Object"|"Both", FxName: string|nil, Object: GUIDSTRING|nil})
+NetChannel.StopEffect = Ext.Net.CreateChannel(ModuleUUID, "StopEffect")
+
+--- @class CreateStatChannel
+--- @field SendToServer fun(self, data: StatusData|SpellData)
+NetChannel.CreateStat = Ext.Net.CreateChannel(ModuleUUID, "CreateStat")
+
+--- @class StopStatusChannel
+--- @field SendToServer fun(self, data: {Type: "All"|"Status", DisplayName: string, Object: GUIDSTRING|nil})
+NetChannel.StopStatus = Ext.Net.CreateChannel(ModuleUUID, "StopStatus")

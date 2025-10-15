@@ -2,22 +2,22 @@ EffectIconBrowser = _Class("EffectIconBrowser", IconBrowser)
 
 --- @class EffectIconsBrowser : IconsBrowser
 function EffectIconBrowser:GetConfig()
-    return CONFIG.EffectsBrowser or {}
+    return CONFIG.EffectBrowser or {}
 end
 
 function EffectIconBrowser:SaveToConfig()
     self.lastPosition = self.panel.LastPosition
     self.lastSize = self.panel.LastSize
-    CONFIG.EffectsBrowser.IconWidth = self.iconWidth
-    CONFIG.EffectsBrowser.IconPerRow = self.iconPR
-    CONFIG.EffectsBrowser.IconPerColumn = self.iconPC
-    CONFIG.EffectsBrowser.CellsPadding = self.cellsPadding
-    CONFIG.EffectsBrowser.autoSave = self.autoSave
-    CONFIG.EffectsBrowser.ButtonBgColor = self.iconButtonBgColor
-    CONFIG.EffectsBrowser.BackgroundColor = self.browserBackgroundColor
-    CONFIG.EffectsBrowser.StickToRight = self.stickToRight
-    CONFIG.EffectsBrowser.LastPosition = self.lastPosition
-    CONFIG.EffectsBrowser.LastSize = self.lastSize
+    CONFIG.EffectBrowser.IconWidth = self.iconWidth
+    CONFIG.EffectBrowser.IconPerRow = self.iconPR
+    CONFIG.EffectBrowser.IconPerColumn = self.iconPC
+    CONFIG.EffectBrowser.CellsPadding = self.cellsPadding
+    CONFIG.EffectBrowser.autoSave = self.autoSave
+    CONFIG.EffectBrowser.ButtonBgColor = self.iconButtonBgColor
+    CONFIG.EffectBrowser.BackgroundColor = self.browserBackgroundColor
+    CONFIG.EffectBrowser.StickToRight = self.stickToRight
+    CONFIG.EffectBrowser.LastPosition = self.lastPosition
+    CONFIG.EffectBrowser.LastSize = self.lastSize
     SaveConfig("EffectsBrowser")
 end
 
@@ -152,7 +152,7 @@ function EffectIconBrowser:RenderPlayEffectPopup(popup, entry, iconImage)
             return
         end
         for _, fxName in ipairs(fxNames) do
-            local fxData = GetDataFromUuid(fxName)
+            local fxData = GetDataFromUuid(fxName) or {}
             local effectData = {
                 Object = guid,
                 Target = guid,
@@ -171,14 +171,14 @@ function EffectIconBrowser:RenderPlayEffectPopup(popup, entry, iconImage)
                 FxName = fxName,
             }
             Timer:After(5000, function()
-                Post("StopEffect", stopdata)
+                NetChannel.StopEffect:SendToServer(stopdata)
             end)
 
             table.insert(effectsData, effectData)
             table.insert(effectsData, loopEffectData)
         end
         local data = effectsData
-        Post("PlayEffect", data)
+        NetChannel.PlayEffect:SendToServer(data)
 
     end
 

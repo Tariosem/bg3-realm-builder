@@ -131,18 +131,6 @@ end
 
 RegisterOnSessionLoaded(LOPPopulation, 0)
 
-ClientSubscribe("SetDebugLevel", function(payload)
-    if payload.settingId == "slider_int_debug_level" then
-        SetDebugLevel(payload.value)
-    end
-end)
-
-RegisterOnSessionLoaded(function()
-    Post("SetDebugLevel", {Level = LOP_DEBUG_LEVEL})
-end)
-
-
-
 PROPTAB_DEBUG_FUNCTION = function(guid, templateId, displayName)
     local entity = Ext.Entity.Get(guid) --[[@as EntityHandle]]
 

@@ -22,7 +22,7 @@ local function getAndPostCameraData()
         CameraRotation = {cp, cyaw, cr, cw},
     }
 
-    Post("UpdateCamera", postData)
+    NetChannel.UpdateCamera:SendToServer(postData)
 end
 
 local function CameraBind(guid)
@@ -36,11 +36,10 @@ local function CameraBind(guid)
 
     local data = {
         Guid = guid,
-        Type = "Bind",
         Parent = CameraSymbol,
     }
 
-    Post("Bind", data)
+    NetChannel.Bind:SendToServer(data)
 
     CameraBindCnt[guid] = {}
 end
@@ -52,10 +51,10 @@ local function DeactiveCameraTimer()
     end
 
     local data = {
-        Type = "DeactiveTimer"
+        Deactive = true,
     }
 
-    Post("UpdateCamera", data)
+    NetChannel.UpdateCamera:SendToServer(data)
 end
 
 local function CameraUnbind(guid)
@@ -69,18 +68,14 @@ local function CameraUnbind(guid)
     end
 end
 
-if not cameraSub then
-    cameraSub = ClientSubscribe("CameraBind", function(data)
-        local child = data.Guid
+NetChannel.CameraBind.OnMessage = function(sel, data)
+    local child = data.Guid
 
-        if data.Type == "Bind" then
-            CameraBind(child)
-        elseif data.Type == "Unbind" then
-            CameraUnbind(child)
-        elseif data.Type == "DeactiveTimer" then
-            DeactiveCameraTimer()
-        end
-    end)
+    if data.Type == "Bind" then
+        CameraBind(child)
+    elseif data.Type == "Unbind" then
+        CameraUnbind(child)
+    end
 end
 
 function StartUpdateingCamera()

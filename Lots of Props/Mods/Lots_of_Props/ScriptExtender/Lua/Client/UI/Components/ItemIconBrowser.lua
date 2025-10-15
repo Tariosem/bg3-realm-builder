@@ -1,19 +1,19 @@
 ItemIconBrowser = _Class("ItemIconBrowser", IconBrowser)
 
 function ItemIconBrowser:GetConfig()
-    return CONFIG.ItemsBrowser or {}
+    return CONFIG.ItemBrowser or {}
 end
 
 function ItemIconBrowser:SaveToConfig()
-    CONFIG.ItemsBrowser.IconWidth = self.iconWidth
-    CONFIG.ItemsBrowser.IconPerColumn = self.iconPC
-    CONFIG.ItemsBrowser.ButtonBgColor = self.iconButtonBgColor
-    CONFIG.ItemsBrowser.BackgroundColor = self.browserBackgroundColor
-    CONFIG.ItemsBrowser.IconPerRow = self.iconPR
-    CONFIG.ItemsBrowser.CellsPadding = self.cellsPadding
-    CONFIG.ItemsBrowser.StickToRight = self.stickToRight
-    CONFIG.ItemsBrowser.LastPosition = self.lastPosition
-    CONFIG.ItemsBrowser.LastSize = self.lastSize
+    CONFIG.ItemBrowser.IconWidth = self.iconWidth
+    CONFIG.ItemBrowser.IconPerColumn = self.iconPC
+    CONFIG.ItemBrowser.ButtonBgColor = self.iconButtonBgColor
+    CONFIG.ItemBrowser.BackgroundColor = self.browserBackgroundColor
+    CONFIG.ItemBrowser.IconPerRow = self.iconPR
+    CONFIG.ItemBrowser.CellsPadding = self.cellsPadding
+    CONFIG.ItemBrowser.StickToRight = self.stickToRight
+    CONFIG.ItemBrowser.LastPosition = self.lastPosition
+    CONFIG.ItemBrowser.LastSize = self.lastSize
     SaveConfig("ItemsBrowser")
 end
 
@@ -150,7 +150,7 @@ function ItemIconBrowser:RenderIcon(entry, cell)
                         Position = {CGetPosition(previewItem)},
                         Rotation = {CGetRotation(previewItem)}
                     }
-                    Post(NetChannel.Spawn, data)
+
                 end
             end
         end)
@@ -188,12 +188,12 @@ function ItemIconBrowser:RenderIcon(entry, cell)
                         RotationQuat = rotation * previewRotateOffset
                     }
                 }}
-            Post(NetChannel.SetTransform, postData)
+            
         end)]]
     end
 
     iconImage.OnDragEnd = function()
-        Timer:Ticks(20, function (timerID)
+        Timer:Ticks(30, function (timerID)
             local cursorPos, cursorRot = GetPickingHitPosAndRot()
             if not cursorPos or not cursorRot then
                 local host = CGetHostCharacter()
@@ -395,15 +395,22 @@ function ItemIconBrowser:RenderItemSpawnTab(popup, iconImage, entry)
     local function spawnHandle(isPreview)
         if isPreview then
             local data = {
-                Guid = entry.Uuid,
                 TemplateId = entry.TemplateId,
                 Type = "Preview",
-                Position = {CGetPosition(self.selectedGuid)},
-                Rotation = {CGetRotation(self.selectedGuid)}
+                Position = {CGetPosition(self.selectedGuid or CGetHostCharacter())},
+                Rotation = {CGetRotation(self.selectedGuid or CGetHostCharacter())}
             }
-            Post(NetChannel.Spawn, data)
+
+            NetChannel.Spawn:SendToServer(data)
         else
-            Commands.SpawnCommand(entry.TemplateId, {CGetPosition(self.selectedGuid)}, {CGetRotation(self.selectedGuid)})
+            local data = {
+                Guid = entry.Uuid,
+                TemplateId = entry.TemplateId,
+                Type = "Spawn",
+                Position = {CGetPosition(self.selectedGuid or CGetHostCharacter())},
+                Rotation = {CGetRotation(self.selectedGuid or CGetHostCharacter())}
+            }
+            Commands.SpawnCommand(entry.TemplateId, data.Position, data.Rotation, data)
         end
     end
 
@@ -454,7 +461,7 @@ function ItemIconBrowser:RenderItemSpawnTab(popup, iconImage, entry)
                     Target = self.selectedGuid or CGetHostCharacter(),
                 }
 
-                Post("AddItem", data)
+                NetChannel.AddItem:SendToServer(data)
             end,
             nil,
             10)

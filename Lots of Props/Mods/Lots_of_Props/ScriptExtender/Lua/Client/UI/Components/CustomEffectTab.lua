@@ -197,7 +197,7 @@ function CustomEffectTab:RenderFilter()
             self:Save()
             self:OnChange()
         else
-            Warning("[PropTab] Cannot add empty tag for GUID: " .. self.guid)
+            Warning("[EntityTab] Cannot add empty tag for GUID: " .. self.guid)
         end
     end
 
@@ -212,7 +212,7 @@ function CustomEffectTab:RenderFilter()
             self:Save()
             self:OnChange()
         else
-            Warning("[PropTab] Cannot remove empty tag for GUID: " .. self.guid)
+            Warning("[EntityTab] Cannot remove empty tag for GUID: " .. self.guid)
         end
     end
 
@@ -550,7 +550,7 @@ function CustomEffectTab:RenderEffects()
                 Type = "FxName",
                 FxName = effectObj.FxName,
             }
-            Post("StopEffect", postdata)
+            NetChannel.StopEffect(postdata)
         end
 
         local removeButton = cell:AddButton(GetLoca("Remove"))

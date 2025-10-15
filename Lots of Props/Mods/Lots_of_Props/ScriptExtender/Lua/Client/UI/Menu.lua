@@ -5,12 +5,12 @@ Menu = _Class("Menu")
 --- @class LOP_MainMenu
 --- @field isValid boolean
 --- @field effectsMenu EffectsMenu
---- @field propsMenu PropsMenu
+--- @field entityMenu EntityMenu
 --- @field presetMenu PresetMenu
 --- @field styleMenu StyleMenu
 --- @field panel ExtuiWindowBase
 --- @field tabBar ExtuiTabBar
---- @field FocusOnPropTab fun(self:LOP_MainMenu, guid:string, doDetach:boolean|nil)
+--- @field FocusOnTab fun(self:LOP_MainMenu, guid:string, doDetach:boolean|nil)
 function Menu:__init()
     self.isValid = true
     self.panel = nil
@@ -56,7 +56,7 @@ function Menu:Render()
     end)
 
     Timer:Ticks(3, function()
-        self.propsMenu = PropsMenu:Add(self.tabBar)
+        self.entityMenu = EntityMenu:Add(self.tabBar)
         --Debug("Finished adding PropsMenu tab, it takes" .. Ext.Timer.MonotonicTime() - now .. "ms")
         --now = Ext.Timer.MonotonicTime()
     end)
@@ -68,7 +68,7 @@ function Menu:Render()
     end)
 
     self.GetBrowsers = function()
-        return self.effectsMenu.iconBrowser, self.propsMenu.iconBrowser
+        return self.effectsMenu.iconBrowser, self.entityMenu.iconBrowser
     end
 
     Timer:Ticks(5, function()
@@ -87,15 +87,15 @@ function Menu:Render()
     now = Ext.Timer.MonotonicTime()
 end
 
-function Menu:NewPropAdded(guid)
-    if self.propsMenu then
-        self.propsMenu:NewPropAdded(guid)
+function Menu:NewEntityAdded(guid)
+    if self.entityMenu then
+        self.entityMenu:NewEntityAdded(guid)
     end
 end
 
-function Menu:PropDeleted(guid)
-    if self.propsMenu then
-        self.propsMenu:PropDeleted(guid)
+function Menu:EntityDeleted(guid)
+    if self.entityMenu then
+        self.entityMenu:EntityDeleted(guid)
     end
 end
 
@@ -111,9 +111,9 @@ function Menu:Destroy()
         self.presetMenu:Destroy()
         self.presetMenu = nil
     end
-    if self.propsMenu then
-        self.propsMenu:Destroy()
-        self.propsMenu = nil
+    if self.entityMenu then
+        self.entityMenu:Destroy()
+        self.entityMenu = nil
     end
     if self.effectsMenu then
         self.effectsMenu:Destroy()
@@ -135,12 +135,12 @@ end
 
 ---@param guid string
 ---@param doDetach? boolean
-function Menu:FocusOnPropTab(guid, doDetach)
-    local propTab = self.propsMenu.propTabs[guid]
-    if propTab then
-        propTab:Focus()
-        if doDetach and not propTab.isWindow then
-            propTab.detachButton:OnClick()
+function Menu:FocusOnTab(guid, doDetach)
+    local entityTab = self.entityMenu.entityTabs[guid]
+    if entityTab then
+        entityTab:Focus()
+        if doDetach and not entityTab.isWindow then
+            entityTab.detachButton:OnClick()
         end
     else
         Warning("No prop tab found for GUID: " .. tostring(guid))

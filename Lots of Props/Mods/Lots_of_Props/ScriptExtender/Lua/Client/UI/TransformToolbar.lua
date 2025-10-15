@@ -104,9 +104,13 @@ function TransformToolbar:RegisterKeyInputEvents()
         if e.Event ~= "KeyDown" then return end
         local pick = GetPickingGuid()
         if not pick or pick == "" then return end
-        if CIsCharacter(pick) then return end
+        if CIsCharacter(pick) then
+            local visualTab = CharacterVisualTab.new(pick, GetName(pick), nil, nil)
+            visualTab:Render()
+            return
+        end
 
-        local success = LOPMenu.propsMenu:FocusPropVisualTab(pick)
+        local success = LOPMenu.entityMenu:FocusEntityVisualTab(pick)
     end)
 
     buMod:RegisterEvent("BindTo", function (e)
@@ -161,21 +165,22 @@ function TransformToolbar:RegisterKeyInputEvents()
             if e.Event ~= "KeyDown" then return end
             if not TransformEditor.Target or #TransformEditor.Target == 0 then return end
             local targets = NormalizeGuidList(TransformEditor.Target)
-            local paramsOn = { Type = netType, Guid = targets }
-            local paramsOff = { Type = netType, Guid = targets }
-            paramsOn[field] = valueOn
-            paramsOff[field] = valueOff
-            Post(channel, paramsOn)
+            local paramsOn = { Guid = targets , Attributes = {} }
+            local paramsOff = { Guid = targets , Attributes = {} }
+            paramsOn.Attributes[field] = valueOn
+            paramsOff.Attributes[field] = valueOff
+            channel:SendToServer(paramsOn)
+
             HistoryManager:PushCommand({
-                Undo = function() Post(channel, paramsOff) end,
-                Redo = function() Post(channel, paramsOn) end
+                Undo = function() channel:SendToServer(paramsOff) end,
+                Redo = function() channel:SendToServer(paramsOn) end
             })
         end)
     end
     registerToggleEvent("LookAt", "SetType", "KeepLookingAt", true, false, buMod)
     registerToggleEvent("StopLookAt", "SetType", "KeepLookingAt", false, true, buMod)
-    registerToggleEvent("Follow", "SetType", "NotFollowParent", false, true, buMod)
-    registerToggleEvent("StopFollow", "SetType", "NotFollowParent", true, false, buMod)
+    registerToggleEvent("Follow", "SetType", "FollowParent", true, false, buMod)
+    registerToggleEvent("StopFollow", "SetType", "FollowParent", false, true, buMod)
     registerToggleEvent("HideSelection", "SetAttributes", "Visible", false, true, ttMod)
     registerToggleEvent("ShowSelection", "SetAttributes", "Visible", true, false, ttMod)
     registerToggleEvent("ApplyGravity", "SetAttributes", "Gravity", true, false, ttMod)
@@ -223,7 +228,7 @@ function TransformToolbar:SetupBoxSelect()
         for _,guid in pairs(GetAllPartyMembers()) do
             table.insert(toCheck, guid)
         end
-        for guid,_ in pairs(PropStore:GetAll()) do
+        for guid,_ in pairs(EntityStore:GetAll()) do
             table.insert(toCheck, guid)
         end
 
@@ -361,7 +366,7 @@ function TransformToolbar:RenderTopBar()
     end
 
     local screenWidth, screenHeight = GetScreenSize()
-    panel:SetSize({screenWidth * 0.6, 100})
+    panel:SetSize({screenWidth * 0.6, 80 * SCALE_FACTOR})
     panel:SetPos({screenWidth * 0.2, 0})
 
     panel.NoResize = true
@@ -518,7 +523,6 @@ function TransformToolbar:SetupOperator(mode, space, axis)
     end
     
     local inputSub = SubscribeKeyAndMouse(function (e)
-        FocusWindow(self.TopToolBar)
         local isDone = false
         if e.Key == "ESCAPE" or e.Key == "RMB" then
             self.Operator:Cancel()
@@ -578,7 +582,7 @@ function TransformToolbar:CreateBindPopup(guid)
 
         left:AddText("Bind To:")
 
-        local info = PropStore:GetBindInfo(guid)
+        local info = EntityStore:GetBindInfo(guid)
         local curParent = info and info.BindParent or nil
         local image = left:AddImage(GetIcon(curParent), IMAGESIZE.SMALL )
         image.SameLine = true
@@ -622,16 +626,17 @@ function TransformToolbar:CreateBindPopup(guid)
             local checkbox = panel:AddCheckbox(label, checked)
             checkbox.OnChange = function(e)
                 local newValue = checkedToValue(e.Checked)
-                Post(NetChannel.Bind, { Type = "SetType", Guid = {guid}, [field] = newValue })
+                local attr = { [field] = newValue }
+                NetChannel.Bind:SendToServer({ Guid = {guid}, Attributes = attr })
                 info[field] = newValue
                 HistoryManager:PushCommand({
                     Undo = function()
                         local undoValue = checkedToValue(not e.Checked)
-                        Post(NetChannel.Bind, { Type = "SetType", Guid = {guid}, [field] = undoValue })
+                        NetChannel.Bind:SendToServer({ Guid = {guid}, Attributes = { [field] = undoValue } })
                         info[field] = undoValue
                     end,
                     Redo = function()
-                        Post(NetChannel.Bind, { Type = "SetType", Guid = {guid}, [field] = newValue })
+                        NetChannel.Bind:SendToServer({ Guid = {guid}, Attributes = attr })
                         info[field] = newValue
                     end
                 })
@@ -640,20 +645,19 @@ function TransformToolbar:CreateBindPopup(guid)
             return checkbox
         end
 
-        local notCheck = function(checked) return not checked end
         local checkCheck = function(v) return v end
 
         local lookAtCheck = addBindCheckbox(panel, "Keep Looking At", info, "KeepLookingAt", checkCheck, checkCheck)
-        local notFollowCheck = addBindCheckbox(panel, "Follow Parent", info, "NotFollowParent", notCheck, notCheck)
+        local followCheck = addBindCheckbox(panel, "Follow Parent", info, "FollowParent", checkCheck, checkCheck)
 
-        local listener = ClientSubscribe(NetMessage.BindProps, function (data)
-            local ok, err = pcall(function() return lookAtCheck.Checked, notFollowCheck.Checked end)
+        local listener = ClientSubscribe(NetChannel.BindProps, function (data)
+            local ok, err = pcall(function() return lookAtCheck.Checked, followCheck.Checked end)
             if not ok then return UNSUBSCRIBE_SYMBOL end
             for _,d in ipairs(data.BindInfos) do
                 if d.Guid == guid then
                     info = d
                     lookAtCheck.Checked = d.KeepLookingAt == true or false
-                    notFollowCheck.Checked = (not d.NotFollowParent) == true or false
+                    followCheck.Checked = d.FollowParent == true or false
                     nearByCombo:SetSelected(d.BindParent)
                     if d.BindParent then
                         image:Destroy()

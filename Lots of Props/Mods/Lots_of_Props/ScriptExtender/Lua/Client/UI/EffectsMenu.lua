@@ -20,7 +20,7 @@ function EffectsMenu:__init(parent)
     self.searchNote = ""
     self.nameAscend = true
 
-    self.autoSave = CONFIG.EffectsMenu.autoSave and CONFIG.EffectsMenu.autoSave or false
+    self.autoSave = CONFIG.EffectMenu.autoSave and CONFIG.EffectMenu.autoSave or false
     self:Load()
 end
 
@@ -57,21 +57,15 @@ function EffectsMenu:Render()
 
     local autoSaveOpe = function()
         self.autoSave = not self.autoSave
-        CONFIG.EffectsMenu.autoSave = self.autoSave
+        CONFIG.EffectMenu.autoSave = self.autoSave
     end
 
     local stopAllOpe = function()
         ConfirmPopup:DangerConfirm(
             GetLoca("Are you sure?"),
             function()
-                local data = {
-                    Type = "All"
-                }
-                Post("StopEffect", data)
-                local stopStatusData = {
-                    Type = "All"
-                }
-                Post("StopStatus", stopStatusData)
+                NetChannel.StopStatus:SendToServer({ Type = "All" })
+                NetChannel.StopEffect:SendToServer({ Type = "All" })
             end,
             nil
         )
@@ -114,14 +108,6 @@ function EffectsMenu:Render()
     ApplyDangerSelectableStyle(clearAllButton)
 
     --#endregion Main Menu
-
-    ----------------------------------------------------------
-    --------------------- Main Menu End ----------------------
-    ----------------------------------------------------------
-
-    ----------------------------------------------------------
-    -------------------- Utility Start -----------------------
-    ----------------------------------------------------------
     
     --#region Utility
 

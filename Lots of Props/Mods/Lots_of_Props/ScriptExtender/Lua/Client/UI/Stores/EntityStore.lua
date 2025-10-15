@@ -1,18 +1,18 @@
-local PropDatas = {}
+local EntityDatas = {}
 local BindDatas = {}
 local GuidToDisplayName = {}
 local DisplayNameToGuid = {}
 
-local propNameBlacklist = {
+local entityNameBlacklist = {
     ["Group Analog Stick"] = true,
     ["Camera"] = true,
 }
 
-PropStore = {
+EntityStore = {
     Tree = TreeTable.new()
 }
 
---- @class PropData
+--- @class EntityData
 --- @field Guid string
 --- @field DisplayName string
 --- @field TemplateId string
@@ -31,88 +31,88 @@ PropStore = {
 --- @field Rotation Quat?
 --- @field Scale Vec3?
 
---- @class PropStore
---- @field AddProp fun(self:PropStore, guid:string, data:PropData)
---- @field RemoveProp fun(self:PropStore, guid:string)
---- @field SetProp fun(self:PropStore, guid:string, data:PropData)
---- @field GetProp fun(self:PropStore, guid:string):PropData
---- @field GetProps fun(self:PropStore, guids:string[]):table<string, PropData>
---- @field GetAll fun(self:PropStore):table<string, PropData>
---- @field CountGroupAndTag fun(self:PropStore): (table<string, number>, table<string, number>)
---- @field Filter fun(self:PropStore, fn:fun(guid:string, data:PropData):boolean):table<string, PropData>
---- @field FilterByTag fun(self:PropStore, tag:string):table<string, PropData>
---- @field FilterByTags fun(self:PropStore, tags:string[]):table<string, PropData>
---- @field FilterByGroup fun(self:PropStore, group:string):table<string, PropData>
---- @field SearchByNote fun(self:PropStore, keyword:string):table<string, PropData>
---- @field GetDisplayNameFromGuid fun(self:PropStore, guid:string):string|nil
---- @field GetGuidFromDisplayName fun(self:PropStore, displayName:string):string
---- @field RegisterDisplayName fun(self:PropStore, displayName:string, guid?:string, discardName?:string):string
---- @field RemoveDisplayName fun(self:PropStore, displayName:string)
---- @field GetAllDisplayNames fun(self:PropStore):string[]
+--- @class EntityStore
+--- @field AddEntity fun(self:EntityStore, guid:string, data:EntityData|ServerEntityData)
+--- @field RemoveEntity fun(self:EntityStore, guid:string)
+--- @field SetEntity fun(self:EntityStore, guid:string, data:EntityData)
+--- @field GetEntity fun(self:EntityStore, guid:string):EntityData
+--- @field GetEntities fun(self:EntityStore, guids:string[]):table<string, EntityData>
+--- @field GetAllEntities fun(self:EntityStore):table<string, EntityData>
+--- @field CountGroupAndTag fun(self:EntityStore): (table<string, number>, table<string, number>)
+--- @field Filter fun(self:EntityStore, fn:fun(guid:string, data:EntityData):boolean):table<string, EntityData>
+--- @field FilterByTag fun(self:EntityStore, tag:string):table<string, EntityData>
+--- @field FilterByTags fun(self:EntityStore, tags:string[]):table<string, EntityData>
+--- @field FilterByGroup fun(self:EntityStore, group:string):table<string, EntityData>
+--- @field SearchByNote fun(self:EntityStore, keyword:string):table<string, EntityData>
+--- @field GetDisplayNameFromGuid fun(self:EntityStore, guid:string):string|nil
+--- @field GetGuidFromDisplayName fun(self:EntityStore, displayName:string):string
+--- @field RegisterDisplayName fun(self:EntityStore, displayName:string, guid?:string, discardName?:string):string
+--- @field RemoveDisplayName fun(self:EntityStore, displayName:string)
+--- @field GetAllDisplayNames fun(self:EntityStore):string[]
 
-setmetatable(PropStore, {
+setmetatable(EntityStore, {
     __index = function(t, k)
-        return rawget(t, k) or PropDatas[k]
+        return rawget(t, k) or EntityDatas[k]
     end,
     __newindex = function(t, k, v)
         if type(k) == "string" and type(v) ~= "function" then
-            PropDatas[k] = v
+            EntityDatas[k] = v
         else
             rawset(t, k, v)
         end
     end
 })
 
-function PropStore:SetupServerListeners()
+function EntityStore:SetupServerListeners()
 
     local popupNotif = Notification.new("Lots of Props")
     popupNotif.Pivot = {0.5, 0.1}
     popupNotif.FlickToDismiss = true
 
-    ClientSubscribe(NetMessage.ServerProps, function(data)
-        if #data == 0 then
+    NetChannel.Entities.Added:SetHandler(function (data)
+        if #data.Entities == 0 then
             return
         end
 
         local list = {}
-        for _, prop in ipairs(data) do
-            if not PropDatas[prop.Guid] then
-                self:AddProp(prop.Guid, prop)
+        for _, entity in ipairs(data.Entities) do
+            if not EntityDatas[entity.Guid] then
+                self:AddEntity(entity.Guid, entity)
                 --Debug("New Prop", prop)
-                table.insert(list, prop.Guid)
+                table.insert(list, entity.Guid)
             end
         end
-        LOPMenu:NewPropAdded(list)
+        LOPMenu:NewEntityAdded(list)
     end)
 
-    ClientSubscribe(NetMessage.DeletedProps, function(data)
+
+    NetChannel.Entities.Deleted:SetHandler(function (data)
+        Debug("Entities.Deleted", data)
         if #data == 0 then
             return
         end
 
         for _, guid in ipairs(data) do
             if guid ~= nil and guid ~= "" then
-                PropStore:RemoveProp(guid)
+                EntityStore:RemoveProp(guid)
             end
         end
-        LOPMenu:PropDeleted(data)
+        LOPMenu:EntityDeleted(data)
     end)
 
-    ClientSubscribe(NetMessage.AttributeChanged, function(data)
+    NetChannel.AttributeChanged:SetHandler(function(data)
         for _,guid in pairs(data.Guid) do
-            if PropDatas[guid] then
-                for k, v in pairs(data) do
-                    if k ~= "Guid" and type(v) == "boolean" then
-                        PropDatas[guid][k] = v
-                    end
+            if EntityDatas[guid] then
+                for k, v in pairs(data.Attributes) do
+                    EntityDatas[guid][k] = v
                 end
             end
         end
 
-        LOPMenu.propsMenu:UpdateList()
+        LOPMenu.entityMenu:UpdateList()
     end)
 
-    ClientSubscribe(NetMessage.BindProps, function (data)
+    NetChannel.BindProps:SetHandler(function(data)
         for _, info in ipairs(data.BindInfos) do
             local guid = info.Guid
             local parent = info.BindParent
@@ -121,7 +121,7 @@ function PropStore:SetupServerListeners()
             BindDatas[guid] = BindDatas[guid] or {}
             BindDatas[guid].BindParent = parent
             BindDatas[guid].KeepLookingAt = info.KeepLookingAt
-            BindDatas[guid].NotFollowParent = info.NotFollowParent
+            BindDatas[guid].FollowParent = info.FollowParent
             ::continue::
         end
 
@@ -133,74 +133,67 @@ function PropStore:SetupServerListeners()
                     GetName(guid) or guid, 
                     GetName(parent) or (parent and parent or "Unbound"
                 )))
-                panel:AddText("Attributes: " .. (info.KeepLookingAt and "KeepLookingAt " or "") .. (info.NotFollowParent and "NotFollowParent" or ""))
+                panel:AddText("Attributes: " .. (info.KeepLookingAt and "KeepLookingAt " or "") .. (info.FollowParent and "FollowParent" or ""))
             end
         end)
-
     end)
 end
 
 ---@param guid string
----@param data PropData
-function PropStore:AddProp(guid, data)
-
-    PropDatas[guid] = data
+---@param data EntityData|ServerEntityData
+function EntityStore:AddEntity(guid, data)
+    EntityDatas[guid] = data
 
     self:RegisterDisplayName(GetDisplayNameForTemplateId(data.TemplateId), guid)
 
     if not self.Tree:Find(guid) then
-        if data.Path then
-            if self.Tree:AddPath(data.Path) then
-                self.Tree:AddLeaf(guid, "end", data.Path[#data.Path])
-            else
-                self.Tree:AddLeaf(guid, "end")
-            end
-        end
+        self.Tree:AddLeaf(guid, "end")
     end
 
-    if not PropDatas[guid].Tags then
-        PropDatas[guid].Tags = {}
+
+    if not EntityDatas[guid].Tags then
+        EntityDatas[guid].Tags = {}
     end
 end
 
-function PropStore:RemoveProp(guid)
+function EntityStore:RemoveProp(guid)
     self.Tree:Remove(guid)
-    self:RemoveDisplayName(PropDatas[guid] and PropDatas[guid].DisplayName)
-    PropDatas[guid] = nil
+    self:RemoveDisplayName(EntityDatas[guid] and EntityDatas[guid].DisplayName)
+    EntityDatas[guid] = nil
 end
 
-function PropStore:SetProp(guid, data)
+function EntityStore:SetProp(guid, data)
     for k, v in pairs(data) do
-        if PropDatas[guid] then
-            PropDatas[guid][k] = v
+        if EntityDatas[guid] then
+            EntityDatas[guid][k] = v
         end
     end
 end
 
 --- @param guid string
---- @return PropData|nil
-function PropStore:GetProp(guid)
-    return PropDatas[guid]
+--- @return EntityData|nil
+function EntityStore:GetEntity(guid)
+    return EntityDatas[guid]
 end
 
-function PropStore:GetProps(guids)
+function EntityStore:GetEntities(guids)
     local results = {}
     for _, guid in pairs(guids) do
-        if PropDatas[guid] then
-            results[guid] = PropDatas[guid]
+        if EntityDatas[guid] then
+            results[guid] = EntityDatas[guid]
         end
     end
     return results
 end
 
-function PropStore:GetAll()
-    return DeepCopy(PropDatas)
+function EntityStore:GetAll()
+    return DeepCopy(EntityDatas)
 end
 
-function PropStore:CountGroupAndTag()
+function EntityStore:CountGroupAndTag()
     local groupCnt = {}
     local tagsCnt = {}
-    for _, data in pairs(PropDatas) do
+    for _, data in pairs(EntityDatas) do
         if data.Group and data.Group ~= "" then
             groupCnt[data.Group] = (groupCnt[data.Group] or 0) + 1
         end
@@ -213,11 +206,11 @@ function PropStore:CountGroupAndTag()
     return groupCnt, tagsCnt
 end
 
----@param fn fun(guid:string, data:PropData):boolean
----@return table<string, PropData>
-function PropStore:Filter(fn)
+---@param fn fun(guid:string, data:EntityData):boolean
+---@return table<string, EntityData>
+function EntityStore:Filter(fn)
     local results = {}
-    for guid, data in pairs(PropDatas) do
+    for guid, data in pairs(EntityDatas) do
         if fn(guid, data) then
             results[guid] = data
         end
@@ -225,13 +218,13 @@ function PropStore:Filter(fn)
     return results
 end
 
-function PropStore:FilterByTag(tag)
+function EntityStore:FilterByTag(tag)
     return self:Filter(function(guid, data)
         return data.Tags and TableContains(data.Tags, tag)
     end)
 end
 
-function PropStore:FilterByTags(tags)
+function EntityStore:FilterByTags(tags)
     return self:Filter(function(guid, data)
         if not data.Tags then
             return false
@@ -245,26 +238,26 @@ function PropStore:FilterByTags(tags)
     end)
 end
 
-function PropStore:FilterByGroup(group)
+function EntityStore:FilterByGroup(group)
     return self:Filter(function(guid, data)
         return data.Group == group
     end)
 end
 
-function PropStore:SearchByNote(keyword)
+function EntityStore:SearchByNote(keyword)
     return self:Filter(function(guid, data)
         return data.Note and string.find(string.lower(data.Note), string.lower(keyword), 1, true) ~= nil
     end)
 end
 
-function PropStore:RegisterDisplayName(displayName, guid, discardName)
+function EntityStore:RegisterDisplayName(displayName, guid, discardName)
     if not displayName or displayName == "" then
         return
     end
 
     self:RemoveDisplayName(discardName)
 
-    if propNameBlacklist[displayName] then
+    if entityNameBlacklist[displayName] then
         displayName = displayName .. " (Prop)"
     end
 
@@ -279,7 +272,7 @@ function PropStore:RegisterDisplayName(displayName, guid, discardName)
     if guid then
         GuidToDisplayName[guid] = returnName
         DisplayNameToGuid[returnName] = guid
-        PropDatas[guid].DisplayName = returnName
+        EntityDatas[guid].DisplayName = returnName
     else
         Warning("[Lots of Props] RegisterDisplayName called without guid for name: " .. returnName)
         return
@@ -288,7 +281,7 @@ function PropStore:RegisterDisplayName(displayName, guid, discardName)
     return returnName
 end
 
-function PropStore:RemoveDisplayName(displayName)
+function EntityStore:RemoveDisplayName(displayName)
     if not displayName or displayName == "" then
         return
     end
@@ -300,7 +293,7 @@ function PropStore:RemoveDisplayName(displayName)
     end
 end
 
-function PropStore:GetAllDisplayNames()
+function EntityStore:GetAllDisplayNames()
     local names = {}
     for guid, displayName in pairs(GuidToDisplayName) do
         if displayName and displayName ~= "" then
@@ -312,42 +305,42 @@ end
 
 --- @param guid GUIDSTRING
 --- @return string|nil
-function PropStore:GetPropNameFromGuid(guid)
+function EntityStore:GetPropNameFromGuid(guid)
     if GuidToDisplayName[guid] then
         return GuidToDisplayName[guid]
     end
     return nil
 end
 
-function PropStore:GetGuidFromPropName(displayName)
+function EntityStore:GetGuidFromPropName(displayName)
     if DisplayNameToGuid[displayName] then
         return DisplayNameToGuid[displayName]
     end
     return nil
 end
 
-function PropStore:GetBindParent(guid)
+function EntityStore:GetBindParent(guid)
     return BindDatas[guid] and BindDatas[guid].BindParent or nil
 end
 
 --- @param guid GUIDSTRING
 --- @return BindInfo|nil
-function PropStore:GetBindInfo(guid)
+function EntityStore:GetBindInfo(guid)
     return BindDatas[guid] or {}
 end
 
-function PropStore:BuildDisplayNameToTemplateTree()
+function EntityStore:BuildDisplayNameToTemplateTree()
     local tree = TreeTable.new()
     
     return tree
 end
 
-function PropStore:RestoreTreeListFromTable()
+function EntityStore:RestoreTreeListFromTable()
 
 
 end
 
-PropStore:SetupServerListeners()
+EntityStore:SetupServerListeners()
 
 Ext.RegisterConsoleCommand("PropStore", function (cmd, ...)
     local args = {...}
@@ -359,13 +352,13 @@ Ext.RegisterConsoleCommand("PropStore", function (cmd, ...)
     local action = args[1]:lower()
     if action == "list" then
         local cnt = 0
-        for guid, data in pairs(PropStore:GetAll()) do
+        for guid, data in pairs(EntityStore:GetAll()) do
             cnt = cnt + 1
             _P(string.format("%d. %s - %s", cnt, guid, data.DisplayName or "No Name"))
         end
         _P(string.format("[Lots of Props] Total %d props in store.", cnt))
     elseif action == "count" then
-        local groupCnt, tagsCnt = PropStore:CountGroupAndTag()
+        local groupCnt, tagsCnt = EntityStore:CountGroupAndTag()
         _P("[Lots of Props] Group Counts:")
         for group, cnt in pairs(groupCnt) do
             _P(string.format(" - %s: %d", group, cnt))
@@ -375,14 +368,14 @@ Ext.RegisterConsoleCommand("PropStore", function (cmd, ...)
             _P(string.format(" - %s: %d", tag, cnt))
         end
     elseif action == "dump" then
-        _D(PropStore:GetAll())
+        _D(EntityStore:GetAll())
     elseif action == "get" then
         if #args < 2 then
             _P("[Lots of Props] Usage: LOP_PropStore get <guid>")
             return
         end
         local guid = args[2]
-        local data = PropStore:GetProp(guid)
+        local data = EntityStore:GetEntity(guid)
         if data then
             _D(data)
         else

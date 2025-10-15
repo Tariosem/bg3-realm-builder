@@ -1,6 +1,8 @@
 local VISUALTAB_WIDTH = 800 * SCALE_FACTOR
 local VISUALTAB_HEIGHT = 1000 * SCALE_FACTOR
 
+--- @class VisualTab
+--- @field new fun(guid: GUIDSTRING, displayName: string|nil, parent: ExtuiTreeParent|nil, templateName: string|nil): VisualTab
 VisualTab = _Class("VisualTab")
 
 function VisualTab:__init(guid, displayName, parent, templateName)
@@ -22,22 +24,13 @@ function VisualTab:__init(guid, displayName, parent, templateName)
     self.allowRepeat = false
     self.allowWhiteParticles = false
 
-    
-    if not ClientOriginalVisualData[templateName] then
-        ClientOriginalVisualData[templateName] = {}
-    else
-    end
-    self.resetValues = ClientOriginalVisualData[templateName]
-
     self.modifiedParams = {}
-    if not ClientVisualPresetData[templateName] then
-        ClientVisualPresetData[templateName] = {}
-    end
-    self.savedModifiedParams = ClientVisualPresetData[templateName]
-    self.currentPreset = PropStore[guid] and PropStore[guid].VisualPreset or nil
+
+    self.currentPreset = EntityStore[guid] and EntityStore[guid].VisualPreset or nil
 
     self.updateFuncs = {}
     self.resetFuncs = {}
+    self.Materials = {}
 
     self:Load()
 
@@ -45,16 +38,30 @@ function VisualTab:__init(guid, displayName, parent, templateName)
         self:LoadPreset(self.currentPreset)
     end
 
-    --[[self.replaceSub = Ext.Events.NetMessage:Subscribe(function(e)
-        if e.Channel == "ReplaceProp" .. self.guid then
-        local data = Ext.Json.Parse(e.Payload)
-            self.guid = data.Guid
-            if self.autoReload then
-                Timer:After(500, function()
-                end)
-            end
+    NetChannel.GetTemplate:RequestToServer({Guid = self.guid}, function (response)
+        if response.Success and response.Template then
+            self.templateName = response.Template
+            self:SetupTemplate()
+            Debug("VisualTab: Received template name from server: " .. self.templateName)
+        else
+            Error("VisualTab: Could not get template name from server for entity " .. self.guid)
         end
-    end)]]
+    end)
+end
+
+function VisualTab:SetupTemplate()
+    local templateName = self.templateName or "Unknown"
+        
+    if not ClientOriginalVisualData[templateName] then
+        ClientOriginalVisualData[templateName] = {}
+    else
+    end
+    self.resetValues = ClientOriginalVisualData[templateName]
+
+    if not ClientVisualPresetData[templateName] then
+        ClientVisualPresetData[templateName] = {}
+    end
+    self.savedModifiedParams = ClientVisualPresetData[templateName]
 end
 
 function VisualTab:GetCurrentPreset()
@@ -137,8 +144,8 @@ function VisualTab:RenderPresetsCell()
         end
         self.symbol = self.topLeftCell:AddImage(icon)
         self.symbol.ImageData.Size = {64 * SCALE_FACTOR, 64 * SCALE_FACTOR}
-        if PropStore[self.guid] and PropStore[self.guid].IconTintColor then
-            self.symbol.Tint = PropStore[self.guid].IconTintColor
+        if EntityStore[self.guid] and EntityStore[self.guid].IconTintColor then
+            self.symbol.Tint = EntityStore[self.guid].IconTintColor
         end
         self.displayNameText = self.topLeftCell:AddText(self.displayName)
         self.displayNameText.SameLine = true
@@ -329,68 +336,24 @@ function VisualTab:RenderMaterialEditor()
         local renderable = desc.Renderable --[[@as RenderableObject]]
 
         local material = renderable.ActiveMaterial --[[@as AppliedMaterial]]
-        local baseMaterialName = GetLastPath(material.Material.Parent.Name)
-        local materialRes = Ext.Resource.Get(material.MaterialName, "Material")
-        local materialName = baseMaterialName
 
-        if materialNameCnt[baseMaterialName] then
-            materialNameCnt[baseMaterialName] = materialNameCnt[baseMaterialName] + 1
-            materialName = baseMaterialName .. " (" .. materialNameCnt[baseMaterialName] .. ")"
-        else
-            materialNameCnt[baseMaterialName] = 1
+        local meshName = renderable.Model and renderable.Model.Name or "Unknown Mesh"
+
+        local materialNode = self.materialHeader:AddTree(meshName .. "##" .. tostring(descIndex))
+
+        local function getliveMat()
+            return VisualHelpers.GetMaterial(self.guid, descIndex)
         end
+    
+        local materialEditor = MaterialEditor.new(materialNode, material.MaterialName, getliveMat) --[[@as MaterialEditor]]
+        materialEditor:Render()
 
-        --local materialName = material.MaterialName
-        local materialNode = self.materialHeader:AddTree(materialName)
+        self:RenderScaleSliders(materialNode, descIndex, meshName)
 
-        materialNode.OnHoverEnter = function()
-            local liveRenderable = VisualHelpers.GetRenderable(UuidToHandle(self.guid), descIndex)
-            if not liveRenderable then return end
-            local rotation = liveRenderable.WorldTransform.RotationQuat
-            local center = liveRenderable.WorldTransform.Translate
-            local bb = liveRenderable.BaseBound
-            local halfSizes = Vec3.new({ bb.Max[1] - bb.Min[1], bb.Max[2] - bb.Min[2], bb.Max[3] - bb.Min[3]})
-            Post(NetChannel.Visualize, { Type = "OBB", Position = center, Rotation = rotation, HalfSizes = halfSizes  })
+        while self.Materials[meshName] do
+            materialNameCnt[meshName] = (materialNameCnt[meshName] or 1) + 1
+            meshName = meshName .. " (" .. tostring(materialNameCnt[meshName]) .. ")"
         end
-
-        local scalarParams = material.Material.Parameters.ScalarParameters
-        local vector2Params = material.Material.Parameters.Vector2Parameters
-        local vector3Params = material.Material.Parameters.Vector3Parameters
-        local vector4Params = material.Material.Parameters.VectorParameters
-        
-        if #scalarParams > 0 then
-            local scalarParamNode = materialNode--materialNode:AddTree(GetLoca("Scalar Parameters"))
-            scalarParamNode.IDContext = materialName .. "ScalarParameters"
-            for paramIndex, param in ipairs(scalarParams) do
-                self:RenderScalarParameter(param, scalarParamNode, descIndex, baseMaterialName)
-            end
-        end
-
-        if #vector2Params > 0 then
-            local vector2ParamNode = materialNode--materialNode:AddTree(GetLoca("Vector2 Parameters"))
-            vector2ParamNode.IDContext = materialName .. "Vector2Parameters"
-            for paramIndex, param in ipairs(vector2Params) do
-                self:RenderVectorParameter(param, vector2ParamNode, descIndex, baseMaterialName, "Vector2")
-            end
-        end
-
-        if #vector3Params > 0 then
-            local vector3ParamNode = materialNode--materialNode:AddTree(GetLoca("Vector3 Parameters"))
-            vector3ParamNode.IDContext = materialName .. "Vector3Parameters"
-            for paramIndex, param in ipairs(vector3Params) do
-                self:RenderVectorParameter(param, vector3ParamNode, descIndex, baseMaterialName, "Vector3")
-            end
-        end
-
-        if #vector4Params > 0 then
-            local vector4ParamNode = materialNode--materialNode:AddTree(GetLoca("Vector4 Parameters"))
-            vector4ParamNode.IDContext = materialName .. "Vector4Parameters"
-            for paramIndex, param in ipairs(vector4Params) do
-                self:RenderVectorParameter(param, vector4ParamNode, descIndex, baseMaterialName, "Vector4")
-            end
-        end
-
-        self:RenderScaleSliders(materialNode, descIndex, baseMaterialName)
 
         ::continue::
     end
@@ -1055,154 +1018,6 @@ function VisualTab:RenderParticleSystemComponent(node, component, compIndex)
     end
 end
 
-local function GetARange(oriValue)
-    local range = math.max(math.abs(oriValue * 10), 1.0)
-    return oriValue - range, oriValue + range, math.max(math.abs(oriValue / 10), 0.1)
-end
-
-function VisualTab:RenderScalarParameter(param, parent, descIndex, materialName)
-    local paramNode = parent:AddTree(param.ParameterName)
-    local key = materialName .. "::" .. descIndex .. "::" .. param.ParameterName
-    self:CheckKey(key)
-    self.resetValues[key] = self.resetValues[key] or param.Value
-    local oriValue = self.resetValues[key]
-    local currentValue = param.Value
-
-    local resetButton = paramNode:AddButton(GetLoca("Reset"))
-    local sliderScalar = AddSliderWithStep(paramNode, key, currentValue, GetARange(currentValue))
-    sliderScalar.UserData.ResetButton.Visible = false
-
-    local parameterName = param.ParameterName
-    local function saveScalarParam(parameterName)
-        self.modifiedParams[key] = {
-            Type = "Scalar",
-            DescIndex = descIndex,
-            ParameterName = parameterName,
-            Value = sliderScalar.Value[1]
-        }
-    end
-
-    sliderScalar.OnChange = function(slider)
-        VisualHelpers.SetMaterialParameters(self.guid, descIndex, parameterName, slider.Value[1], "Scalar")
-        saveScalarParam(parameterName)
-    end
-
-    resetButton.OnClick = function()
-        VisualHelpers.SetMaterialParameters(self.guid, descIndex, parameterName, oriValue, "Scalar")
-        sliderScalar.Value = {oriValue, oriValue, oriValue, oriValue}
-        self.modifiedParams[key] = nil
-    end
-
-    self.resetFuncs[key] = resetButton.OnClick
-
-    self.updateFuncs[key] = function()
-        local entity = Ext.Entity.Get(self.guid)
-        if not self:CheckVisual() then return end
-        local material = entity.Visual.Visual.ObjectDescs[descIndex].Renderable.ActiveMaterial.Material
-        for paramIdx, param in pairs(material.Parameters.ScalarParameters) do
-            if param.ParameterName == parameterName then
-                local value = param.Value
-                if sliderScalar then
-                    sliderScalar.Value = ToVec4(value)
-                end
-                return
-            end
-        end
-    end
-end
-
-function VisualTab:RenderVectorParameter(param, parent, descIndex, materialName, paramType)
-    local parameterName = param.ParameterName
-    local paramNode = parent:AddTree(parameterName)
-    local resetButton = paramNode:AddButton(GetLoca("Reset"))
-    local key = materialName .. "::" .. descIndex .. "::" .. parameterName
-    self:CheckKey(key)
-
-    self.resetValues[key] = self.resetValues[key] or param.Value
-    local oriValue = self.resetValues[key]
-
-    local sliders = {}
-    local axes = {"X", "Y", "Z", "W"}
-    local numAxes = paramType == "Vector2" and 2 or (paramType == "Vector3" and 3 or 4)
-
-    for i = 1, numAxes do
-        sliders[axes[i]] = AddSliderWithStep(paramNode, axes[i], param.Value[i], GetARange(param.Value[i]))
-    end
-
-    local colorPicker = nil
-    if paramType == "Vector3" or paramType == "Vector4" then
-        colorPicker = paramNode:AddColorEdit("")
-        colorPicker.Color = { param.Value[1], param.Value[2], param.Value[3], paramType == "Vector4" and param.Value[4] or 1}
-        colorPicker.IDContext = "ColorPicker"
-        if paramType == "Vector3" then
-            colorPicker.AlphaBar = false
-            colorPicker.NoAlpha = true
-        end
-    end
-
-    local function updateMaterial()
-        local value = {}
-        for i = 1, numAxes do
-            value[i] = sliders[axes[i]].Value[1]
-        end
-        VisualHelpers.SetMaterialParameters(self.guid, descIndex, parameterName, value, paramType)
-        if colorPicker then
-            colorPicker.Color = numAxes == 3 and {value[1], value[2], value[3], 1} or value
-        end
-        self.modifiedParams[key] = {
-            Type = paramType,
-            DescIndex = descIndex,
-            ParameterName = parameterName,
-            Value = value
-        }
-    end
-
-    for i = 1, numAxes do
-        sliders[axes[i]].OnChange = updateMaterial
-    end
-
-    if colorPicker then
-        colorPicker.OnChange = function(picker)
-            for i = 1, numAxes do
-                sliders[axes[i]].Value = ToVec4(picker.Color[i])
-            end
-            updateMaterial()
-        end
-    end
-    
-    resetButton.OnClick = function()
-        VisualHelpers.SetMaterialParameters(self.guid, descIndex, parameterName, oriValue, paramType)
-        for i = 1, numAxes do
-            sliders[axes[i]].Value = ToVec4(oriValue[i])
-        end
-        if colorPicker then
-            colorPicker.Color = numAxes == 3 and {oriValue[1], oriValue[2], oriValue[3], 1} or oriValue
-        end
-        self.modifiedParams[key] = nil
-    end
-    
-    self.resetFuncs[key] = resetButton.OnClick
-
-    self.updateFuncs[key] = function()
-        local entity = Ext.Entity.Get(self.guid)
-        if not self:CheckVisual() then return end
-        local material = entity.Visual.Visual.ObjectDescs[descIndex].Renderable.ActiveMaterial.Material
-        local paramList = paramType == "Vector2" and material.Parameters.Vector2Parameters or (paramType == "Vector3" and material.Parameters.Vector3Parameters or material.Parameters.VectorParameters)
-        for paramIdx, iparam in pairs(paramList) do
-            if parameterName == iparam.ParameterName then
-                local value = iparam.Value
-                for i = 1, numAxes do
-                    sliders[axes[i]].Value = ToVec4(value[i])
-                end
-                if colorPicker then
-                    colorPicker.Color = numAxes == 3 and {value[1], value[2], value[3], 1} or value
-                end
-                return
-            end
-        end
-    end
-end
-
 function VisualTab:RenderScaleSliders(parent, descIndex, materialName)
     local tempEntity = Ext.Entity.Get(self.guid)
     local tempRenderable = tempEntity.Visual.Visual.ObjectDescs[descIndex].Renderable
@@ -1361,7 +1176,7 @@ function VisualTab:Save(name, overwrite)
 
     --Info("Saved VisualTab preset as '" .. saveName .. "' for template: " .. templateId)
     self.currentPreset = saveName
-    PropStore[self.guid].VisualPreset = saveName
+    EntityStore[self.guid].VisualPreset = saveName
     self:Load()
 
     --Info("VisualTab:Save - Preset '" .. saveName .. "' saved successfully for template: " .. templateName)
@@ -1499,7 +1314,7 @@ function VisualTab:LoadPreset(name)
         SetCombo(self.loadCombo, name)
     end
 
-    PropStore[self.guid].VisualPreset = name
+    EntityStore[self.guid].VisualPreset = name
 
     self:UpdateAll()
 end

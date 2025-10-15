@@ -60,7 +60,7 @@ function TransformOperator:GetAxesBySpace(guid, space)
         local z = Ext.Math.QuatRotate(camRot, GLOBAL_COORDINATE.Z)
         self.AxesCache[guid][space] = { X = x, Y = y, Z = z }
     elseif space == "Parent" then
-        local parent = PropStore:GetBindParent(guid)
+        local parent = EntityStore:GetBindParent(guid)
         if parent and EntityExists(parent) then
             local parentRot = self.StartTransforms[parent] and self.StartTransforms[parent].RotationQuat or {CGetRotation(parent)}
             local x = Ext.Math.QuatRotate(parentRot, GLOBAL_COORDINATE.X)
@@ -98,6 +98,11 @@ function TransformOperator:__init(targets, space, mode, axis)
     self.Negative = false
 
     self.Axis = axis or { X = true }
+
+    if self.Mode ~= "Scale" and CountMap(self.Axis) > 1 then
+        self.Axis = { [next(self.Axis)] = true }
+    end
+
     self.Visualizations = {}
     self:Visualize()
 end
@@ -117,7 +122,7 @@ function TransformOperator:InitStartTransforms()
         RotationQuat = {GetCameraRotation()},
     }
     for _,guid in pairs(self.Targets) do
-        local parent = PropStore:GetBindParent(guid)
+        local parent = EntityStore:GetBindParent(guid)
         if parent and EntityExists(parent) then
             self.StartTransforms[parent] = {
                 Translate = {CGetPosition(parent)},
@@ -134,28 +139,32 @@ function TransformOperator:Visualize()
         return
     end
 
-    local requests = #self.Targets
-    local cnt = 0
-    local receive = ClientSubscribe(NetMessage.Visualization, function (data)
-        local guids = NormalizeGuidList(data.Guid)
-        cnt = cnt + 1
-        self.Visualizations[cnt] = guids[1]
-        if cnt > requests then
-            Debug("All visualizations received")
-            return UNSUBSCRIBE_SYMBOL
-        end
-    end)
+    local color = GizmoVisualizer.AxisLineColor[next(self.Axis)] or {1,1,0,1}
 
     for _,guid in pairs(self.Targets) do
         local axis = self:GetAxesBySpace(guid, self.Space)[next(self.Axis)]
         local ray = Ray.new({CGetPosition(guid)}, axis)
-        Post(NetChannel.Visualize, {
+
+        NetChannel.Visualize:RequestToServer({
             Type = "Line",
             Position = ray:At(-100),
             EndPosition = ray:At(100),
-            Color = GizmoVisualizer.AxisLineColor[next(self.Axis)] or {1,1,0,1},
             Duration = -1,
-        })
+        }, function (response)
+            for _,viz in pairs(response) do
+                local tryCnt = 0
+                Timer:EveryFrame(function()
+                    if tryCnt > 300 then
+                        Warning("GizmoVisualizer: Failed to get visual for line gizmo")
+                        return UNSUBSCRIBE_SYMBOL
+                    end
+                    if not VisualHelpers.GetEntityVisual(viz) then tryCnt = tryCnt + 1 return end
+                    GizmoVisualizer.SetLineFxColor(viz, color)
+                    return UNSUBSCRIBE_SYMBOL
+                end)
+                table.insert(self.Visualizations, viz)
+            end
+        end)
     end
 end
 
@@ -362,10 +371,10 @@ function TransformOperator:Confirm()
             Commands.SetTransformCommand(currenrTargets, currentTransforms, true)
         end
     })
-    Post(NetChannel.Visualize, { Type = "Clear" })
+    NetChannel.Visualize:RequestToServer({ Type = "Clear" }, function (response) end)
 end
 
 function TransformOperator:Cancel()
     Commands.SetTransformCommand(self.Targets, self.StartTransforms, true)
-    Post(NetChannel.Visualize, { Type = "Clear" })
+    NetChannel.Visualize:RequestToServer({ Type = "Clear" }, function (response) end)
 end

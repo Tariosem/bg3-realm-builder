@@ -26,7 +26,7 @@ Ext.Entity.OnCreate("Visual", function (entity)
                     ClearDummyData()
                     Timer:Cancel(dummyUpdateTimer)
                     dummyUpdateTimer = nil
-                    post.DummyDestroyed = true
+                    post.Deactive = true
                     break
                 end
                 local x, y, z = VisualHelpers.GetVisualPosition(dummy)
@@ -37,10 +37,8 @@ Ext.Entity.OnCreate("Visual", function (entity)
             end
             post.DummyInfos = dummiesInfo
 
-            Post("UpdateDummies", post)
+            NetChannel.UpdateDummies:SendToServer(post)
         end
-
-        --postUpdateDummies()
 
         if not dummyUpdateTimer then
             dummyUpdateTimer = Timer:EveryFrame(function()
@@ -128,8 +126,7 @@ ClientSubscribe("ServerPreset", function(data)
     UpdatePresetDataFromServer(data)
 end)
 
-ClientSubscribe("NewTemplate", function(data)
-    
+NetChannel.NewTemplate:SetHandler(function(data, user)
     SaveDefaultVisualValues(data.Guid, data.TemplateName)
 end)
 
@@ -252,11 +249,11 @@ function SaveDefaultVisualValues(guid, templateName, retryCnt)
                 
                 local light = VisualHelpers.GetLightEntity(entity, compIndex)
                 if light then
-                   for propName, propInfo in pairs(entityPropNameMap) do
+                   for propName, entInfo in pairs(entityPropNameMap) do
                         if light[propName] then
                             local key = "LightEntity::" .. compIndex .. "::" .. propName
                             newDefaults[key] = light[propName]
-                            if propInfo.isTemplate then
+                            if entInfo.isTemplate then
                                 newDefaults[key] = light.Template[propName]
                             end
                         end

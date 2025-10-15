@@ -168,48 +168,53 @@ function BlendColors(color1, color2, t)
     return { r, g, b, a }
 end
 
-function GenerateTheme(base, bg)
-    local colors                        = {}
+local function buildColorBasis(caccnet, accent2, bg)
 
-    colors["Border"]                    = AdjustColor(bg, -0.15, 0)
+end
+
+function GenerateTheme(accent, accent2, bg)
+    local colors = {}
+    accent2 = accent2 or accent
+
+    colors["Border"]                    = AdjustColor(accent, -0.2, -0.3)
     colors["BorderShadow"]              = AdjustColor(colors["Border"], -0.3, 0, -0.5)
-    colors["Button"]                    = AdjustColor(base, -0.05, -0.1)
+    colors["Button"]                    = AdjustColor(accent, -0.05, -0.1)
     colors["ButtonHovered"]             = AdjustColor(colors["Button"], 0.1, 0)
     colors["ButtonActive"]              = AdjustColor(colors["Button"], -0.1, 0)
-    colors["CheckMark"]                 = AdjustColor(base, 0.1, 0.1)
+    colors["CheckMark"]                 = AdjustColor(accent, 0.1, 0.1)
     colors["ChildBg"]                   = AdjustColor(bg, 0.02, 0)
-    colors["DragDropTarget"]            = AdjustColor(base, 0.1, 0)
+    colors["DragDropTarget"]            = AdjustColor(accent, 0.1, 0)
     colors["FrameBg"]                   = AdjustColor(bg, 0.05, 0)
-    colors["FrameBgHovered"]            = AdjustColor(base, 0.2, -0.2)
-    colors["FrameBgActive"]             = AdjustColor(base, -0.1, 0)
-    colors["Header"]                    = AdjustColor(base, -0.05, -0.15)
+    colors["FrameBgHovered"]            = AdjustColor(BlendColors(accent, accent2, 0.4), 0.18, -0.15)
+    colors["FrameBgActive"]             = AdjustColor(accent, -0.1, 0)
+    colors["Header"]                    = AdjustColor(accent, -0.05, -0.15)
     colors["HeaderHovered"]             = AdjustColor(colors["Header"], 0.15, 0)
     colors["HeaderActive"]              = AdjustColor(colors["Header"], -0.15, 0)
     colors["MenuBarBg"]                 = AdjustColor(bg, 0.03, 0)
     colors["ModalWindowDimBg"]          = AdjustColor(bg, 0, 0, -0.65)
-    colors["NavHighlight"]              = base
+    colors["NavHighlight"]              = accent2
     colors["NavWindowingDimBg"]         = AdjustColor(bg, 0, 0, -0.65)
-    colors["NavWindowingHighlight"]     = AdjustColor(base, 0, 0, -0.25)
-    colors["PlotHistogram"]             = AdjustColor(base, 0.2, -0.5)
-    colors["PlotHistogramHovered"]      = AdjustColor(base, 0.1, -0.3)
-    colors["PlotLines"]                 = AdjustColor(base, 0.2, -0.5)
-    colors["PlotLinesHovered"]          = AdjustColor(base, 0.1, -0.3)
+    colors["NavWindowingHighlight"]     = AdjustColor(accent, 0, 0, -0.25)
+    colors["PlotHistogram"]             = AdjustColor(BlendColors(accent, accent2, 0.6), 0.15, -0.45)
+    colors["PlotHistogramHovered"]      = AdjustColor(BlendColors(accent, accent2, 0.4), 0.08, -0.25)
+    colors["PlotLines"]                 = AdjustColor(BlendColors(accent, accent2, 0.6), 0.15, -0.45)
+    colors["PlotLinesHovered"]          = AdjustColor(BlendColors(accent, accent2, 0.4), 0.08, -0.25)
     colors["PopupBg"]                   = AdjustColor(bg, -0.05, 0)
-    colors["ResizeGrip"]                = AdjustColor(base, 0.2, -0.2)
-    colors["ResizeGripHovered"]         = AdjustColor(base, 0.1, 0)
-    colors["ResizeGripActive"]          = AdjustColor(base, -0.1, 0)
+    colors["ResizeGrip"]                = AdjustColor(accent, 0.2, -0.2)
+    colors["ResizeGripHovered"]         = AdjustColor(BlendColors(accent, accent2, 0.5), 0.08, 0)
+    colors["ResizeGripActive"]          = AdjustColor(accent, -0.1, 0)
     colors["ScrollbarBg"]               = AdjustColor(bg, -0.02, 0)
-    colors["ScrollbarGrab"]             = AdjustColor(base, 0, -0.3)
+    colors["ScrollbarGrab"]             = AdjustColor(accent, 0, -0.3)
     colors["ScrollbarGrabHovered"]      = AdjustColor(colors["ScrollbarGrab"], 0.1, 0)
     colors["ScrollbarGrabActive"]       = AdjustColor(colors["ScrollbarGrab"], -0.1, 0)
     colors["Separator"]                 = colors["Border"]
-    colors["SeparatorActive"]           = AdjustColor(base, 0.15, 0)
-    colors["SeparatorHovered"]          = AdjustColor(base, 0.15, 0)
-    colors["SliderGrab"]                = base
-    colors["SliderGrabActive"]          = AdjustColor(base, -0.15, 0)
+    colors["SeparatorActive"]           = AdjustColor(accent, 0.15, 0)
+    colors["SeparatorHovered"]          = AdjustColor(accent, 0.15, 0)
+    colors["SliderGrab"]                = accent
+    colors["SliderGrabActive"]          = AdjustColor(accent, -0.15, 0)
     colors["Tab"]                       = colors["HeaderActive"]
     colors["TabActive"]                 = colors["Header"]
-    colors["TabDimmedSelectedOverline"] = AdjustColor(base, 0.05, -0.1)
+    colors["TabDimmedSelectedOverline"] = AdjustColor(accent, 0.05, -0.1)
     colors["TabHovered"]                = colors["HeaderHovered"]
     colors["TabUnfocused"]              = AdjustColor(colors["Tab"], -0.05, 0)
     colors["TabUnfocusedActive"]        = AdjustColor(colors["TabActive"], -0.05, 0)
@@ -220,10 +225,10 @@ function GenerateTheme(base, bg)
     colors["TableRowBgAlt"]             = AdjustColor(bg, 0.05, 0)
     colors["Text"]                      = { 1, 1, 1, 1 }
     colors["TextDisabled"]              = AdjustColor(colors["Text"], -0.2, -0.7)
-    colors["TextLink"]                  = AdjustColor(base, 0.3, 0.3)
-    colors["TextSelectedBg"]            = AdjustColor(base, 0, 0, -0.3)
+    colors["TextLink"]                  = AdjustColor(accent2, 0.25, 0.25)
+    colors["TextSelectedBg"]            = AdjustColor(accent, 0, 0, -0.3)
     colors["TitleBg"]                   = AdjustColor(bg, -0.1, 0)
-    colors["TitleBgActive"]             = AdjustColor(base, 0, -0.2)
+    colors["TitleBgActive"]             = AdjustColor(accent, 0, -0.2)
     colors["TitleBgCollapsed"]          = AdjustColor(bg, -0.05, 0)
     colors["WindowBg"]                  = bg
 

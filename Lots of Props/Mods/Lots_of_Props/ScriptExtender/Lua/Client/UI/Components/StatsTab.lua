@@ -492,14 +492,11 @@ function StatusTab:_stopStatus()
         Object = self:GetSelectedObjects(),
         DisplayName = self.displayName
     }
-    Post("StopStatus", postData)
+    NetChannel.StopStatus:SendToServer(postData)
 end
 
 function StatusTab:_stopAllStatus()
-    local postData = {
-        DisplayName = self.displayName
-    }
-    Post("StopStatus", postData)
+    NetChannel.StopStatus:SendToServer({ DisplayName = self.displayName })
 end
 
 function StatsTab:RenderEmptyIcon(row, effectType)
@@ -641,7 +638,7 @@ function SpellTab:Play()
     postData.TargetRadius = tostring(self.searchData.TargetRadius) or "18"
     postData.FXScale = self.searchData.FXScale or 1
 
-    Post("CreateStat", postData)
+    NetChannel.CreateStat:SendToServer(postData)
 end
 
 function StatusTab:Play()
@@ -649,5 +646,5 @@ function StatusTab:Play()
 
     postData.Duration = self.searchData.Duration or 10
 
-    Post("CreateStat", postData)
+    NetChannel.CreateStat:SendToServer(postData)
 end

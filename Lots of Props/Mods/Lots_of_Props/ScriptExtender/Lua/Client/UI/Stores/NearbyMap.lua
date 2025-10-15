@@ -5,7 +5,7 @@ local nearByEntries = {}
 local function GetUniqueName(name)
     local baseName = name
     local suffix = 1
-    while nearByDisplayNameToGuid[name] or PropStore:GetGuidFromPropName(name) do
+    while nearByDisplayNameToGuid[name] or EntityStore:GetGuidFromPropName(name) do
         name = string.format("%s (%d)", baseName, suffix)
         suffix = suffix + 1
     end
@@ -28,8 +28,8 @@ function UpdateNearbyMap(pos, radius)
     for _,entry in pairs(entries) do
         local guid = entry.Guid
         local displayName = nil
-        if PropStore:GetPropNameFromGuid(guid) then
-            displayName = PropStore:GetPropNameFromGuid(guid) --[[@as string]]
+        if EntityStore:GetPropNameFromGuid(guid) then
+            displayName = EntityStore:GetPropNameFromGuid(guid) --[[@as string]]
         else
             displayName = GetUniqueName(entry.DisplayName)
         end
@@ -47,8 +47,8 @@ function GetAllNearbyEntries()
 end
 
 function GetGuidFromDisplayName(displayName)
-    if PropStore:GetGuidFromPropName(displayName) then
-        return PropStore:GetGuidFromPropName(displayName)
+    if EntityStore:GetGuidFromPropName(displayName) then
+        return EntityStore:GetGuidFromPropName(displayName)
     end
     if nearByDisplayNameToGuid[displayName] then
         return nearByDisplayNameToGuid[displayName]
@@ -57,8 +57,8 @@ function GetGuidFromDisplayName(displayName)
 end
 
 function GetDisplayNameFromGuid(guid)
-    if PropStore:GetPropNameFromGuid(guid) then
-        return PropStore:GetPropNameFromGuid(guid)
+    if EntityStore:GetPropNameFromGuid(guid) then
+        return EntityStore:GetPropNameFromGuid(guid)
     end
     if nearByGuidToDisplayName[guid] then
         return nearByGuidToDisplayName[guid]

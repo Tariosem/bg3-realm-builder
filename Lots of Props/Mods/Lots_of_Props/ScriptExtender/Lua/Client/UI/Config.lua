@@ -35,14 +35,14 @@ CONFIG = {
             autoReload = false,
         }
     },
-    PropsMenu = {},
-    EffectsMenu = {
+    EntityMenu = {},
+    EffectMenu = {
         autoSave = true,
     },
-    EffectsBrowser = {
+    EffectBrowser = {
         autoSave = true,
     },
-    ItemsBrowser = {
+    ItemBrowser = {
         autoSave = true,
     },
     PresetMenu = {

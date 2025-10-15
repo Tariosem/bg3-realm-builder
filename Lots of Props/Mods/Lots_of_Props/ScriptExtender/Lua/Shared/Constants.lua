@@ -90,4 +90,6 @@ for damageType,color in pairs(DAMAGE_TYPES_COLOR) do
     DAMAGE_TYPES_COLOR[damageType:lower()] = color
 end
 
+EPSILON = 0.00001
+
 MOD_DIRECTORY = "Mods/Lots_of_Props_a83e5a7e-8d8e-a333-8f62-ff3dd8671e80/"

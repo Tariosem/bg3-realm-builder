@@ -1,9 +1,9 @@
-local PROPTAB_WIDTH = 1000 * SCALE_FACTOR
-local PROPTAB_HEIGHT = 1200 * SCALE_FACTOR
+local ENTTAB_WIDTH = 1000 * SCALE_FACTOR
+local ENTTAB_HEIGHT = 1200 * SCALE_FACTOR
 
-PropTab = _Class("PropTab")
+EntityTab = _Class("ItemTab")
 
----@class PropTab
+---@class EntityTab
 ---@field guid string
 ---@field templateId string
 ---@field templateName string
@@ -19,7 +19,7 @@ PropTab = _Class("PropTab")
 ---@param templateId string
 ---@param parent ExtuiTabBar|nil
 ---@param initAttach boolean?
-function PropTab:__init(guid, templateId, parent, initAttach)
+function EntityTab:__init(guid, templateId, parent, initAttach)
     self.guid = guid
     self.templateId = templateId
     self.templateName = TrimTail(templateId, 37)
@@ -27,7 +27,7 @@ function PropTab:__init(guid, templateId, parent, initAttach)
         self.templateName = templateId
     end
 
-    self.displayName = PropStore[guid] and PropStore[guid].DisplayName or "Unknown"
+    self.displayName = EntityStore[guid] and EntityStore[guid].DisplayName or "Unknown"
 
     self.parent = parent or nil
     self.panel = nil
@@ -39,16 +39,6 @@ function PropTab:__init(guid, templateId, parent, initAttach)
     self.isWindow = not self.isAttach
     self.isValid = true
 
-    self.persisSub = ClientSubscribe("AttributesChanged", function(e)
-        local set = e.Guid
-        for _, guid in pairs(set) do
-            if guid == self.guid then
-                self.persistent = true
-                break
-            end
-        end
-    end)
-
     self.deleteAction = function()
         if self.persistent then
             return
@@ -56,20 +46,14 @@ function PropTab:__init(guid, templateId, parent, initAttach)
         ConfirmPopup:DangerConfirm(
             GetLoca("Are you sure you want to delete") .. " " .. self.displayName .. "?",
             function()
-                local data = {
-                    Guid = self.guid
-                }
-                Post("Delete", data)
-                self:Destroy()
-                PropStore:RemoveProp(self.guid)
-                DeleteWindowsByGuid(self.guid)
+                NetChannel.Delete:SendToServer({ Guid = self.guid })
             end,
             nil
         )
     end
 end
 
-function PropTab:Render()
+function EntityTab:Render()
     self.isVisible = true
 
     self.panel = nil
@@ -81,7 +65,7 @@ function PropTab:Render()
         self.isWindow = false
         self:OnAttach()
     else
-        self.panel = RegisterWindow(self.guid, self.displayName, "Prop Tab", self, self.lastPosition, self.lastSize or {PROPTAB_WIDTH, PROPTAB_HEIGHT})
+        self.panel = RegisterWindow(self.guid, self.displayName, "Prop Tab", self, self.lastPosition, self.lastSize or {ENTTAB_WIDTH, ENTTAB_HEIGHT})
         self.panel.Closeable = true
         self.isWindow = true
         self:OnDetach()
@@ -95,7 +79,7 @@ function PropTab:Render()
     self:RenderVisualTab()
 end
 
-function PropTab:RenderProfile()
+function EntityTab:RenderProfile()
 
     local profileHeader = self.panel
 
@@ -106,7 +90,7 @@ function PropTab:RenderProfile()
     self.IconContainer = self.profileRow:AddCell()
     self.Icon = self.IconContainer:AddImageButton(self.guid, GetIcon(self.guid), Vec2.new(168, 168) * SCALE_FACTOR)
     self.Icon:SetColor("Button", ToVec4(0))
-    self.Icon.Tint = PropStore[self.guid] and PropStore[self.guid].IconTintColor or {1,1,1,1}
+    self.Icon.Tint = EntityStore[self.guid] and EntityStore[self.guid].IconTintColor or {1,1,1,1}
 
     self.IdsContainer = self.profileRow:AddCell()
 
@@ -130,13 +114,13 @@ function PropTab:RenderProfile()
     self.displayNameButton.OnClick = function(Input)
         local text = self.displayNameInput.Text
         if text and text ~= "" then
-            self.displayName = PropStore:RegisterDisplayName(text, self.guid, self.displayName)
+            self.displayName = EntityStore:RegisterDisplayName(text, self.guid, self.displayName)
             self.displayNameInput.Text = self.displayName
             self.visualTab.displayName = self.displayName
             if not self.isWindow then
                 self.panel.Label = self.displayName
             end
-            PropStore[self.guid].DisplayName = self.displayName
+            EntityStore[self.guid].DisplayName = self.displayName
             self:OnChange()
             self:Refresh()
             if self.visualTab.isWindow then
@@ -174,7 +158,7 @@ function PropTab:RenderProfile()
     end
 end
 
-function PropTab:RenderMainEditor()
+function EntityTab:RenderMainEditor()
 
     self.mainEditor = self.IdsContainer
 
@@ -183,16 +167,12 @@ function PropTab:RenderMainEditor()
     self.persistentCheck.OnChange = function()
         local data = {
             Guid = self.guid,
+            Attributes = {
+                Persistent = self.persistentCheck.Checked
+            }
         }
-        if self.persistentCheck.Checked then
-            data.Persistent = true
-            Post(NetChannel.SetAttributes, data)
-            self.deleteButton.Disabled = true
-        else
-            data.Persistent = false
-            Post(NetChannel.SetAttributes, data)
-            self.deleteButton.Disabled = false
-        end
+        NetChannel.SetAttributes:SendToServer(data)
+        self.deleteButton.Disabled = data.Attributes.Persistent
         self.persistent = self.persistentCheck.Checked
     end
     
@@ -219,7 +199,7 @@ function PropTab:RenderMainEditor()
         if uuid and uuid ~= "" then
             LOP_ItemManager:AddTagToData(uuid, "Favorite")
         else
-            Warning("[PropTab] Cannot add to favorites, no template ID found for GUID: " .. self.guid)
+            Warning("[EntityTab] Cannot add to favorites, no template ID found for GUID: " .. self.guid)
         end
         self:OnChange(true)
     end
@@ -228,12 +208,12 @@ function PropTab:RenderMainEditor()
     self.addToFavoritesButton.SameLine = true
 end
 
-function PropTab:RenderTabBar()
-    self.lowerTab = self.panel:AddChildWindow("PropTabLower")
-    self.tabBar = self.lowerTab:AddTabBar("PropTabTabBar")
+function EntityTab:RenderTabBar()
+    self.lowerTab = self.panel:AddChildWindow("EntityTabLower")
+    self.tabBar = self.lowerTab:AddTabBar("EntityTabTabBar")
 end
 
-function PropTab:RenderMonitorTab()
+function EntityTab:RenderMonitorTab()
     local monitorTab = self.tabBar:AddTabItem("Monitor")
 
     local templateIdText = AddReadOnlyInput(monitorTab, "TemplateId" .. ": ", TakeTailTemplate(self.templateId), true)
@@ -273,10 +253,6 @@ function PropTab:RenderMonitorTab()
     local positionMonitor = monitorTab:AddDrag(GetLoca("Position"))
     positionMonitor.Components = 3
     positionMonitor.Disabled = true
-    positionMonitor.OnChange = function (se)
-        local newPos = { se.Value[1], se.Value[2], se.Value[3] }
-        Commands.SetTransformCommand(self.guid, { Translate = newPos }, true)
-    end
 
     self.positionTimer = Timer:Every(1000, function()
         if not self.isValid then
@@ -304,8 +280,6 @@ function PropTab:RenderMonitorTab()
         else
             positionMonitor.Value = {0, 0, 0, 0}
         end
-        positionMonitor.Max = {self.LastTranslation[1] + 100, self.LastTranslation[2] + 100, self.LastTranslation[3] + 100, 100}
-        positionMonitor.Min = {self.LastTranslation[1] - 100, self.LastTranslation[2] - 100, self.LastTranslation[3] - 100, 100}
     end)
 
     local rotationMonitor = monitorTab:AddDrag(GetLoca("Rotation"))
@@ -318,6 +292,10 @@ function PropTab:RenderMonitorTab()
                 Timer:Cancel(self.rotationTimer)
             end
             self.rotationTimer = nil
+            return
+        end
+        if not EntityExists(self.guid) then
+            rotationMonitor.Value = self.LastQuatRotation or {0, 0, 0, 0}
             return
         end
 
@@ -343,12 +321,6 @@ function PropTab:RenderMonitorTab()
         end
     end)
 
-    self.debugDumpButton = monitorTab:AddButton(GetLoca("Debug"))
-
-    self.debugDumpButton.OnClick = function()
-        PROPTAB_DEBUG_FUNCTION(self.guid, self.templateId, self.displayName)
-    end
-    
     self.monitorTimers = { self.positionTimer, self.rotationTimer, self.levelTimer }
 
     local releasePropBtn = monitorTab:AddButton(GetLoca("Release Prop"))
@@ -359,9 +331,12 @@ function PropTab:RenderMonitorTab()
         ConfirmPopup:DangerConfirm(
             GetLoca("Are you sure you want to release") .. " " .. self.displayName .. "?",
             function()
-                Post("ReleaseItem", {Guid = self.guid})
+                NetChannel.ManageEntity:SendToServer({
+                    Action = "Remove",
+                    Guid = self.guid,
+                })
                 self:Destroy()
-                PropStore:RemoveProp(self.guid)
+                EntityStore:RemoveProp(self.guid)
                 DeleteWindowsByGuid(self.guid)
             end,
             nil
@@ -369,31 +344,31 @@ function PropTab:RenderMonitorTab()
     end
 end
 
-function PropTab:RenderFilterTab()
+function EntityTab:RenderFilterTab()
     self.filterTab = self.tabBar:AddTabItem(GetLoca("Filters"))
 
-    local propInfo = PropStore[self.guid] or {}
+    local entInfo = EntityStore[self.guid] or {}
 
     self.iconTintColorEdit = self.filterTab:AddColorEdit(GetLoca("Icon Tint Color"))
-    self.iconTintColorEdit.Color = propInfo.IconTintColor or {1,1,1,1}
+    self.iconTintColorEdit.Color = entInfo.IconTintColor or {1,1,1,1}
     self.iconTintColorEdit.AlphaBar = true
     self.iconTintColorEdit.OnChange = function(color)
-        propInfo.IconTintColor = color.Color
+        entInfo.IconTintColor = color.Color
         self:UpdateFilterTab()
         self:OnChange()
     end
 
-    self.noteInput = self.filterTab:AddInputText(GetLoca("Note"), propInfo.Note or "")
+    self.noteInput = self.filterTab:AddInputText(GetLoca("Note"), entInfo.Note or "")
 
     self.noteInput.OnChange = function(text)
-        propInfo.Note = text.Text
+        entInfo.Note = text.Text
         self:OnChange()
     end
 
-    self.groupInput = self.filterTab:AddInputText(GetLoca("Group"), propInfo.Group or "")
+    self.groupInput = self.filterTab:AddInputText(GetLoca("Group"), entInfo.Group or "")
 
     self.groupInput.OnChange = function(text)
-        propInfo.Group = text.Text
+        entInfo.Group = text.Text
         self:OnChange()
     end
 
@@ -415,7 +390,7 @@ function PropTab:RenderFilterTab()
     self.allTags.SameLine = true
 
     local function updateTags()
-        local tags = propInfo.Tags or {}
+        local tags = entInfo.Tags or {}
         local tagStr = table.concat(tags, ", ")
         self.allTags.Label = tagStr
     end
@@ -433,31 +408,31 @@ function PropTab:RenderFilterTab()
     self.tagsAddButton.OnClick = function()
         local tag = self.tagsInput.Text
         if tag and tag ~= "" then
-            if not propInfo.Tags then
-                propInfo.Tags = {}
+            if not entInfo.Tags then
+                entInfo.Tags = {}
             end
-            if TableContains(propInfo.Tags, tag) then
-                Warning("[PropTab] Cannot add duplicate tag: " .. tag .. " for GUID: " .. self.guid)
+            if TableContains(entInfo.Tags, tag) then
+                Warning("[EntityTab] Cannot add duplicate tag: " .. tag .. " for GUID: " .. self.guid)
                 return
             end
-            table.insert(propInfo.Tags, tag)
+            table.insert(entInfo.Tags, tag)
             self.tagsInput.Text = ""
             self.tagsAddButton.Disabled = true
             self.tagsRemoveButton.Disabled = true
             updateTags()
             self:OnChange()
         else
-            Warning("[PropTab] Cannot add empty tag for GUID: " .. self.guid)
+            Warning("[EntityTab] Cannot add empty tag for GUID: " .. self.guid)
         end
     end
 
     self.tagsRemoveButton.OnClick = function()
         local tag = self.tagsInput.Text
         if tag and tag ~= "" then
-            if TableContains(propInfo.Tags, tag) then
-                ToggleEntry(propInfo.Tags, tag)
+            if TableContains(entInfo.Tags, tag) then
+                ToggleEntry(entInfo.Tags, tag)
             else
-                Warning("[PropTab] Cannot remove tag that doesn't exist: " .. tag .. " for GUID: " .. self.guid)
+                Warning("[EntityTab] Cannot remove tag that doesn't exist: " .. tag .. " for GUID: " .. self.guid)
                 return
             end
             self.tagsInput.Text = ""
@@ -466,7 +441,7 @@ function PropTab:RenderFilterTab()
             updateTags()
             self:OnChange()
         else
-            Warning("[PropTab] Cannot remove empty tag for GUID: " .. self.guid)
+            Warning("[EntityTab] Cannot remove empty tag for GUID: " .. self.guid)
         end
     end
 
@@ -476,7 +451,7 @@ function PropTab:RenderFilterTab()
     self.tagsRemoveButton.Disabled = true
 end
 
-function PropTab:UpdateFilterTab()
+function EntityTab:UpdateFilterTab()
     if not self.isValid or not self.isVisible then
         return
     end
@@ -485,26 +460,26 @@ function PropTab:UpdateFilterTab()
         return
     end
 
-    local propInfo = PropStore[self.guid] or {}
+    local entInfo = EntityStore[self.guid] or {}
 
-    self.iconTintColorEdit.Color = propInfo.IconTintColor or {1,1,1,1}
-    self.noteInput.Text = propInfo.Note or ""
-    self.groupInput.Text = propInfo.Group or ""
+    self.iconTintColorEdit.Color = entInfo.IconTintColor or {1,1,1,1}
+    self.noteInput.Text = entInfo.Note or ""
+    self.groupInput.Text = entInfo.Group or ""
 
-    self.iconTintColorEdit.Color = propInfo.IconTintColor or {1,1,1,1}
-    local tintColor = propInfo.IconTintColor or {1,1,1,1}
+    self.iconTintColorEdit.Color = entInfo.IconTintColor or {1,1,1,1}
+    local tintColor = entInfo.IconTintColor or {1,1,1,1}
     self.Icon.Tint = tintColor
 
     if self.visualTab and self.visualTab.isVisible and self.visualTab.isWindow then
         self.visualTab.symbol.Tint = tintColor
     end
 
-    local tags = propInfo.Tags or {}
+    local tags = entInfo.Tags or {}
     local tagStr = table.concat(tags, ", ")
     self.allTags.Label = tagStr
 end
 
-function PropTab:RenderVisualTab()
+function EntityTab:RenderVisualTab()
 
     self.detachButton.Disabled = true
 
@@ -555,7 +530,7 @@ function PropTab:RenderVisualTab()
     end
 end
 
-function PropTab:Collapsed()
+function EntityTab:Collapsed()
     if not self.isValid and not self.isVisible then return end
 
     if self.visualTab then
@@ -608,7 +583,7 @@ function PropTab:Collapsed()
     self.isVisible = false
 end
 
-function PropTab:Destroy()
+function EntityTab:Destroy()
     if not self.isValid then
         return
     end
@@ -639,7 +614,7 @@ function PropTab:Destroy()
     self.isValid = false
 end
 
-function PropTab:IsEntityValid()
+function EntityTab:IsEntityValid()
     if not self.isValid then
         return false
     end
@@ -651,7 +626,7 @@ function PropTab:IsEntityValid()
     return true
 end
 
-function PropTab:Refresh()
+function EntityTab:Refresh()
     if self.isWindow and self.panel then
         self.lastPosition = self.panel.LastPosition
         self.lastSize = self.panel.LastSize
@@ -660,7 +635,7 @@ function PropTab:Refresh()
     self:Render()
 end
 
-function PropTab:Focus()
+function EntityTab:Focus()
     if not self.isVisible then
         self:Render()
     end
@@ -684,22 +659,22 @@ function PropTab:Focus()
     end
 end
 
-function PropTab:Attach(parent)
+function EntityTab:Attach(parent)
     self.isAttach = true
     self.parent = parent or self.parent
     self:Refresh()
 end
 
-function PropTab:Add(guid, templateId, parent, opts, iconTintColor)
+function EntityTab:Add(guid, templateId, parent, opts, iconTintColor)
     local initAttach = TableContains(opts or {}, "IsAttach")
 
-    local propTab = PropTab.new(guid, templateId, parent, initAttach)
-    propTab.IconTintColor = iconTintColor or {1,1,1,1}
-    propTab:Render()
-    return propTab
+    local EntityTab = EntityTab.new(guid, templateId, parent, initAttach)
+    EntityTab.IconTintColor = iconTintColor or {1,1,1,1}
+    EntityTab:Render()
+    return EntityTab
 end
 
-function PropTab:OnChange(changebrowser) end
+function EntityTab:OnChange(changebrowser) end
 
-function PropTab:OnAttach() end
-function PropTab:OnDetach() end
+function EntityTab:OnAttach() end
+function EntityTab:OnDetach() end

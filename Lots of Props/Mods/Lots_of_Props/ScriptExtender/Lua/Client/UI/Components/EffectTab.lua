@@ -300,7 +300,7 @@ function EffectTab:RenderEffects()
                 Type = "FxName",
                 FxName = fxName,
             }
-            Post("StopEffect", postdata)
+            NetChannel.StopEffect:SendToServer(postdata)
         end
 
         cell:AddSeparator()
@@ -360,10 +360,10 @@ function EffectTab:RenderControlPanel()
             end
         end
         local postdata = {
-                Type = "FxName",
-                FxName = toStop,
-            }
-        Post("StopEffect", postdata)
+            Type = "FxName",
+            FxName = toStop,
+        }
+        NetChannel.StopEffect:SendToServer(postdata)
     end
 
 end
@@ -718,10 +718,10 @@ function EffectTab:PlayEffect(userdata)
 
     local timeOffset = info.TimeOffset or 0
     if timeOffset == 0 then
-        Post("PlayEffect", {data})
+        NetChannel.PlayEffect:SendToServer({data})
     else
         Timer:After(timeOffset, function()
-            Post("PlayEffect", {data})
+            NetChannel.PlayEffect:SendToServer({data})
         end)
     end
 
@@ -788,7 +788,7 @@ function EffectTab:Play()
     end
 
     if #immediateEffects > 0 then
-        Post("PlayEffect", immediateEffects)
+        NetChannel.PlayEffect:SendToServer(immediateEffects)
     end
 
     for _, delayedEffect in ipairs(delayedEffects) do
@@ -797,7 +797,7 @@ function EffectTab:Play()
             for i = 1, delayedEffect.repeatCnt do
                 table.insert(effects, delayedEffect.data)
             end
-            Post("PlayEffect", effects)
+            NetChannel.PlayEffect:SendToServer(effects)
         end)
     end
 

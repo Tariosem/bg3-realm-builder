@@ -574,28 +574,38 @@ function TreeList:SetUpTree(tree, key, item)
 
     local userOnClick = tree.OnClick
 
+    local lastClickTime = 0
+    local doubleClickThreshold = 300 -- milliseconds
     tree.OnClick = function(sel)
         sel.Selected = false
 
-        local function recurSel(pparent)
-            local parentNode = self.tree:Find(pparent)
-            if parentNode then
-                for ikey, cont in pairs(parentNode) do
-                    if self.leafRefs[ikey] then
-                        self:ToggleSelected(ikey)
-                    else
-                        recurSel(ikey)
+        local currentTime = Ext.Utils.MonotonicTime()
+        if currentTime - lastClickTime < doubleClickThreshold then
+            Debug("Double click detected on tree node: " .. tostring(key))
+            self:ExpandAll(key)
+        else
+            local function recurSel(pparent)
+                local parentNode = self.tree:Find(pparent)
+                if parentNode then
+                    for ikey, cont in pairs(parentNode) do
+                        if self.leafRefs[ikey] then
+                            self:ToggleSelected(ikey)
+                        else
+                            recurSel(ikey)
+                        end
                     end
                 end
             end
+
+            if self.GroupSelect then
+                self:ClearSelection()
+                recurSel(key)
+            else
+                toggleFunc()
+            end
         end
 
-        if self.GroupSelect then
-            self:ClearSelection()
-            recurSel(key)
-        else
-            toggleFunc()
-        end
+        lastClickTime = currentTime
 
         if userOnClick then
             userOnClick(sel)
@@ -608,29 +618,108 @@ function TreeList:SetUpTree(tree, key, item)
 
     tree.UserData = tree.UserData or {}
 
-    tree.UserData.__index = function (t, k)
-        if k == "Collapsed" then
-            return self.collapsedTree[key] or false
-        elseif k == "Toggle" then
-            return toggleFunc
-        end
+    tree.UserData.UpdateLabel = toggleLabel
 
-        return rawget(t, k)
-    end
-
-    tree.UserData.__newindex = function(t, k, v)
-        if k == "Collapsed" then
-            if v ~= (self.collapsedTree[key] or false) then
-                toggleFunc()
+    setmetatable(tree.UserData, {
+        __index = function(t, k)
+            if k == "IsCollapsed" then
+                return self.collapsedTree[key] == true
             end
-        else
-            rawset(t, k, v)
+            return nil
+        end,
+        __newindex = function(t, k, v)
+            if k == "IsCollapsed" then
+                if v == true then
+                    self.collapsedTree[key] = true
+                    self:IterativeHide(key)
+                else
+                    self.collapsedTree[key] = nil
+                    self:IterativeShow(key)
+                end
+                toggleLabel()
+            else
+                rawset(t, k, v)
+            end
         end
-    end
+    })
 end
 
 function TreeList:RenderCustomTopBar(panel)
     panel.Visible = false
+end
+
+function TreeList:ExpandAll(key)
+    key = key or TreeTable.GetRootKey()
+
+    self.collapsedTree = self.collapsedTree or {}
+
+    local childStack = {}
+    self.collapsedTree[key] = nil
+    self.treeRefs[key].UserData.UpdateLabel()
+    self.nodeRefs[key].Visible = true
+
+    local root = self.tree:Find(key)
+    for childKey,_ in pairs(root or {}) do
+        if not self.tree:IsLeaf(childKey) then
+            self.collapsedTree[childKey] = nil
+            table.insert(childStack, childKey)
+            self.treeRefs[childKey].UserData.UpdateLabel()
+        end
+        self.nodeRefs[childKey].Visible = true
+    end
+
+    while #childStack > 0 do
+        local current = table.remove(childStack)
+        self.nodeRefs[current].Visible = true
+        local node = self.tree:Find(current)
+        if node and not self.tree:IsLeaf(current) then
+            for childKey,_ in pairs(node) do
+                if not self.tree:IsLeaf(childKey) then
+                    self.collapsedTree[childKey] = nil
+                    table.insert(childStack, childKey)
+                    self.treeRefs[childKey].UserData.UpdateLabel()
+                end
+                self.nodeRefs[childKey].Visible = true
+            end
+        end
+    end
+end
+
+function TreeList:CollapseAll(key)
+    key = key or TreeTable.GetRootKey()
+
+    self.collapsedTree = self.collapsedTree or {}
+
+    local childStack = {}
+    self.collapsedTree[key] = true
+    self.treeRefs[key].UserData.UpdateLabel()
+    self.nodeRefs[key].Visible = false
+
+    local root = self.tree:Find(key)
+    for childKey,_ in pairs(root or {}) do
+        if not self.tree:IsLeaf(childKey) then
+            self.collapsedTree[childKey] = true
+            table.insert(childStack, childKey)
+            self.treeRefs[childKey].UserData.UpdateLabel()
+        end
+        self.nodeRefs[childKey].Visible = false
+    end
+
+    while #childStack > 0 do
+        local current = table.remove(childStack)
+        self.nodeRefs[current].Visible = false
+        local node = self.tree:Find(current)
+        if node and not self.tree:IsLeaf(current) then
+            for childKey,_ in pairs(node) do
+                if not self.tree:IsLeaf(childKey) then
+                    self.collapsedTree[childKey] = true
+                    table.insert(childStack, childKey)
+                    self.treeRefs[childKey].UserData.UpdateLabel()
+                end
+                self.nodeRefs[childKey].Visible = false
+            end
+        end
+    end
 end
 
 ---@param selectedItems table<any, boolean>

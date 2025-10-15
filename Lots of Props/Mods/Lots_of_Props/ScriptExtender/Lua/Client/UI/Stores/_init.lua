@@ -1,5 +1,5 @@
 RequireFiles("Client/UI/Stores/", {
-    "PropStore",
+    "EntityStore",
     "GuidMap",
     "WindowManager",
     "NearbyMap",

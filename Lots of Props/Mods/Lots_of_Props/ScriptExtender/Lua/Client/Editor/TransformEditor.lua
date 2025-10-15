@@ -122,8 +122,24 @@ function TransformEditor:SetSpace(space)
     end
 end
 
+function TransformEditor:ValidateSelection()
+    if not self.Target or #self.Target == 0 then return false end
+    local valid = false
+    for i=#self.Target,1,-1 do
+        local guid = self.Target[i]
+        if not EntityExists(guid) then
+            table.remove(self.Target, i)
+        else
+            valid = true
+        end
+    end
+    if not valid then
+        self:Clear()
+    end
+    return valid
+end
+
 function TransformEditor:Clear()
-    Post(NetChannel.ManageGizmo, { Clear = true })
     self.Target = nil
     self.StartTransforms = {}
 end
@@ -133,7 +149,7 @@ function TransformEditor:SetMode(mode)
     if mode and mode ~= self.Gizmo.Mode then
         self.Gizmo:SetMode(mode)
         --Debug("TransformEditor Mode: "..tostring(self.Gizmo.Mode))
-    elseif mode and mode == self.Gizmo.Mode then
+    elseif mode and mode == self.Gizmo.Mode and not self.IsDragging then
         self.Gizmo:StartDragging()
     end
 end
@@ -198,7 +214,7 @@ function TransformEditor:RegisterEvents()
         local guids = NormalizeGuidList(self.Target)
         local props = {}
         for _,guid in pairs(guids) do
-            if not PropStore:GetProp(guid) then
+            if not EntityStore:GetEntity(guid) then
             else
                 table.insert(props, guid)
             end
@@ -209,7 +225,7 @@ function TransformEditor:RegisterEvents()
             string.format("Are you sure you want to delete the selected %d prop(s)?", #guids),
             function()
                 self:Clear()
-                Post("Delete", { Guid = props })
+                NetChannel.Delete:SendToServer({ Guid = props })
             end)
         end)
     )
@@ -231,7 +247,9 @@ function TransformEditor:RegisterEvents()
 
     restrain(teMod:RegisterEvent("DeleteAllGizmos", function (e)
         if e.Event ~= "KeyDown" then return end
-        Post(NetChannel.ManageGizmo, { Clear = true })
+        NetChannel.ManageGizmo:RequestToServer({ Clear = true }, function (response)
+            self.Gizmo.Guid = nil
+        end)
     end))
 
     local function GetRottt(space, guid)
@@ -239,7 +257,7 @@ function TransformEditor:RegisterEvents()
         if space == "Local" then
             rot = {CGetRotation(guid)}
         elseif space == "Parent" then
-            local parent = PropStore:GetBindParent(guid)
+            local parent = EntityStore:GetBindParent(guid)
             if parent and EntityExists(parent) then
                 rot = {CGetRotation(parent)}
             else
@@ -266,31 +284,6 @@ function TransformEditor:RegisterEvents()
     self.Gizmo.DragVisualize = function (gizmo)
         self.PointVisualizations = self.PointVisualizations or {}
 
-        local pointRequests = CountMap(self.Target or {}) - (self.PointVisualizations and #self.PointVisualizations or 0)
-        local pointRequestId = Uuid_v4()
-        if pointRequests > 0 then
-            ClientSubscribe(NetMessage.Visualization, function (data)
-                if not data.RequestId or data.RequestId ~= pointRequestId then return end
-                --Debug("TransformEditor: Received visualization data", data)
-                for _,guid in ipairs(data.Guid) do
-                    table.insert(self.PointVisualizations, guid)
-                    Timer:Ticks(10, function (timerID)
-                        for _,axis in pairs({"X","Y","Z"}) do
-                            if gizmo.SelectedAxis and gizmo.SelectedAxis[axis] then
-                                GizmoVisualizer.HighLightGizmoAxis(axis, guid)
-                            else
-                                GizmoVisualizer.HideGizmoAxis(axis, guid)
-                            end
-                        end
-                    end)
-                end
-                pointRequests = pointRequests - 1
-                if pointRequests <= 0 then
-                    return UNSUBSCRIBE_SYMBOL
-                end
-            end)
-        end
-
         for cnt,guid in pairs(NormalizeGuidList(self.Target) or {}) do
             local transform = self.StartTransforms[guid]
             local newPointTransform = {
@@ -302,7 +295,7 @@ function TransformEditor:RegisterEvents()
                 if self.PointVisualizations and self.PointVisualizations[cnt] then
                     local pointGuid = self.PointVisualizations[cnt]
 
-                    Post(NetChannel.SetTransform, { Guid = pointGuid, Transforms = {[pointGuid] = newPointTransform} })
+                    NetChannel.SetTransform:SendToServer({ Guid = pointGuid, Transforms = {[pointGuid] = newPointTransform} })
                     for _,axis in pairs({"X","Y","Z"}) do
                         if gizmo.SelectedAxis and gizmo.SelectedAxis[axis] then
                             GizmoVisualizer.HighLightGizmoAxis(axis, pointGuid)
@@ -311,7 +304,33 @@ function TransformEditor:RegisterEvents()
                         end
                     end
                 else
-                    Post(NetChannel.Visualize, { Type = "Point", Position = transform.Translate, Rotation = newPointTransform.RotationQuat, Color = {1.0, 1.0, 1.0, 0.8}, Size = 0.1, Duration = -1, RequestId = pointRequestId })
+                    NetChannel.Visualize:RequestToServer({
+                        Type = "Point",
+                        Position = transform.Translate,
+                        Rotation = newPointTransform.RotationQuat,
+                        Duration = -1,
+                    }, function (response)
+                        for _,viz in ipairs(response or {}) do
+                            local tryCnt = 0
+                            Timer:EveryFrame(function (timerID)
+                                if tryCnt > 300 then
+                                    Warning("GizmoVisualizer: Failed to get visual for point gizmo")
+                                    return UNSUBSCRIBE_SYMBOL
+                                end
+                                if not VisualHelpers.GetEntityVisual(viz) then tryCnt = tryCnt + 1 return end
+                                for _,axis in pairs({"X","Y","Z"}) do
+                                    if gizmo.SelectedAxis and gizmo.SelectedAxis[axis] then
+                                        GizmoVisualizer.HighLightGizmoAxis(axis, viz)
+                                    else
+                                        GizmoVisualizer.HideGizmoAxis(axis, viz)
+                                    end
+                                end
+                                return UNSUBSCRIBE_SYMBOL
+                            end)
+
+                            table.insert(self.PointVisualizations, viz)
+                        end
+                    end)
                 end
             end
         end
@@ -323,21 +342,6 @@ function TransformEditor:RegisterEvents()
         if CountMap(gizmo.SelectedAxis) ~= 1 then return end 
         self.LineVisualizations = self.LineVisualizations or {}
 
-        local requests = CountMap(self.Target or {}) - #self.LineVisualizations
-        local requestId = Uuid_v4()
-        if requests > 0 then
-            ClientSubscribe(NetMessage.Visualization, function (data)
-                if not data.RequestId or data.RequestId ~= requestId then return end
-                --Debug("TransformEditor: Received visualization data", data)
-                for _,guid in ipairs(data.Guid) do
-                    table.insert(self.LineVisualizations, guid)
-                end
-                requests = requests - 1
-                if requests <= 0 then
-                    return UNSUBSCRIBE_SYMBOL
-                end
-            end)
-        end
         local color = nil
         local selectedAxis = nil
         for axis,_ in pairs(gizmo.SelectedAxis) do
@@ -358,10 +362,23 @@ function TransformEditor:RegisterEvents()
                     Translate = ray:At(-100),
                     RotationQuat = DirectionToQuat(ray.Direction * -1)
                 }
-
-                Post(NetChannel.SetTransform, { Guid = lineGuid, Transforms = {[lineGuid] = newLineTransform} })
+                NetChannel.SetTransform:SendToServer({ Guid = lineGuid, Transforms = {[lineGuid] = newLineTransform} })
             else
-                Post(NetChannel.Visualize, { Type = "Line", Position = ray:At(-100), EndPosition = ray:At(100), Color = color, Duration = -1, RequestId = requestId })
+                NetChannel.Visualize:RequestToServer({
+                    Type = "Line",
+                    Position = ray:At(-100),
+                    EndPosition = ray:At(100),
+                    Duration = -1,
+                }, function (response)
+                    for _,viz in ipairs(response or {}) do
+                        Timer:EveryFrame(function (timerID)
+                            if not VisualHelpers.GetEntityVisual(viz) then return end
+                            GizmoVisualizer.SetLineFxColor(viz, color)
+                            return UNSUBSCRIBE_SYMBOL
+                        end)
+                        table.insert(self.LineVisualizations, viz)
+                    end
+                end)
             end
         end
     end
@@ -385,7 +402,7 @@ function TransformEditor:RegisterEvents()
             if gizmo.Space == "Local" then
                 finalDelta = Quat.new(startTransform.RotationQuat):Rotate(delta)
             elseif gizmo.Space == "Parent" then
-                local parent = PropStore:GetBindParent(guid)
+                local parent = EntityStore:GetBindParent(guid)
                 if parent and EntityExists(parent) then
                     local parentRot = Quat.new({CGetRotation(parent)}) or Quat.Identity()
                     finalDelta = parentRot:Rotate(delta)
@@ -435,7 +452,7 @@ function TransformEditor:RegisterEvents()
                 if gizmo.Space == "View" then
                     R = cameraMatrix * R
                 elseif gizmo.Space == "Parent" then
-                    local parent = PropStore:GetBindParent(guid)
+                    local parent = EntityStore:GetBindParent(guid)
                     if parent and EntityExists(parent) then
                         local parentRot = Quat.new{CGetRotation(parent)} or Quat.Identity()
                         local parentMat = Matrix.new(Ext.Math.QuatToMat3(parentRot))
@@ -499,7 +516,7 @@ function TransformEditor:RegisterEvents()
             if gizmo.Space == "Local" then
                 axis = curRot:Rotate(axis)
             elseif gizmo.Space == "Parent" then
-                local parent = PropStore:GetBindParent(guid)
+                local parent = EntityStore:GetBindParent(guid)
                 if parent and EntityExists(parent) then
                     local parentRot = Quat.new({CGetRotation(parent)}) or Quat.Identity()
                     axis = parentRot:Rotate(axis)
@@ -526,9 +543,10 @@ function TransformEditor:RegisterEvents()
     
 
     self.Gizmo.OnDragEnd = function(gizmo)
-        Post(NetChannel.Visualize, { Type = "Clear" })
-        self.LineVisualizations = {}
-        self.PointVisualizations = {}
+        NetChannel.Visualize:RequestToServer({ Type = "Clear" }, function (response)
+            self.LineVisualizations = {}
+            self.PointVisualizations = {}
+        end)
         local redoTransforms = {}
         local undoTransforms = DeepCopy(self.StartTransforms)
         local changed = {}

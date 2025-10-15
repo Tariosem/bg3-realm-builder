@@ -238,16 +238,12 @@ EquipmentRaceToBodyType = {
 
 BodyTypeToEquipmentRace = {}
 
-local function BuildBodyTypeCache()
-    for uuid, bodyType in pairs(EquipmentRaceToBodyType) do
-        if not BodyTypeToEquipmentRace[bodyType] then
-            BodyTypeToEquipmentRace[bodyType] = {}
-        end
-        table.insert(BodyTypeToEquipmentRace[bodyType], uuid)
+for uuid, bodyType in pairs(EquipmentRaceToBodyType) do
+    if not BodyTypeToEquipmentRace[bodyType] then
+        BodyTypeToEquipmentRace[bodyType] = {}
     end
+    table.insert(BodyTypeToEquipmentRace[bodyType], uuid)
 end
-
-BuildBodyTypeCache()
 
 -- From https://github.com/AtilioA/BG3-MCM/blob/main/Mod%20Configuration%20Menu/Mods/BG3MCM/ScriptExtender/Lua/Shared/Helpers/Keybindings/KeyPresentationMapping.lua
 

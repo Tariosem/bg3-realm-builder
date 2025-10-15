@@ -97,7 +97,7 @@ function GizmoVisualizer.HideGizmoAxis(axis, guid)
     if tonumber(axis) then
         axis = IndexAxisMap[axis]
     end
-    local visual = VisualHelpers.GetEntityVisual(UuidToHandle(guid))
+    local visual = VisualHelpers.GetEntityVisual(guid)
     if not visual then return end
     local objs = visual.ObjectDescs or {}
     if #objs == 0 then return end
@@ -110,7 +110,13 @@ function GizmoVisualizer.HideGizmoAxis(axis, guid)
     end
 
     for _,r in ipairs(rend or {}) do
-        r:SetWorldScale(ToVec3(0))
+        r:SetWorldScale({0,0,0})
+    end
+end
+
+function GizmoVisualizer.HideGizmo(guid)
+    for _,axis in pairs({"X","Y","Z"}) do
+        GizmoVisualizer.HideGizmoAxis(axis, guid)
     end
 end
 
@@ -138,13 +144,13 @@ function GizmoVisualizer.ResetGizmoAxis(axis, guid)
     GizmoVisualizer.ScaleGizmo(axis, guid, rend)
 end
 
-function GizmoVisualizer:VisualizeRotateSymbol(guid, axis)
+function GizmoVisualizer.VisualizeRotateSymbol(guid, axis)
     local rotateScale = GizmoVisualizer.Scale[AxisIndexMap[axis]] or 1.0
     local scale = ToVec3((0.6 * rotateScale) / 0.81)
 
     for _,ax in pairs({"X", "Y", "Z"}) do
         if ax ~= axis then
-            self.HideGizmoAxis(ax, guid)
+            GizmoVisualizer.HideGizmoAxis(ax, guid)
         end
     end
 
@@ -156,16 +162,18 @@ end
 
 --- update internal scale based on camera distance
 --- @param guid GUIDSTRING
-function GizmoVisualizer:UpdateScale(guid)
-    local k = self.GizmoScale or 0.1
+function GizmoVisualizer.UpdateScale(guid)
+    if not EntityExists(guid) then return 1.0 end
+    local k = GizmoVisualizer.GizmoScale or 0.1
     local position = Vec3.new({CGetPosition(guid)})
+    if position == Vec3.new({0,0,0}) then return 1.0 end
     local cam = GetCamera()
     if not cam then return 1.0 end
     local camPos = Vec3.new(cam.Transform.Transform.Translate)
     local dist = Ext.Math.Distance(position, camPos)
     local scale = dist * k
 
-    self.Scale = {scale, scale, scale}
+    GizmoVisualizer.Scale = {scale, scale, scale}
 
     return scale
 end

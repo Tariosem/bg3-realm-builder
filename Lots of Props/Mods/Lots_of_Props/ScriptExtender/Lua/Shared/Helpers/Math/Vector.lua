@@ -46,6 +46,15 @@ function Vector.__sub(a, b) return Vector.new(Ext.Math.Sub(a, b)) end
 function Vector.__mul(a, b) return Vector.new(Ext.Math.Mul(a, b)) end
 function Vector.__div(a, b) return Vector.new(Ext.Math.Div(a, b)) end
 function Vector.__unm(a)    return Vector.new(Ext.Math.Mul(a, -1)) end
+function Vector.__eq(a, b)
+    if #a ~= #b then return false end
+    for i = 1, #a do
+        if a[i] ~= b[i] then
+            return false
+        end
+    end
+    return true
+end
 function Vector.__tostring(a) return string.format("Vec(%s)", table.concat(a, ", ")) end
 
 function Vector:Length() return Ext.Math.Length(self) end

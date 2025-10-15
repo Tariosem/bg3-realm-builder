@@ -34,7 +34,7 @@ function RegisterWindow(guid, displayName, iType, instance, pos, size)
         size = {screenWidth * 0.2, screenHeight * 0.6}
     end
 
-    local basename = displayName .. "-" .. iType
+    local basename = displayName .. " - " .. iType
     local finalname = basename
 
     for _, win in ipairs(WindowMap[guid]) do

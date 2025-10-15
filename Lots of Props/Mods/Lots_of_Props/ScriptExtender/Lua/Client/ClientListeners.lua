@@ -1,4 +1,4 @@
-ClientSubscribe(NetMessage.SetVisualTransform, function (data)
+NetChannel.SetVisualTransform:SetHandler(function (data)
     local toSet = NormalizeGuidList(data.Guid)
     if not data.Transforms or type(data.Transforms) ~= "table" then
         Warning("SetVisualTransform: No Transforms provided")
@@ -49,6 +49,19 @@ ClientSubscribe(NetMessage.SetVisualTransform, function (data)
     end
 end)
 
-ClientSubscribe(NetMessage.SetLineColor, function (data)
-    GizmoVisualizer.SetLineFxColor(data.Guid, data.Color)
+NetChannel.ApplyVisualPreset:SetHandler(function(data, userID)
+    local guid = data.Guid
+    local templateName = data.TemplateName
+    local presetName = data.VisualPreset
+    if presetName == "" or presetName == nil then
+        --Warning("ApplyVisualPreset: Preset name is empty or nil.")
+        return
+    end
+    local preset = GetVisualPresetData(templateName, presetName)
+    if preset == nil then
+        Warning("ApplyVisualPreset: Preset not found for template " .. templateName .. " and preset name " .. presetName)
+        return
+    end
+    local modifiedParams = preset.ModifiedParams
+    VisualHelpers.ApplyVisualParams(guid, modifiedParams)
 end)

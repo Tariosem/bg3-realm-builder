@@ -38,6 +38,10 @@ AnimationEasing = {
     EaseInBack = "EaseInBack",
     EaseOutBack = "EaseOutBack",
     EaseInOutBack = "EaseInOutBack",
+
+    EasingInElastic = "EasingInElastic",
+    EasingOutElastic = "EasingOutElastic",
+    EasingInOutElastic = "EasingInOutElastic",
 }
 
 -- https://cubic-bezier.com/
@@ -72,6 +76,8 @@ genratePowerEasing(3, "Cubic")
 genratePowerEasing(4, "Quart")
 genratePowerEasing(5, "Quint")
 
+
+-- https://easings.net/
 EasingFuncs = {
     Linear = function(t) return t end,
 
@@ -149,6 +155,31 @@ EasingFuncs = {
             return ((2 * t) ^ 2 * ((c2 + 1) * 2 * t + c2) + 2) / 2
         end
     end,
+
+    EasingInElastic = function(t)
+        local c4 = (2 * math.pi) / 3
+        if t == 0 then return 0 end
+        if t == 1 then return 1 end
+        return -2^(10 * t - 10) * math.sin((t * 10 - 10.75) * c4)
+    end,
+
+    EasingOutElastic = function(t)
+        local c4 = (2 * math.pi) / 3
+        if t == 0 then return 0 end
+        if t == 1 then return 1 end
+        return 2^(-10 * t) * math.sin((t * 10 - 0.75) * c4) + 1
+    end,
+
+    EasingInOutElastic = function(t)
+        local c5 = (2 * math.pi) / 4.5
+        if t == 0 then return 0 end
+        if t == 1 then return 1 end
+        if t < 0.5 then
+            return -(2^(20 * t - 10) * math.sin((20 * t - 11.125) * c5)) / 2
+        else
+            return (2^(-20 * t + 10) * math.sin((20 * t - 11.125) * c5)) / 2 + 1
+        end
+    end,
 }
 
 --- @class RunningAnimation
@@ -181,7 +212,7 @@ function AnimateValue(fps, fromValue, toValue, duration, easing, onComplete, onU
     duration = math.max(duration or 1000, 1)
 
     local startTime = Ext.Utils.MonotonicTime()
-    local frameDelay = 1000 / (fps or 90)
+    local frameDelay = math.max(1000 / (fps or 90), 1.0)
     local easingFunc = EasingFuncs[easing] or EasingFuncs[AnimationEasing[easing]] or EasingFuncs.Linear
     local canceled = false
     local cancelValue, cancelEased = fromValue, 0
@@ -231,7 +262,6 @@ function AnimateValue(fps, fromValue, toValue, duration, easing, onComplete, onU
         if progress < 1 then
             Timer:After(frameDelay, step)
         else
-            pcallOnUpdate(currentValue, eased)
             pcallOnComplete()
         end
     end

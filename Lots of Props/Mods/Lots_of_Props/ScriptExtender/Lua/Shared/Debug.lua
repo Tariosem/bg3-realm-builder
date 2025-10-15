@@ -282,7 +282,6 @@ Ext.RegisterConsoleCommand("LOP_DEBUG_LEVEL", function(cmd, level)
     _P("[Lots of Props] Debug level set to: " .. tostring(debugLevels[LOP_DEBUG_LEVEL + 1]))
 
     if Ext.IsServer() then
-        BroadcastToChannel("SetDebugLevel", {Level = LOP_DEBUG_LEVEL})
     end
 
     if Ext.IsClient() then

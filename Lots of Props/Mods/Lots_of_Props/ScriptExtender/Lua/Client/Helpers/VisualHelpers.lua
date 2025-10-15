@@ -1,8 +1,20 @@
 VisualHelpers = VisualHelpers or {}
 
---- @param handle EntityHandle
+--- @param handle EntityHandle|GUIDSTRING
 --- @return Visual?
 function VisualHelpers.GetEntityVisual(handle)
+    if type(handle) == "string" then
+        if IsPartyMember(handle) then
+            local dummy = GetDummyByUuid(handle)
+            if dummy then
+                handle = dummy
+            else
+                handle = UuidToHandle(handle) --[[@as EntityHandle]]
+            end
+        else
+            handle = UuidToHandle(handle)
+        end
+    end
     local entity = handle
     if not entity or not entity.Visual or not entity.Visual.Visual then
         return nil
@@ -142,7 +154,7 @@ function VisualHelpers.VisualizeAABB(entity)
     end
     local aabb = visual.WorldBound
     if not aabb then return end
-    Post("Visualize", { Type = "Box", Min = aabb.Min, Max = aabb.Max })
+    NetChannel.VisualizeAABB:SendToServer({Guid = HandleToUuid(entity), Min = aabb.Min, Max = aabb.Max})
 end
 
 function VisualHelpers.ChangeFrames(frames, value, isColor)
@@ -276,8 +288,11 @@ end
 --- @param descIndex number
 --- @return RenderableObject|nil
 function VisualHelpers.GetRenderable(entity, descIndex)
-    if entity.Visual and entity.Visual.Visual and entity.Visual.Visual.ObjectDescs then
-        local desc = entity.Visual.Visual.ObjectDescs[descIndex]
+    local visual = VisualHelpers.GetEntityVisual(entity)
+    if not visual then return nil end
+
+    if visual.ObjectDescs and visual.ObjectDescs[descIndex] then
+        local desc = visual.ObjectDescs[descIndex]
         return desc and desc.Renderable
     end
     return nil

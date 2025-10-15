@@ -52,16 +52,14 @@ function IconBrowser:CheckIfAnySearchCriteria()
 end
 
 function IconBrowser:SetupTagFilterWindow()
-    local panel = RegisterWindow("generic", self.displayName, "Tags Filter", self)
-    self.tagsFilter = panel
+    self.tagsFilter = self.tagsFilter or RegisterWindow("generic", self.displayName, "Tags Filter", self)
 
     self.tagsFilter.NoResize = true
     self.tagsFilter.NoMove = true
 
-    self.tagsFilter:SetPos({0,0})
     self.tagsFilter.AlwaysAutoResize = true
     self.tagsFilter.NoTitleBar = true
-
+    self.tagsFilter.Open = false
 
     return self.tagsFilter
 end
@@ -134,7 +132,6 @@ function IconBrowser:AddTagsFilter()
 
     self.tagsFilter = self.tagsFilter or self:SetupTagFilterWindow()
 
-    self.tagsFilter.Open = false
     local keepOpen = self.tagsFilter.Open
     self.tagsFilterOpenButton.OnHoverEnter = function()
         self.tagsFilter.Open = true

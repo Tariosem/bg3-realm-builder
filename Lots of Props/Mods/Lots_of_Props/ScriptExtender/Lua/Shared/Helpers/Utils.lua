@@ -117,21 +117,29 @@ function EqualArrays(arr1, arr2)
     return true
 end
 
+---@param ... any
+---@return number[]
 function ToVec4(...)
-    local numbers = {...}
-    for i = 1, #numbers do
-        if type(numbers[i]) ~= "number" then
-            numbers[i] = tonumber(numbers[i]) or 0
-        end
+    local numbers = DeepCopy({...})
+    if #numbers == 1 and type(numbers[1]) == "table" then
+        numbers = numbers[1]
     end
+
+    for i = 1, #numbers do
+        numbers[i] = tonumber(numbers[i]) or 0
+    end
+
     for i = #numbers + 1, 4 do
         numbers[i] = numbers[1]
     end
+
     return {numbers[1], numbers[2], numbers[3], numbers[4]}
 end
 
+--- @param ... any
+--- @return number[]
 function ToVec4Int(...)
-    local numbers = {...}
+    local numbers = DeepCopy({...})
     for i = 1, #numbers do
         if type(numbers[i]) ~= "number" then
             numbers[i] = tonumber(numbers[i]) or 0
@@ -146,7 +154,7 @@ function ToVec4Int(...)
 end
 
 function ToVec2(...)
-    local numbers = {...}
+    local numbers = DeepCopy({...})
     for i = 1, #numbers do
         if type(numbers[i]) ~= "number" then
             numbers[i] = tonumber(numbers[i]) or 0
@@ -159,7 +167,7 @@ function ToVec2(...)
 end
 
 function ToVec3(...)
-    local numbers = {...}
+    local numbers = DeepCopy({...})
     for i = 1, #numbers do
         if type(numbers[i]) ~= "number" then
             numbers[i] = tonumber(numbers[i]) or 0
@@ -450,7 +458,7 @@ end
 
 function GetCamaraUserID(str)
     if IsCamera(str) then
-        return string.sub(str, #CameraSymbol + 1)
+        return tonumber(string.sub(str, #CameraSymbol + 1))
     end
     return nil
 end

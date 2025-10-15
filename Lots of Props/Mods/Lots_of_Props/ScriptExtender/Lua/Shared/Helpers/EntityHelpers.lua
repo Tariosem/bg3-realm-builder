@@ -6,21 +6,21 @@ function EntityHelpers.EqualTransforms(a, b)
     if not a.RotationQuat or not b.RotationQuat then return false end
     if not a.Scale or not b.Scale then return false end
 
-    local EPS = 0.0001
+    local eps = EPSILON
     for i=1,3 do
-        if math.abs(a.Translate[i] - b.Translate[i]) > EPS then
+        if math.abs(a.Translate[i] - b.Translate[i]) > eps then
             return false
         end
     end
 
     for i=1,4 do
-        if math.abs(a.RotationQuat[i] - b.RotationQuat[i]) > EPS then
+        if math.abs(a.RotationQuat[i] - b.RotationQuat[i]) > eps then
             return false
         end
     end
 
     for i=1,3 do
-        if math.abs(a.Scale[i] - b.Scale[i]) > EPS then
+        if math.abs(a.Scale[i] - b.Scale[i]) > eps then
             return false
         end
     end
@@ -108,9 +108,6 @@ function EntityExists(guid)
         return true
     end
 
-    if not guid or guid == "" then
-        return false
-    end
     local entity = UuidToHandle(guid)
     if not entity then
         return false
@@ -155,19 +152,6 @@ function CIsCharacter(uuid)
     end
 
     return entity.IsCharacter ~= nil and true or false
-end
-
-function BF_GetAllDummies()
-    local now = Ext.Timer:MonotonicTime()
-    local dummies = {}
-    local entities = Ext.Entity.GetAllEntitiesWithComponent("ClientEquipmentVisuals")
-    for _, entity in ipairs(entities) do
-        if IsDummy(entity) then
-            table.insert(dummies, entity)
-        end
-    end
-    _P("Found " .. #dummies .. " dummies in " .. (Ext.Timer:MonotonicTime() - now) .. " ms.")
-    return dummies
 end
 
 function GetLevel(guid)
@@ -232,6 +216,21 @@ function GetEntityRotation(handle)
     return qx, qy, qz, qw
 end
 
+function GetEntityScale(handle)
+    if not handle then
+        return nil, nil, nil
+    end
+
+    local Transform = handle.Transform.Transform.Scale
+    local sx, sy, sz = Transform[1], Transform[2], Transform[3]
+
+    if not sx or not sy or not sz then
+        return nil, nil, nil
+    end
+
+    return sx, sy, sz
+end
+
 
 ---@param handle EntityHandle
 ---@param rot any
@@ -247,24 +246,6 @@ function SetEntityRotation(handle, rot)
     end
     entity.Transform.Transform.RotationQuat = {rot[1], rot[2], rot[3], rot[4]}
     return true
-end
-
-function GetScale(uuid)
-    if not uuid then
-        return nil
-    end
-
-    local entity = UuidToHandle(uuid)
-    if not entity then
-        return nil
-    end
-
-    local scale = entity.Transform.Transform.Scale[1]
-    if not scale then
-        return nil
-    end
-
-    return scale
 end
 
 --- @param uuid string
@@ -353,17 +334,7 @@ function CGetScale(guid)
 end
 
 function GetHostPosition()
-    local host
-    if Ext.IsServer() then
-        host = _C()  
-    else
-        host = Ext.Entity.Get(CGetHostCharacter())
-    end
-    if host then
-        return GetEntityPosition(host)
-    else
-        return nil, nil, nil
-    end
+    return CGetPosition(CGetHostCharacter())
 end
 
 --- @return GUIDSTRING[]
@@ -381,7 +352,7 @@ function GetAllPartyMembers()
     return partyMembers
 end
 
-function CIsProp(guid)
+function CIsTagged(guid)
     local entity = UuidToHandle(guid)
 
     if not entity then
@@ -453,7 +424,7 @@ end
 
 function IsProp(uuid)
     if Ext.IsClient() or true then
-        return CIsProp(uuid)
+        return CIsTagged(uuid)
     end
     return Osi.IsTagged(uuid, LOP_PROP_TAG) == 1
 end
@@ -477,7 +448,7 @@ function IsGizmo(uuid)
     return Osi.IsTagged(uuid, LOP_GIZMO_TAG) == 1
 end
 
-function BF_GetAllProps()
+function BF_GetAllTagged()
     local props = {}
     local AllUuids = GetAllUuidsWithComponent("Tag")
     for _, uuid in ipairs(AllUuids) do

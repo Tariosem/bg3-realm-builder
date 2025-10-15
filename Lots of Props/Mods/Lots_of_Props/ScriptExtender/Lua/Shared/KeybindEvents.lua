@@ -56,6 +56,7 @@ end
 --- @type table<string, table<string, Keybinding>>
 DEFAULT_KEYBINDS = {}
 
+--- @diagnostic disable
 DEFAULT_KEYBINDS.TransformToolbar = {
     ["MultiSelect"] = { Key = "M"},
     ["Select"] = { Key = "MMB" },

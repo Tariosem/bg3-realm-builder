@@ -48,7 +48,7 @@ function GetCursorPos(picker)
     return pos[1], pos[2]
 end
 
---- Returns the hit position and rotation from a picking helper. If the picking helper has no valid hit, it returns the position and rotation of the host character.
+--- Returns the hit position and rotation from a picking helper.
 --- @param picker EclPlayerPickingHelper?
 --- @return Vec3?
 --- @return Quat?
@@ -59,12 +59,6 @@ function GetPickingHitPosAndRot(picker)
     local pos = picker.Inner.Position
     local normal = picker.Inner.Normal
     local rot = DirectionToQuat(normal, nil, "Y")
-
-    if pos[1] == 0 and pos[2] == 0 and pos[3] == 0 then
-        local host = CGetHostCharacter()
-        return Vec3.new(CGetPosition(host)), Quat.new(CGetRotation(host))
-    end
-
     return Vec3.new(pos), Quat.new(rot)
 end
 
@@ -74,6 +68,14 @@ function CalcNDC(x, y, screenW, screenH)
     return ndcX, ndcY
 end
 
+--[[
+    Converts a 2D screen-space coordinate into a world-space ray.
+
+    Conceptually equivalent to:
+        worldNear = glm::unProjectZO(vec3(mouseX, mouseY, 0.0), view, proj, viewport)
+        worldFar  = glm::unProjectZO(vec3(mouseX, mouseY, 1.0), view, proj, viewport)
+        rayDir    = glm::normalize(worldFar - worldNear)
+]]
 ---@param cameraHandle EntityHandle?
 ---@param mouseX number?
 ---@param mouseY number?
@@ -110,13 +112,13 @@ function ScreenToWorldRay(cameraHandle, mouseX, mouseY, screenW, screenH)
     local invProj = Matrix.new(controller.Camera.InvProjectionMatrix)
     local invView = Matrix.new(controller.Camera.InvViewMatrix)
 
-    local viewNear = invProj * clipNear
-    local viewFar  = invProj * clipFar
-    viewNear = viewNear / viewNear.w
-    viewFar  = viewFar  / viewFar.w
+    -- (A * B)^-1 = B^-1 * A^-1
+    local inverse = invView * invProj
 
-    local worldNear4 = invView * viewNear
-    local worldFar4  = invView * viewFar
+    local worldNear4 = inverse * clipNear
+    local worldFar4  = inverse * clipFar
+    worldNear4 = worldNear4 / worldNear4.w
+    worldFar4  = worldFar4  / worldFar4.w
 
     local worldNear = Vec3.new({ worldNear4.x, worldNear4.y, worldNear4.z })
     local worldFar  = Vec3.new({ worldFar4.x,  worldFar4.y,  worldFar4.z })
@@ -130,12 +132,14 @@ function ScreenToWorldRay(cameraHandle, mouseX, mouseY, screenW, screenH)
     end
     dir = dir:Normalize()
 
-
     local ray = Ray.new(origin, dir)
 
     return ray
 end
 
+--[[
+    Converts a 3D world-space coordinate into a 2D screen-space coordinate.
+]]
 --- @param worldPos Vec3
 --- @param cameraHandle EntityHandle?
 --- @param screenW number?
@@ -162,9 +166,9 @@ function WorldToScreenPoint(worldPos, cameraHandle, screenW, screenH)
     local viewMat = Matrix.new(controller.Camera.ViewMatrix)
     local projMat = Matrix.new(controller.Camera.ProjectionMatrix)
 
+    local viewProj = projMat * viewMat
 
-    local viewPos = viewMat * worldPos4
-    local clipPos = projMat * viewPos
+    local clipPos = viewProj * worldPos4
 
     if clipPos.w == 0 then
         return nil

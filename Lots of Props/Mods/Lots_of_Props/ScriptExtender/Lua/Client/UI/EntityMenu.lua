@@ -1,12 +1,12 @@
---- @class PropsMenu
-PropsMenu = _Class("PropMenu")
+--- @class EntityMenu
+EntityMenu = _Class("EntityMenu")
 
-function PropsMenu:__init(parent)
+function EntityMenu:__init(parent)
     self.parent = parent
     
     self.isAttach = true
 
-    self.store = PropStore
+    self.store = EntityStore
 
     self.panel = nil
     self.isVisible = false
@@ -16,30 +16,31 @@ function PropsMenu:__init(parent)
 
     self.iconBrowser = ItemIconBrowser:Add(LOP_ItemManager, GetLoca("Items"))
     self.iconBrowser.panel.Open = false
-    self.propTabs = {}
+    self.entityTabs = {}
 end
 
-function PropsMenu:NewPropAdded(guids)
+function EntityMenu:NewEntityAdded(guids)
     local list = NormalizeGuidList(guids)
 
     for _, guid in ipairs(list) do
-        local prop = PropStore:GetProp(guid)
-        if prop and not self.propTabs[guid] then
+        local ent = EntityStore:GetEntity(guid)
+        if ent and not self.entityTabs[guid] then
             local opts = {}
             table.insert(opts, "IsAttach")
-            self.propTabs[guid] = self:CreatePropTab(prop, opts)    
+            self.entityTabs[guid] = self:CreateEntityTab(ent, opts)    
         end
     end
     self:UpdateList()
 end
 
-function PropsMenu:PropDeleted(guids)
+function EntityMenu:EntityDeleted(guids)
     local list = NormalizeGuidList(guids)
+    Debug("EntityMenu:EntityDeleted", list)
     for _, guid in ipairs(list) do
         if guid ~= nil and guid ~= "" then
-            if self.propTabs[guid] then
-                self.propTabs[guid]:Destroy()
-                self.propTabs[guid] = nil
+            if self.entityTabs[guid] then
+                self.entityTabs[guid]:Destroy()
+                self.entityTabs[guid] = nil
             end
             
         end
@@ -48,7 +49,7 @@ function PropsMenu:PropDeleted(guids)
 end
 
 
-function PropsMenu:Render()
+function EntityMenu:Render()
 
     if self.isAttach and self.parent then
         self.panel = self.parent:AddTabItem("Props")
@@ -68,7 +69,7 @@ function PropsMenu:Render()
     self:RenderMainArea()
 end
 
-function PropsMenu:RenderMenu()
+function EntityMenu:RenderMenu()
     if self.isWindow then
         self.mainMenu = self.panel:AddMainMenu()
         self.debugMenu = self.mainMenu:AddMenu(GetLoca("Debug"))
@@ -92,7 +93,9 @@ function PropsMenu:RenderMenu()
         ConfirmPopup:DangerConfirm(
             GetLoca("Are you sure?"),
             function()
-                Post("BF_DeleteAll")
+                NetChannel.ManageEntity:SendToServer({
+                    Action = "BFDA",
+                })
             end,
             nil
         )
@@ -102,9 +105,9 @@ function PropsMenu:RenderMenu()
     ApplyDangerSelectableStyle(self.bruteForceDeleteAllButton)
 end
 
-function PropsMenu:RenderSideBar()
+function EntityMenu:RenderSideBar()
     local panel = self.mainPanel.SideBar
-    local tree = PropStore.Tree
+    local tree = EntityStore.Tree
 
     local treeList = TreeList.new(panel, "PropsTree", tree, "Guid") --[[@as TreeList]]
 
@@ -134,7 +137,7 @@ function PropsMenu:RenderSideBar()
     end
 
     treeList.RenderLeaf = function(sel, key, node)
-        local propData = PropStore:GetProp(key)
+        local propData = EntityStore:GetEntity(key)
         if not propData then
             Warning("Prop data missing for key: " .. key)
             return node:AddSelectable(key .. " (Missing)") --[[@as ExtuiSelectable]]
@@ -155,7 +158,12 @@ function PropsMenu:RenderSideBar()
         image.Tint = propData.IconTintColor or {1,1,1,1}
         image:SetColor("Button", ToVec4(0))
         image.OnClick = function()
-            Post("SetAttributes", {Guid = propData.Guid, Visible = not propData.Visible})
+            NetChannel.SetAttributes:SendToServer({
+                Guid = propData.Guid,
+                Attributes = {
+                    Visible = not propData.Visible
+                }
+            })
             propData.Visible = not propData.Visible
             SetAlphaByBool(image, propData.Visible)
             SetAlphaByBool(selectable, propData.Visible)
@@ -171,7 +179,7 @@ function PropsMenu:RenderSideBar()
         end
 
         selectable.OnClick = function()
-            self:FocusPropTab(key)
+            self:FocusTab(key)
         end
 
         selectable.UserData = {
@@ -188,7 +196,7 @@ function PropsMenu:RenderSideBar()
     treeList.RenderTree = function (sel, key, node)
         local treeSelectable = node:AddSelectable(key) --[[@as ExtuiSelectable]]
 
-        local popup = node:AddPopup("TreeRightClickPopup" .. key) --[[@as ExtuiPopup]]
+        local popup = node:AddPopup("TreeRightClickPopup" .. key)
 
         treeSelectable.OnRightClick = function()
             popup:Open()
@@ -233,7 +241,6 @@ function PropsMenu:RenderSideBar()
 
                 return UNSUBSCRIBE_SYMBOL
             end
-
         end)
 
         return treeSelectable
@@ -241,7 +248,7 @@ function PropsMenu:RenderSideBar()
 
     treeList.FilterFunc = function(sel, key, keywords)
         local words = SplitBySpace(keywords)
-        local propData = PropStore:GetProp(key)
+        local propData = EntityStore:GetEntity(key)
         if not propData then
             if not tree:IsLeaf(key) then
                 for _, word in ipairs(words) do
@@ -261,8 +268,8 @@ function PropsMenu:RenderSideBar()
     treeList.RenderOrder = function(aKey, bKey)
         if aKey == bKey then return false end
         if not aKey or not bKey then return false end
-        local aName = tree:IsLeaf(aKey) and (PropStore:GetProp(aKey) and PropStore:GetProp(aKey).DisplayName or aKey) or aKey
-        local bName = tree:IsLeaf(bKey) and (PropStore:GetProp(bKey) and PropStore:GetProp(bKey).DisplayName or bKey) or bKey
+        local aName = tree:IsLeaf(aKey) and (EntityStore:GetEntity(aKey) and EntityStore:GetEntity(aKey).DisplayName or aKey) or aKey
+        local bName = tree:IsLeaf(bKey) and (EntityStore:GetEntity(bKey) and EntityStore:GetEntity(bKey).DisplayName or bKey) or bKey
         return string.lower(aName) < string.lower(bName)
     end
 
@@ -271,12 +278,12 @@ function PropsMenu:RenderSideBar()
     self.propTreeList = treeList   
 end
 
-function PropsMenu:GroupLogic(from, target)
+function EntityMenu:GroupLogic(from, target)
     if not from or not target or from == target then
         return
     end
 
-    local tree = PropStore.Tree
+    local tree = EntityStore.Tree
 
     local isFromTree = not tree:IsLeaf(from)
     local isTargetTree = not tree:IsLeaf(target)
@@ -308,19 +315,20 @@ function PropsMenu:GroupLogic(from, target)
     self:UpdateList()
 end
 
-local function deleteHandler(guids)
-    Post("Delete", { Guid = guids })
-end
-
-function PropsMenu:SetupSelectablePopup(popup)
+function EntityMenu:SetupSelectablePopup(popup)
     if popup and popup.UserData then
         for _, obj in pairs(popup.UserData.Others) do
             obj:Destroy()
         end
     end
-    local tree = PropStore.Tree
+    local tree = EntityStore.Tree
 
-    local deleteButton = AddSelectableButton(popup, GetLoca("Delete"), function()
+    local ttable = popup:AddTable("PropRightClickPopupTable", 1) --[[@as ExtuiTable]]
+    ttable.BordersInnerH = true
+
+    local row = ttable:AddRow() --[[@as ExtuiTableRow]]
+
+    local deleteButton = AddSelectableButton(row:AddCell(), GetLoca("Delete"), function()
         if self.selectedGuids and #self.selectedGuids > 0 then
             local deleteMes = ""
             local guids = {}
@@ -331,26 +339,32 @@ function PropsMenu:SetupSelectablePopup(popup)
                 return
             end
             if #guids == 1 then
-                deleteMes = string.format(GetLoca("Are you sure you want to delete '%s'?"), PropStore[guids[1]].DisplayName or guids[1])
+                deleteMes = string.format(GetLoca("Are you sure you want to delete '%s'?"), EntityStore[guids[1]].DisplayName or guids[1])
             else
                 deleteMes = string.format(GetLoca("Are you sure you want to delete these %d props?"), #guids)
             end
             ConfirmPopup:DangerConfirm(
                 deleteMes,
                 function()
-                    deleteHandler(guids)
+                    NetChannel.Delete:SendToServer({ Guid = guids })
                 end
             )
         end
     end)
     ApplyDangerSelectableStyle(deleteButton)
 
-    local hideButton = AddSelectableButton(popup, GetLoca("Hide/Show"), function()
+    local hideButton = AddSelectableButton(row:AddCell(), GetLoca("Hide/Show"), function()
         if self.selectedGuids and #self.selectedGuids > 0 then
             for _, guid in ipairs(self.selectedGuids) do
-                local prop = PropStore:GetProp(guid)
+                local prop = EntityStore:GetEntity(guid)
                 if prop then
-                    Post("SetAttributes", {Guid = prop.Guid, Visible = not prop.Visible})
+                    local data = {
+                        Guid = prop.Guid,
+                        Attributes = {
+                            Visible = not prop.Visible
+                        }
+                    }
+                    NetChannel.SetAttributes:SendToServer(data)
                     prop.Visible = not prop.Visible
                 end
             end
@@ -358,7 +372,7 @@ function PropsMenu:SetupSelectablePopup(popup)
         end
     end)
 
-    local groupButton = AddSelectableButton(popup, GetLoca("Group"), function()
+    local groupButton = AddSelectableButton(row:AddCell(), GetLoca("Group"), function()
         if self.selectedGuids and #self.selectedGuids > 0 then
             local baseName = GetLoca("New Collection")
             local name = baseName
@@ -379,49 +393,47 @@ function PropsMenu:SetupSelectablePopup(popup)
 
     popup.UserData = {
         Others = {
-            deleteButton,
-            groupButton,
-            hideButton,
+            ttable
         }
     }
 end
 
-function PropsMenu:RenderMainArea()
+function EntityMenu:RenderMainArea()
     local panel = self.mainPanel.MainArea
 
     self.mainArea = panel
 end
 
-function PropsMenu:CreatePropTab(prop, opts)
+function EntityMenu:CreateEntityTab(ent, opts)
     --self.props[prop.Guid] = prop
 
-    local propTab = nil
+    local entityTab = nil
 
     if TableContains(opts, "Add") then
-        propTab = PropTab:Add(prop.Guid, prop.TemplateId, self.mainArea, opts, prop.IconTintColor)
+        entityTab = EntityTab:Add(ent.Guid, ent.TemplateId, self.mainArea, opts, ent.IconTintColor)
     else
-        propTab = PropTab.new(prop.Guid, prop.TemplateId, self.mainArea, opts)
+        entityTab = EntityTab.new(ent.Guid, ent.TemplateId, self.mainArea, opts)
     end
 
-    if propTab then
-        propTab.OnChange = function(changeLib)
-            if not propTab.isValid then return end
+    if entityTab then
+        entityTab.OnChange = function(changeLib)
+            if not entityTab.isValid then return end
 
             if self.iconBrowser and changeLib then
-                if self.iconBrowser.updateTagsFn and self.iconBrowser.updateTagsFn[TakeTailTemplate(propTab.templateId)] then
-                    self.iconBrowser.updateTagsFn[TakeTailTemplate(propTab.templateId)]()
+                if self.iconBrowser.updateTagsFn and self.iconBrowser.updateTagsFn[TakeTailTemplate(entityTab.templateId)] then
+                    self.iconBrowser.updateTagsFn[TakeTailTemplate(entityTab.templateId)]()
                 end
                 self.iconBrowser:AddTagsFilter()
             end
 
-            if self.imageRefs and self.imageRefs[prop.Guid] then
-                self.imageRefs[prop.Guid].Tint = PropStore[prop.Guid].IconTintColor or {1,1,1,1}
+            if self.imageRefs and self.imageRefs[ent.Guid] then
+                self.imageRefs[ent.Guid].Tint = EntityStore[ent.Guid].IconTintColor or {1,1,1,1}
             end            
         end
 
-        propTab.OnAttach = function()
-            if self.presentingProp and self.presentingProp ~= prop.Guid and self.propTabs[self.presentingProp] then
-                local tab = self.propTabs[self.presentingProp]
+        entityTab.OnAttach = function()
+            if self.presentingProp and self.presentingProp ~= ent.Guid and self.entityTabs[self.presentingProp] then
+                local tab = self.entityTabs[self.presentingProp]
                 tab.isAttach = false
                 if not tab.isWindow then
                     tab:Collapsed()
@@ -429,61 +441,61 @@ function PropsMenu:CreatePropTab(prop, opts)
             end
         end
             
-        return propTab
+        return entityTab
     end
 
-    Error("[PropsMenu] Failed to create PropTab for guid: " .. prop.Guid)
+    Error("[PropsMenu] Failed to create entityTab for guid: " .. ent.Guid)
     return nil
 end
 
-function PropsMenu:FocusPropTab(guid, doDetach)
-    local propTab = self.propTabs[guid]
-    if guid == self.presentingProp and propTab.isVisible == false then
+function EntityMenu:FocusTab(guid, doDetach)
+    local entityTab = self.entityTabs[guid]
+    if guid == self.presentingProp and entityTab.isVisible == false then
         self.presentingProp = nil
     end
     if guid == self.presentingProp and not doDetach then
         return
     end
-    if self.presentingProp and self.propTabs[self.presentingProp] then
-        local tab = self.propTabs[self.presentingProp]
+    if self.presentingProp and self.entityTabs[self.presentingProp] then
+        local tab = self.entityTabs[self.presentingProp]
         tab.isAttach = false
         if not tab.isWindow then
             tab:Collapsed()
         end
     end
 
-    local propTab = self.propTabs[guid]
-    if propTab and propTab.isValid then
-        propTab.isAttach = not doDetach
-        propTab:Refresh()
-        if propTab.isWindow then
-            FocusWindow(propTab.panel)
+    local entityTab = self.entityTabs[guid]
+    if entityTab and entityTab.isValid then
+        entityTab.isAttach = not doDetach
+        entityTab:Refresh()
+        if entityTab.isWindow then
+            FocusWindow(entityTab.panel)
         end
         self.presentingProp = guid
     end
 end
 
-function PropsMenu:FocusPropVisualTab(guid)
-    local propTab = self.propTabs[guid]
-    if propTab and propTab.isValid then
+function EntityMenu:FocusEntityVisualTab(guid)
+    local entityTab = self.entityTabs[guid]
+    if entityTab and entityTab.isValid then
 
-        if propTab.visualTab.isWindow and propTab.visualTab.isVisible then
-            FocusWindow(propTab.visualTab.panel)
+        if entityTab.visualTab.isWindow and entityTab.visualTab.isVisible then
+            FocusWindow(entityTab.visualTab.panel)
         else
-            propTab.visualTab.isAttach = false
-            propTab.visualTab:Refresh()
-            FocusWindow(propTab.visualTab.panel)
+            entityTab.visualTab.isAttach = false
+            entityTab.visualTab:Refresh()
+            FocusWindow(entityTab.visualTab.panel)
         end
         return true
     end
 end
 
-function PropsMenu:UpdateList()
+function EntityMenu:UpdateList()
     self.propTreeList:RenderList()
 end
 
-function PropsMenu:Add(parent)
-    local menu = PropsMenu.new(parent)
+function EntityMenu:Add(parent)
+    local menu = EntityMenu.new(parent)
     menu:Render()
     return menu
 end

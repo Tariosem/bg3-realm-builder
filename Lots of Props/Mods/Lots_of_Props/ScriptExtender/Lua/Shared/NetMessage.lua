@@ -1,58 +1,39 @@
-NetMessage = NetMessage or {}
+NetChannel = NetChannel or {}
 
-NetMessageName = {
-    ServerProps = "ServerProps",
-    DeletedProps = "DeletedProps",
-    ApplyVisualPreset = "ApplyVisualPreset",
-    SetVisualTransform = "SetVisualTransform",
-    AttributeChanged = "AttributeChanged",
-    ServerGizmo = "ServerGizmo",
-    BindProps = "BindProps",
-    SetLineColor = "SetLineColor",
-    Visualization = "Visualization",
-}
+--- @class SetVisualTransformChannel : NetChannel
+--- @field Broadcast fun(self, data: {Guid: GUIDSTRING[]|GUIDSTRING, Transforms: table<GUIDSTRING, {Translate: Vec3|nil, RotationQuat: Quat|nil, Scale: Vec3|nil}>})
+--- @field SendToClient fun(self, data: {Guid: GUIDSTRING[]|GUIDSTRING, Transforms: table<GUIDSTRING, {Translate: Vec3|nil, RotationQuat: Quat|nil, Scale: Vec3|nil}>}, user:number)
+NetChannel.SetVisualTransform = Ext.Net.CreateChannel(ModuleUUID, "SetVisualTransform")
 
-setmetatable(NetMessage, {
-    __newindex = function (t, k, v)
-        rawset(t, k, NetMessageName[k])
-    end
-})
+--- @class AttributeChangedChannel : NetChannel
+--- @field Broadcast fun(self, data: {Guid: GUIDSTRING[]|GUIDSTRING, Attributes: table<'Moveable'|'Persistent'|'Gravity'|'Visible'|'CanInteract', boolean>})
+NetChannel.AttributeChanged = Ext.Net.CreateChannel(ModuleUUID, "AttributeChanged")
 
----@param Props ServerPropData[] data
-NetMessage.ServerProps = function(Props) end
+--- @class BindPropsChannel : NetChannel
+--- @field Broadcast fun(self, data: {BindInfos: {Guid: GUIDSTRING, BindParent: GUIDSTRING|nil, KeepLookingAt: boolean|nil, FollowParent: boolean|nil}[], Type: "Bind"|"Unbind"})
+NetChannel.BindProps = Ext.Net.CreateChannel(ModuleUUID, "BindProps")
 
----@param Guids GUIDSTRING[] data
-NetMessage.DeletedProps = function(Guids) end
+--- @class ApplyVisualPresetChannel
+--- @field Broadcast fun(self, data: {Guid: GUIDSTRING, TemplateName: string, VisualPreset: string})
+NetChannel.ApplyVisualPreset = Ext.Net.CreateChannel(ModuleUUID, "ApplyVisualPreset")
 
----@param Guid GUIDSTRING
----@param TemplateName string
----@param PresetName string
-NetMessage.ApplyVisualPreset = function(Guid, TemplateName, PresetName) end
+--- @class CameraBindChannel : NetChannel
+--- @field SendToClient fun(self, data: {Type: "Bind"|"Unbind", Guid: GUIDSTRING, Parent: GUIDSTRING|nil}, user:number)
+NetChannel.CameraBind = Ext.Net.CreateChannel(ModuleUUID, "CameraBind")
 
----@param Guid GUIDSTRING|GUIDSTRING[]
----@param Transforms table<GUIDSTRING, Transform>
-NetMessage.SetVisualTransform = function(Guid, Transforms) end
+--- @class NewTemplateChannel : NetChannel
+--- @field Broadcast fun(self, data: {Guid: GUIDSTRING, TemplateName: string})
+--- @field OnMessage fun(self, data: {Guid: GUIDSTRING, TemplateName: string})
+NetChannel.NewTemplate = Ext.Net.CreateChannel(ModuleUUID, "NewTemplate")
 
---- @param Guid GUIDSTRING
---- @param Color Vec4
-NetMessage.SetLineColor = function (Guid, Color) end
+NetChannel.Entities = NetChannel.Entities or {}
 
----@param Guid GUIDSTRING|GUIDSTRING[]
----@param Visible boolean|nil
----@param Gravity boolean|nil
----@param CanInteract boolean|nil
----@param Moveable boolean|nil
----@param Persistent boolean|nil
-NetMessage.AttributeChanged = function(Guid, Visible, Gravity, CanInteract, Moveable, Persistent) end
+--- @class EntitiesAddedChannel : NetChannel
+--- @field Broadcast fun(self, data: {Entities: ServerEntityData[]})
+--- @field OnMessage fun(self, data: {Entities: ServerEntityData[]})
+NetChannel.Entities.Added = Ext.Net.CreateChannel(ModuleUUID, "EntitiesAdded")
 
----@param Guid GUIDSTRING
----@param Clear boolean
-NetMessage.ServerGizmo = function(Guid, Clear) end
-
----@param BindInfos {Guid: GUIDSTRING, BindParent: GUIDSTRING|nil, KeepLookingAt: boolean|nil, NotFollowParent: boolean|nil}[]
----@param Type "Bind"|"Unbind"
-NetMessage.BindProps = function(BindInfos, Type) end
-
---- @param Guid GUIDSTRING|GUIDSTRING[]
---- @param RequestId any?
-NetMessage.Visualization = function (Guid, RequestId) end
+--- @class Entities.DeletedChannel : NetChannel
+--- @field Broadcast fun(self, data: GUIDSTRING[])
+--- @field OnMessage fun(self, data: GUIDSTRING[])
+NetChannel.Entities.Deleted = Ext.Net.CreateChannel(ModuleUUID, "EntitiesDeleted")

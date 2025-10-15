@@ -3,7 +3,7 @@ RequireFiles("Client/UI/", {
     "Elements/_init",
     "Stores/_init",
     "Components/_init",
-    "PropsMenu",
+    "EntityMenu",
     "EffectsMenu",
     "PresetMenu",
     "StyleMenu",

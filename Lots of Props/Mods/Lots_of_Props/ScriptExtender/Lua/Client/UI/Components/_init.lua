@@ -1,10 +1,12 @@
 RequireFiles("Client/UI/Components/", {
+    "MaterialEditor",
     "VisualTab",
+    "CharacterVisualTab",
     "StatsParser",
     "IconBrowser/_init",
     "ItemIconBrowser",
     "EffectIconBrowser",
-    "PropTab",
+    "EntityTab",
     "EffectTab",
     "CustomEffectTab",
     "StatsTab",

@@ -13,7 +13,7 @@ function IconBrowser:__init(dataManager, DisplayName)
     self.excludeTags = {}   -- { UnknownIcon = true, Timeline = true }
     self.excludeGroups = {} -- { Blacklist = true }
     self.iconTooltipName = "DisplayName"
-    self.iconButtonBgColor = CONFIG.ItemsBrowser.ButtonBgColor or nil
+    self.iconButtonBgColor = CONFIG.ItemBrowser.ButtonBgColor or nil
     self.iconToName = false
 
     self.matchAllTags = true
@@ -910,7 +910,7 @@ function IconBrowser:RenderCustomizationTab(popup, entry)
             self:AddTagsFilter()
             self:SaveLibChanges(entry.Uuid, "Tags", tag, true)
         else
-            --Warning("[PropTab] Cannot remove empty tag for GUID: " .. icon.guid)
+            --Warning("[EntityTab] Cannot remove empty tag for GUID: " .. icon.guid)
         end
         self.tempDisableSearch = false
     end

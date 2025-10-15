@@ -262,8 +262,8 @@ function NearbyCombo:RenderIcons()
 
         local imageBtn = cell:AddImageButton("", icon, Vec2.new{48, 48} * SCALE_FACTOR)
         imageBtn.IDContext = cell.IDContext .. "ImageBtn"
-        if PropStore[entry.Guid] and PropStore[entry.Guid].IconTintColor then
-            imageBtn.Tint = PropStore[entry.Guid].IconTintColor
+        if EntityStore[entry.Guid] and EntityStore[entry.Guid].IconTintColor then
+            imageBtn.Tint = EntityStore[entry.Guid].IconTintColor
         end
 
         imageBtn:Tooltip():AddText(displayName)

@@ -133,6 +133,7 @@ function EffectsManager:PlayLoopEffect(data)
     return fxhandle --[[@as integer]]
 end
 
+--- @param data EffectData
 function EffectsManager:PlayEffect(data)
     data = NormalizeData(data)
     local fxname = data.FxName

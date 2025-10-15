@@ -24,6 +24,7 @@ GLOBAL_AVAILABLE_OPERATORS = {
     [")"] = true,
 }
 
+--- simple implementation of shunting-yard algorithm to evaluate basic math expressions
 --- @param expr string
 --- @return number|nil number, string|nil error
 function EvalExpression(expr)

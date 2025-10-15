@@ -7,7 +7,8 @@ local function toggleMainWindow()
     else
         LOPMenu = Menu:Add()
     end
-    Post("ScanAllProps")
+    NetChannel.ManageEntity:SendToServer({ Action = "Scan" })
+    
 end
 
 MCM.Keybinding.SetCallback("key_toggle_main_window", function()

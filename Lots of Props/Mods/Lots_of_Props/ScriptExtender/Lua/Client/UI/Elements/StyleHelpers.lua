@@ -27,7 +27,7 @@ function AddSliderWithStep(parent, IDContext, defaultValue, min, max, step, isIn
     local increButton = nil
     step = step or 0.1
     if isInteger then
-        stepInput = parent:AddInputInt("", step)
+        stepInput = parent:AddInputInt("", math.floor(step))
         decreButton = AddSliderStepButton(parent, "<", -step, nil, "<")
         slider = SafeAddSliderInt(parent, "", defaultValue or 0, min or 0, max or 100)
         increButton = AddSliderStepButton(parent, ">", step, nil, ">")

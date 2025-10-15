@@ -3,7 +3,6 @@ local visualPresetsPath = "Lots_of_Props/VisualPresets/"
 local visRefPath = "Lots_of_Props/VisualPresets/References.json"
 local effRefPath = "Lots_of_Props/CustomEffects/References.json"
 local effPath = "Lots_of_Props/CustomEffects/"
-local propTabsPath = "Lots_of_Props/LocalFilterSettings.json"
 local presetRefPath = "Lots_of_Props/Presets/References.json"
 local presetPath = "Lots_of_Props/Presets/"
 local localGenPath = "Lots_of_Props/Localization/"
@@ -35,10 +34,6 @@ end
 
 function GetEffectReferencePath()
     return effRefPath
-end
-
-function GetPropTabsPath()
-    return propTabsPath
 end
 
 function GetModPath(name)

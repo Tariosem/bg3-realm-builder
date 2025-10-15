@@ -129,13 +129,12 @@ function DirectionToQuat(direction, up, forwardAxis)
     realUp = Ext.Math.Normalize(Ext.Math.Cross(forward, right))
 
     local mat = {
-        right[1], right[2], right[3], 0,
-        realUp[1], realUp[2], realUp[3], 0,
-        direction[1], direction[2], direction[3], 0,
-        0, 0, 0, 1
+        right[1], right[2], right[3],
+        realUp[1], realUp[2], realUp[3],
+        direction[1], direction[2], direction[3],
     }
 
-    local quat = Ext.Math.Mat4ToQuat(mat)
+    local quat = Ext.Math.Mat3ToQuat(mat)
 
     if forwardAxis ~= "Z" then
         if forwardAxis == "X" then
@@ -164,6 +163,7 @@ function DirectionToQuat(direction, up, forwardAxis)
 end
 
 --- @param quat quat
+--- @return Vec3 euler in radians
 function QuatToEuler(quat)
     local mat = Ext.Math.QuatToMat4(quat)
     local euler = Ext.Math.ExtractEulerAngles(mat)

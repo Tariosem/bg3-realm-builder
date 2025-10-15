@@ -40,7 +40,7 @@ function Ray:ClosestTTo(Other, noLimit)
     local c = Ext.Math.Dot(d1, d2)
     local denom = a * e - c * c
 
-    if math.abs(denom) < 1e-6 then
+    if math.abs(denom) < EPSILON then
         local base_point = self.Origin
 
         local t2 = Ext.Math.Dot(d2, base_point - Other.Origin) / e
@@ -78,9 +78,20 @@ function Ray:IntersectPlane(planePoint, planeNormal)
     planePoint = Vec3.new(planePoint)
 
     local denom = Ext.Math.Dot(planeNormal, self.Direction)
-    if math.abs(denom) < 1e-6 then return nil end
+    if math.abs(denom) < EPSILON then
+        --Info("Ray:IntersectPlane: Parallel, no intersection")
+        if math.abs(Ext.Math.Dot(planeNormal, self.Origin - planePoint)) < EPSILON then
+            return Hit.new(
+                self.Origin,
+                planeNormal,
+                0,
+                nil
+            )
+        end
+        return nil
+    end
     local t = Ext.Math.Dot(Ext.Math.Sub(planePoint, self.Origin), planeNormal) / denom
-    if t < 0 then --[[Info("Ray:IntersectPlane: Intersection behind ray origin")]] return nil end
+    if t < 0 then --[[Info("Ray:IntersectPlane: Intersection behind ray origin")]] return nil end -- behind ray
 
     --Info("Ray:IntersectPlane: Hit at distance ", t)
 
@@ -103,9 +114,7 @@ function Ray:IntersectRing(planePoint, planeNormal, innerRadius, outerRadius)
 
     local toHit = hit.Position - planePoint
     local distSqr = Ext.Math.Dot(toHit, toHit)
-    if distSqr < innerRadius*innerRadius or distSqr > outerRadius*outerRadius then
-        return nil
-    end
+    if distSqr < innerRadius*innerRadius or distSqr > outerRadius*outerRadius then return nil end
 
     return hit
 end
@@ -187,9 +196,9 @@ end
 ---@return Hit
 function Ray:IntersectCylinder(pos, radius, height, axis)
     if type(axis) == "string" then
-        axis = GLOBAL_COORDINATE[axis] or {0,1,0}
+        axis = GLOBAL_COORDINATE[axis] or GLOBAL_COORDINATE.Y
     else
-        axis = axis or {0,1,0}
+        axis = axis or GLOBAL_COORDINATE.Y
     end
     axis = Vec3.new(axis):Normalize()
 
@@ -209,7 +218,7 @@ function Ray:IntersectCylinder(pos, radius, height, axis)
     local closestHit = Hit.None()
 
     local disc = b*b - 4*a*c
-    if disc >= 0 and a > 1e-6 then
+    if disc >= 0 and a > EPSILON then
         local sqrtDisc = math.sqrt(disc)
         for _,t in ipairs{(-b - sqrtDisc)/(2*a), (-b + sqrtDisc)/(2*a)} do
             if t >= 0 then
@@ -232,7 +241,7 @@ function Ray:IntersectCylinder(pos, radius, height, axis)
     for _,sign in ipairs{1,-1} do
         local capCenter = pos + axis * (sign * height * 0.5)
         local denom = Ext.Math.Dot(d, axis)
-        if math.abs(denom) > 1e-6 then
+        if math.abs(denom) > EPSILON then
             local t = Ext.Math.Dot(capCenter - self.Origin, axis) / denom
             if t >= 0 then
                 local p = self:At(t)
@@ -263,13 +272,13 @@ function Ray:IntersectSphere(center, radius)
     local a = Ext.Math.Dot(self.Direction, self.Direction)
     local b = 2.0 * Ext.Math.Dot(oc, self.Direction)
     local c = Ext.Math.Dot(oc, oc) - radius * radius
-    local discriminant = b * b - 4 * a * c
-    if discriminant < 0 then
+    local disc = b * b - 4 * a * c
+    if disc < 0 then
         return nil
     else
-        local t = (-b - math.sqrt(discriminant)) / (2.0 * a)
+        local t = (-b - math.sqrt(disc)) / (2.0 * a)
         if t < 0 then
-            t = (-b + math.sqrt(discriminant)) / (2.0 * a)
+            t = (-b + math.sqrt(disc)) / (2.0 * a)
         end
         if t < 0 then return nil end
         return Hit.new(
@@ -322,7 +331,15 @@ function Ray:IntersectEntity(entity)
 end
 
 function Ray:Debug()
-    Post(NetChannel.Visualize, { Type = "Line", Position = self.Origin, EndPosition = self:At(10)})
+
+    NetChannel.Visualize:RequestToServer({
+        Type = "Line",
+        Position = self.Origin,
+        EndPosition = self:At(10),
+        Duration = 3000,
+    }, function(response)
+        -- do nothing
+    end)
 end
 
 

@@ -31,18 +31,6 @@ function Gizmo:__init(editor)
     self.Picker = GizmoPicker.new(self)
     self.Subscription = {}
     self.Timers = {}
-
-    self.ServerListener = ClientSubscribe(NetMessage.ServerGizmo, function (data)
-        if data.Guid then
-            if self.Guid then self:DeleteItem() end
-            self.Guid = data.Guid
-            self:SetupListeners()
-        end
-        if data.Clear then
-            self.Guid = nil
-        end
-    end)
-
 end
 
 function Gizmo:EmptyDrag()
@@ -67,6 +55,7 @@ function Gizmo:SetTarget(targets)
     end
 
     self.Targets = targets
+    self:UpdatePicker()
     if not self.Guid then
         self:CreateItem()
     end
@@ -85,7 +74,7 @@ function Gizmo:UpdatePicker()
     if self.Space == "View" then
         rx, ry, rz, rw = GetCameraRotation()
     elseif self.Space == "Parent" then
-        local parent = PropStore:GetBindParent(target)
+        local parent = EntityStore:GetBindParent(target)
         if parent and EntityExists(parent) then
             rx, ry, rz, rw = CGetRotation(parent)
         else
@@ -102,7 +91,7 @@ function Gizmo:UpdatePicker()
     local pos = Vec3.new({x, y, z})
     self.Picker.Position = pos
     self.Picker.Rotation = Quat.new{rx, ry, rz, rw}
-    local scale = GizmoVisualizer:UpdateScale(self.Guid)
+    local scale = GizmoVisualizer.UpdateScale(self.Guid)
     self.Picker.Scale = scale
     self.Picker.AABB = { Min = pos - {scale, scale, scale}, Max = pos + {scale, scale, scale} }
 end
@@ -248,13 +237,13 @@ function Gizmo:SetupListeners()
     self.Timers["Stick"] = Timer:EveryFrame(function (timerID)
         if not self.Guid then return end
         local target = self.Targets and self.Targets[1]
-        if not target or not EntityExists(target) then return end
+        if not target or not EntityExists(target) then self:Hide() return end
         local pos = {CGetPosition(target)}
         local rot = Quat.Identity()
         if self.Space == "Local" then
             rot = {CGetRotation(target)}
         elseif self.Space == "Parent" then
-            local parent = PropStore:GetBindParent(target)
+            local parent = EntityStore:GetBindParent(target)
             if parent then
                 rot = {CGetRotation(parent)}
             end
@@ -264,7 +253,7 @@ function Gizmo:SetupListeners()
         if not rot or #rot ~= 4 then
             rot = Quat.Identity()
         end
-        Post(NetChannel.SetTransform, {
+        NetChannel.SetTransform:SendToServer({
             Guid = self.Guid,
             Transforms = {
                 [self.Guid] = {
@@ -278,7 +267,9 @@ end
 
 function Gizmo:DeleteItem()
     local guid = self.Guid
-    Post(NetChannel.Delete, { Guid = guid })
+    --Debug("Gizmo:DeleteItem", guid)
+    NetChannel.Delete:SendToServer({ Guid = guid })
+    self.Guid = nil
 end
 
 function Gizmo:CreateItem()
@@ -286,10 +277,21 @@ function Gizmo:CreateItem()
         self:DeleteItem()
     end
 
-    local data = {
+    if self.Targets and #self.Targets == 0 then
+        return
+    end
+
+    local pos = {CGetPosition(self.Targets and self.Targets[1])}
+
+    NetChannel.ManageGizmo:RequestToServer({
         GizmoType = self.Mode,
-    }
-    Post(NetChannel.ManageGizmo, data)
+        Position = pos
+    }, function (response)
+        self.Guid = response.Guid
+        if not next(self.Timers) then
+            self:SetupListeners()
+        end
+    end)
 end
 
 function Gizmo:SetMode(mode)
@@ -305,7 +307,7 @@ function Gizmo:SetMode(mode)
         end
 
         self.Mode = mode
-        self:DeleteItem()
+        --Debug("Gizmo:SetMode: Changed mode to", mode)
         self:CreateItem()
         if ifRestart then
             self:RestartDragging()
@@ -327,14 +329,14 @@ function Gizmo:SetSpace(space)
     end
 end
 
-local lastDraw = 0
-
 --#region math
+
+local lastDraw = 0
 
 --- @param ray Ray
 function Gizmo:GetHit(ray)
     local cnt = CountMap(self.SelectedAxis or {})
-    if cnt == 0 then Debug("No Axis") return Hit.new(self.Picker.Position, nil, 0, nil) end
+    if cnt == 0 then Debug("Gizm:GetHit: No Axis ") return Hit.new(self.Picker.Position, nil, 0, nil) end
 
     local hit = nil
     if self.Mode == "Rotate" then
@@ -345,15 +347,15 @@ function Gizmo:GetHit(ray)
         local origin = self.Picker.Position
 
         if not hit then hit = Hit.new(self.Picker:ProjectPointOnPlanePerpToAxis(ray.Origin, axis), nil, 0, nil) end
-        if hit and hit.Position and self.Visualizations and #self.Visualizations > 0 then
+        if hit and hit.Position and self.RotatePointer and #self.RotatePointer > 0 then
             local dir = hit.Position - origin
             local quat = DirectionToQuat(dir, Ext.Math.QuatRotate(self.Picker.Rotation, GLOBAL_COORDINATE.Y), axis)
-            local newest = self.Visualizations[#self.Visualizations]
-            for _,guid in ipairs(self.Visualizations or {}) do
-                GizmoVisualizer:VisualizeRotateSymbol(guid, axis)
+            local newest = self.RotatePointer[#self.RotatePointer]
+            for _,guid in ipairs(self.RotatePointer or {}) do
+                GizmoVisualizer.VisualizeRotateSymbol(guid, axis)
             end
             local pos = self.Picker.Position
-            Post(NetChannel.SetTransform, {
+            NetChannel.SetTransform:SendToServer({
                 Guid = newest,
                 Transforms = {
                     [newest] = {
@@ -363,7 +365,6 @@ function Gizmo:GetHit(ray)
                 }
             })
         end
-        
     else
         if cnt == 1 then
             local axis = nil
@@ -383,16 +384,19 @@ function Gizmo:GetHit(ray)
                 hit = self.Picker:HitPlaneByNormal(ray, normal)
             end
         end
-        for _,guid in pairs(self.Visualizations or {}) do
-            self:Visualize(guid)
-        end
     end
 
-    if false and Ext.Timer.MonotonicTime() - lastDraw > 1000 and hit and hit.Position then
+    if false and hit and Ext.Timer.MonotonicTime() - lastDraw > 1000 then
+        NetChannel.Visualize:RequestToServer({
+            Type = "Point",
+            Position = hit.Position,
+            Duration = 1000
+        }, function (response)
+        end)
         lastDraw = Ext.Timer.MonotonicTime()
-        hit.Normal = hit.Normal or GLOBAL_COORDINATE.Y
-        Post(NetChannel.Visualize, { Type = "Point", Position = hit.Position, Rotation = DirectionToQuat(hit.Normal)})
+        --Debug("Gizmo:GetHit: Hit at ", hit.Position and tostring(hit.Position) or "nil")
     end
+
     if not hit or not hit.Position then
         return Hit.new(self.Picker.Position, nil, 0, nil)
     end
@@ -422,7 +426,7 @@ local function CalcScaleChange(startHit, hit, selectedAxes, axes, origin)
     local sV = startHit.Position - origin
     local eV = hit.Position - origin
     local cnt = CountMap(selectedAxes or {})
-    local eps = 1e-4
+    local eps = EPSILON
     if cnt == 0 then return 1.0 end
 
     return (eV:Length() + eps) / (sV:Length() + eps)
@@ -509,25 +513,9 @@ end
 --#endregion math
 
 function Gizmo:SetupDragging()
-    if self.Visualizations and #self.Visualizations > 0 then
-        Post(NetChannel.Delete, { Guid = self.Visualizations })
-    end
-
-    self.Visualizations = {}
-    local requests = 0
+    self.RotatePointer = self.RotatePointer or {}
     local pickerPos = Vec3.new(self.Picker.Position)
     local pickerRot = Quat.new(self.Picker.Rotation)
-    local requestId = Uuid_v4()
-    local receive = ClientSubscribe("Visualization", function (data)
-        if not data.RequestId or data.RequestId ~= requestId then return end
-        for _,guid in pairs(data.Guid or {}) do
-            table.insert(self.Visualizations, guid)
-            ::continue::
-        end
-        if #self.Visualizations >= requests then
-            return UNSUBSCRIBE_SYMBOL
-        end
-    end)
     if self.Mode == "Rotate" then
         local axis = nil
         for a,_ in pairs(self.SelectedAxis) do axis = a end
@@ -540,15 +528,46 @@ function Gizmo:SetupDragging()
         self._rotLastAngle = nil
         self._rotAccum = 0
 
-        local rotateScale = GizmoVisualizer:UpdateScale(self.Guid)
-        local scale = ToVec3((0.6 * rotateScale) / 0.8) -- rotate gizmo radius is 0.6, translate gizmo's axis's length is 0.8
-
-        requests = 2
-
-        Post(NetChannel.Visualize, { Type = "Point", Position =  pickerPos, Rotation = quat, Scale = scale,  Duration = -1, RequestId = requestId })
-        Post(NetChannel.Visualize, { Type = "Point", Position = pickerPos, Rotation = quat, Scale = scale,  Duration = -1, RequestId = requestId })
+        if #self.RotatePointer == 0 then
+            for i=1, 2 do
+                NetChannel.Visualize:RequestToServer({
+                    Type = "Point",
+                    Position = pickerPos,
+                    Rotation = quat,
+                    Duration = -1,
+                }, function (response)
+                    for _,guid in ipairs(response or {}) do
+                        local cnt = 0
+                        Timer:EveryFrame(function (timerID)
+                            if cnt > 300 then
+                                Warning("Gizmo:SetupDragging: Failed to visualize rotate pointer")
+                                return UNSUBSCRIBE_SYMBOL
+                            end
+                            if not VisualHelpers.GetEntityVisual(guid) then cnt = cnt + 1 end
+                            GizmoVisualizer.VisualizeRotateSymbol(guid, axis)
+                            return UNSUBSCRIBE_SYMBOL
+                        end)
+                        table.insert(self.RotatePointer, guid)
+                    end
+                end)
+            end
+        else
+            NetChannel.SetTransform:SendToServer({
+                Guid = self.RotatePointer[1],
+                Transforms = {
+                    [self.RotatePointer[1]] = {
+                        Translate = pickerPos,
+                        RotationQuat = quat,
+                    }
+                }
+            })
+        end
     else
-        receive:Unsubscribe()
+        if self.RotatePointer and #self.RotatePointer > 0 then
+            for _,guid in ipairs(self.RotatePointer or {}) do
+                GizmoVisualizer.HideGizmo(guid)
+            end
+        end
     end
 
     self.DraggingTimer = Timer:EveryFrame(function (timerID)
@@ -582,20 +601,17 @@ end
 function Gizmo:StopDragging()
     self:StopWithoutCallbacks()
     self:OnDragEnd()
+    self.RotatePointer = {}
+    self.IsDragging = false
 end
 
 function Gizmo:StopWithoutCallbacks()
+    Timer:Cancel(self.DraggingTimer)
+    self.DraggingTimer = nil
     self.SelectedAxis = nil
-    self.IsDragging = false
     self.StartHit = nil
     self._rotLastAngle = nil
     self._rotAccum = nil
-    Timer:Cancel(self.DraggingTimer)
-    self.DraggingTimer = nil
-    if self.Visualizations and #self.Visualizations > 0 then
-        Post(NetChannel.Delete, { Guid = self.Visualizations })
-        self.Visualizations = {}
-    end
     GizmoVisualizer.ScaleMultiplier = {1.0, 1.0, 1.0}
 end
 
@@ -624,7 +640,7 @@ end
 function Gizmo:Visualize(guid)
     guid = guid or self.Guid
     if not EntityExists(guid) then return end
-    GizmoVisualizer:UpdateScale(guid)
+    GizmoVisualizer.UpdateScale(guid)
     if self.SelectedAxis then
         for axis,_ in pairs(self.SelectedAxis) do
             GizmoVisualizer.HighLightGizmoAxis(axis, guid)
@@ -638,6 +654,7 @@ function Gizmo:Visualize(guid)
                 end
             end
         end
+
         return
     end
 
@@ -654,9 +671,8 @@ end
 
 function Gizmo:Hide(guid)
     guid = guid or self.Guid
-    for _,axis in pairs({"X","Y","Z"}) do
-        GizmoVisualizer.HideGizmoAxis(axis, guid)
-    end
+    if not EntityExists(guid) then return end
+    GizmoVisualizer.HideGizmo(guid)
 end
 
 function Gizmo:Disable()

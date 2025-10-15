@@ -27,28 +27,6 @@ function PresetMenu:__init(parent)
     self.autoSave = CONFIG.PresetMenu.autoSave or false
     self.isRelative = true
 
-    self.presetSub = ClientSubscribe("ServerPreset", function(data)
-    end)
-
-    self.applyVisualPresetSub = ClientSubscribe("ApplyVisualPreset", function(data)
-        local guid = data.Guid
-        local templateName = data.TemplateName
-        local presetName = data.VisualPreset
-        if presetName == "" or presetName == nil then
-            --Warning("ApplyVisualPreset: Preset name is empty or nil.")
-            return
-        end
-        local preset = GetVisualPresetData(templateName, presetName)
-        if preset == nil then
-            Warning("ApplyVisualPreset: Preset not found for template " .. templateName .. " and preset name " .. presetName)
-            return
-        end
-        local modifiedParams = preset.ModifiedParams
-        VisualHelpers.ApplyVisualParams(guid, modifiedParams)
-    end)
-
-    self.InitSubs = { self.presetSub, self.applyVisualPresetSub, self.receiveViusalPresetDataSub }
-
     self:LoadFromFile()
 
     return self
@@ -157,7 +135,7 @@ function PresetMenu:Render()
         end
     end
 
-    local collapsingTable = AddCollapsingTable(self.panel, nil, "Presets", { MainAreaTitleAlign = 0.45})
+    local collapsingTable = AddCollapsingTable(self.panel, nil, "Presets", { SideBarWidth = 100 * SCALE_FACTOR, MainAreaTitleAlign = 0.45})
     if collapsingTable then
         self.previewWindow = collapsingTable.MainArea
     else
@@ -225,14 +203,14 @@ function PresetMenu:SavePreset(name, overwrite)
         return
     end
 
-    local props = {}
+    local spawned = {}
 
     local anchor = self:GetSelectedObject()
     if not anchor or anchor == "" then
         anchor = CGetHostCharacter()
     end
 
-    local infos = PropStore:GetAll()
+    local infos = EntityStore:GetAll()
     if not infos or CountMap(infos) == 0 then
         ConfirmPopup:Popup("No props found to save in preset.")
         return
@@ -251,47 +229,47 @@ function PresetMenu:SavePreset(name, overwrite)
     end
 
     local modList = {}
-    for guid, propInfo in pairs(infos) do
+    for guid, entInfo in pairs(infos) do
         local entity = Ext.Entity.Get(guid)
         if not entity then goto continue end
         local levelName = entity.Level and entity.Level.LevelName or _C().Level.LevelName
-        propInfo.DisplayName = GetDisplayNameFromGuid(guid) or propInfo.DisplayName or "Unknown"
+        entInfo.DisplayName = GetDisplayNameFromGuid(guid) or entInfo.DisplayName or "Unknown"
 
-        propInfo.Group = propInfo.Group and propInfo.Group ~= "" and propInfo.Group or name
+        entInfo.Group = entInfo.Group and entInfo.Group ~= "" and entInfo.Group or name
 
         local pos, rot = nil, nil
         if self.isRelative then
-            pos = GetLocalRelativePosOffset(propInfo.Guid, anchor)
-            rot = GetLocalRelativeRotOffset(propInfo.Guid, anchor)
+            pos = GetLocalRelativePosOffset(entInfo.Guid, anchor)
+            rot = GetLocalRelativeRotOffset(entInfo.Guid, anchor)
         else
-            pos = {CGetPosition(propInfo.Guid)}
-            rot = {GetQuatRotation(propInfo.Guid)}
+            pos = {CGetPosition(entInfo.Guid)}
+            rot = {GetQuatRotation(entInfo.Guid)}
         end
 
-        propInfo.Position = pos
-        propInfo.Rotation = rot
-        propInfo.Level = levelName
+        entInfo.Position = pos
+        entInfo.Rotation = rot
+        entInfo.Level = levelName
 
-        local template = TakeTailTemplate(propInfo.TemplateId)
+        local template = TakeTailTemplate(entInfo.TemplateId)
         local templateData = GetDataFromUuid(template)
         if not templateData then
-            Warning("PresetMenu:SavePreset: Template data not found for " .. tostring(propInfo.TemplateId))
+            Warning("PresetMenu:SavePreset: Template data not found for " .. tostring(entInfo.TemplateId))
             goto continue
         end
         local modId, modName = templateData.ModId, templateData.Mod
         if modId and modId ~= "" and modName and modName ~= "" then
             modList[modId] = { Name = modName , Author = templateData.ModAuthor }
-            propInfo.Mod = modName .. " (" .. modId .. ")"
-            propInfo.ModId = modId
-            propInfo.ModAuthor = templateData.ModAuthor
+            entInfo.Mod = modName .. " (" .. modId .. ")"
+            entInfo.ModId = modId
+            entInfo.ModAuthor = templateData.ModAuthor
         end
 
         if self.visibleOnly then
-            if propInfo.Visible then
-                props[propInfo.Guid] = propInfo
+            if entInfo.Visible then
+                spawned[entInfo.Guid] = entInfo
             end
         else
-            props[propInfo.Guid] = propInfo
+            spawned[entInfo.Guid] = entInfo
         end
 
         ::continue::
@@ -302,8 +280,8 @@ function PresetMenu:SavePreset(name, overwrite)
         Name = name,
         Level = _C().Level.LevelName,
         ModList = modList,
-        Props = props,
-        Tree = PropStore.Tree:ToTable(),
+        Spawned = spawned,
+        Tree = EntityStore.Tree:ToTable(),
     }
 
     self:SaveToFile(name)
@@ -388,7 +366,7 @@ function PresetMenu:LoadPreset(name, isPreview, force)
         data.Position = {CGetPosition(data.Parent)}
         data.Rotation = {GetQuatRotation(data.Parent)}
     end
-    Post("SpawnPreset", data)
+    NetChannel.SpawnPreset:SendToServer(data)
 
     return nil
 end
@@ -457,6 +435,7 @@ function PresetMenu:RenderSidebarSelection()
     end
 
     local tempTable = buttonPanel:AddTable("presetButtonTable", 1)
+    tempTable.BordersInnerH = true
     self.presetSibeBatTabel = tempTable
 
     local tempRow = tempTable:AddRow()
@@ -496,12 +475,16 @@ function PresetMenu:RenderSidebarSelection()
             popup:SetStyle("Alpha", 1)
         end
 
-        
-        local alwaysHighLightBtn = popup:AddSelectable(GetLoca("Highlight"))
-        local setHighLightColorBtn = popup:AddSelectable(GetLoca("Set Highlight Color"))
-        local previewBtn = popup:AddSelectable(GetLoca("Preview"))
-        local loadBtn = popup:AddSelectable(GetLoca("Spawn"))
-        local deleteBtn = popup:AddSelectable(GetLoca("Delete"))
+        local borderTable = popup:AddTable("borderTable", 1)
+        borderTable.BordersInnerH = true
+
+        local row = borderTable:AddRow()
+
+        local alwaysHighLightBtn = row:AddCell():AddSelectable(GetLoca("Highlight"))
+        local setHighLightColorBtn = row:AddCell():AddSelectable(GetLoca("Set Highlight Color"))
+        local previewBtn = row:AddCell():AddSelectable(GetLoca("Preview"))
+        local loadBtn = row:AddCell():AddSelectable(GetLoca("Spawn"))
+        local deleteBtn = row:AddCell():AddSelectable(GetLoca("Delete"))
         ApplyDangerSelectableStyle(deleteBtn)
 
         deleteBtn.OnClick = function()
@@ -721,19 +704,19 @@ function PresetMenu:RenderPresetInfo(name)
         end
     end
 
-    local propInfoWindow = self.presetInfoWindow
+    local entInfoWindow = self.presetInfoWindow
 
     local propsTree = TreeTable.FromTableStatic(presetData.Tree)
-    local propsInfos = presetData.Props or {}
+    local propsInfos = presetData.Spawned or {}
 
-    local rootTable = propInfoWindow:AddTable("PropTable", self.lastCols or 10)
+    local rootTable = entInfoWindow:AddTable("EntityTable", self.lastCols or 10)
     rootTable:SetStyle("CellPadding", self.cellsPadding[1], self.cellsPadding[2])
     local rootRow = rootTable:AddRow()
 
     local propHeaders = {}
 
     cT.OnWidthChange = function(newWidth)
-        local windowWidth = propInfoWindow.LastSize[1]
+        local windowWidth = entInfoWindow.LastSize[1]
         if not windowWidth or windowWidth == 0 then
             return
         end
@@ -776,34 +759,34 @@ function PresetMenu:RenderPresetInfo(name)
 
     local propsRow = rootTable:AddRow()
 
-    for guid, propInfo in pairs(propsInfos) do
+    for guid, entInfo in pairs(propsInfos) do
         local cell = propsRow:AddCell()
-        local header = self:RenderPresetObjectInfo(cell, propInfo, name, presetData.PresetType, propsTree:GetPath(guid, true, true))
+        local header = self:RenderPresetObjectInfo(cell, entInfo, name, presetData.PresetType, propsTree:GetPath(guid, true, true))
         table.insert(propHeaders, header)
     end
 
-    propInfoWindow:AddText("Click to spawn preview, right-click to spawn.").TextWrapPos = 950 * SCALE_FACTOR
+    entInfoWindow:AddText("Click to spawn preview, right-click to spawn.").TextWrapPos = 950 * SCALE_FACTOR
 end
 
-function PresetMenu:RenderPresetObjectInfo(parent, propInfo, presetName, presetType, path)
-    local group = propInfo.Group or presetName
-    local tags = propInfo.Tags or {}
-    local note = propInfo.Note or ""
-    local template = propInfo.TemplateId or "Unknown"
+function PresetMenu:RenderPresetObjectInfo(parent, entInfo, presetName, presetType, path)
+    local group = entInfo.Group or presetName
+    local tags = entInfo.Tags or {}
+    local note = entInfo.Note or ""
+    local template = entInfo.TemplateId or "Unknown"
     template = TrimTail(template, 37)
     if template == "" then
-        template = propInfo.TemplateId
+        template = entInfo.TemplateId
     end
-    local displayName = propInfo.DisplayName or "Unknown"
-    local guid = propInfo.Guid or "Unknown"
-    local pos = propInfo.Position or {0, 0, 0}
-    local rot = propInfo.Rotation or {0, 0, 0, 1}
-    local visible = propInfo.Visible and GetLoca("Visible") or GetLoca("Hidden")
-    local gravity = propInfo.Gravity and GetLoca("On") or GetLoca("Off")
-    local persistent = propInfo.Persistent and GetLoca("Yes") or GetLoca("No")
-    local canInteract = propInfo.CanInteract and GetLoca("Yes") or GetLoca("No")
-    local movable = propInfo.Movable and GetLoca("Yes") or GetLoca("No")
-    local visualPreset = propInfo.VisualPreset or ""
+    local displayName = entInfo.DisplayName or "Unknown"
+    local guid = entInfo.Guid or "Unknown"
+    local pos = entInfo.Position or {0, 0, 0}
+    local rot = entInfo.Rotation or {0, 0, 0, 1}
+    local visible = entInfo.Visible and GetLoca("Visible") or GetLoca("Hidden")
+    local gravity = entInfo.Gravity and GetLoca("On") or GetLoca("Off")
+    local persistent = entInfo.Persistent and GetLoca("Yes") or GetLoca("No")
+    local canInteract = entInfo.CanInteract and GetLoca("Yes") or GetLoca("No")
+    local movable = entInfo.Movable and GetLoca("Yes") or GetLoca("No")
+    local visualPreset = entInfo.VisualPreset or ""
     local presetData = self.presets[presetName] or {}
 
     local tagsText = ""
@@ -811,11 +794,11 @@ function PresetMenu:RenderPresetObjectInfo(parent, propInfo, presetName, presetT
         tagsText = "[" .. table.concat(tags, ", ") .. "]"
     end
 
-    local header = parent:AddImageButton(displayName, GetIconForTemplateId(propInfo.TemplateId))
+    local header = parent:AddImageButton(displayName, GetIconForTemplateId(entInfo.TemplateId))
     local imageSize = self.previewImageSize or (64 * SCALE_FACTOR)
     header.Image.Size = ToVec2(imageSize)
     header.Background = self.iconBGcolor or ToVec4(0)
-    header.Tint = propInfo.IconTintColor or ToVec4(1)
+    header.Tint = entInfo.IconTintColor or ToVec4(1)
     local iconTooltip = header:Tooltip()
 
     local function addSe()
@@ -831,8 +814,8 @@ function PresetMenu:RenderPresetObjectInfo(parent, propInfo, presetName, presetT
     local templateText = iconTooltip:AddText(GetLoca("Template: ") .. template)
     templateText.TextWrapPos = 950 * SCALE_FACTOR
 
-    if propInfo.Mod and propInfo.Mod ~= "" then
-        local modText = iconTooltip:AddText(GetLoca("Mod: ") .. propInfo.Mod)
+    if entInfo.Mod and entInfo.Mod ~= "" then
+        local modText = iconTooltip:AddText(GetLoca("Mod: ") .. entInfo.Mod)
         modText.TextWrapPos = 950 * SCALE_FACTOR
     end
 
@@ -903,14 +886,16 @@ function PresetMenu:RenderPresetObjectInfo(parent, propInfo, presetName, presetT
         end
 
         if not fpos or not frot then
-            Error("Failed to get final transform for prop: " .. (propInfo.DisplayName or "Unknown"))
+            Error("Failed to get final transform for prop: " .. (entInfo.DisplayName or "Unknown"))
             return nil
         end
 
         local data = {
             Type = "Preview",
-            VisualPreset = visualPreset,
-            TemplateId = propInfo.TemplateId,
+            EntInfo = {
+                VisualPreset = visualPreset,
+            },
+            TemplateId = entInfo.TemplateId,
             Positon = fpos,
             Rotation = frot,
         }
@@ -920,22 +905,22 @@ function PresetMenu:RenderPresetObjectInfo(parent, propInfo, presetName, presetT
     local function preview()
         local data = packData()
         if not data then return end
-        Post(NetChannel.Spawn, data)
+        NetChannel.Spawn:RequestToServer(data, function (response) end)
     end
 
     local function load()
         local data = packData()
         if not data then return end
-        Commands.SpawnCommand(data.TemplateId, data.Positon, data.Rotation, data.PropInfo)
+        Commands.SpawnCommand(data.TemplateId, data.Positon, data.Rotation, data.EntInfo)
     end
 
 
     header.OnClick = function()
-        if not propInfo.ModId or Ext.Mod.IsModLoaded(propInfo.ModId) then
+        if not entInfo.ModId or Ext.Mod.IsModLoaded(entInfo.ModId) then
             preview()
         else
             ConfirmPopup:QuickConfirm(
-                string.format(GetLoca("Mod: '%s' is not loaded. Proceed anyway?"), propInfo.Mod and propInfo.Mod ~= "" and propInfo.Mod or propInfo.ModId),
+                string.format(GetLoca("Mod: '%s' is not loaded. Proceed anyway?"), entInfo.Mod and entInfo.Mod ~= "" and entInfo.Mod or entInfo.ModId),
                 function()
                     preview()
                 end
@@ -944,11 +929,11 @@ function PresetMenu:RenderPresetObjectInfo(parent, propInfo, presetName, presetT
     end
 
     header.OnRightClick = function()
-        if not propInfo.ModId or Ext.Mod.IsModLoaded(propInfo.ModId) then
+        if not entInfo.ModId or Ext.Mod.IsModLoaded(entInfo.ModId) then
             load()
         else
             ConfirmPopup:QuickConfirm(
-                string.format(GetLoca("Mod: '%s' is not loaded. Proceed anyway?"), propInfo.Mod and propInfo.Mod ~= "" and propInfo.Mod or propInfo.ModId),
+                string.format(GetLoca("Mod: '%s' is not loaded. Proceed anyway?"), entInfo.Mod and entInfo.Mod ~= "" and entInfo.Mod or entInfo.ModId),
                 function()
                     load()
                 end

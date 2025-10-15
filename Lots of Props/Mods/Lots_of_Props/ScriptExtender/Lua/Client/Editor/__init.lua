@@ -8,4 +8,5 @@ RequireFiles("Client/Editor/", {
     "Commands",
     "TransformEditor",
     "TransformOperator",
+    "MaterialProxy",
 })

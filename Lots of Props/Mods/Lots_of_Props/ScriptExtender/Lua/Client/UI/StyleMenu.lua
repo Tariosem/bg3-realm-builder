@@ -96,16 +96,24 @@ function StyleMenu:RenderColorPickers()
         SaveConfig("Theme")
     end
 
-    local themeColorPicker = self.panel:AddColorEdit(GetLoca("Theme Color"))
-    themeColorPicker.Color = CONFIG.Theme.Color.MainTheme or {0.2, 0.2, 0.2, 0.85}
+    local accentColorPicker = self.panel:AddColorEdit(GetLoca("Accent Color"))
+    accentColorPicker.Color = CONFIG.Theme.Color.Accent or {0.2, 0.2, 0.2, 0.85}
 
-    local themeAlphaSlider = self.panel:AddSlider(GetLoca("Theme Alpha"), 1, 0, 1)
-    themeAlphaSlider.Value = {themeColorPicker.Color[4] or 1, 0, 0, 0}
+    local themeAlphaSlider = self.panel:AddSlider(GetLoca("Accent Alpha"), 1, 0, 1)
+    themeAlphaSlider.Value = {accentColorPicker.Color[4] or 1, 0, 0, 0}
 
     themeAlphaSlider.OnChange = function(s)
-        local pickerColor = themeColorPicker.Color
-        themeColorPicker.Color = {pickerColor[1], pickerColor[2], pickerColor[3], s.Value[1]}
-        themeColorPicker.OnChange()
+        local pickerColor = accentColorPicker.Color
+        accentColorPicker.Color = {pickerColor[1], pickerColor[2], pickerColor[3], s.Value[1]}
+        accentColorPicker.OnChange()
+    end
+
+    local secondaryColorPicker = self.panel:AddColorEdit(GetLoca("Secondary Accent Color"))
+    secondaryColorPicker.Color = CONFIG.Theme.Color.Accent2 or {0.3, 0.3, 0.3, 0.85}
+    secondaryColorPicker.OnChange = function(c)
+        local color = secondaryColorPicker.Color
+        CONFIG.Theme.Color.Accent2 = color
+        accentColorPicker.OnChange()
     end
 
     local bgColorPicker = self.panel:AddColorEdit(GetLoca("Background Color"))
@@ -183,10 +191,11 @@ function StyleMenu:RenderColorPickers()
         colorPickers[name] = colorPicker
     end
 
-    themeColorPicker.OnChange = function(c)
-        local themeColor = themeColorPicker.Color
+    accentColorPicker.OnChange = function(c)
+        local themeColor = accentColorPicker.Color
+        local accent2Color = secondaryColorPicker.Color
         local bgColor = bgColorPicker.Color
-        local generatedColors = GenerateTheme(themeColor, bgColor)
+        local generatedColors = GenerateTheme(themeColor, accent2Color, bgColor) 
         for colorName, colorValue in pairs(generatedColors) do
             colorValue = {colorValue[1], colorValue[2], colorValue[3], colorValue[4] or c.Color[4]}
             local p = colorPickers[colorName]
@@ -195,23 +204,26 @@ function StyleMenu:RenderColorPickers()
         end
         themeAlphaSlider.Value = {themeColor[4] or 1, 0, 0, 0}
         self.saveFuncs.LOPMainColor = function()
-            CONFIG.Theme.Color.MainTheme = themeColor
+            CONFIG.Theme.Color.Accent = themeColor
             CONFIG.Theme.Color.MainBackground = bgColor
         end
     end
 
     bgColorPicker.OnChange = function()
-        themeColorPicker.OnChange()
+        accentColorPicker.OnChange()
         bgAlphaSlider.Value = {bgColorPicker.Color[4] or 1, 0, 0, 0}
     end
 
     self.reloadColors = function ()
-        themeColorPicker.Color = CONFIG.Theme.Color.MainTheme or {0.2, 0.2, 0.2, 0.85}
-        themeAlphaSlider.Value = {themeColorPicker.Color[4] or 1, 0, 0, 0}
+        accentColorPicker.Color = CONFIG.Theme.Color.Accent or {0.2, 0.2, 0.2, 0.85}
+        themeAlphaSlider.Value = {accentColorPicker.Color[4] or 1, 0, 0, 0}
         bgColorPicker.Color = CONFIG.Theme.Color.MainBackground or {0.1, 0.1, 0.1, 0.85}
         bgAlphaSlider.Value = {bgColorPicker.Color[4] or 1, 0, 0, 0}
         for name, value in pairs(CONFIG.Theme.Color) do
             if name == "MainBackground" or name == "MainTheme" or name == "autoReload" then
+                goto continue
+            end
+            if not colorPickers[name] then
                 goto continue
             end
             colorPickers[name].Color = CONFIG.Theme.Color[name] or {1, 1, 1, 1}
