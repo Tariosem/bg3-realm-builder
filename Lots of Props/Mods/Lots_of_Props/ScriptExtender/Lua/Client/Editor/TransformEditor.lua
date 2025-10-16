@@ -448,35 +448,30 @@ function TransformEditor:RegisterEvents()
             local newScale = nil
             if gizmo.Space == "World" or gizmo.Space == "View" or gizmo.Space == "Parent" then
                 -- Convert world-space delta scaling into local-space scale factors
-                local R = Matrix.new(Ext.Math.QuatToMat3(startTransform.RotationQuat))
+                local R = Matrix.new(Ext.Math.QuatToMat4(startTransform.RotationQuat))
                 if gizmo.Space == "View" then
                     R = cameraMatrix * R
                 elseif gizmo.Space == "Parent" then
                     local parent = EntityStore:GetBindParent(guid)
                     if parent and EntityExists(parent) then
                         local parentRot = Quat.new{CGetRotation(parent)} or Quat.Identity()
-                        local parentMat = Matrix.new(Ext.Math.QuatToMat3(parentRot))
-                        R = parentMat * R
+                        local parentMat = Matrix.new(Ext.Math.QuatToMat4(parentRot))
+                        -- We need R to map local->parent-space for the conjugation below.
+                        -- parentMat maps parent->world, so invert it to get parent->world^-1 (world->parent)
+                        -- then compose to get local->parent: R_localToParent = parentMat:Inverse() * R_localToWorld
+                        R = parentMat:Inverse() * R
                     else
-                        R = Matrix.new({
-                            1,0,0,
-                            0,1,0,
-                            0,0,1,
-                        })
+                        R = Matrix.new(Ext.Math.QuatToMat4(Quat.Identity()))
                     end
                 end
-                local S_world = Matrix.new({
-                    deltaWorld.X, 0, 0,
-                    0, deltaWorld.Y, 0,
-                    0, 0, deltaWorld.Z,
-                })
+                local S_world = Ext.Math.BuildScale(deltaWorld)
 
                 local S_local = R:Transpose() * S_world * R
-                S_local = ArrayToMat(S_local, 3, 3) -- sanity check
+                
 
-                local sx = Vec3.new(S_local[1][1], S_local[2][1], S_local[3][1]):Length()
-                local sy = Vec3.new(S_local[1][2], S_local[2][2], S_local[3][2]):Length()
-                local sz = Vec3.new(S_local[1][3], S_local[2][3], S_local[3][3]):Length()
+                local sx = S_local[1 + (1 - 1) * 4]
+                local sy = S_local[2 + (2 - 1) * 4]
+                local sz = S_local[3 + (3 - 1) * 4]
 
                 newScale = Vec3.new(
                     baseScale.X * sx,

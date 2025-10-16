@@ -11,3 +11,5 @@ Ext.Require("Shared/Helpers/TreeTable.lua")
 Ext.Require("Shared/Helpers/Timer.lua")
 
 Ext.Require("Shared/Helpers/EntityHelpers.lua")
+
+Ext.Require("Shared/Helpers/LSXTable.lua")

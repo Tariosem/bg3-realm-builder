@@ -1,9 +1,9 @@
 --- @class MaterialEditor
 --- @field Parent ExtuiTreeParent
 --- @field MaterialName string
---- @field Proxy MaterialProxy
+--- @field Proxy CustomMaterialProxy
 --- @field GetMaterial fun():Material|nil   
---- @field ChangedProperties table<string, number[]>
+--- @field Parameters table<number, table<string, number[]>>
 --- @field ResetFuncs table<string, fun()>
 --- @field UpdateFuncs table<string, fun(newValue:number[])>
 --- @field new fun(parent: ExtuiTreeParent, materialName: string, materialFunc: fun():Material|nil): MaterialEditor
@@ -13,9 +13,14 @@ function MaterialEditor:__init(parent, materialName, materialFunc)
     self.Parent = parent
     self.GetMaterial = materialFunc
     self.MaterialName = materialName
-    self.Proxy = MaterialProxy.new(materialName) --[[@as MaterialProxy]]
+    self.Proxy = CustomMaterialProxy.new({}, materialName) --[[@as CustomMaterialProxy]]
 
-    self.ChangedProperties = {}
+    self.Parameters = {
+        [1] = {}, -- ScalarParameters
+        [2] = {}, -- Vector2Parameters
+        [3] = {}, -- Vector3Parameters
+        [4] = {}, -- VectorParameters
+    }
     self.ResetFuncs = {}
     self.UpdateFuncs = {}
 end
@@ -30,9 +35,7 @@ function MaterialEditor:Render()
     parentNode.CanDrag = true
     parentNode.DragDropType = "MaterialPreset"
     parentNode.UserData = {
-        MaterialName = self.MaterialName,
-        MaterialProxy = self.Proxy,
-        GetMaterial = self.GetMaterial
+        MaterialParameters = self.Parameters,
     }
 
     parentNode.OnClick = function (sel)
@@ -49,20 +52,8 @@ function MaterialEditor:Render()
         Debug("MaterialEditor: OnDragDrop", drop, drop.UserData)
         if drop.UserData and drop.UserData.MaterialProxy then
             local proxy = drop.UserData.MaterialProxy --[[@as MaterialProxy]]
-
-            local mat = self.GetMaterial()
-            if not mat then Warning("MaterialEditor: Could not find material for entity " .. tostring(self.Guid) .. " descIndex " .. tostring(self.DescIndex)) return end
-            proxy:ApplyToMaterial(mat)
-
-            for propType, props in pairs(proxy.Values) do
-                for propName, value in pairs(props) do
-                    self.ChangedProperties[propName] = value
-                    local updateFunc = self.UpdateFuncs[propName]
-                    if updateFunc then
-                        updateFunc(value)
-                    end
-                end
-            end
+            
+            self:ApplyMatParameters(proxy)
         end
     end
 
@@ -148,7 +139,7 @@ function MaterialEditor:RenderProperty(node, propertyName, propertyValue)
         end
 
         self:ApplyChange(propertyName, newValue)
-        self.ChangedProperties[propertyName] = nil
+        self.Parameters[#newValue][propertyName] = nil
     end
 
     local function updateSliders(newValue)
@@ -180,7 +171,7 @@ function MaterialEditor:ApplyChange(propertyName, newValue)
 
     mat[funcName](mat, propertyName, applyValue)
 
-    self.ChangedProperties[propertyName] = newValue
+    self.Parameters[#newValue][propertyName] = newValue
 
     local updateFunc = self.UpdateFuncs[propertyName]
     if updateFunc then
@@ -192,11 +183,14 @@ function MaterialEditor:ResetAll()
     for _,resetFunc in pairs(self.ResetFuncs) do
         resetFunc()
     end
-    self.ChangedProperties = {}
+    self.Parameters = {}
+    for i=1,4 do
+        self.Parameters[i] = {}
+    end
 end
 
 function MaterialEditor:ExportChanges()
-    return self.ChangedProperties
+    return self.Parameters
 end
 
 function MaterialEditor:ApplyChanges(changes)
@@ -219,17 +213,49 @@ function MaterialEditor:ApplyChanges(changes)
     end
 end
 
-function MaterialEditor:Reapply()
-    for propertyName, value in pairs(self.ChangedProperties) do
-        local mat = self.GetMaterial()
-        if not mat then
-            Error("MaterialEditor: Could not find material for entity " .. tostring(self.Guid) .. " descIndex " .. tostring(self.DescIndex))
-            return
-        end
+--- @param parameters table<number, table<string, number[]>>
+function MaterialEditor:ApplyMatParameters(parameters)
+    local mat = self.GetMaterial()
+    if not mat then Warning("MaterialEditor: Could not find material") return end
 
-        local funcName = PropTypeToFunc[#value]
-        local applyValue = #value == 1 and value[1] or value
-    
-        mat[funcName](mat, propertyName, applyValue)
+    for propType, props in pairs(parameters) do
+        for propName, value in pairs(props) do
+            if not self.Proxy:HasProperty(propName) then
+                Warning("MaterialEditor: Property " .. tostring(propName) .. " does not exist on material " .. tostring(self.MaterialName))
+                return
+            end
+            local funcName = PropTypeToFunc[#value]
+            local applyValue = #value == 1 and value[1] or value
+        
+            mat[funcName](mat, propName, applyValue)
+
+            self.Parameters[#value][propName] = value
+            local updateFunc = self.UpdateFuncs[propName]
+            if updateFunc then
+                updateFunc(value)
+            end
+        end
+    end
+end
+
+function MaterialEditor:Reapply()
+    for paramType, props in pairs(self.Parameters) do
+        for propertyName, value in pairs(props) do
+            local mat = self.GetMaterial()
+            if not mat then
+                Error("MaterialEditor: Could not find material for entity " .. tostring(self.Guid) .. " descIndex " .. tostring(self.DescIndex))
+                return
+            end
+
+            local funcName = PropTypeToFunc[#value]
+            local applyValue = #value == 1 and value[1] or value
+        
+            mat[funcName](mat, propertyName, applyValue)
+
+            local updateFunc = self.UpdateFuncs[propertyName]
+            if updateFunc then
+                updateFunc(value)
+            end
+        end
     end
 end

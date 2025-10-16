@@ -86,3 +86,12 @@ function Matrix.new(tbl)
     tbl = tbl or {} 
     return setmetatable(tbl, Matrix)
 end
+
+function Matrix.identity()
+    return Matrix.new({
+        1,0,0,0,
+        0,1,0,0,
+        0,0,1,0,
+        0,0,0,1,
+    })
+end

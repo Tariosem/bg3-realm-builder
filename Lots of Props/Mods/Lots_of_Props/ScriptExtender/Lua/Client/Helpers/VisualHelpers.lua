@@ -10,11 +10,15 @@ function VisualHelpers.GetEntityVisual(handle)
                 handle = dummy
             else
                 handle = UuidToHandle(handle) --[[@as EntityHandle]]
+                if handle.TLPreviewDummy.ActiveDummy then
+                    handle = handle.TLPreviewDummy.Entity --[[@as EntityHandle]]
+                end
             end
         else
             handle = UuidToHandle(handle)
         end
     end
+
     local entity = handle
     if not entity or not entity.Visual or not entity.Visual.Visual then
         return nil
