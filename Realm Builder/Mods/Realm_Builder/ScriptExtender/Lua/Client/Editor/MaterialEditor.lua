@@ -35,6 +35,8 @@ function MaterialEditor:__init(matSrc, originMaterial)
 
 end
 
+---@param paramName string
+---@return number[]?
 function MaterialEditor:GetParameter(paramName)
     local ptype = self.Proxy:GetParameterType(paramName)
     if not ptype then return nil end
@@ -80,25 +82,25 @@ function MaterialEditor:ResetParameter(paramName)
         return false
     end
 
-    local proxyParam = self.Proxy:GetParameter(paramName)
-    if not proxyParam then
+    local value = self.Proxy:GetParameter(paramName)
+    if not value then
         Warning("MaterialEditor: Could not find parameter '" .. tostring(paramName) .. "' in material proxy for material '" .. tostring(self.Material) .. "'. Cannot reset.")
         return false
     end
 
-    local formatValue = type(proxyParam.Value) == "table" and proxyParam.Value or { proxyParam.Value }
-
-    local funcName = PropTypeToFunc[#formatValue]
-    local applyValue = proxyParam.Value
+    local funcName = PropTypeToFunc[#value]
+    local applyValue = #value == 1 and value[1] or value
 
     mat[funcName](mat, paramName, applyValue)
 
-    self.Parameters[#formatValue][paramName] = nil
+    self.Parameters[#value][paramName] = nil
 
     return true
 end
 
-function MaterialEditor:ApplyMatParameters(parameters)
+---@param parameters table<number, table<string, number[]>>
+---@return boolean
+function MaterialEditor:ApplyParameters(parameters)
     local mat = self.Instance()
     if not mat then
         Error("MaterialEditor: Could not find material instance for material '" .. tostring(self.Material) .. "'.")
@@ -116,6 +118,8 @@ function MaterialEditor:ApplyMatParameters(parameters)
             ::continue::
         end
     end
+
+    return true
 end
 
 function MaterialEditor:ResetAll()

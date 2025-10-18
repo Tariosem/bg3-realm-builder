@@ -2,7 +2,7 @@ MENU_WIDTH = 1000 * SCALE_FACTOR
 MENU_HEIGHT = 1200 * SCALE_FACTOR
 
 Menu = _Class("Menu")
---- @class LOP_MainMenu
+--- @class RB_MainMenu
 --- @field isValid boolean
 --- @field effectsMenu EffectsMenu
 --- @field entityMenu EntityMenu
@@ -10,7 +10,7 @@ Menu = _Class("Menu")
 --- @field styleMenu StyleMenu
 --- @field panel ExtuiWindowBase
 --- @field tabBar ExtuiTabBar
---- @field FocusOnTab fun(self:LOP_MainMenu, guid:string, doDetach:boolean|nil)
+--- @field FocusOnTab fun(self:RB_MainMenu, guid:string, doDetach:boolean|nil)
 function Menu:__init()
     self.isValid = true
     self.panel = nil
@@ -26,7 +26,7 @@ function Menu:RegisterEvents()
         if self.panel then
             self.panel.Open = not self.panel.Open
         end
-    end, "Toggles the Lots of Props menu")
+    end, "Toggles the Realm Builder menu")
 
     meMod:RegisterEvent("OpenTransformToolbar", function()
         if self.editorMenu then
@@ -38,7 +38,7 @@ function Menu:RegisterEvents()
 end
 
 function Menu:Render()
-    self.panel = RegisterWindow("Citadel", "Lots of  Props", "MainMenu", self, nil, {MENU_WIDTH, MENU_HEIGHT})
+    self.panel = RegisterWindow("Citadel", "Realm Builder", "MainMenu", self, nil, {MENU_WIDTH, MENU_HEIGHT})
     self.panel.Closeable = true
 
     self.tabBar = self.panel:AddTabBar("TabBar")
@@ -83,7 +83,7 @@ function Menu:Render()
         --now = Ext.Timer.MonotonicTime()
     end)
 
-    --print(string.format("[Lots of Props] EffectsMenu initialized in %d ms", Ext.Timer.MonotonicTime() - now))
+    --print(string.format("[Realm Builder] EffectsMenu initialized in %d ms", Ext.Timer.MonotonicTime() - now))
     now = Ext.Timer.MonotonicTime()
 end
 
@@ -126,7 +126,7 @@ function Menu:Destroy()
     self.isValid = false
 end
 
---- @return LOP_MainMenu
+--- @return RB_MainMenu
 function Menu:Add()
     local menu = Menu.new()
     menu:Render()
@@ -147,15 +147,15 @@ function Menu:FocusOnTab(guid, doDetach)
     end
 end
 
---- @type LOP_MainMenu
-LOPMenu = nil
+--- @type RB_MainMenu
+RBMenu = nil
 RegisterOnSessionLoaded(function()
     local now = Ext.Timer.MonotonicTime()
-    if LOPMenu == nil then
-        LOPMenu = Menu:Add()
-        LOPMenu.panel.Open = false
+    if RBMenu == nil then
+        RBMenu = Menu:Add()
+        RBMenu.panel.Open = false
     end
-    --print(string.format("[Lots of Props] Menu initialized in %d ms", Ext.Timer.MonotonicTime() - now))
+    print(string.format("[Realm Builder] Menu initialized in %d ms", Ext.Timer.MonotonicTime() - now))
 end, 100)
 
 

@@ -9,7 +9,7 @@ function EffectsMenu:__init(parent)
     self.panel = nil
     self.parent = parent or nil
     self.customEffects = {}
-    self.iconBrowser = EffectIconBrowser:Add(LOP_MultiEffectManager, GetLoca("Effects"))
+    self.iconBrowser = EffectIconBrowser:Add(RB_MultiEffectManager, GetLoca("Effects"))
     self.iconBrowser.panel.Open = false
     self.customEffectsTabs = {}
     self.isVisible = false
@@ -133,11 +133,11 @@ function EffectsMenu:Render()
         if self.iconBrowser then
             self.iconBrowser.panel.Open = not self.iconBrowser.panel.Open
         else
-            if next(LOP_MultiEffectManager.Data) == nil then
+            if next(RB_MultiEffectManager.Data) == nil then
                 Error("[Effects Menu] MultiEffectsSearchData is empty, can't open browser")
                 return
             end
-            self.iconBrowser = EffectIconBrowser:Add(LOP_MultiEffectManager, GetLoca("Effects"))
+            self.iconBrowser = EffectIconBrowser:Add(RB_MultiEffectManager, GetLoca("Effects"))
         end
     end
 
@@ -147,7 +147,7 @@ function EffectsMenu:Render()
             self.iconBrowser = nil
         end
 
-        self.iconBrowser = EffectIconBrowser:Add(LOP_MultiEffectManager, GetLoca("Effects"))
+        self.iconBrowser = EffectIconBrowser:Add(RB_MultiEffectManager, GetLoca("Effects"))
     end
 
     self.detachButton.OnClick = function()

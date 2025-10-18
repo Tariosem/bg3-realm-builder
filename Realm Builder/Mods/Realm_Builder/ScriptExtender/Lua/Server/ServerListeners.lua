@@ -68,13 +68,31 @@ NetChannel.AddItem:SetHandler(function(data)
     Osi.TemplateAddTo(data.TemplateId, data.Target, data.Count, 1)
 end)
 
-
 NetChannel.GetTemplate:SetRequestHandler(function(data, userID)
     local guid = data.Guid
 
     local template = Osi.GetTemplate(guid)
 
     return {Success = true, Template = template}
+end)
+
+NetChannel.SpawnPreview:SetRequestHandler(function(data, userID)
+    local template = data.TemplateId
+    local position = data.Position
+    local rotation = data.Rotation
+    if not position or #position ~= 3 then
+        position = {0,0,0}
+    end
+    if not rotation or #rotation ~= 4 then
+        rotation = {0,0,0,1}
+    end
+
+    local preview = Osi.CreateAt(template, position[1], position[2], position[3], 0, 0, "") --[[@as string]]
+    RotateTo(preview, rotation[1], rotation[2], rotation[3], rotation[4])
+    OsirisHelpers.Propify(preview)
+    Osi.ClearTag(preview, RB_PROP_TAG)
+
+    return {Guid = preview, TemplateId = template}
 end)
 
 NetChannel.ManageEntity:SetHandler(function(data, userID)
@@ -246,7 +264,7 @@ NetChannel.Visualize:SetRequestHandler(function(data, userID)
     local entityHandles = {}
     if data.Type == "Point" then
         local pos = data.Position
-        local pointEntity = Osi.CreateAt(LOP_PROP_AXIS_FX, pos[1], pos[2], pos[3], 0, 0, "") --[[@as string]]
+        local pointEntity = Osi.CreateAt(RB_PROP_AXIS_FX, pos[1], pos[2], pos[3], 0, 0, "") --[[@as string]]
         table.insert(entityHandles, pointEntity)
         if data.Rotation then
             RotateTo(pointEntity, table.unpack(data.Rotation))

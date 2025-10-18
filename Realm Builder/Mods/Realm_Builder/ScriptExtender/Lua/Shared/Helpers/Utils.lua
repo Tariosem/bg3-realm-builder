@@ -379,7 +379,7 @@ function Levenshtein(s, t, thereshold)
     return prevRow[n]
 end
 
---- @class LOPFilterOptions
+--- @class RB_FilterOptions
 --- @field CaseSensitive boolean?
 --- @field Fuzzy boolean?
 --- @field MatchAll boolean?
@@ -409,7 +409,7 @@ end
 --- @param keywords string|table
 --- @param items table
 --- @param fields table
---- @param options LOPFilterOptions
+--- @param options RB_FilterOptions
 --- @param candidates? any[]
 --- @return table filteredCandidates
 function Filter(keywords, items, fields, options, candidates)

@@ -1,12 +1,12 @@
-local configPath = "Lots_of_Props/Config.json"
-local visualPresetsPath = "Lots_of_Props/VisualPresets/"
-local visRefPath = "Lots_of_Props/VisualPresets/References.json"
-local effRefPath = "Lots_of_Props/CustomEffects/References.json"
-local effPath = "Lots_of_Props/CustomEffects/"
-local presetRefPath = "Lots_of_Props/Presets/References.json"
-local presetPath = "Lots_of_Props/Presets/"
-local localGenPath = "Lots_of_Props/Localization/"
-local keybindPath = "Lots_of_Props/Keybinds.json"
+local configPath = "Realm_Builder/Config.json"
+local visualPresetsPath = "Realm_Builder/VisualPresets/"
+local visRefPath = "Realm_Builder/VisualPresets/References.json"
+local effRefPath = "Realm_Builder/CustomEffects/References.json"
+local effPath = "Realm_Builder/CustomEffects/"
+local presetRefPath = "Realm_Builder/Presets/References.json"
+local presetPath = "Realm_Builder/Presets/"
+local localGenPath = "Realm_Builder/Localization/"
+local keybindPath = "Realm_Builder/Keybinds.json"
 
 function GetConfigFilePath()
     return configPath
@@ -37,7 +37,7 @@ function GetEffectReferencePath()
 end
 
 function GetModPath(name)
-    return "Lots_of_Props/" .. name .. ".json"
+    return "Realm_Builder/" .. name .. ".json"
 end
 
 function GetLocalizationPath()

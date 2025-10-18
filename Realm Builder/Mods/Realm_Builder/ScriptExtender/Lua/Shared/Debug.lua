@@ -1,8 +1,8 @@
-LOP_DEBUG_LEVEL = 4
+RB_DEBUG_LEVEL = 4
 
-LOP_ENABLE_LOGGER = false
+RB_ENABLE_LOGGER = false
 
-LOP_DEBUG_LEVELS = {
+RB_DEBUG_LEVELS = {
     Critical = 0,
     Error = 1,
     Warning = 2,
@@ -68,16 +68,16 @@ function RadiantToANSI(radiantResult)
     return table.concat(result)
 end
 
-local function LOP_Print(prefix, level, message)
-    local lvl = LOP_DEBUG_LEVELS[level]
+local function RB_Print(prefix, level, message)
+    local lvl = RB_DEBUG_LEVELS[level]
     if lvl == nil then
-        _P("[Lots of Props] [" .. prefix .. "] Invalid log level: " .. tostring(level))
+        _P("[Realm Builder] [" .. prefix .. "] Invalid log level: " .. tostring(level))
         return
     end
-    if lvl > LOP_DEBUG_LEVEL then
+    if lvl > RB_DEBUG_LEVEL then
         return
     end
-    local title = "[Lots of Props]"
+    local title = "[Realm Builder]"
     level = "[" .. level .. "]"
     prefix = "[" .. prefix .. "]"
     --[[title = palette(title, debugColor.Title)
@@ -86,31 +86,31 @@ local function LOP_Print(prefix, level, message)
     message = palette(message, debugColor[level])]]
     local logMessage = table.concat({title, prefix, level, message}, " ")
 
-    if LOP_ENABLE_LOGGER then
+    if RB_ENABLE_LOGGER then
         Logger.Log(logMessage)
     end
 
-    if lvl == LOP_DEBUG_LEVELS.Critical then
+    if lvl == RB_DEBUG_LEVELS.Critical then
         RPrintCritical(logMessage)
-    elseif lvl == LOP_DEBUG_LEVELS.Error then
+    elseif lvl == RB_DEBUG_LEVELS.Error then
         RPrintRed(logMessage)
-    elseif lvl == LOP_DEBUG_LEVELS.Warning then
+    elseif lvl == RB_DEBUG_LEVELS.Warning then
         RPrintYellow(logMessage)
-    elseif lvl == LOP_DEBUG_LEVELS.Info then
+    elseif lvl == RB_DEBUG_LEVELS.Info then
         RPrintCyan(logMessage)
-    elseif lvl == LOP_DEBUG_LEVELS.Debug then
+    elseif lvl == RB_DEBUG_LEVELS.Debug then
         RPrintPurple(logMessage)
-    elseif lvl == LOP_DEBUG_LEVELS.Trace then
+    elseif lvl == RB_DEBUG_LEVELS.Trace then
         RPrintMartix(logMessage)
     end
 end
 
 local function SPrint(level, message)
-    LOP_Print("S", level, message)
+    RB_Print("S", level, message)
 end
 
 local function CPrint(level, message)
-    LOP_Print("C", level, message)
+    RB_Print("C", level, message)
 end
 
 local function parse(...)
@@ -262,36 +262,36 @@ function SetDebugLevel(level)
             lvl = numLevel
         end
     elseif type(level) == "string" then
-        lvl = LOP_DEBUG_LEVELS[level]
+        lvl = RB_DEBUG_LEVELS[level]
     end
 
     if lvl ~= nil and lvl >= 0 and lvl <= 5 then
-        LOP_DEBUG_LEVEL = lvl
+        RB_DEBUG_LEVEL = lvl
         --Info("Debug level set to: " .. tostring(level))
     else
-        --_P("[Lots of Props] Invalid debug level: " .. tostring(level))
+        --_P("[Realm Builder] Invalid debug level: " .. tostring(level))
     end
 end
 
-Ext.RegisterConsoleCommand("LOP_DEBUG_LEVEL", function(cmd, level)
+Ext.RegisterConsoleCommand("RB_DEBUG_LEVEL", function(cmd, level)
     if not level or level == "" then
-        _P("[Lots of Props] Current debug level: " .. tostring(debugLevels[LOP_DEBUG_LEVEL + 1]))
+        _P("[Realm Builder] Current debug level: " .. tostring(debugLevels[RB_DEBUG_LEVEL + 1]))
         return
     end
     SetDebugLevel(level)
-    _P("[Lots of Props] Debug level set to: " .. tostring(debugLevels[LOP_DEBUG_LEVEL + 1]))
+    _P("[Realm Builder] Debug level set to: " .. tostring(debugLevels[RB_DEBUG_LEVEL + 1]))
 
     if Ext.IsServer() then
     end
 
     if Ext.IsClient() then
-        Post("SetDebugLevel", {Level = LOP_DEBUG_LEVEL})
-        CONFIG.DEBUG_LEVEL = LOP_DEBUG_LEVEL
+        Post("SetDebugLevel", {Level = RB_DEBUG_LEVEL})
+        CONFIG.DEBUG_LEVEL = RB_DEBUG_LEVEL
     end
 
 end)
 
-Ext.RegisterConsoleCommand("LOP_DEBUG_PRINT", function(cmd, ...)
+Ext.RegisterConsoleCommand("RB_DEBUG_PRINT", function(cmd, ...)
     local msg = parse(...)
     local sth = _C():GetAllComponentNames()
     if msg == "" then
@@ -307,7 +307,7 @@ end)
 
 Ext.RegisterConsoleCommand("How_many_globals", function()
     local count = 0
-    for k, v in pairs(Mods["Lots_of_Props"]) do
+    for k, v in pairs(Mods["Realm_Builder"]) do
         _P(" -" .. k)
         count = count + 1
     end

@@ -1,5 +1,5 @@
 {
     "RequiredVersion": 25,
-    "ModTable": "Lots_of_Props",
+    "ModTable": "Realm_Builder",
     "FeatureFlags": ["Lua"]
 }

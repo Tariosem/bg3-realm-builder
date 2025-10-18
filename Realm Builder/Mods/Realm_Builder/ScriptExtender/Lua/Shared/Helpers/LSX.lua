@@ -43,6 +43,7 @@ local defaultStringifyOptions = {
     Indent = 4,
     IncludeComments = true,
     MaxDepth = 100,
+    InlcudeHeader = true,
 }
 
 local function validateStringifyOptions(opts)
@@ -59,6 +60,9 @@ local function validateStringifyOptions(opts)
     if opts.MaxDepth and type(opts.MaxDepth) == "number" and opts.MaxDepth >= 0 then
         validOpts.MaxDepth = opts.MaxDepth
     end
+    if opts.InlcudeHeader ~= nil and type(opts.InlcudeHeader) == "boolean" then
+        validOpts.InlcudeHeader = opts.InlcudeHeader
+    end
 
     return validOpts
 end
@@ -66,6 +70,7 @@ end
 --- @class LSXStringfiyOptions
 --- @field Indent number
 --- @field IncludeComments boolean
+--- @field IncludeHeader boolean -- whether to include the XML declaration
 --- @field MaxDepth number
 
 --- @class LSXNode
@@ -151,12 +156,16 @@ function LSXNode:Stringify(stringifyOpts)
     stringifyOpts.IncludeComments = stringifyOpts.IncludeComments ~= false
     local content = self:__stringify(stringifyOpts)
 
-    return "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n" .. content
+    return   content
 end
 
 function LSXNode:__stringify(stringifyOpts)
     local indentStep = stringifyOpts.Indent
     local lines = {}
+
+    if stringifyOpts.InlcudeHeader then
+        table.insert(lines, '<?xml version="1.0" encoding="utf-8"?>')
+    end
 
     -- iterative DFS using explicit stack. Each frame: { node = <LSXTableNode>, state = 'enter'|'exit', depth = number }
     local function buildAttrStr(node)
@@ -492,4 +501,50 @@ function LSXUtils.AttrNode(id, type, value)
     })
     attrNode:SetAttrOrder({"id", "type", "value"})
     return attrNode
+end
+
+---@return string
+function MakeTranslatedHandle()
+    local template = "hxxxxxxxxgxxxxgxxxxgxxxxgxxxxxxxxxxx"
+    local handle = template:gsub("x", function()
+        return string.format("%x", math.random(0, 15))
+    end)
+
+    return handle
+end
+
+--- so this basically generates an LSX file like:
+--- <?xml version="1.0" encoding="utf-8"?>
+--- <contentList xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+---   <content contentuid="generated-guid" version="1">name1</content>
+---   <content contentuid="generated-guid" version="1">name2</content>
+---  ...
+--- </contentList>
+--- which is the localization used by the game
+---@param names string[]
+---@param version number|fun(name:string):number
+---@return string
+function LSXUtils.GenerateLocalization(names, version)
+    local root = LSXNode.new("contentList", {
+        ["xmlns:xsd"] = "http://www.w3.org/2001/XMLSchema",
+        ["xmlns:xsi"] = "http://www.w3.org/2001/XMLSchema-instance",
+    })
+
+    for _, name in ipairs(names) do
+        local ver = 1
+        if type(version) == "function" then
+            ver = version(name)
+        elseif type(version) == "number" then
+            ver = version
+        end
+
+        local contentNode = LSXNode.new("content", {
+            contentuid = MakeTranslatedHandle(),
+            version = ver
+        })
+        contentNode:SetInnerText(name)
+        root:AppendChild(contentNode)
+    end
+
+    return root:Stringify({Indent = 2})
 end

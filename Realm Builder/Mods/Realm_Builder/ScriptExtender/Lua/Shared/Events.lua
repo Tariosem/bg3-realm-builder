@@ -4,7 +4,7 @@ local onStatsLoadedFuncs = {}
 --- @class UNSUBSCRIBE_SYMBOL
 UNSUBSCRIBE_SYMBOL = {}
 
---- @class LOPSubscription
+--- @class RBSubscription
 --- @field Unsubscribe function
 --- @field ID integer
 
@@ -49,7 +49,7 @@ local function OnStatsLoaded()
 end
 
 local function OnSessionLoaded()
-    Debug("Lots of Props On Session Loaded")
+    Debug("Realm Builder On Session Loaded")
     for _, entry in ipairs(onSessionLoadedFuncs) do
         if entry.func == nil or type(entry.func) ~= "function" then return end
         entry.func()

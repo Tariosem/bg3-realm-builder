@@ -30,7 +30,7 @@ function ItemIconBrowser:TooltipChangeLogic()
     end
 end
 
----@param entry LOPItem
+---@param entry RB_Item
 ---@param cell ExtuiTableCell
 ---@return ExtuiImageButton|ExtuiStyledRenderable?
 function ItemIconBrowser:RenderIcon(entry, cell)
@@ -93,115 +93,13 @@ function ItemIconBrowser:RenderIcon(entry, cell)
         spawnPopup:Open()
     end
 
-    --local previewCancelSub = nil
-    --local previewItem = nil
-    --local previewTimer = nil
-    --local previewConfirmSub = nil
-    --local previewRotateSub = nil
-    --local previewRotateOffset = Quat.Identity()
-
     iconImage.OnDragStart = function()
-        iconImage.DragPreview:AddImage(entry.Icon, IMAGESIZE.MEDIUM)
-        --[[ClientSubscribe("PreviewProp", function (data)
-            previewItem = data.Guid
-            return UNSUBSCRIBE_SYMBOL
-        end)
-
-        local postData = {TemplateId = entry.TemplateId}
-        postData.Position, postData.Rotation = GetCursorPosAndRot()
-        Post("Preview", postData)
-
-        local function cancel()
-            local postData = { Guid = previewItem }
-            if previewTimer then
-                Timer:Cancel(previewTimer)
-                previewTimer = nil
-            end
-            if previewConfirmSub then
-                previewConfirmSub:Unsubscribe()
-                previewConfirmSub = nil
-            end
-            if previewRotateSub then
-                previewRotateSub:Unsubscribe()
-                previewRotateSub = nil
-            end
-            if previewCancelSub then
-                previewCancelSub:Unsubscribe()
-                previewCancelSub = nil
-            end
-            Post("Delete", postData)
-            previewItem = nil
-            return UNSUBSCRIBE_SYMBOL
-        end
-
-        previewCancelSub = SubscribeKeyInput({}, function (e)
-            if e.Key == "BACKSPACE" and e.Pressed then
-                cancel()
-            end
-        end)
-
-        previewConfirmSub = SubscribeMouseInput({}, function (e)
-            if e.Button == 1 and e.Pressed then
-                if previewItem then
-                    local data = {
-                        Guid = entry.Uuid,
-                        TemplateId = entry.TemplateId,
-                        Type = "Spawn",
-                        Position = {CGetPosition(previewItem)},
-                        Rotation = {CGetRotation(previewItem)}
-                    }
-
-                end
-            end
-        end)
-
-        previewRotateSub = SubscribeMouseWheel({}, function (e)
-            if e.ScrollX == 0 and e.ScrollY == 0 or not previewItem then return end
-            if not CGetRotation(previewItem) then return end
-            local up = QuatToDirection({CGetRotation(previewItem)}, "Y")
-            if e.ScrollY > 0 then
-                previewRotateOffset = previewRotateOffset * Quat.new(Ext.Math.QuatRotateAxisAngle(Quat.Identity(), up, math.rad(-15)))
-            elseif e.ScrollY < 0 then
-                previewRotateOffset = previewRotateOffset * Quat.new(Ext.Math.QuatRotateAxisAngle(Quat.Identity(), up, math.rad(15)))
-            end
-        end)
-
-        previewTimer = Timer:EveryFrame(function()
-            if not previewItem or not EntityExists(previewItem) then
-                cancel()
-                return UNSUBSCRIBE_SYMBOL
-            end
-            local position, rotation = nil, nil
-            if GetPickingGuid() == previewItem then
-                local mouseRay = ScreenToWorldRay()
-                local hit = mouseRay:IntersectPlane({CGetPosition(previewItem)}, QuatToDirection({CGetRotation(previewItem)}, "Y"))
-                position = hit.Position
-                rotation = Quat.Identity()
-            else
-                position, rotation = GetCursorPosAndRot()
-            end
-            local postData = {
-                Guid = previewItem,
-                Transforms = {
-                    [previewItem] = {
-                        Translate = position,
-                        RotationQuat = rotation * previewRotateOffset
-                    }
-                }}
-            
-        end)]]
+        iconImage.DragPreview:AddImage(entry.Icon, IMAGESIZE.MEDIUM)    
     end
 
     iconImage.OnDragEnd = function()
-        Timer:Ticks(30, function (timerID)
-            local cursorPos, cursorRot = GetPickingHitPosAndRot()
-            if not cursorPos or not cursorRot then
-                local host = CGetHostCharacter()
-                cursorPos = {CGetPosition(host)}
-                cursorRot = {CGetRotation(host)}
-            end
-            Commands.SpawnCommand(entry.TemplateId, cursorPos, cursorRot)
-        end)
+        if self.IsPreviewing then return end
+        self:SetupTemplatePreview(entry)
     end
 
     local iconTooltip = iconImage:Tooltip()
@@ -240,6 +138,101 @@ function ItemIconBrowser:RenderIcon(entry, cell)
     end
 
     return iconImage
+end
+
+--- @param entry RB_Item
+function ItemIconBrowser:SetupTemplatePreview(entry)
+    self.IsPreviewing = true
+
+    local previewItem = nil
+    local mouseButtonSub = nil
+    local mouseWheelSub = nil
+    local stickTimer = nil
+    local cancelSub = nil
+    local rotationOffset = Quat.new(0,0,0,1)
+
+    local startPos, startRot = GetPickingHitPosAndRot()
+
+    NetChannel.SpawnPreview:RequestToServer({
+        TemplateId = entry.TemplateId,
+        Position = startPos,
+        Rotation = startRot,
+    }, function (response)
+        previewItem = response.Guid
+
+        stickTimer = Timer:EveryFrame(function (timerID)
+            if not previewItem then return UNSUBSCRIBE_SYMBOL end
+
+            local hitPos, hitRot = nil, nil
+
+            if GetPickingGuid() == previewItem then
+                local mouseRay = ScreenToWorldRay()
+                if not mouseRay then return end
+                local planeNormal = Quat.new({CGetRotation(previewItem)}):Rotate(GLOBAL_COORDINATE.Y)
+
+                local hit = mouseRay:IntersectPlane({CGetPosition(previewItem)}, planeNormal)
+
+                if not hit then return end
+                hitPos = hit.Position
+                hitRot = Quat.new({CGetRotation(previewItem)})
+            else
+                hitPos, hitRot = GetPickingHitPosAndRot()
+            end
+
+            if not hitPos then hitPos = startPos or Vec3.new(0,0,0) end
+            if not hitRot then hitRot = startRot or Quat.new(0,0,0,1) end
+
+            if rotationOffset then
+                hitRot = Ext.Math.QuatMul(hitRot, rotationOffset)
+            end
+            
+            NetChannel.SetTransform:SendToServer({
+                Guid = previewItem,
+                Transforms = {
+                    [previewItem] = {
+                        Translate = hitPos,
+                        RotationQuat = hitRot,
+                    }
+                }
+            })
+        end)
+
+        mouseButtonSub = SubscribeMouseInput({}, function (e)
+            if not previewItem then return UNSUBSCRIBE_SYMBOL end
+            if not e.Pressed and e.Clicks > 0 then return end
+
+            if e.Button == 1 then
+                local data = {
+                    TemplateId = entry.TemplateId,
+                    Position = {CGetPosition(previewItem)},
+                    Rotation = {CGetRotation(previewItem)}
+                }
+                Commands.SpawnCommand(entry.TemplateId, data.Position, data.Rotation)
+            end
+
+        end)
+
+        mouseWheelSub = SubscribeMouseWheel({}, function (e)
+            if not previewItem then return UNSUBSCRIBE_SYMBOL end
+            if e.ScrollY == 0 then return end
+
+            local angle = math.rad(15) * (e.ScrollY > 0 and 1 or -1)
+            local quatOffset = Quat.FromEulerAngles(0, angle, 0)
+            rotationOffset = Ext.Math.QuatMul(quatOffset, rotationOffset)
+        end)
+
+        cancelSub = SubscribeKeyInput({}, function (e)
+            if not previewItem then NetChannel.Delete:SendToServer({ Guid = previewItem }) return UNSUBSCRIBE_SYMBOL end
+            if e.Pressed and e.Key == "ESCAPE" or e.Key == "BACKSPACE" then
+                NetChannel.Delete:SendToServer({ Guid = previewItem })
+                previewItem = nil
+                self.IsPreviewing = false
+                return UNSUBSCRIBE_SYMBOL
+            end
+        end)
+
+    end)
+
 end
 
 function ItemIconBrowser:RenderInfoPopup(popup, entry)

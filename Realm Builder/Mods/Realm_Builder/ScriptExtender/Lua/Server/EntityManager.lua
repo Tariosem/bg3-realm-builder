@@ -186,7 +186,7 @@ function EntityManager:DeleteEntity(guid, doBroadcast)
         return false
     end
 
-    Osi.ClearTag(guid, LOP_PROP_TAG)
+    Osi.ClearTag(guid, RB_PROP_TAG)
     Osi.RequestDelete(guid)
     self.TaggedEntities[guid] = nil
     --Info("Prop deleted with guid: " .. tostring(guid))
@@ -250,7 +250,7 @@ function EntityManager:FreeEntity(guids)
         if not guid or not self.TaggedEntities[guid] then
             Warning("Invalid guid or prop not found: " .. tostring(guid))
         else
-            Osi.ClearTag(guid, LOP_PROP_TAG)
+            Osi.ClearTag(guid, RB_PROP_TAG)
             self.TaggedEntities[guid] = nil
 
             NetChannel.Entities.Deleted:Broadcast({guid})

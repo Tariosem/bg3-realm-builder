@@ -7,7 +7,7 @@ function MultiEffectManager:__init()
     self.UuidToEffectName = {}
 end
 
---- @class LOPEffect
+--- @class RB_Effect
 --- @field Uuid string
 --- @field TemplateId string
 --- @field TemplateName string
@@ -87,7 +87,7 @@ function MultiEffectManager:PopulateMultiEffectInfo(uuid)
 end
 
 function MultiEffectManager:PopulateEffect(res)
-    --- @type LOPEffect
+    --- @type RB_Effect
     local entry = {
         Uuid = res.Guid,
         TemplateId = res.Guid,

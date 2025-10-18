@@ -1,20 +1,20 @@
-LOP_PROP_TAG = "02131330-7126-43c4-b5a3-b619e42dcf50"
-LOP_GIZMO_TAG = "08f54bd8-3029-4faa-9f2f-cef3160a44c0"
+RB_PROP_TAG = "02131330-7126-43c4-b5a3-b619e42dcf50"
+RB_GIZMO_TAG = "08f54bd8-3029-4faa-9f2f-cef3160a44c0"
 
-LOP_PROP_AXIS_FX = "LOP_Gizmo_Translate_347586d3-e55e-4cea-8d26-168d17e233c6"
+RB_PROP_AXIS_FX = "RB_Gizmo_Translate_347586d3-e55e-4cea-8d26-168d17e233c6"
 
-LOP_BEAM_ITEM_FX = "18e043e7-45e7-4eb0-b201-cdd78e38528a"
+RB_BEAM_ITEM_FX = "18e043e7-45e7-4eb0-b201-cdd78e38528a"
 
 GIZMO_ITEM = {
-    Translate = "LOP_Gizmo_Translate_347586d3-e55e-4cea-8d26-168d17e233c6",
-    Rotate = "LOP_Gizmo_Rotate_8bc16a4a-f135-485b-a226-641012b7450a",
-    Scale = "LOP_Gizmo_Scale_723a815e-801a-4792-aa80-0fd65b599a24",
+    Translate = "RB_Gizmo_Translate_347586d3-e55e-4cea-8d26-168d17e233c6",
+    Rotate = "RB_Gizmo_Rotate_8bc16a4a-f135-485b-a226-641012b7450a",
+    Scale = "RB_Gizmo_Scale_723a815e-801a-4792-aa80-0fd65b599a24",
 }
 
 GIZMO_TEXTURE = {
-    X = "81d77dbe-4c56-cca9-229c-a625393c8d54", --LOP_Gizmo_X_Red_
-    Y = "edca009e-ca14-952d-a288-ac264b8b4af7", --LOP_Gizmo_Y_Green_
-    Z = "5bba49f3-5f8b-9929-7231-586a9eedbb24", --LOP_Gizmo_Z_Blue_
+    X = "81d77dbe-4c56-cca9-229c-a625393c8d54", --RB_Gizmo_X_Red_
+    Y = "edca009e-ca14-952d-a288-ac264b8b4af7", --RB_Gizmo_Y_Green_
+    Z = "5bba49f3-5f8b-9929-7231-586a9eedbb24", --RB_Gizmo_Z_Blue_
 }
 
 GIZMO_TEXTURE_TO_AXIS = {}
@@ -30,10 +30,10 @@ WARNING_ICON = "PassiveFeature_Generic_Threat"
 
 LOCK_ICON = "Spell_Abjuration_ArcaneLock"
 
-LOP_PROP_HIGHLIGHT_FX = "db2affb3-57a7-76f9-9315-d1783cdfc576"
-LOP_PROP_FIRE_FX = "175786f6-1c13-3051-1001-3cf62d2819aa"
-LOP_PROP_BIND_VISUALIZATION_FX = "3af9c664-d864-cbcd-e6b1-11ea99e307df" -- Loop beam effect VFX_Beams_Underdark_Arcane_Turret_Beam_01
-LOP_PROP_BIND_VISUALIZATION_FX_RED = "3e3032d5-dd5c-a9e1-a77c-64273e97a7ce"  -- VFX_Debug_Beam_01
+RB_PROP_HIGHLIGHT_FX = "db2affb3-57a7-76f9-9315-d1783cdfc576"
+RB_PROP_FIRE_FX = "175786f6-1c13-3051-1001-3cf62d2819aa"
+RB_PROP_BIND_VISUALIZATION_FX = "3af9c664-d864-cbcd-e6b1-11ea99e307df" -- Loop beam effect VFX_Beams_Underdark_Arcane_Turret_Beam_01
+RB_PROP_BIND_VISUALIZATION_FX_RED = "3e3032d5-dd5c-a9e1-a77c-64273e97a7ce"  -- VFX_Debug_Beam_01
 
 VANILLA_MODULES = {
     Shared = true,
@@ -92,4 +92,4 @@ end
 
 EPSILON = 0.00001
 
-MOD_DIRECTORY = "Mods/Lots_of_Props_a83e5a7e-8d8e-a333-8f62-ff3dd8671e80/"
+MOD_DIRECTORY = "Mods/Realm_Builder_a83e5a7e-8d8e-a333-8f62-ff3dd8671e80/"

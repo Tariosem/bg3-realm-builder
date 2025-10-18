@@ -1,13 +1,13 @@
 <?xml version="1.0"?>
 <contentList xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
   <content contentuid="h7c79971egadfag2d2ag0ad5ged8b08eb23ec" version="2">Gizmo Marker</content>
-  <content contentuid="h1077bc04gb67fg8e47gc400gd8e09249cc4d" version="1">Lots of Props Marker</content>
-  <content contentuid="he361ae68g10f7g4784g5d4dgf1fac14166fb" version="1">Lots of Props Marker</content>
+  <content contentuid="h1077bc04gb67fg8e47gc400gd8e09249cc4d" version="1">Realm Builder Marker</content>
+  <content contentuid="he361ae68g10f7g4784g5d4dgf1fac14166fb" version="1">Realm Builder Marker</content>
   <content contentuid="h183d24ebgb295gc538gd919gf16d7e1f0c88" version="1">Translate Gizmo</content>
   <content contentuid="h4e7be222g4d7agc2a0g5b02ge0c47df68e28" version="2">Translate Gizmo</content>
   <content contentuid="h930fad56gb203g7b2ege2b0gf40d0a62ac1b" version="3">Translate Gizmo</content>
   <content contentuid="h5fc49ecaged58gbf26gd5a7gdca94449008d" version="2">Scale Gizmo</content>
   <content contentuid="h06a17555ge62dg785eg6b35g4d1d52cdc6ea" version="2">Rotate Gizmo</content>
-  <content contentuid="h0ae9af24c44c4a489ee9e32f9c3112f7ae84" version="0">LOP VFX Beam</content>
-  <content contentuid="h16fe61ec41a74a86b9973ef6185543421ege" version="0">LOP Stats</content>
+  <content contentuid="h0ae9af24c44c4a489ee9e32f9c3112f7ae84" version="0">RB VFX Beam</content>
+  <content contentuid="h16fe61ec41a74a86b9973ef6185543421ege" version="0">RB Stats</content>
 </contentList>

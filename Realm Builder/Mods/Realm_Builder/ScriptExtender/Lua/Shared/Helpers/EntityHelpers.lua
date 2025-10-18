@@ -361,7 +361,7 @@ function CIsTagged(guid)
 
     local tags = entity.Tag.Tags
     for _, tag in ipairs(tags) do
-        if tag == LOP_PROP_TAG then
+        if tag == RB_PROP_TAG then
             return true
         end
     end
@@ -426,7 +426,7 @@ function IsProp(uuid)
     if Ext.IsClient() or true then
         return CIsTagged(uuid)
     end
-    return Osi.IsTagged(uuid, LOP_PROP_TAG) == 1
+    return Osi.IsTagged(uuid, RB_PROP_TAG) == 1
 end
 
 function IsGizmo(uuid)
@@ -438,14 +438,14 @@ function IsGizmo(uuid)
 
         local tags = entity.Tag and entity.Tag.Tags or {}
         for _, tag in ipairs(tags or {}) do
-            if tag == LOP_GIZMO_TAG then
+            if tag == RB_GIZMO_TAG then
                 return true
             end
         end
 
         return false
     end
-    return Osi.IsTagged(uuid, LOP_GIZMO_TAG) == 1
+    return Osi.IsTagged(uuid, RB_GIZMO_TAG) == 1
 end
 
 function BF_GetAllTagged()

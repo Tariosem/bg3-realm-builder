@@ -35,8 +35,8 @@
 --- @field StopEffectByComb fun(self:EffectsManager, fxName:string, object:GUIDSTRING|GUIDSTRING[])
 EffectsManager = {}
 
-local STATUS_PREFIX = "VFX_LOP_STATUS_"
-local SPELL_PREFIX = "VFX_LOP_SPELL_"
+local STATUS_PREFIX = "VFX_RB_STATUS_"
+local SPELL_PREFIX = "VFX_RB_SPELL_"
 local DEFAULT_SPELL_ANIM = "dd86aa43-8189-4d9f-9a5c-454b5fe4a197,,;,,;7abe77ed-9c77-4eac-872c-5b8caed070b6,,;cb171bda-f065-4520-b470-e447f678ba1f,,;cc5b0caf-3ed1-4711-a50d-11dc3f1fdc6a,,;,,;1715b877-4512-472e-9bd0-fd568a112e90,,;bcc3b0d9-f04f-4448-aab0-e0ad641167cc,,;bf924cc6-8b39-4c3b-b1c0-eda264cf6150,,"
 
 function EffectsManager:init(name)

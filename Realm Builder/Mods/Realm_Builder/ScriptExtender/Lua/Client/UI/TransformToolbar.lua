@@ -110,7 +110,7 @@ function TransformToolbar:RegisterKeyInputEvents()
             return
         end
 
-        local success = LOPMenu.entityMenu:FocusEntityVisualTab(pick)
+        local success = RBMenu.entityMenu:FocusEntityVisualTab(pick)
     end)
 
     buMod:RegisterEvent("BindTo", function (e)
@@ -689,9 +689,8 @@ function TransformToolbar:Add()
     return menu
 end
 
-function TransformToolbar:Open()
-    if self.TopToolBar then
-        self.TopToolBar.Open = true
-    end
-    self:RegisterKeyInputEvents()
+function TransformToolbar:Toggle()
+    if not self.TopToolBar then return end
+
+    self.TopToolBar.Open = not self.TopToolBar.Open
 end

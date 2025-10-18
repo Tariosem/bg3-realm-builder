@@ -197,7 +197,7 @@ function EntityTab:RenderMainEditor()
     self.addToFavoritesButton.OnClick = function()
         local uuid = GetTemplateId(self.guid)
         if uuid and uuid ~= "" then
-            LOP_ItemManager:AddTagToData(uuid, "Favorite")
+            RB_ItemManager:AddTagToData(uuid, "Favorite")
         else
             Warning("[EntityTab] Cannot add to favorites, no template ID found for GUID: " .. self.guid)
         end
@@ -324,7 +324,7 @@ function EntityTab:RenderMonitorTab()
     self.monitorTimers = { self.positionTimer, self.rotationTimer, self.levelTimer }
 
     local releasePropBtn = monitorTab:AddButton(GetLoca("Release Prop"))
-    releasePropBtn:Tooltip():AddText(GetLoca("Release the prop so it won't be tracked by Lots of Props anymore."))
+    releasePropBtn:Tooltip():AddText(GetLoca("Release the prop so it won't be tracked by Realm Builder anymore."))
     releasePropBtn.SameLine = true
 
     releasePropBtn.OnClick = function()

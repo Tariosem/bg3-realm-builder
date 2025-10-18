@@ -14,7 +14,7 @@ function EntityMenu:__init(parent)
     self.isValid = true
     self.selectedGuids = {}
 
-    self.iconBrowser = ItemIconBrowser:Add(LOP_ItemManager, GetLoca("Items"))
+    self.iconBrowser = ItemIconBrowser:Add(RB_ItemManager, GetLoca("Items"))
     self.iconBrowser.panel.Open = false
     self.entityTabs = {}
 end
@@ -388,6 +388,19 @@ function EntityMenu:SetupSelectablePopup(popup)
             self.propTreeList:ClearSelection()
             self.selectedGuids = {}
             self:UpdateList()
+        end
+    end)
+
+    local makeLsxBtn = AddSelectableButton(row:AddCell(), GetLoca("Export LSX"), function()
+        if self.selectedGuids and #self.selectedGuids > 0 then
+            for _, guid in ipairs(self.selectedGuids) do
+                local suc = MakePropLSX(guid)
+                if suc then
+                    Info(string.format(GetLoca("Prop LSX for '%s' exported successfully."), guid))
+                else
+                    Error(string.format(GetLoca("Failed to export Prop LSX for '%s'."), guid))
+                end
+            end
         end
     end)
 

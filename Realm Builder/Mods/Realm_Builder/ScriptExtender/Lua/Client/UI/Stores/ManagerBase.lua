@@ -1,4 +1,4 @@
---- @class LOP_CategorizableObject
+--- @class RB_CategorizableObject
 --- @field Group string
 --- @field Tags string[]
 --- @field Note string

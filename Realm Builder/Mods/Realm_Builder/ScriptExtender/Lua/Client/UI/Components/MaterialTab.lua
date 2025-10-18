@@ -48,7 +48,7 @@ function MaterialTab:Render()
             local proxy = drop.UserData.MaterialProxy --[[@as MaterialProxy]]
 
             Debug(proxy.Parameters)
-            self.Editor:ApplyMatParameters(proxy.Parameters)
+            self.Editor:ApplyParameters(proxy.Parameters)
             for key, func in pairs(self.UpdateFuncs) do
                 local newValue = self.Editor:GetParameter(key)
                 func(newValue)
@@ -97,7 +97,17 @@ function MaterialTab:Render()
                     propNode.DragDropType = "ParameterValue"
 
                     propNode.OnDragStart = function (sel)
-                        propNode.DragPreview:AddText(propertyName .. ": " .. table.concat(self.Editor:GetParameter(propertyName) or {}, ", "))
+                        propNode.DragPreview:AddText(propertyName)
+
+                        local value = self.Editor:GetParameter(propertyName)
+                        if not value then return end
+                        if #value >= 3 then
+                            local colorRect = propNode.DragPreview:AddColorEdit("##" .. self.MaterialName .. propertyName)
+                            colorRect.Color = {value[1], value[2], value[3], value[4] or 1}
+                        else
+                            propNode.DragPreview:AddText("Value: " .. table.concat(value, ", "))
+                        end
+
                     end
 
                     propNode.OnDragDrop = function (sel, drop)
@@ -105,9 +115,19 @@ function MaterialTab:Render()
                             local paramName = drop.UserData.ParameterName --[[@as string ]]
                             local proxy = drop.UserData.MaterialProxy --[[@as MaterialEditor ]]
                             local newValue = proxy:GetParameter(paramName)
-                            self.Editor:SetParameter(paramName, newValue)
+                            local currentValue = self.Editor:GetParameter(propertyName)
+                            if newValue and currentValue then
+                                if not #newValue == #currentValue then
+                                    Error("Cannot drop parameter '" .. paramName .. "' onto parameter '" .. propertyName .. "' due to mismatched sizes.")
+                                    return
+                                end
+                            else
+                                return -- Invalid parameters
+                            end
 
-                            local updateFunc = self.UpdateFuncs[paramName]
+                            self.Editor:SetParameter(propertyName, newValue)
+
+                            local updateFunc = self.UpdateFuncs[propertyName]
                             if updateFunc then
                                 updateFunc(newValue)
                             end
@@ -132,7 +152,7 @@ function MaterialTab:RenderProperty(node, propertyName, propertyValue)
     end
 
     if #propertyValue >= 3 then
-        colorPicker = node:AddColorEdit(propertyName .. " Color##" .. self.MaterialName)
+        colorPicker = node:AddColorEdit(propertyName .. "##" .. self.MaterialName)
         colorPicker.Color = ToVec4(propertyValue)
         colorPicker.AlphaBar = (#propertyValue == 4)
         colorPicker.NoAlpha = (#propertyValue == 3)
@@ -239,7 +259,7 @@ function MaterialTab:ExportChanges()
 end
 
 function MaterialTab:ImportChanges(params)
-    self.Editor:ApplyMatParameters(params)
+    self.Editor:ApplyParameters(params)
 
     for key, func in pairs(self.UpdateFuncs) do
         local newValue = self.Editor:GetParameter(key)

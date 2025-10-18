@@ -2,10 +2,10 @@
 MCM = MCM or {}
 
 local function toggleMainWindow()
-    if LOPMenu and LOPMenu.panel then
-        LOPMenu.panel.Open = not LOPMenu.panel.Open
+    if RBMenu and RBMenu.panel then
+        RBMenu.panel.Open = not RBMenu.panel.Open
     else
-        LOPMenu = Menu:Add()
+        RBMenu = Menu:Add()
     end
     NetChannel.ManageEntity:SendToServer({ Action = "Scan" })
     
@@ -20,11 +20,11 @@ MCM.EventButton.RegisterCallback("event_button_toggle_main_widnow", function()
 end)
 
 MCM.Keybinding.SetCallback("key_toggle_items_browser", function()
-    if not LOPMenu then
+    if not RBMenu then
         return
     end
 
-    local effectsBrowser, itemsBrowser = LOPMenu:GetBrowsers()
+    local effectsBrowser, itemsBrowser = RBMenu:GetBrowsers()
     if itemsBrowser then
         if itemsBrowser.panel.Open then
             itemsBrowser.panel.Open = false
@@ -45,11 +45,11 @@ MCM.Keybinding.SetCallback("key_toggle_items_browser", function()
 end)
 
 MCM.Keybinding.SetCallback("key_toggle_effects_browser", function()
-    if not LOPMenu then
+    if not RBMenu then
         return
     end
 
-    local effectsBrowser, itemsBrowser = LOPMenu:GetBrowsers()
+    local effectsBrowser, itemsBrowser = RBMenu:GetBrowsers()
     if effectsBrowser then
         if effectsBrowser.panel.Open then
             effectsBrowser.panel.Open = false
@@ -73,7 +73,7 @@ MCM.Keybinding.SetCallback("key_toggle_transform_toolbar", function()
         return
     end
 
-    TransformToolbar.TopToolBar.Open = not TransformToolbar.TopToolBar.Open
+    TransformToolbar:Toggle()
 end)
 
 MCM.EventButton.SetDisabled("event_button_toggle_main_widnow", true, GetLoca("Enabled after loading a save"))

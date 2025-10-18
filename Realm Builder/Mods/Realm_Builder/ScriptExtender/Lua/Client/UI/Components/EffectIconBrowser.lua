@@ -31,7 +31,7 @@ function EffectIconBrowser:TooltipChangeLogic()
     end
 end
 
---- @param entry LOPEffect
+--- @param entry RB_Effect
 --- @param cell ExtuiTableCell
 function EffectIconBrowser:RenderIcon(entry, cell)
     if entry.Uuid == nil then

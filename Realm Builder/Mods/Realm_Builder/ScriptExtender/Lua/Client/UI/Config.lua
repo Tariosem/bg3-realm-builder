@@ -74,12 +74,12 @@ function SaveConfig(field)
     end
 
     local configData = Ext.Json.Stringify(CONFIG)
-    local filePath = "Lots_of_Props/Config.json"
+    local filePath = "Realm_Builder/Config.json"
     Ext.IO.SaveFile(filePath, configData)
 end
 
 function LoadConfig()
-    local filePath = "Lots_of_Props/Config.json"
+    local filePath = "Realm_Builder/Config.json"
     local configData = Ext.IO.LoadFile(filePath)
     if configData then
         local saved = Ext.Json.Parse(configData)
@@ -92,7 +92,7 @@ function LoadConfig()
 end
 
 function SaveConfigField(field)
-    local filePath = "Lots_of_Props/Config.json"
+    local filePath = "Realm_Builder/Config.json"
     local raw = Ext.IO.LoadFile(filePath)
     local data = raw and Ext.Json.Parse(raw) or {}
 

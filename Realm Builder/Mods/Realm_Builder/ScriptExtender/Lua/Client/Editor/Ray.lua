@@ -3,7 +3,7 @@
 --- @field Direction Vec3
 --- @field new fun(origin:Vec3|Vec, direction:Vec3|Vec):Ray
 --- @field At fun(self:Ray, t:number):Vec3
---- @field IntersectPlane fun(self:Ray, planePoint:Vec3, planeNormal:Vec3):Hit|nil
+--- @field IntersectPlane fun(self:Ray, planePoint:Vec3, planeNormal:Vec3, includeBehind?:boolean):Hit|nil
 --- @field IntersectAABB fun(self:Ray, min:Vec3, max:Vec3):Hit|nil, Hit[]|nil
 --- @field IntersectOBB fun(self:Ray, obbCenter:Vec3, halfsizes:Vec3, rotation:Quat):Hit|nil, Hit[]|nil
 --- @field IntersectSphere fun(self:Ray, center:Vec3, radius:number):Hit|nil
@@ -72,6 +72,7 @@ end
 
 --- @param planePoint Vec3
 --- @param planeNormal Vec3
+--- @param includeBehind boolean?
 --- @return Hit|nil
 function Ray:IntersectPlane(planePoint, planeNormal, includeBehind)
     planeNormal = Vec3.new(planeNormal):Normalize() --[[@as Vec3]]

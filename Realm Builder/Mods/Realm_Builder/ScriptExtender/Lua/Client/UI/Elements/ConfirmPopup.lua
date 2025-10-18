@@ -42,7 +42,7 @@ function ConfirmPopup:_createWindow(message, confirmText, cancelText, confirmCal
     local width = math.max(baseWidth , #message * 20 + 200) * scale --baseWidth * scale
     local height = baseHeight * scale
 
-    self.panel = Ext.IMGUI.NewWindow("LOP_ConfirmPopup")
+    self.panel = Ext.IMGUI.NewWindow("RB_ConfirmPopup")
 
     ApplyGuiParams(self.panel)
 

@@ -7,10 +7,10 @@ function OsirisHelpers.Propify(guids)
         Osi.SetCanInteract(guid, 1)
         Osi.SetVisible(guid, 1)
         --Osi.SetMovable(guid, 1)
-        Osi.SetTag(guid, LOP_PROP_TAG)
+        Osi.SetTag(guid, RB_PROP_TAG)
         Osi.SetCanFight(guid, 0)
         Osi.SetCanJoinCombat(guid, 0)
-        Osi.ClearTag(guid, LOP_GIZMO_TAG)
+        Osi.ClearTag(guid, RB_GIZMO_TAG)
     end
 end
 
@@ -23,7 +23,7 @@ function OsirisHelpers.DrawLine(startPos, endPos, lineThickness)
 
     local toScale = length / 10
 
-    local fxHandle = Osi.CreateAt(LOP_BEAM_ITEM_FX, 0, 0, 0, 0, 0, "") --[[@as string]]
+    local fxHandle = Osi.CreateAt(RB_BEAM_ITEM_FX, 0, 0, 0, 0, 0, "") --[[@as string]]
 
     Osi.SetVisible(fxHandle, 0)
     Timer:Ticks(10, function (timerID)
@@ -188,7 +188,7 @@ function PreviewTemplate(templateId, x, y, z, p, yaw, r, w, visualPreset)
 
     OsirisHelpers.Propify(preview)
     Osi.SetCanInteract(preview, 0)
-    Osi.ClearTag(preview, LOP_PROP_TAG)
+    Osi.ClearTag(preview, RB_PROP_TAG)
     
     Timer:After(500, function ()
         NetChannel.ApplyVisualPreset:Broadcast({ Guid=preview, TemplateName=templateName, VisualPreset=visualPreset })

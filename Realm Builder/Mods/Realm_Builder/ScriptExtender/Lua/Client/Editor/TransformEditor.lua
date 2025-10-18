@@ -2,7 +2,7 @@
 --- @field Gizmo Gizmo|nil
 --- @field Target GUIDSTRING|GUIDSTRING[]|nil
 --- @field History HistoryManager
---- @field Subscriptions table<string, LOPSubscription>
+--- @field Subscriptions table<string, RBSubscription>
 --- @field Debug boolean
 --- @field Select fun(self: TransformEditor, guid: GUIDSTRING|table<GUIDSTRING, any>)
 --- @field InitGizmo fun(self: TransformEditor)

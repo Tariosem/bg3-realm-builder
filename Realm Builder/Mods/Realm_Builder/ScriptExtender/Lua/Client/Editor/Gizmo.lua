@@ -8,7 +8,7 @@
 --- @field IsDragging boolean
 --- @field Guid Guid -- Gizmo entity guid
 --- @field Picker GizmoPicker
---- @field Subscription table<string, LOPSubscription>
+--- @field Subscription table<string, RBSubscription>
 --- @field Timers table<string, TimerID>
 --- @field new fun(editor: TransformEditor): Gizmo
 --- @field OnDragStart fun(self: Gizmo)

@@ -89,7 +89,7 @@ function Notification:BuildContent()
     self:ValidateConfig()
 
     local screenWidth, screenHeight = GetScreenSize()
-    local panel = Ext.IMGUI.NewWindow("LOP_Notification" .. tostring(math.random(1,1000000)))
+    local panel = Ext.IMGUI.NewWindow("RB_Notification" .. tostring(math.random(1,1000000)))
     self.panel = panel
     panel:SetStyle("Alpha", 0)
     panel:SetPos({-screenWidth, -screenHeight})

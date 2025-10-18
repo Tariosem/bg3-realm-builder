@@ -201,7 +201,7 @@ function ItemManager:HardCodeHierachy()
     self.tagIcons["Scroll"] = "Item_LOOT_SCROLL_Counterspell"
 end
 
---- @class LOPItem
+--- @class RB_Item
 --- @field Uuid string
 --- @field TemplateId string
 --- @field TemplateName string
@@ -222,13 +222,13 @@ end
 --- @field Rarity string
 
 --- @param template GameObjectTemplate
---- @return LOPItem?
+--- @return RB_Item?
 function ItemManager:PopulateItem(template, statsObj)
     if not template then return nil end
 
     local uuid = template.Id
     local templateName = template.Name
-    --- @type LOPItem
+    --- @type RB_Item
     local entry = {
         Uuid = uuid,
         TemplateId = template.Name .. "-" .. uuid,
@@ -461,7 +461,7 @@ function ItemManager:CategorizeItem(entry, statsObj, templateName)
     self.modCache[entry.ModId] = modInfo
 end
 
---- @class LOP_Weapon:LOPItem
+--- @class RB_Weapon:RB_Item
 --- @field Boosts string
 --- @field Damage string
 --- @field Passives string[]
@@ -501,13 +501,13 @@ function ItemManager:PopulateWeapon(statsObj, statsId)
     return baseEntry
 end
 
---- @class LOP_Armor:LOPItem
+--- @class RB_Armor:RB_Item
 --- @field ArmorClass integer
 --- @field Passives string[]
 --- @field Boosts string
 
 --- @param statsObj Armor
---- @return LOP_Armor?
+--- @return RB_Armor?
 function ItemManager:PopulateArmor(statsObj, statsId)
     local baseEntry = self:PopulateItem(Ext.Template.GetTemplate(statsObj.RootTemplate), statsObj)
 
@@ -538,7 +538,7 @@ function ItemManager:PopulateArmor(statsObj, statsId)
 
     --debugFunc()
 
-    --- @type LOP_Armor
+    --- @type RB_Armor
     return baseEntry
 end
 

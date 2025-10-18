@@ -32,6 +32,10 @@ NetChannel.GetTemplate = Ext.Net.CreateChannel(ModuleUUID, "GetTemplate")
 
 NetChannel.Replicate = Ext.Net.CreateChannel(ModuleUUID, "Replicate")
 
+--- @class SpawnPreviewChannel : NetChannel
+--- @field RequestToServer fun(channel:self , data: {TemplateId: string, Position: Vec3?, Rotation: Quat?}, callback: fun(response: {Guid: GUIDSTRING, TemplateId: string}))
+NetChannel.SpawnPreview = Ext.Net.CreateChannel(ModuleUUID, "SpawnPreview")
+
 --- @class VisualizeData
 --- @field Type "Point"|"Line"|"Box"|"OBB"|"Clear
 --- @field Position Vec3|nil

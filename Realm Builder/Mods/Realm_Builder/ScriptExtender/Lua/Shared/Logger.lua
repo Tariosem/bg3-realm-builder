@@ -1,5 +1,5 @@
 Logger = {
-    logFile = "LOP_Logger.txt",
+    logFile = "Realm_Builder_Logger.txt",
     buffer = {},
     autoFlush = true,
 }

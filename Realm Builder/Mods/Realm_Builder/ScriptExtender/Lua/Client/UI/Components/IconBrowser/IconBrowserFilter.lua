@@ -695,7 +695,7 @@ function IconBrowser:Search()
     end
     --Debug("After include groups, candidates count: " .. CountMap(candidates))
 
-    --- @type LOPFilterOptions
+    --- @type RB_FilterOptions
     local filterOpts = {
         CaseSensitive = false,
         Fuzzy = self.fuzzySearch,

@@ -8,7 +8,7 @@ end
 
 ---@param channel any
 ---@param callback fun(data:table):any
----@return LOPSubscription
+---@return RBSubscription
 function ClientSubscribe(channel, callback)
     --Debug("Subscribe to channel: " .. channel)
     local unsubscribed = false
@@ -40,7 +40,7 @@ function ClientSubscribe(channel, callback)
     return { Unsubscribe = unsub, ID = sub } 
 end
 
-GLOBAL_DEBUG_WINDOW = Ext.IMGUI.NewWindow("LOP_DebugWindow")
+GLOBAL_DEBUG_WINDOW = Ext.IMGUI.NewWindow("Realm_Builder_DebugWindow")
 GLOBAL_DEBUG_WINDOW.Closeable = true
 GLOBAL_DEBUG_WINDOW.Open = false
 
@@ -52,6 +52,7 @@ RequireFiles("Client/", {
     "KeybindManager",
     "UI/_init",
     "Editor/__init",
+    "ClientHelpers",
     "MCM",
     "CameraUpdater",
 })
@@ -91,9 +92,9 @@ if GLOBAL_DEBUG_WINDOW then
 end
 
 
-LOP_ItemManager = ItemManager.new()
+RB_ItemManager = ItemManager.new()
 
-LOP_MultiEffectManager = MultiEffectManager.new()
+RB_MultiEffectManager = MultiEffectManager.new()
 
 --- @param uuid GUIDSTRING
 --- @return GameObjectTemplate|ResourceMultiEffectInfo|ResourceEffectInfo|nil
@@ -102,14 +103,14 @@ function GetDataFromUuid(uuid)
         return nil
     end
     TakeTailTemplate(uuid)
-    return LOP_ItemManager.Data[uuid] or LOP_MultiEffectManager.Data[uuid] or {}
+    return RB_ItemManager.Data[uuid] or RB_MultiEffectManager.Data[uuid] or {}
 end
 
 function GetDataFromName(name)
     if not name or name == "" then
         return nil
     end
-    local uuid = LOP_ItemManager.TemplateNameToUuid[name] or LOP_MultiEffectManager.EffectNameToUuid[name] or nil
+    local uuid = RB_ItemManager.TemplateNameToUuid[name] or RB_MultiEffectManager.EffectNameToUuid[name] or nil
     if not uuid then
         return nil
     end
@@ -117,19 +118,19 @@ function GetDataFromName(name)
 end
 
 
-local function LOPPopulation()
+local function Realm_Builder_Population()
     local now = Ext.Timer:MonotonicTime()
-    local itemsCnt = LOP_ItemManager:PopulateAllItems()
+    local itemsCnt = RB_ItemManager:PopulateAllItems()
     local itemsFinished = Ext.Timer:MonotonicTime()
-    local effectsCnt = LOP_MultiEffectManager:PopulateAllEffects()
+    local effectsCnt = RB_MultiEffectManager:PopulateAllEffects()
     local effectsFinished = Ext.Timer:MonotonicTime()
     if itemsCnt ~= -1 and effectsCnt ~= -1 then
-        RPrintPurple("[Lots of Props] Populating Items took " .. (itemsFinished - now) .. " ms for " .. itemsCnt .. " items")
-        RPrintPurple("[Lots of Props] Populating Effects took " .. (effectsFinished - itemsFinished) .. " ms for " .. effectsCnt .. " effects")
+        RPrintPurple("[Realm Builder] Populating Items took " .. (itemsFinished - now) .. " ms for " .. itemsCnt .. " items")
+        RPrintPurple("[Realm Builder] Populating Effects took " .. (effectsFinished - itemsFinished) .. " ms for " .. effectsCnt .. " effects")
     end
 end
 
-RegisterOnSessionLoaded(LOPPopulation, 0)
+RegisterOnSessionLoaded(Realm_Builder_Population, 0)
 
 PROPTAB_DEBUG_FUNCTION = function(guid, templateId, displayName)
     local entity = Ext.Entity.Get(guid) --[[@as EntityHandle]]

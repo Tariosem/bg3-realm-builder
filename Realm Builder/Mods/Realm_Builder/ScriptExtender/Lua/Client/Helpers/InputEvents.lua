@@ -1,6 +1,6 @@
 ---@param key EclLuaKeyInputEvent?
 ---@param callback fun(e:EclLuaKeyInputEvent): any
----@return LOPSubscription
+---@return RBSubscription
 function SubscribeKeyInput(key, callback)
     key = key or {}
     local SubscribeStartTime = Ext.Timer.MonotonicTime()
@@ -79,7 +79,7 @@ end
 
 ---@param key EclLuaMouseWheelEvent?
 ---@param callback fun(e:EclLuaMouseWheelEvent): any
----@return LOPSubscription
+---@return RBSubscription
 function SubscribeMouseWheel(key, callback)
     key = key or {}
     local SubscribeStartTime = Ext.Timer.MonotonicTime()
@@ -138,7 +138,7 @@ local function excludeModfiers(modifs)
 end
 
 --- @param callback fun(e: SimplifiedInputEvent): any
---- @return LOPSubscription
+--- @return RBSubscription
 function SubscribeKeyAndMouse(callback)
     local isCalling = false
     local subs = {}
@@ -196,7 +196,7 @@ end
 
 ---@param input ExtuiInputText
 ---@param callback fun(input:string)
----@return LOPSubscription sub
+---@return RBSubscription sub
 function SetupInputEnterCallback(input, callback)
     local sub = nil
 

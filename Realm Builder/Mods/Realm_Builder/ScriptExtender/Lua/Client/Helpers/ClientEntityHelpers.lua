@@ -8,9 +8,9 @@ local FocusAddonLoaded = Ext.Mod.IsModLoaded("ff8b5278-f929-45d1-9a51-7efa609620
 local defautlCharacterIcon = ECMODLoaded and "EC_Portrait_Generic" or FocusAddonLoaded and "FOCUSLODESTONES_Lodestone_Generic" or "Spell_Enchantment_HoldPerson"
 local originIconPrefix = ECMODLoaded and "EC_Portrait_" or FocusAddonLoaded and "FOCUSLODESTONES_Lodestone_" or nil
 local defaultPartyMemberIcon = "Skill_Fighter_Rally"
+local windowForCheckIcon = GLOBAL_DEBUG_WINDOW
 
 function CheckIcon(icon, fallback)
-    local windowForCheckIcon = GLOBAL_DEBUG_WINDOW
     if not windowForCheckIcon then
         return "Item_Unknown"
     end
@@ -115,7 +115,7 @@ function GetIconForTemplateId(uuid)
 end
 
 function GetIconForTemplateName(templateName)
-    local uuid = LOP_ItemManager.TemplateNameToUuid[templateName]
+    local uuid = RB_ItemManager.TemplateNameToUuid[templateName]
     if uuid then
         return GetIconForTemplateId(uuid)
     else

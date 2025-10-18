@@ -1,17 +1,15 @@
 --- @return GUIDSTRING|nil
 function GetPickingGuid()
-    local mouseRay = ScreenToWorldRay()
-
     local pickHandle = Ext.ClientUI.GetPickingHelper(1).Inner.Inner[1].GameObject
 
     if pickHandle then
-        Debug("Picked handle: ", pickHandle and pickHandle.DisplayName and pickHandle.DisplayName.Name:Get() or tostring(pickHandle))
         local pickUuid = HandleToUuid(pickHandle)
         if pickUuid then
             return pickUuid
         end
     end
 
+    local mouseRay = ScreenToWorldRay()
     local returnGuid = nil
     local entity = nil
 

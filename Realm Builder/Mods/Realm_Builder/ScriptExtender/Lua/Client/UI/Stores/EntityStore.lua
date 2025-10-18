@@ -65,7 +65,7 @@ setmetatable(EntityStore, {
 
 function EntityStore:SetupServerListeners()
 
-    local popupNotif = Notification.new("Lots of Props")
+    local popupNotif = Notification.new("Realm Builder")
     popupNotif.Pivot = {0.5, 0.1}
     popupNotif.FlickToDismiss = true
 
@@ -82,7 +82,7 @@ function EntityStore:SetupServerListeners()
                 table.insert(list, entity.Guid)
             end
         end
-        LOPMenu:NewEntityAdded(list)
+        RBMenu:NewEntityAdded(list)
     end)
 
 
@@ -97,7 +97,7 @@ function EntityStore:SetupServerListeners()
                 EntityStore:RemoveProp(guid)
             end
         end
-        LOPMenu:EntityDeleted(data)
+        RBMenu:EntityDeleted(data)
     end)
 
     NetChannel.AttributeChanged:SetHandler(function(data)
@@ -109,7 +109,7 @@ function EntityStore:SetupServerListeners()
             end
         end
 
-        LOPMenu.entityMenu:UpdateList()
+        RBMenu.entityMenu:UpdateList()
     end)
 
     NetChannel.BindProps:SetHandler(function(data)
@@ -274,7 +274,7 @@ function EntityStore:RegisterDisplayName(displayName, guid, discardName)
         DisplayNameToGuid[returnName] = guid
         EntityDatas[guid].DisplayName = returnName
     else
-        Warning("[Lots of Props] RegisterDisplayName called without guid for name: " .. returnName)
+        Warning("[Realm Builder] RegisterDisplayName called without guid for name: " .. returnName)
         return
     end
 
@@ -345,7 +345,7 @@ EntityStore:SetupServerListeners()
 Ext.RegisterConsoleCommand("PropStore", function (cmd, ...)
     local args = {...}
     if #args == 0 then
-        _P("[Lots of Props] Usage: <list|count|dump|get <guid>>")
+        _P("[Realm Builder] Usage: <list|count|dump|get <guid>>")
         return
     end
 
@@ -356,14 +356,14 @@ Ext.RegisterConsoleCommand("PropStore", function (cmd, ...)
             cnt = cnt + 1
             _P(string.format("%d. %s - %s", cnt, guid, data.DisplayName or "No Name"))
         end
-        _P(string.format("[Lots of Props] Total %d props in store.", cnt))
+        _P(string.format("[Realm Builder] Total %d props in store.", cnt))
     elseif action == "count" then
         local groupCnt, tagsCnt = EntityStore:CountGroupAndTag()
-        _P("[Lots of Props] Group Counts:")
+        _P("[Realm Builder] Group Counts:")
         for group, cnt in pairs(groupCnt) do
             _P(string.format(" - %s: %d", group, cnt))
         end
-        _P("[Lots of Props] Tag Counts:")
+        _P("[Realm Builder] Tag Counts:")
         for tag, cnt in pairs(tagsCnt) do
             _P(string.format(" - %s: %d", tag, cnt))
         end
@@ -371,7 +371,7 @@ Ext.RegisterConsoleCommand("PropStore", function (cmd, ...)
         _D(EntityStore:GetAll())
     elseif action == "get" then
         if #args < 2 then
-            _P("[Lots of Props] Usage: LOP_PropStore get <guid>")
+            _P("[Realm Builder] Usage: RB_PropStore get <guid>")
             return
         end
         local guid = args[2]
@@ -379,9 +379,9 @@ Ext.RegisterConsoleCommand("PropStore", function (cmd, ...)
         if data then
             _D(data)
         else
-            _P(string.format("[Lots of Props] No prop found with GUID %s", guid))
+            _P(string.format("[Realm Builder] No prop found with GUID %s", guid))
         end
     else
-        _P("[Lots of Props] Unknown action: " .. action)
+        _P("[Realm Builder] Unknown action: " .. action)
     end
 end)
