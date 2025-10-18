@@ -1,0 +1,120 @@
+{
+    "SchemaVersion": 1,
+    "ModName": "Realm Builder",
+    "Tabs": [
+        {
+            "TabId": "Realm Builder_Main",
+            "TabName": "Main",
+            "Handles": {
+                "NameHandle": "hd07a149242a8459c8db0cf90ec7fc7f00a5c"
+            },
+            "Sections": [
+                {
+                    "SectionId": "RB_Main",
+                    "SectionName": "Command Panel",
+                    "Settings": [
+                        {
+                            "Id": "event_button_toggle_main_widnow",
+                            "Name": "Toggle Main Window",
+                            "Type": "event_button",
+                            "Description": "Click this button to toggle the main window.",
+                            "Options": {
+                                "Label": "Toggle",
+                                "Cooldown": 1
+                            }
+                        },
+                        {
+                            "Id": "slider_int_debug_level",
+                            "Name": "Debug level",
+                            "Type": "slider_int",
+                            "Default": 2,
+                            "Description": "Debug level for the mod, used mainly for determining which messages to print",
+                            "Options": {
+                                "Min": 0,
+                                "Max": 5
+                            }
+                        },
+                        {
+                            "Id": "key_toggle_main_window",
+                            "Name": "Toggle Main Window",
+                            "Description": "Keybinding to toggle the main window.",
+                            "Type": "keybinding_v2",
+                            "Default": {
+                                "Keyboard": {
+                                    "Key": "",
+                                    "ModifierKeys": []
+                                }
+                            },
+                            "Options": {
+                                "ShouldTriggerOnKeyDown": true,
+                                "ShouldTriggerOnKeyUp": false,
+                                "ShouldTriggerOnRepeat": false,
+                                "IsDeveloperOnly": false,
+                                "BlockIfLevelNotStarted": true
+                            }
+                        },
+                        {
+                            "Id": "key_toggle_items_browser",
+                            "Name": "Toggle Items Browser",
+                            "Description": "Keybinding to toggle the items browser.",
+                            "Type": "keybinding_v2",
+                            "Default": {
+                                "Keyboard": {
+                                    "Key": "",
+                                    "ModifierKeys": []
+                                }
+                            },
+                            "Options": {
+                                "ShouldTriggerOnKeyDown": true,
+                                "ShouldTriggerOnKeyUp": false,
+                                "ShouldTriggerOnRepeat": false,
+                                "IsDeveloperOnly": false,
+                                "BlockIfLevelNotStarted": true
+                            }
+                        },
+                        {
+                            "Id": "key_toggle_effects_browser",
+                            "Name": "Toggle Effects Browser",
+                            "Description": "Keybinding to toggle the effects browser.",
+                            "Type": "keybinding_v2",
+                            "Default": {
+                                "Keyboard": {
+                                    "Key": "",
+                                    "ModifierKeys": []
+                                }
+                            },
+                            "Options": {
+                                "ShouldTriggerOnKeyDown": true,
+                                "ShouldTriggerOnKeyUp": false,
+                                "ShouldTriggerOnRepeat": false,
+                                "IsDeveloperOnly": false,
+                                "BlockIfLevelNotStarted": true
+                            }
+                        },
+                        {
+                            "Id": "key_toggle_transform_toolbar",
+                            "Name": "Toggle Transform Toolbar",
+                            "Description": "Keybinding to toggle the transform toolbar.",
+                            "Type": "keybinding_v2",
+                            "Default": {
+                                "Keyboard": {
+                                    "Key": "",
+                                    "ModifierKeys": []
+                                }
+                            },
+                            "Options": {
+                                "ShouldTriggerOnKeyDown": true,
+                                "ShouldTriggerOnKeyUp": false,
+                                "ShouldTriggerOnRepeat": false,
+                                "IsDeveloperOnly": false,
+                                "BlockIfLevelNotStarted": true
+                            }
+                        }
+                    ]
+                }
+            ]
+        }
+        
+    ],
+    "Optional": true
+}
