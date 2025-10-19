@@ -10,7 +10,7 @@ MaterialEditor = _Class("MaterialEditor")
 
 ---@param matSrc fun():Material
 ---@param originMaterial any
-function MaterialEditor:__init(matSrc, originMaterial)
+function MaterialEditor:__init(matSrc, originMaterial, materialPreset)
     local matRes = Ext.Resource.Get(originMaterial, "Material") --[[@as ResourceMaterialResource]]
     if not matRes then
         Error("MaterialEditor: Could not find origin material resource for '" .. tostring(originMaterial) .. "'. Cannot create MaterialEditor.")
@@ -23,6 +23,7 @@ function MaterialEditor:__init(matSrc, originMaterial)
     self.DiffusionProfileUUID = matRes.DiffusionProfileUUID or ""
 
     self.Proxy = MaterialProxy.new(originMaterial) --[[@as MaterialProxy]]
+    self.PresetProxy = MaterialPresetProxy.new(materialPreset) --[[@as MaterialPresetProxy?]]
 
     self.Instance = matSrc
 
@@ -32,6 +33,14 @@ function MaterialEditor:__init(matSrc, originMaterial)
         [3] = {}, -- Vector3Parameters
         [4] = {}, -- VectorParameters
     }
+
+    if self.PresetProxy then
+        for ptype,params in pairs(self.PresetProxy.Parameters) do
+            for paramName,value in pairs(params) do
+                self.Parameters[ptype][paramName] = value
+            end
+        end
+    end
 
 end
 
@@ -45,6 +54,12 @@ function MaterialEditor:GetParameter(paramName)
 
     if not value then
         local proxyParam = self.Proxy:GetParameter(paramName)
+        if self.PresetProxy then
+            local presetParam = self.PresetProxy:GetParameter(paramName)
+            if presetParam then
+                proxyParam = presetParam
+            end
+        end
         if not proxyParam then
             Warning("MaterialEditor: Could not find parameter '" .. tostring(paramName) .. "' in material proxy for material '" .. tostring(self.Material) .. "'.")
             return nil
@@ -83,6 +98,14 @@ function MaterialEditor:ResetParameter(paramName)
     end
 
     local value = self.Proxy:GetParameter(paramName)
+
+    if self.PresetProxy then
+        local presetValue = self.PresetProxy:GetParameter(paramName)
+        if presetValue then
+            value = presetValue
+        end
+    end
+
     if not value then
         Warning("MaterialEditor: Could not find parameter '" .. tostring(paramName) .. "' in material proxy for material '" .. tostring(self.Material) .. "'. Cannot reset.")
         return false
@@ -129,14 +152,20 @@ function MaterialEditor:ResetAll()
         return false
     end
 
-    for ptype,params in pairs(self.Parameters) do
+    for ptype,params in pairs(self.Proxy.Parameters) do
         for paramName,_ in pairs(params) do
-            local proxyParam = self.Proxy:GetParameter(paramName)
-            if proxyParam then
-                local formatValue = type(proxyParam.Value) == "table" and proxyParam.Value or { proxyParam.Value }
-                local funcName = PropTypeToFunc[#formatValue]
-                local applyValue = proxyParam.Value
+            local value = self.Proxy:GetParameter(paramName)
+            if self.PresetProxy then
+                local presetValue = self.PresetProxy:GetParameter(paramName)
+                if presetValue then
+                    value = presetValue
+                end
+            end
+            if value then
+                local funcName = PropTypeToFunc[#value]
+                local applyValue = #value == 1 and value[1] or value
                 mat[funcName](mat, paramName, applyValue)
+
             end
         end
         self.Parameters[ptype] = {}

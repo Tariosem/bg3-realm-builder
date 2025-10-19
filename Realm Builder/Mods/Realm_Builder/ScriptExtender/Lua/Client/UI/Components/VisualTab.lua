@@ -251,8 +251,10 @@ function VisualTab:RenderPresetsCell()
                 func({}, true)
             end
 
-            for _, materialEditor in ipairs(self.Materials) do
-                materialEditor.Editor:ResetAll()
+            
+            for key, matTab in pairs(self.Materials) do
+                Debug("Resetting material: " .. key)
+                matTab:ResetAll()
             end
         end)
     end
@@ -337,15 +339,6 @@ function VisualTab:RenderAttachmentsSection()
         self.attachmentsHeader = self.panel:AddCollapsingHeader(GetLoca("Attachments"))
     end
 
-    local cca = entity.CharacterCreationAppearance --[[@as CharacterCreationAppearance]]
-    local hairColorRes = Ext.StaticData.Get(cca.HairColor, "CharacterCreationHairColor") --[[@as ResourceCharacterCreationHairColor]]
-    local colorEdit = self.attachmentsHeader:AddColorEdit(hairColorRes.DisplayName:Get() or "Hair Color")
-    colorEdit.CanDrag = true
-    colorEdit.DragDropType = "MaterialPreset"
-    colorEdit.Color = hairColorRes.UIColor
-    colorEdit.UserData = {
-        MaterialProxy = MaterialProxy.new(hairColorRes.MaterialPresetUUID),
-    }
 
     local attachments = visual.Attachments or {}
 
@@ -470,7 +463,7 @@ function VisualTab:RenderMaterialEditor()
             return VisualHelpers.GetMaterial(self.guid, descIndex)
         end
     
-        local materialEditor = MaterialTab.new(materialNode, material.MaterialName, getliveMat) --[[@as MaterialEditor]]
+        local materialEditor = MaterialTab.new(materialNode, material.MaterialName, getliveMat) --[[@as MaterialTab]]
         materialEditor:Render()
 
         self:RenderScaleSliders(materialNode, descIndex, meshName)
@@ -479,6 +472,8 @@ function VisualTab:RenderMaterialEditor()
             materialNameCnt[meshName] = (materialNameCnt[meshName] or 1) + 1
             meshName = meshName .. " (" .. tostring(materialNameCnt[meshName]) .. ")"
         end
+
+        self.Materials[meshName] = materialEditor
 
         ::continue::
     end

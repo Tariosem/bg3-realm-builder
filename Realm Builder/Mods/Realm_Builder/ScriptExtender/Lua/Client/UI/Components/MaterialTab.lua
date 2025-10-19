@@ -105,6 +105,9 @@ function MaterialTab:Render()
                             local colorRect = propNode.DragPreview:AddColorEdit("##" .. self.MaterialName .. propertyName)
                             colorRect.Color = {value[1], value[2], value[3], value[4] or 1}
                         else
+                            for i=1, #value do
+                                value[i] = FormatDecimal(value[i], 2)
+                            end
                             propNode.DragPreview:AddText("Value: " .. table.concat(value, ", "))
                         end
 

@@ -1,4 +1,5 @@
 local dummyUpdateTimer = nil 
+local clientVisualDummies = {}
 
 --- @diagnostic disable-next-line
 Ext.Entity.OnCreate("Visual", function (entity)
@@ -47,6 +48,52 @@ Ext.Entity.OnCreate("Visual", function (entity)
         end
     end
 end)
+
+
+--- @param entity EntityHandle
+--- @diagnostic disable-next-line
+Ext.Entity.OnCreate("ClientPaperdoll", function (entity)
+    if not entity then return end
+    
+
+    Timer:Ticks(5, function (timerID)
+        local owner = Paperdoll.GetDollOwner(entity)
+        if owner then
+            local ownerGuid = owner.Uuid.EntityUuid
+            clientVisualDummies[ownerGuid] = entity
+            Debug("Set paperdoll dummy for owner: " .. owner.DisplayName.Name:Get())
+        end
+    end)
+end)
+
+--- @param entity EntityHandle
+--- @diagnostic disable-next-line
+Ext.Entity.OnCreate("TLPreviewDummy", function (entity)
+    if not entity then return end
+
+    Timer:Ticks(5, function (timerID)
+        local owner = Paperdoll.GetDollOwner(entity)
+        if owner then
+            local ownerGuid = owner.Uuid.EntityUuid
+            clientVisualDummies[ownerGuid] = entity
+            Debug("Set TLPreviewDummy dummy for owner: " .. owner.DisplayName.Name:Get())
+        end
+    end)
+end)
+
+
+---@param ownerUuid string
+---@return EntityHandle|nil
+function GetClientVisualDummy(ownerUuid)
+    local dummy = clientVisualDummies[ownerUuid]
+
+    if dummy and #dummy:GetAllComponentNames() == 0 then
+        clientVisualDummies[ownerUuid] = nil
+        return nil
+    end
+
+    return dummy
+end
 
 --#region VisualPreset
 

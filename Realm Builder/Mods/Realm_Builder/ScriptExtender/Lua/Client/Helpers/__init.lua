@@ -4,4 +4,5 @@ RequireFiles("Client/Helpers/", {
     "CameraHelpers",
     "VisualHelpers",
     "PickingHelpers",
+    "PaperDoll"
 })

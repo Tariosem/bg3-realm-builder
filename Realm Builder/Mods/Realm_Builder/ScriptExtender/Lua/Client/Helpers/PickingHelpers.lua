@@ -110,8 +110,12 @@ function ScreenToWorldRay(cameraHandle, mouseX, mouseY, screenW, screenH)
     local invProj = Matrix.new(controller.Camera.InvProjectionMatrix)
     local invView = Matrix.new(controller.Camera.InvViewMatrix)
 
+    --local projMat = Matrix.new(controller.Camera.ProjectionMatrix)
+    --local viewMat = Matrix.new(controller.Camera.ViewMatrix)
+
     -- (A * B)^-1 = B^-1 * A^-1
     local inverse = invView * invProj
+    --local inverse = (projMat * viewMat):Inverse()
 
     local worldNear4 = inverse * clipNear
     local worldFar4  = inverse * clipFar
@@ -121,6 +125,7 @@ function ScreenToWorldRay(cameraHandle, mouseX, mouseY, screenW, screenH)
     local worldNear = Vec3.new({ worldNear4.x, worldNear4.y, worldNear4.z })
     local worldFar  = Vec3.new({ worldFar4.x,  worldFar4.y,  worldFar4.z })
 
+    -- don't know why but need to subtract near from far to get correct direction
     local dir = worldNear - worldFar
     local origin
     if controller.IsOrthographic then

@@ -15,11 +15,9 @@ function MakePropLSX(guid, modName)
 
     local regionWrapper = LSXUtils.RegionNodeWrapper("Templates", root)
 
-    local firstChildren = LSXNode.new("Children")
-    regionWrapper:AppendChild(firstChildren)
+    local firstChildren = regionWrapper:AppendChild(LSXNode.new("Children"))
 
-    local gameObjectNode = LSXNode.new("node", { id = "GameObjects" })
-    firstChildren:AppendChild(gameObjectNode)
+    local gameObjectNode = firstChildren:AppendChild(LSXNode.new("node", { id = "GameObjects" }))
 
     local basicAttrs = {
         LSXUtils.AttrNode("MapKey", "FixedString", guid),
@@ -32,11 +30,10 @@ function MakePropLSX(guid, modName)
 
     gameObjectNode:AppendChildren(basicAttrs)
 
-    local secondChidren = LSXNode.new("Children")
-    gameObjectNode:AppendChild(secondChidren)
+    local secondChidren = gameObjectNode:AppendChild(LSXNode.new("Children"))
 
-    local transformNode = LSXNode.new("node", { id = "Transform" })
-    secondChidren:AppendChild(transformNode)
+    local transformNode = secondChidren:AppendChild(LSXNode.new("node", { id = "Transform" }))
+
 
     local pos = {CGetPosition(guid)}
     local rot = {CGetRotation(guid)}
@@ -52,20 +49,15 @@ function MakePropLSX(guid, modName)
     transformNode:AppendChildren(transformAttrs)
 
 
-    local layerListNode = LSXNode.new("node", { id = "LayerList" })
-    secondChidren:AppendChild(layerListNode)
+    local layerListNode = secondChidren:AppendChild(LSXNode.new("node", { id = "LayerList" }))
 
-    local layerFirstChildren = LSXNode.new("Children")
-    layerListNode:AppendChild(layerFirstChildren)
+    local layerFirstChildren = layerListNode:AppendChild(LSXNode.new("Children"))
 
-    local layerNode = LSXNode.new("node", { id = "Layer" })
-    layerFirstChildren:AppendChild(layerNode)
+    local layerNode = layerFirstChildren:AppendChild(LSXNode.new("node", { id = "Layer" }))
 
-    local layerSecondChildren = LSXNode.new("Children")
-    layerNode:AppendChild(layerSecondChildren)
+    local layerSecondChildren = layerNode:AppendChild(LSXNode.new("Children"))
 
-    local objectNode = LSXNode.new("node", { id = "Object", key = "MapKey" })
-    layerSecondChildren:AppendChild(objectNode)
+    local objectNode = layerSecondChildren:AppendChild(LSXNode.new("node", { id = "Object", key = "MapKey" }))
 
     local layerAttr = {
         LSXUtils.AttrNode("MapKey", "FixedString", curLevel),

@@ -86,7 +86,7 @@ end
 --- @field SetAttribute fun(self: LSXNode, key: string, value: any): LSXNode -- returns self
 --- @field GetAttribute fun(self: LSXNode, key: string): any 
 --- @field SetAttrOrder fun(self: LSXNode, attrOrder: string[]): LSXNode -- returns self
---- @field AppendChild fun(self: LSXNode, child: LSXNode|table?):LSXNode -- returns self
+--- @field AppendChild fun(self: LSXNode, child: LSXNode|table?):LSXNode -- returns child
 --- @field AppendChildren fun(self: LSXNode, children: LSXNode[]|table[]):LSXNode -- returns self
 --- @field InsertChild fun(self: LSXNode, index: number, child: LSXNode|table?):LSXNode -- returns self
 --- @field GetChild fun(self: LSXNode, index: number): LSXNode?
@@ -326,7 +326,7 @@ function LSXNode:AppendChild(child)
     end
     table.insert(self.__children, child)
 
-    return self
+    return child
 end
 
 function LSXNode:AppendChildren(children)

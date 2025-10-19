@@ -174,7 +174,7 @@ function ItemIconBrowser:SetupTemplatePreview(entry)
 
                 if not hit then return end
                 hitPos = hit.Position
-                hitRot = Quat.new({CGetRotation(previewItem)})
+                hitRot = startRot
             else
                 hitPos, hitRot = GetPickingHitPosAndRot()
             end
@@ -217,7 +217,7 @@ function ItemIconBrowser:SetupTemplatePreview(entry)
             if e.ScrollY == 0 then return end
 
             local angle = math.rad(15) * (e.ScrollY > 0 and 1 or -1)
-            local quatOffset = Quat.FromEulerAngles(0, angle, 0)
+            local quatOffset = Quat.new(Ext.Math.QuatFromEuler({0, angle, 0}))
             rotationOffset = Ext.Math.QuatMul(quatOffset, rotationOffset)
         end)
 

@@ -8,14 +8,10 @@ function VisualHelpers.GetEntityVisual(handle)
             local dummy = GetDummyByUuid(handle)
             if dummy then
                 handle = dummy
+            elseif GetClientVisualDummy(handle) then
+                handle = GetClientVisualDummy(handle) --[[@as EntityHandle]]
             else
-                handle = UuidToHandle(handle) --[[@as EntityHandle]]
-                if handle.TLPreviewDummy and handle.TLPreviewDummy.Entity then
-                    local tlDummy = IntToHandle(handle.TLPreviewDummy.Entity) --[[@as EntityHandle]]
-                    if tlDummy then
-                        handle = tlDummy
-                    end
-                end
+                handle = UuidToHandle(handle)
             end
         else
             handle = UuidToHandle(handle)

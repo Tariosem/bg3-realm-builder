@@ -260,7 +260,7 @@ NetChannel.Visualize:SetRequestHandler(function(data, userID)
     if not spawnedVisualizations[userID] then
         spawnedVisualizations[userID] = {}
     end
-    local duration = data.Duration or 5.0
+    local duration = data.Duration or 1000
     local entityHandles = {}
     if data.Type == "Point" then
         local pos = data.Position
