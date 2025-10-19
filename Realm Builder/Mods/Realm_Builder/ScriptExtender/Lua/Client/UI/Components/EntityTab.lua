@@ -579,7 +579,7 @@ function EntityTab:Collapsed()
         self.visualTab.parent = nil
     end
 
-
+    self.isWindow = false
     self.isVisible = false
 end
 

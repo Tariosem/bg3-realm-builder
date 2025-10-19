@@ -496,6 +496,7 @@ end
 --#endregion math
 
 function Gizmo:SetupDragging()
+    self.Editor._accuDelta = nil
     self.RotatePointer = self.RotatePointer or {}
     local pickerPos = Vec3.new(self.Picker.Position)
     local pickerRot = Quat.new(self.Picker.Rotation)

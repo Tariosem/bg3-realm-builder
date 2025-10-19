@@ -16,6 +16,14 @@ Ext.Entity.OnCreate("Visual", function (entity)
             if EqualArrays(memberHandle.Transform.Transform.Translate, entity.Transform.Transform.Translate) then
                 Debug("Found dummy and coresponding party member : " .. memberHandle.DisplayName.Name:Get())
                 SetClientDummyEntity(uuid, entity)
+
+                Timer:Ticks(60, function (timerID)
+                    local visualTab = VisualTab.FetchByGuid(uuid)
+                    if visualTab then
+                        visualTab:Refresh()
+                        visualTab:ReapplyCurrentChanges()
+                    end
+                end)
             end
         end
 
@@ -56,31 +64,122 @@ Ext.Entity.OnCreate("ClientPaperdoll", function (entity)
     if not entity then return end
     
 
-    Timer:Ticks(5, function (timerID)
+    Timer:Ticks(60, function (timerID)
         local owner = Paperdoll.GetDollOwner(entity)
         if owner then
             local ownerGuid = owner.Uuid.EntityUuid
             clientVisualDummies[ownerGuid] = entity
-            Debug("Set paperdoll dummy for owner: " .. owner.DisplayName.Name:Get())
+            local displayNameComponent = owner.DisplayName
+            Debug("Set paperdoll dummy for owner: " .. (displayNameComponent and displayNameComponent.Name:Get() or ownerGuid))
+            local visualTab = VisualTab.FetchByGuid(ownerGuid)
+            if visualTab then
+                visualTab:ReapplyCurrentChanges()
+            end
         end
     end)
 end)
+
+local ccDummies = {}
+
+--- @param entity any
+--- @diagnostic disable-next-line
+Ext.Entity.OnCreate("ClientCCDummyDefinition", function(entity)
+    if not entity then return end
+
+    Timer:Ticks(5, function()
+        if not entity.CCChangeAppearanceDefinition then return end
+        local name = entity.CCChangeAppearanceDefinition.Appearance.Name
+        if not name then return end
+
+        local allPartyMembers = GetAllPartyMembers()
+        for _, uuid in pairs(allPartyMembers) do
+            local handle = UuidToHandle(uuid)
+            local displayName = handle.DisplayName.Name:Get()
+            if displayName == name then
+                if TransformEditor then
+                    TransformEditor:Clear()
+                end
+
+                clientVisualDummies[uuid] = entity.ClientCCDummyDefinition.Dummy
+                local visualTab = VisualTab.FetchByGuid(uuid)
+                if visualTab then
+                    visualTab:Refresh()
+                end
+                break
+            end
+        end
+
+        Debug("Set CC dummy for appearance: " .. name)
+    end)
+end)
+
+local tlPreviewDummyCache = {}
+local mapTimer = nil
+
+local function mapTLDummies()
+    local allPosibleOwners = Ext.Entity.GetAllEntitiesWithComponent("Origin")
+
+    for i = #allPosibleOwners, 1, -1 do
+        local owner = allPosibleOwners[i]
+        if not owner.TimelineActorData then
+            table.remove(allPosibleOwners, i)
+        end
+    end
+
+    for _, owner in pairs(allPosibleOwners) do
+        local actorLink = owner.TimelineActorData.field_0
+        local dummy = tlPreviewDummyCache[actorLink]
+
+        if dummy then
+            clientVisualDummies[owner.Uuid.EntityUuid] = dummy
+            local displayNameComponent = owner.DisplayName
+            Debug("Set TLPreview dummy for owner: " .. (displayNameComponent and displayNameComponent.Name:Get() or owner.Uuid.EntityUuid))
+            local visualTab = VisualTab.FetchByGuid(owner.Uuid.EntityUuid)
+            if visualTab then
+                visualTab:ReapplyCurrentChanges()
+            end
+        end
+    end
+
+end
+
+function GetTLPreviewDummy(entity)
+    local dummies = Ext.Entity.GetAllEntitiesWithComponent("TLPreviewDummy")
+    for _, dummy in pairs(dummies) do
+        if dummy.TLPreviewDummy ~= nil and dummy.ClientTimelineActorControl ~= nil then
+            local actorLink = dummy.ClientTimelineActorControl.field_0
+            if entity.TimelineActorData ~= nil and entity.TimelineActorData.field_0 == actorLink then
+                return dummy
+            end
+        end
+    end 
+end
+
+local function debounceMapping()
+    if mapTimer then
+        Timer:Cancel(mapTimer)
+    end
+    
+    mapTimer = Timer:Ticks(60, function()
+        mapTimer = nil
+        mapTLDummies()
+    end)
+end
 
 --- @param entity EntityHandle
 --- @diagnostic disable-next-line
-Ext.Entity.OnCreate("TLPreviewDummy", function (entity)
+Ext.Entity.OnCreate("TLPreviewDummy", function(entity)
     if not entity then return end
-
-    Timer:Ticks(5, function (timerID)
-        local owner = Paperdoll.GetDollOwner(entity)
-        if owner then
-            local ownerGuid = owner.Uuid.EntityUuid
-            clientVisualDummies[ownerGuid] = entity
-            Debug("Set TLPreviewDummy dummy for owner: " .. owner.DisplayName.Name:Get())
-        end
+    
+    Timer:Ticks(5, function()
+        if not entity.ClientTimelineActorControl then return end
+        
+        local actorLink = entity.ClientTimelineActorControl.field_0
+        tlPreviewDummyCache[actorLink] = entity
+        
+        debounceMapping()
     end)
 end)
-
 
 ---@param ownerUuid string
 ---@return EntityHandle|nil

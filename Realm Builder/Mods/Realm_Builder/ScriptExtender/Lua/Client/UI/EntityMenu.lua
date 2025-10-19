@@ -1,4 +1,5 @@
 --- @class EntityMenu
+--- @field entityTabs table<string, EntityTab>
 EntityMenu = _Class("EntityMenu")
 
 function EntityMenu:__init(parent)
@@ -480,9 +481,10 @@ function EntityMenu:FocusTab(guid, doDetach)
     local entityTab = self.entityTabs[guid]
     if entityTab and entityTab.isValid then
         entityTab.isAttach = not doDetach
-        entityTab:Refresh()
         if entityTab.isWindow then
             FocusWindow(entityTab.panel)
+        else
+            entityTab:Refresh()
         end
         self.presentingProp = guid
     end

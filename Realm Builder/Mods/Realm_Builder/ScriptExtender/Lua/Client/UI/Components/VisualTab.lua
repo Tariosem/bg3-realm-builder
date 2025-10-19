@@ -1,10 +1,32 @@
 local VISUALTAB_WIDTH = 800 * SCALE_FACTOR
 local VISUALTAB_HEIGHT = 1000 * SCALE_FACTOR
 
+local visualTabCache = {}
+
 --- @class VisualTab
 --- @field Materials MaterialTab[]
 --- @field new fun(guid: GUIDSTRING, displayName: string|nil, parent: ExtuiTreeParent|nil, templateName: string|nil): VisualTab
-VisualTab = _Class("VisualTab")
+VisualTab = {}
+VisualTab.__index = VisualTab
+
+function VisualTab.FetchByGuid(guid)
+    return visualTabCache[guid]
+end
+
+function VisualTab.new(guid, displayName, parent, templateName)
+    local obj = setmetatable({}, VisualTab)
+    
+    if visualTabCache[guid] then
+        visualTabCache[guid]:Refresh()
+        return visualTabCache[guid]
+    end
+
+    obj:__init(guid, displayName, parent, templateName)
+
+    visualTabCache[guid] = obj
+
+    return obj
+end
 
 function VisualTab:__init(guid, displayName, parent, templateName)
     self.guid = guid or ""
@@ -57,11 +79,18 @@ function VisualTab:SetupTemplate()
     self.savedModifiedParams = ClientVisualPresetData[templateName]
 end
 
+function VisualTab:ReapplyCurrentChanges()
+    for _, mat in pairs(self.Materials) do
+        mat.Editor:Reapply()
+    end
+end
+
 function VisualTab:GetCurrentPreset()
     return self.currentPreset
 end
 
 function VisualTab:Render(retryCnt)
+    if self.isVisible then return end
 
     self.displayName = self.displayName or GetDisplayNameFromGuid(self.guid)
 
@@ -240,22 +269,24 @@ function VisualTab:RenderPresetsCell()
 
 
     resetAllButton.OnClick = function ()
-
-        NetChannel.Replicate:SendToServer({
-            Guid = self.guid,
-            Field = "GameObjectVisual",
-        })
-
         Timer:Ticks(10, function ()
             for key, func in pairs(self.resetFuncs) do
                 func({}, true)
             end
 
-            
-            for key, matTab in pairs(self.Materials) do
-                Debug("Resetting material: " .. key)
-                matTab:ResetAll()
+            --if CIsCharacter(self.guid) then return end
+
+            if not IsPartyMember(self.guid) then
+                for key, matTab in pairs(self.Materials) do
+                    matTab:ResetAll()
+                end
             end
+
+            
+            NetChannel.Replicate:SendToServer({
+                Guid = self.guid,
+                Field = "GameObjectVisual",
+            })
         end)
     end
 
@@ -275,6 +306,10 @@ function VisualTab:RenderUtilsCell()
     detachButton.OnClick = function ()
         if not self.parent then return end
         self.isAttach = not self.isAttach
+        self:Refresh()
+    end
+
+    detachButton.OnRightClick = function ()
         self:Refresh()
     end
 
@@ -339,13 +374,18 @@ function VisualTab:RenderAttachmentsSection()
         self.attachmentsHeader = self.panel:AddCollapsingHeader(GetLoca("Attachments"))
     end
 
+    local matPresets = {}
+    if CIsCharacter(self.guid) and entity.CharacterCreationAppearance then
+        
+    end
 
     local attachments = visual.Attachments or {}
 
     for attIndex,attach in ipairs(attachments) do
 
         local source = attach.Visual.VisualResource and attach.Visual.VisualResource.SourceFile or "Unknown Model"
-        local attachNode = self.attachmentsHeader:AddTree(GetLastPath(source) .. "##" .. tostring(attIndex))
+        local gr2FileName = GetLastPath(source)
+        local attachNode = self.attachmentsHeader:AddTree(gr2FileName .. "##" .. tostring(attIndex))
 
         for descIndex, obj in ipairs(attach.Visual.ObjectDescs) do
             local objFlags = LightCToArray(obj.Flags)
@@ -380,7 +420,7 @@ function VisualTab:RenderAttachmentsSection()
                     Type = "Box",
                     Min = renderable.WorldBound.Min,
                     Max = renderable.WorldBound.Max,
-                    LineThickness = 0.1,
+                    LineThickness = 0.2,
                     Duration = 2000
                 }, function (response)
     
@@ -416,10 +456,18 @@ function VisualTab:RenderAttachmentsSection()
                 return material
             end
 
-            local materialEditor = MaterialTab.new(objNode, obj.Renderable.ActiveMaterial.Material.Name, getliveMat)
+            local presetColor = nil
+            if matPresets[obj.Renderable.ActiveMaterial.Material.Name] then
+                presetColor = matPresets[obj.Renderable.ActiveMaterial.Material.Name]
+                Debug("Found preset color for attachment material: " .. tostring(presetColor))
+            end
+
+            local materialEditor = MaterialTab.new(objNode, obj.Renderable.ActiveMaterial.Material.Name, getliveMat, presetColor) --[[@as MaterialTab]]
             materialEditor:Render()
 
-            self.Materials[modelName] = materialEditor
+            local keyName = gr2FileName .. "." .. modelName
+
+            self.Materials[keyName] = materialEditor
         end
         ::continue::
     end
@@ -456,6 +504,9 @@ function VisualTab:RenderMaterialEditor()
         local material = renderable.ActiveMaterial --[[@as AppliedMaterial]]
 
         local meshName = renderable.Model and renderable.Model.Name or "Unknown Mesh"
+        if meshName == "" then
+            meshName = "Unknown Mesh"
+        end
 
         local materialNode = self.materialHeader:AddTree(meshName .. "##" .. tostring(descIndex))
 
@@ -473,7 +524,9 @@ function VisualTab:RenderMaterialEditor()
             meshName = meshName .. " (" .. tostring(materialNameCnt[meshName]) .. ")"
         end
 
-        self.Materials[meshName] = materialEditor
+        local keyName = meshName .. "_" .. tostring(descIndex)
+
+        self.Materials[keyName] = materialEditor
 
         ::continue::
     end
@@ -1307,7 +1360,7 @@ function VisualTab:Save(name, overwrite)
             nil,
             10
         )
-        return false
+        return true
     end
 
     local saveName = name or self.displayName or "Unnamed"
@@ -1318,7 +1371,17 @@ function VisualTab:Save(name, overwrite)
     local Mats = {}
     for key, mat in pairs(self.Materials) do
         local params = mat:ExportChanges()
-        Mats[key] = params
+        local hasChanges = false
+        for typeRef, changed in pairs(params) do
+            if next(changed) then
+                hasChanges = true
+                break
+            end
+        end
+
+        if hasChanges then
+            Mats[key] = params
+        end
     end
 
     oriFile[saveName] = {
@@ -1346,7 +1409,11 @@ function VisualTab:Save(name, overwrite)
 
     --Info("Saved VisualTab preset as '" .. saveName .. "' for template: " .. templateId)
     self.currentPreset = saveName
-    EntityStore[self.guid].VisualPreset = saveName
+    if IsPartyMember(self.guid) then
+    
+    else
+        EntityStore[self.guid].VisualPreset = saveName
+    end
     self:Load()
 
     --Info("VisualTab:Save - Preset '" .. saveName .. "' saved successfully for template: " .. templateName)
@@ -1532,6 +1599,7 @@ function VisualTab:Collapsed()
 
     self.resetFuncs = {}
     self.updateFuncs = {}
+    self.Materials = {}
 
     if self.saveInputKeySub then
         self.saveInputKeySub:Unsubscribe()
@@ -1541,6 +1609,11 @@ function VisualTab:Collapsed()
     if self.materialHeader then
         self.materialHeader:Destroy()
         self.materialHeader = nil
+    end
+
+    if self.attachmentsHeader then
+        self.attachmentsHeader:Destroy()
+        self.attachmentsHeader = nil
     end
 
     if self.effectHeader then

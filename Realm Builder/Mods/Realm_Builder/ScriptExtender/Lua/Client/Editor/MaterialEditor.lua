@@ -5,8 +5,12 @@
 --- @field DiffusionProfileUUID string
 --- @field Proxy MaterialProxy -- MaterialProxy instance for easier parameter access
 --- @field Instance fun():Material
---- @field new fun(matSrc: fun():Material, originMaterial: string): MaterialEditor
+--- @field new fun(matSrc: fun():Material, originMaterial: string , materialPreset:string):MaterialEditor
 MaterialEditor = _Class("MaterialEditor")
+
+function GetPathAfterData(path)
+    return path:match("Data[\\/](.*)") or path
+end
 
 ---@param matSrc fun():Material
 ---@param originMaterial any
@@ -18,7 +22,7 @@ function MaterialEditor:__init(matSrc, originMaterial, materialPreset)
     end
 
     self.Material = originMaterial or ""
-    self.SourceFile = matRes.SourceFile or ""
+    self.SourceFile = GetPathAfterData(matRes.SourceFile or "")
     self.MaterialType = matRes.MaterialType or 0
     self.DiffusionProfileUUID = matRes.DiffusionProfileUUID or ""
 
@@ -148,7 +152,7 @@ end
 function MaterialEditor:ResetAll()
     local mat = self.Instance()
     if not mat then
-        Error("MaterialEditor: Could not find material instance for material '" .. tostring(self.Material) .. "'.")
+        --Error("MaterialEditor: Could not find material instance for material '" .. tostring(self.Material) .. "'.")
         return false
     end
 
@@ -170,6 +174,10 @@ function MaterialEditor:ResetAll()
         end
         self.Parameters[ptype] = {}
     end
+end
+
+function MaterialEditor:Reapply()
+    self:ApplyParameters(self.Parameters)
 end
 
 local function whatLSXType(value)
@@ -317,14 +325,10 @@ function MaterialEditor:ExportToLSXAsMaterial(path)
         return nil
     end
 
-    local matRegion = LSXNode.new("region", {id="MaterialBank"})
-    root:AppendChild(matRegion)
-    local matNode = LSXNode.new("node", {id="MaterialBank"})
-    matRegion:AppendChild(matNode)
-    local childrenWrapper = LSXNode.new("children")
-    matNode:AppendChild(childrenWrapper)
-    local resNode = LSXNode.new("node", {id="Resource"})
-    childrenWrapper:AppendChild(resNode)
+    local matRegion = root:AppendChild(LSXNode.new("region", {id="MaterialBank"}))
+    local matNode = matRegion:AppendChild(LSXNode.new("node", {id="MaterialBank"}))
+    local childrenWrapper = matNode:AppendChild(LSXNode.new("children"))
+    local resNode = childrenWrapper:AppendChild(LSXNode.new("node", {id="Resource"}))
 
     local baseAttr = {
         LSXNode.new("attribute", {

@@ -149,6 +149,7 @@ function TransformOperator:Visualize()
             Type = "Line",
             Position = ray:At(-100),
             EndPosition = ray:At(100),
+            LineThickness = 0.2,
             Duration = -1,
         }, function (response)
             for _,viz in pairs(response) do
@@ -371,10 +372,10 @@ function TransformOperator:Confirm()
             Commands.SetTransformCommand(currenrTargets, currentTransforms, true)
         end
     })
-    NetChannel.Visualize:RequestToServer({ Type = "Clear" }, function (response) end)
+    NetChannel.Delete:SendToServer({ Guid = self.Visualizations }, function(response) end)
 end
 
 function TransformOperator:Cancel()
     Commands.SetTransformCommand(self.Targets, self.StartTransforms, true)
-    NetChannel.Visualize:RequestToServer({ Type = "Clear" }, function (response) end)
+    NetChannel.Delete:SendToServer({ Guid = self.Visualizations }, function(response) end)
 end

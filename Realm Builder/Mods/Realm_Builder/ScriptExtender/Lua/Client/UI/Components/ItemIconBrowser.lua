@@ -209,7 +209,6 @@ function ItemIconBrowser:SetupTemplatePreview(entry)
                 }
                 Commands.SpawnCommand(entry.TemplateId, data.Position, data.Rotation)
             end
-
         end)
 
         mouseWheelSub = SubscribeMouseWheel({}, function (e)
@@ -223,7 +222,7 @@ function ItemIconBrowser:SetupTemplatePreview(entry)
 
         cancelSub = SubscribeKeyInput({}, function (e)
             if not previewItem then NetChannel.Delete:SendToServer({ Guid = previewItem }) return UNSUBSCRIBE_SYMBOL end
-            if e.Pressed and e.Key == "ESCAPE" or e.Key == "BACKSPACE" then
+            if e.Pressed and (e.Key == "ESCAPE" or e.Key == "BACKSPACE") then
                 NetChannel.Delete:SendToServer({ Guid = previewItem })
                 previewItem = nil
                 self.IsPreviewing = false

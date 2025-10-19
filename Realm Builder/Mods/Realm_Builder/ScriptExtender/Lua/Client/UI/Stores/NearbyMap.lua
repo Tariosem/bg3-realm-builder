@@ -33,6 +33,9 @@ function UpdateNearbyMap(pos, radius)
         else
             displayName = GetUniqueName(entry.DisplayName)
         end
+        if not displayName then
+            displayName = GetUniqueName("Unknown Entity")
+        end
         entry.DisplayName = displayName
         nearByGuidToDisplayName[guid] = displayName
         nearByDisplayNameToGuid[displayName] = guid

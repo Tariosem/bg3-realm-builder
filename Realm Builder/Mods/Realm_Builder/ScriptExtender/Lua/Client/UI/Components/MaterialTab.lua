@@ -1,11 +1,12 @@
 --- @class MaterialTab
 --- @field Parent ExtuiTreeParent
 --- @field Editor MaterialEditor
+--- @field new fun(parent: ExtuiTreeParent, materialName: string, materialFunc:fun():Material , materialPreset:string):MaterialTab
 MaterialTab = _Class("MaterialEditor")
 
-function MaterialTab:__init(parent, materialName, materialFunc)
+function MaterialTab:__init(parent, materialName, materialFunc, maretialPreset)
     self.Parent = parent
-    self.Editor = MaterialEditor.new(materialFunc, materialName)
+    self.Editor = MaterialEditor.new(materialFunc, materialName, maretialPreset)
     self.GetMaterial = materialFunc
     self.MaterialName = materialName
 
@@ -232,6 +233,7 @@ function MaterialTab:ResetAll()
         func()
     end
 end
+
 
 ---@param popup ExtuiPopup
 function MaterialTab:SetupManagePopup(popup)

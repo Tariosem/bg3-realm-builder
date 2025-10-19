@@ -22,17 +22,20 @@ end
 function Menu:RegisterEvents()
     local meMod = KeybindManager:CreateModule("Generic")
 
-    meMod:RegisterEvent("ToggleMenu", function()
+    meMod:RegisterEvent("ToggleMenu", function(e)
+        if e.Event ~= "KeyDown" then return end
+
         if self.panel then
             self.panel.Open = not self.panel.Open
         end
-    end, "Toggles the Realm Builder menu")
+    end)
 
-    meMod:RegisterEvent("OpenTransformToolbar", function()
+    meMod:RegisterEvent("OpenTransformToolbar", function(e)
+        if e.Event ~= "KeyDown" then return end
         if self.editorMenu then
-            self.editorMenu:Open()
+            self.editorMenu:Toggle()
         end
-    end, "Opens the Transform Toolbar")
+    end)
 
 
 end

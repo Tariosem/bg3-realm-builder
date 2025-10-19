@@ -138,7 +138,7 @@ function MaterialPresetProxy:__init(materialPresetName)
             end
 
             self.TypeRefs[parameterName] = num
-            self.IndexRefs[parameterName] = i
+            self.IndexRefs[num][parameterName] = i
             self.Parameters[num][parameterName] = value
             self.BaseValues[num][parameterName] = value
             ::continue::
@@ -190,6 +190,12 @@ function MaterialProxy:__init(materialName)
         end
     end
 
+end
+
+---@return ResourceMaterialResource
+function MaterialProxy:GetResource()
+    local res = Ext.Resource.Get(self.Material, "Material") --[[@as ResourceMaterialResource]]
+    return res
 end
 
 --- @param paramName string
@@ -269,6 +275,12 @@ function MaterialProxy:GetParameterType(paramName)
     return self.TypeRefs[paramName]
 end
 
+---@return ResourceMaterialPresetResource
+function MaterialPresetProxy:GetResource()
+    local res = Ext.Resource.Get(self.Preset, "MaterialPreset") --[[@as ResourceMaterialPresetResource]]
+    return res
+end
+
 ---@param paramName string
 ---@return ResourcePresetDataScalarParameter|ResourcePresetDataVector2Parameter|ResourcePresetDataVector3Parameter|ResourcePresetDataVectorParameter|nil
 function MaterialPresetProxy:GetParamObject(paramName)
@@ -277,7 +289,7 @@ function MaterialPresetProxy:GetParamObject(paramName)
         return nil
     end
 
-    local indexRef = self.IndexRefs[paramName]
+    local indexRef = self.IndexRefs[typeRef][paramName]
     if not indexRef then
         return nil
     end
@@ -317,7 +329,7 @@ function MaterialPresetProxy:GetParameter(paramName)
         return nil
     end
 
-    local indexRef = self.IndexRefs[paramName]
+    local indexRef = self.IndexRefs[typeRef][paramName]
     if not indexRef then
         return nil
     end

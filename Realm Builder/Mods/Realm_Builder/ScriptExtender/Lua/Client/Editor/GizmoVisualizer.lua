@@ -11,20 +11,20 @@ GizmoVisualizer = {
         1.0,
     },
     DefaultColor = {
-        X = HexToRGBA("D1FF4C4C"),
-        Y = HexToRGBA("D152FF52"),
-        Z = HexToRGBA("D15261FF"),
-    },
-    HighlightColor = {
-        X = HexToRGBA("E6FFC1C1"),
-        Y = HexToRGBA("E6BBFFBB"),
-        Z = HexToRGBA("E6A6A6FF"),
-    },
-    HoveredColor = {
-        X = HexToRGBA("EEEE4444"),
-        Y = HexToRGBA("EE44EE44"),
-        Z = HexToRGBA("EE4444EE"),
-    },
+    X = HexToRGBA("FFCC6666"),
+    Y = HexToRGBA("FF66CC66"),
+    Z = HexToRGBA("FF6699CC"),
+},
+HighlightColor = {
+    X = HexToRGBA("FFFFCCCC"),
+    Y = HexToRGBA("FFCCFFCC"),
+    Z = HexToRGBA("FFCCCCFF"),
+},
+HoveredColor = {
+    X = HexToRGBA("FFFF3333"),
+    Y = HexToRGBA("FF33FF33"),
+    Z = HexToRGBA("FF3333FF"),
+},
 }
 GizmoVisualizer.AxisLineColor = GizmoVisualizer.HoveredColor
 

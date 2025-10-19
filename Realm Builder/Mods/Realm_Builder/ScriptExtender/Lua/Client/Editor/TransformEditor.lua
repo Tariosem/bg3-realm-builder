@@ -391,6 +391,7 @@ function TransformEditor:RegisterEvents()
                     Type = "Line",
                     Position = ray:At(-100),
                     EndPosition = ray:At(100),
+                    LineThickness = 0.2,
                     Duration = -1,
                 }, function (response)
                     for _,viz in ipairs(response or {}) do

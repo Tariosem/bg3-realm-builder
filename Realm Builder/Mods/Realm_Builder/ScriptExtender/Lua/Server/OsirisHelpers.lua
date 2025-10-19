@@ -36,7 +36,7 @@ function OsirisHelpers.DrawLine(startPos, endPos, lineThickness)
             Guid = fxHandle,
             Transforms = {
                 [fxHandle] = {
-                    Scale = {0.3 * (lineThickness or 1) , 0.3 * (lineThickness or 1), toScale},
+                    Scale = {1 * (lineThickness or 1) , 1 * (lineThickness or 1), toScale},
                 }
             }
         })
