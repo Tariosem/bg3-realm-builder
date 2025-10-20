@@ -12,7 +12,7 @@
 --- @field ChangeDataNote fun(self, uuid:string, note:string)
 --- @field CheckHostValidEquipmentVisual fun(self, guid:string)
 --- @field Clear fun(self)
---- @field new fun(self)
+--- @field new fun(self):ManagerBase
 --- @field populated boolean
 --- @field tagIcons table<string, string>
 --- @field tagTree TreeTable

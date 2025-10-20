@@ -17,7 +17,8 @@ Ext.Entity.OnCreate("Visual", function (entity)
                 Debug("Found dummy and coresponding party member : " .. memberHandle.DisplayName.Name:Get())
                 SetClientDummyEntity(uuid, entity)
 
-                Timer:Ticks(60, function (timerID)
+                Timer:Ticks(10, function (timerID)
+
                     local visualTab = VisualTab.FetchByGuid(uuid)
                     if visualTab then
                         visualTab:Refresh()
@@ -62,7 +63,6 @@ end)
 --- @diagnostic disable-next-line
 Ext.Entity.OnCreate("ClientPaperdoll", function (entity)
     if not entity then return end
-    
 
     Timer:Ticks(60, function (timerID)
         local owner = Paperdoll.GetDollOwner(entity)
@@ -73,7 +73,10 @@ Ext.Entity.OnCreate("ClientPaperdoll", function (entity)
             Debug("Set paperdoll dummy for owner: " .. (displayNameComponent and displayNameComponent.Name:Get() or ownerGuid))
             local visualTab = VisualTab.FetchByGuid(ownerGuid)
             if visualTab then
-                visualTab:ReapplyCurrentChanges()
+                Timer:Ticks(5, function()
+                    visualTab:Refresh()
+                    visualTab:ReapplyCurrentChanges()
+                end)
             end
         end
     end)
@@ -144,7 +147,7 @@ local function mapTLDummies()
 end
 
 function GetTLPreviewDummy(entity)
-    local dummies = Ext.Entity.GetAllEntitiesWithComponent("TLPreviewDummy")
+    local dummies = Ext.Entity.GetAllEntitiesWithComponent("ClientTimelineActorControl")
     for _, dummy in pairs(dummies) do
         if dummy.TLPreviewDummy ~= nil and dummy.ClientTimelineActorControl ~= nil then
             local actorLink = dummy.ClientTimelineActorControl.field_0

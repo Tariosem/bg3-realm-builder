@@ -9,4 +9,5 @@ RequireFiles("Client/UI/Components/", {
     "EffectTab",
     "CustomEffectTab",
     "StatsTab",
+    "MaterialPresetsMenu",
 })

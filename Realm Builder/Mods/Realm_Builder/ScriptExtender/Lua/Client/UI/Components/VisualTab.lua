@@ -260,6 +260,13 @@ function VisualTab:RenderPresetsCell()
 
     local resetAllButton = self.topLeftCell:AddButton(GetLoca("Reset All"))
 
+    local reapplyBtn = self.topLeftCell:AddButton(GetLoca("Reapply Changes"))
+
+    reapplyBtn.SameLine = true
+    reapplyBtn.OnClick = function ()
+        self:ReapplyCurrentChanges()
+    end
+
     local warningImage = self.topLeftCell:AddImage(WARNING_ICON)
     warningImage.ImageData.Size = {32 * SCALE_FACTOR, 32 *SCALE_FACTOR}
     warningImage.SameLine = true
@@ -276,13 +283,11 @@ function VisualTab:RenderPresetsCell()
 
             --if CIsCharacter(self.guid) then return end
 
-            if not IsPartyMember(self.guid) then
-                for key, matTab in pairs(self.Materials) do
-                    matTab:ResetAll()
-                end
+            for key, matTab in pairs(self.Materials) do
+                matTab.Editor:ClearParameters()
+                matTab:UpdateUIState()
             end
 
-            
             NetChannel.Replicate:SendToServer({
                 Guid = self.guid,
                 Field = "GameObjectVisual",
@@ -383,6 +388,7 @@ function VisualTab:RenderAttachmentsSection()
 
     for attIndex,attach in ipairs(attachments) do
 
+        if #attach.Visual.ObjectDescs == 0 then goto continue end
         local source = attach.Visual.VisualResource and attach.Visual.VisualResource.SourceFile or "Unknown Model"
         local gr2FileName = GetLastPath(source)
         local attachNode = self.attachmentsHeader:AddTree(gr2FileName .. "##" .. tostring(attIndex))
@@ -391,7 +397,29 @@ function VisualTab:RenderAttachmentsSection()
             local objFlags = LightCToArray(obj.Flags)
 
             local modelName = obj.Renderable and obj.Renderable.Model and obj.Renderable.Model.Name or "Unknown Model"
-            local objNode = attachNode:AddTree(modelName .. "##" .. tostring(attIndex) .. "_" .. tostring(descIndex))
+            local objToggle = attachNode:AddSelectable("[+] " .. modelName .. "##" .. tostring(attIndex) .. "_" .. tostring(descIndex))
+            local objNode = AddIndent(attachNode):AddGroup("ObjectDescGroup##" .. tostring(attIndex) .. "_" .. tostring(descIndex))
+            objNode.Visible = false
+
+            objToggle.OnClick = function (sel)
+                objToggle.Selected = false
+                objNode.Visible = not objNode.Visible
+
+                sel.Label = (objNode.Visible and "[-] " or "[+] ") .. modelName .. "##" .. tostring(attIndex) .. "_" .. tostring(descIndex)
+            end
+
+            local utilisPopup = attachNode:AddPopup(GetLoca("Utilities") .. "##UtilisPopup" .. tostring(attIndex) .. "_" .. tostring(descIndex))
+
+            local utilisTable = utilisPopup:AddTable("UtilitiesTable", 1)
+            local utilisRow = utilisTable:AddRow()
+            utilisTable.BordersInnerH = true
+
+            objToggle.OnRightClick = function ()
+                utilisPopup:Open()
+            end
+
+            local matName = obj.Renderable.ActiveMaterial.Material.Name
+
             --[[objNode.OnHoverEnter = function ()
 
 
@@ -456,19 +484,35 @@ function VisualTab:RenderAttachmentsSection()
                 return material
             end
 
-            local presetColor = nil
-            if matPresets[obj.Renderable.ActiveMaterial.Material.Name] then
-                presetColor = matPresets[obj.Renderable.ActiveMaterial.Material.Name]
-                Debug("Found preset color for attachment material: " .. tostring(presetColor))
+            --- @return MaterialParametersSet|nil
+            local function getliveParams()
+                local mat = getliveMat()
+                if not mat then return nil end
+                return mat.Material.Parameters
             end
-
-            local materialEditor = MaterialTab.new(objNode, obj.Renderable.ActiveMaterial.Material.Name, getliveMat, presetColor) --[[@as MaterialTab]]
-            materialEditor:Render()
 
             local keyName = gr2FileName .. "." .. modelName
 
-            self.Materials[keyName] = materialEditor
+            local materialTab = self.Materials[keyName] or MaterialTab.new(objNode, matName, getliveMat, getliveParams) --[[@as MaterialTab]]
+            materialTab.Parent = objNode
+            materialTab.Editor.Instance = getliveMat
+            materialTab.Editor.ParamsSrc = getliveParams
+            materialTab.Editor.ParamSetProxy = ParametersSetProxy.new(getliveParams()) --[[@as ParametersSetProxy]]
+            materialTab:Render()
+
+            self.Materials[keyName] = materialTab
+
+            local applyToAllSameMaterial = AddSelectableButton(utilisRow:AddCell(), GetLoca("Apply to all same material"), function ()
+                local matTab = self.Materials[keyName]
+                for _, otherMatTab in pairs(self.Materials) do
+                    otherMatTab.Editor:ApplyParameters(matTab.Editor.Parameters)
+                    otherMatTab:UpdateUIState()
+                end
+            end)
+
         end
+
+
         ::continue::
     end
 
@@ -492,13 +536,12 @@ function VisualTab:RenderMaterialEditor()
 
     --self.materialRoot = self.materialHeader:AddTree(GetLoca("Materials"))
 
-    local materialNameCnt = {}
-
     for descIndex, desc in ipairs(Ext.Entity.Get(self.guid).Visual.Visual.ObjectDescs) do
         if not desc.Renderable or not desc.Renderable.ActiveMaterial then
             goto continue
         end
 
+        _D(desc)
         local renderable = desc.Renderable --[[@as RenderableObject]]
 
         local material = renderable.ActiveMaterial --[[@as AppliedMaterial]]
@@ -518,11 +561,6 @@ function VisualTab:RenderMaterialEditor()
         materialEditor:Render()
 
         self:RenderScaleSliders(materialNode, descIndex, meshName)
-
-        while self.Materials[meshName] do
-            materialNameCnt[meshName] = (materialNameCnt[meshName] or 1) + 1
-            meshName = meshName .. " (" .. tostring(materialNameCnt[meshName]) .. ")"
-        end
 
         local keyName = meshName .. "_" .. tostring(descIndex)
 
@@ -1557,7 +1595,11 @@ function VisualTab:LoadPreset(name)
         SetCombo(self.loadCombo, name)
     end
 
-    EntityStore[self.guid].VisualPreset = name
+    if IsPartyMember(self.guid) then
+
+    else
+        EntityStore[self.guid].VisualPreset = name
+    end
 
     self:UpdateAll()
 end
@@ -1599,7 +1641,11 @@ function VisualTab:Collapsed()
 
     self.resetFuncs = {}
     self.updateFuncs = {}
-    self.Materials = {}
+
+    for key, matTab in pairs(self.Materials) do
+        matTab.ResetFuncs = {}
+        matTab.UpdateFuncs = {}
+    end
 
     if self.saveInputKeySub then
         self.saveInputKeySub:Unsubscribe()

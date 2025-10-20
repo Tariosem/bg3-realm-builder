@@ -1,3 +1,4 @@
+--- @class EffectIconBrowser : IconBrowser
 EffectIconBrowser = _Class("EffectIconBrowser", IconBrowser)
 
 --- @class EffectIconsBrowser : IconsBrowser
@@ -218,8 +219,7 @@ function EffectIconBrowser:RenderPlayEffectPopup(popup, entry, iconImage)
     end
 end
 
-function EffectIconBrowser:Add(dataManager, searchData)
+function EffectIconBrowser.Add(dataManager, searchData)
     local instance = EffectIconBrowser.new(dataManager, searchData)
-    instance:Render()
     return instance
 end

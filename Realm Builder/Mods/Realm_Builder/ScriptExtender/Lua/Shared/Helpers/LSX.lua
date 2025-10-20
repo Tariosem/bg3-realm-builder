@@ -169,7 +169,7 @@ function LSXNode:__stringify(stringifyOpts)
         table.insert(lines, '<?xml version="1.0" encoding="utf-8"?>')
     end
 
-    -- iterative DFS using explicit stack. Each frame: { node = <LSXTableNode>, state = 'enter'|'exit', depth = number }
+    -- iterative DFS using stack. Each frame: { node = <LSXTableNode>, state = 'enter'|'exit', depth = number }
     -- maybe use my own treetable to avoid recursion?
     local function buildAttrStr(node)
         local attrs = {}

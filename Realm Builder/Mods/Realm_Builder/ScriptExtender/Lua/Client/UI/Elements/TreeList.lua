@@ -437,14 +437,12 @@ end
 
 ---@param selectable ExtuiSelectable
 ---@param key any
----@param item any
-function TreeList:SetUpLeaf(selectable, key, item)
+function TreeList:SetUpLeaf(selectable, key)
 
     selectable.CanDrag = true
     selectable.DragDropType = "TreeList" .. self.label
 
     selectable.UserData = selectable.UserData or {}
-    selectable.UserData.Item = item
     selectable.UserData.Key = key
     selectable.UserData.IsLeaf = true
 
@@ -527,14 +525,12 @@ end
 
 ---@param tree ExtuiSelectable
 ---@param key any
----@param item any
-function TreeList:SetUpTree(tree, key, item)
+function TreeList:SetUpTree(tree, key)
 
     tree.CanDrag = true
     tree.DragDropType = "TreeList" .. self.label
 
     tree.UserData = tree.UserData or {}
-    tree.UserData.Item = item
     tree.UserData.Key = key
     tree.UserData.IsTree = true
 

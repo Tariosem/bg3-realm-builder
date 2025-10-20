@@ -70,7 +70,7 @@ function Paperdoll.GetDollOwner(doll)
 end
 
 ---@param owner EntityHandle
----@return EntityHandle
+---@return EntityHandle?
 function Paperdoll.GetOwnersDoll(owner)
     local slotTemplates = {}
     for _, entry in pairs(owner.ClientEquipmentVisuals.Equipment) do
@@ -102,7 +102,6 @@ function Paperdoll.GetOwnersDoll(owner)
             end
         end
     end
-
 end
 
 ---@return {Doll:EntityHandle, Owner:EntityHandle, OwnerName:string}[]

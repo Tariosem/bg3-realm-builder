@@ -4,17 +4,23 @@
 --- @field MaterialType number
 --- @field DiffusionProfileUUID string
 --- @field Proxy MaterialProxy -- MaterialProxy instance for easier parameter access
+--- @field PresetProxy MaterialPresetProxy? -- MaterialPresetProxy instance if a preset is applied
+--- @field ParamSetProxy ParametersSetProxy -- ParameterSetProxy instance for easier parameter access
 --- @field Instance fun():Material
---- @field new fun(matSrc: fun():Material, originMaterial: string , materialPreset:string):MaterialEditor
+--- @field ParamsSrc fun():MaterialParametersSet
+--- @field new fun(originMaterial: GUIDSTRING, matSrc:fun():Material , paramsSrc:fun():MaterialParametersSet, materialPreset: GUIDSTRING?):MaterialEditor
 MaterialEditor = _Class("MaterialEditor")
 
 function GetPathAfterData(path)
     return path:match("Data[\\/](.*)") or path
 end
 
+
+---@param originMaterial string
 ---@param matSrc fun():Material
----@param originMaterial any
-function MaterialEditor:__init(matSrc, originMaterial, materialPreset)
+---@param paramsSrc fun():MaterialParametersSet
+---@param materialPreset string?
+function MaterialEditor:__init(originMaterial, matSrc, paramsSrc, materialPreset)
     local matRes = Ext.Resource.Get(originMaterial, "Material") --[[@as ResourceMaterialResource]]
     if not matRes then
         Error("MaterialEditor: Could not find origin material resource for '" .. tostring(originMaterial) .. "'. Cannot create MaterialEditor.")
@@ -28,7 +34,9 @@ function MaterialEditor:__init(matSrc, originMaterial, materialPreset)
 
     self.Proxy = MaterialProxy.new(originMaterial) --[[@as MaterialProxy]]
     self.PresetProxy = MaterialPresetProxy.new(materialPreset) --[[@as MaterialPresetProxy?]]
+    self.ParamSetProxy = ParametersSetProxy.new(paramsSrc()) --[[@as ParametersSetProxy]]
 
+    self.ParamsSrc = paramsSrc
     self.Instance = matSrc
 
     self.Parameters = {
@@ -51,19 +59,23 @@ end
 ---@param paramName string
 ---@return number[]?
 function MaterialEditor:GetParameter(paramName)
-    local ptype = self.Proxy:GetParameterType(paramName)
-    if not ptype then return nil end
+    local ptype = self.ParamSetProxy:GetParameterType(paramName)
+    if not ptype then
+        Warning("MaterialEditor: Could not determine parameter type for '" .. tostring(paramName) .. "'.")
+        return nil
+    end
 
     local value = self.Parameters[ptype][paramName]
 
     if not value then
-        local proxyParam = self.Proxy:GetParameter(paramName)
+        local proxyParam = self.ParamSetProxy:GetParameter(paramName)
         if self.PresetProxy then
             local presetParam = self.PresetProxy:GetParameter(paramName)
             if presetParam then
                 proxyParam = presetParam
             end
         end
+
         if not proxyParam then
             Warning("MaterialEditor: Could not find parameter '" .. tostring(paramName) .. "' in material proxy for material '" .. tostring(self.Material) .. "'.")
             return nil
@@ -77,12 +89,34 @@ function MaterialEditor:GetParameter(paramName)
     return value
 end
 
-function MaterialEditor:SetParameter(paramName, value)
-    local mat = self.Instance()
-    if not mat then
-        Error("MaterialEditor: Could not find material instance for material '" .. tostring(self.Material) .. "'.")
+function MaterialEditor:HasChanged(paramName)
+    local ptype = self.ParamSetProxy:GetParameterType(paramName)
+    if not ptype then
+        Warning("MaterialEditor: Could not determine parameter type for '" .. tostring(paramName) .. "'.")
         return false
     end
+
+    local currentValue = self.Parameters[ptype][paramName]
+
+    return currentValue ~= nil
+end
+
+function MaterialEditor:HasChangeInType(paramType)
+    if not self.Parameters[paramType] then
+        Warning("MaterialEditor: Invalid parameter type '" .. tostring(paramType) .. "'.")
+        return false
+    end
+
+    for _,_ in pairs(self.Parameters[paramType]) do
+        return true
+    end
+
+    return false
+end
+
+function MaterialEditor:SetParameter(paramName, value)
+    local mat = self.Instance()
+    if not mat then return false end
 
     local funcName = PropTypeToFunc[#value]
     local applyValue = #value == 1 and value[1] or value
@@ -96,15 +130,13 @@ end
 
 function MaterialEditor:ResetParameter(paramName)
     local mat = self.Instance()
-    if not mat then
-        Error("MaterialEditor: Could not find material instance for material '" .. tostring(self.Material) .. "'.")
-        return false
-    end
+    if not mat then return false end
 
-    local value = self.Proxy:GetParameter(paramName)
+    local value = self.ParamSetProxy:GetParameter(paramName)
+    local presetValue = nil
 
     if self.PresetProxy then
-        local presetValue = self.PresetProxy:GetParameter(paramName)
+        presetValue = self.PresetProxy:GetParameter(paramName)
         if presetValue then
             value = presetValue
         end
@@ -120,7 +152,7 @@ function MaterialEditor:ResetParameter(paramName)
 
     mat[funcName](mat, paramName, applyValue)
 
-    self.Parameters[#value][paramName] = nil
+    self.Parameters[#value][paramName] = presetValue and presetValue or nil
 
     return true
 end
@@ -129,24 +161,34 @@ end
 ---@return boolean
 function MaterialEditor:ApplyParameters(parameters)
     local mat = self.Instance()
-    if not mat then
-        Error("MaterialEditor: Could not find material instance for material '" .. tostring(self.Material) .. "'.")
-        return false
-    end
+    if not mat then return false end
 
     for i,params in pairs(parameters) do
         for paramName, value in pairs(params) do
-            if not self.Proxy:HasParameter(paramName) then
+            if not self.ParamSetProxy:GetParameterType(paramName) then
+                --Warning("MaterialEditor: Could not determine parameter type for '" .. tostring(paramName) .. "'. Skipping.")
                 goto continue
             end
             local applyValue = #value == 1 and value[1] or value
             mat[PropTypeToFunc[#value]](mat, paramName, applyValue)
+            self.Parameters = self.Parameters or {}
+            self.Parameters[i] = self.Parameters[i] or {}
             self.Parameters[i][paramName] = value
             ::continue::
         end
     end
 
     return true
+end
+
+function MaterialEditor:ClearParameters()
+    self.PresetProxy = nil
+    self.Parameters = {
+        [1] = {}, -- ScalarParameters
+        [2] = {}, -- Vector2Parameters
+        [3] = {}, -- Vector3Parameters
+        [4] = {}, -- VectorParameters
+    }
 end
 
 function MaterialEditor:ResetAll()
@@ -188,7 +230,9 @@ local function whatLSXType(value)
     elseif type(value) == "string" then
         return LSXValueType.FixedString
     elseif type(value) == "table" then
-        if #value == 2 then
+        if #value == 1 then
+            return LSXValueType.float
+        elseif #value == 2 then
             return LSXValueType.fvec2
         elseif #value == 3 then
             return LSXValueType.fvec3
@@ -388,6 +432,7 @@ function MaterialEditor:ExportToLSXAsMaterialPreset(path)
         Error("CustomMaterialProxy: Could not create LSXTableNode for export.")
         return nil
     end
+
     local presetRegion = LSXUtils.RegionNodeWrapper("MaterialPresetBank", root)
     local childrenWrapper = LSXNode.new("children")
     presetRegion:AppendChild(childrenWrapper)
@@ -438,6 +483,16 @@ function MaterialEditor:ExportToLSXAsMaterialPreset(path)
 
     local matePresetNode = LSXNode.new("node", {id="MaterialPresets"})
     thirdChildrenWrapper:AppendChild(matePresetNode)
+
+    local presetParams = self.PresetProxy and self.PresetProxy.Parameters or {}
+
+    for typeIndex, paramTable in pairs(presetParams) do
+        for paramName,value in pairs(paramTable) do
+            if not self.Parameters[typeIndex][paramName] then
+                self.Parameters[typeIndex][paramName] = value
+            end
+        end
+    end
 
     local paramNodes = createPresetParameterNodes(nil, self.Parameters)
 

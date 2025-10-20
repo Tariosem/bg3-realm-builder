@@ -5,9 +5,11 @@ Menu = _Class("Menu")
 --- @class RB_MainMenu
 --- @field isValid boolean
 --- @field effectsMenu EffectsMenu
---- @field entityMenu EntityMenu
+--- @field entityMenu SceneMenu
 --- @field presetMenu PresetMenu
 --- @field styleMenu StyleMenu
+--- @field itemBrowser ItemIconBrowser
+--- @field effectBrowser EffectIconBrowser
 --- @field panel ExtuiWindowBase
 --- @field tabBar ExtuiTabBar
 --- @field FocusOnTab fun(self:RB_MainMenu, guid:string, doDetach:boolean|nil)
@@ -59,7 +61,7 @@ function Menu:Render()
     end)
 
     Timer:Ticks(3, function()
-        self.entityMenu = EntityMenu:Add(self.tabBar)
+        self.entityMenu = SceneMenu:Add(self.tabBar)
         --Debug("Finished adding PropsMenu tab, it takes" .. Ext.Timer.MonotonicTime() - now .. "ms")
         --now = Ext.Timer.MonotonicTime()
     end)
@@ -70,9 +72,6 @@ function Menu:Render()
         --now = Ext.Timer.MonotonicTime()
     end)
 
-    self.GetBrowsers = function()
-        return self.effectsMenu.iconBrowser, self.entityMenu.iconBrowser
-    end
 
     Timer:Ticks(5, function()
         self.editorMenu = TransformToolbar:Add(self.tabBar)
@@ -84,6 +83,14 @@ function Menu:Render()
         KeybindMenu:Render(self.tabBar)
         --Debug("Finished adding KeybindMenu tab, it takes" .. Ext.Timer.MonotonicTime() - now .. "ms")
         --now = Ext.Timer.MonotonicTime()
+    end)
+
+    Timer:Ticks(7, function()
+        self.itemBrowser = ItemIconBrowser.new(RB_ItemManager, "Item - Browser")
+    end)
+
+    Timer:Ticks(8, function()
+        self.effectBrowser = EffectIconBrowser.new(RB_MultiEffectManager, "Effect - Browser")
     end)
 
     --print(string.format("[Realm Builder] EffectsMenu initialized in %d ms", Ext.Timer.MonotonicTime() - now))

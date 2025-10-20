@@ -1,4 +1,5 @@
---- @class ItemManager:ManagerBase
+--- @class RB_ItemManager:ManagerBase
+--- @field new fun():RB_ItemManager
 ItemManager = _Class("ItemManager", ManagerBase)
 
 function ItemManager:__init()

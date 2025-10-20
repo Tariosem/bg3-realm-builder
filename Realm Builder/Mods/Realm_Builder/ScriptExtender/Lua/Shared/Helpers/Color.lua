@@ -16,7 +16,12 @@ function RGBIntToFloat(r, g, b, a)
     }
 end
 
+local hexCache = {}
 function HexToRGBA(hex)
+    if hexCache[hex] then
+        return hexCache[hex]
+    end
+
     hex = hex:gsub("#", "")
     local r, g, b, a
 
@@ -33,6 +38,8 @@ function HexToRGBA(hex)
     else
         error("Invalid hex color length: " .. hex)
     end
+
+    hexCache[hex] = { r / 255, g / 255, b / 255, a / 255 }
 
     return { r / 255, g / 255, b / 255, a / 255 }
 end
@@ -167,6 +174,32 @@ function BlendColors(color1, color2, t)
     local b = color1[3] * (1 - t) + color2[3] * t
     local a = (color1[4] or 1) * (1 - t) + (color2[4] or 1) * t
     return { r, g, b, a }
+end
+
+function CompareRGBA(color1, color2)
+    for i = 1, 4 do
+        if (color1[i] or 1) < (color2[i] or 1) then
+            return true
+        elseif (color1[i] or 1) > (color2[i] or 1) then
+            return false
+        end
+    end
+    return false
+end
+
+function CompareRGBAByHSV(color1, color2)
+    local h1, s1, v1 = RGBtoHSV(color1[1], color1[2], color1[3])
+    local h2, s2, v2 = RGBtoHSV(color2[1], color2[2], color2[3])
+
+    if h1 ~= h2 then
+        return h1 < h2
+    elseif s1 ~= s2 then
+        return s1 < s2
+    elseif v1 ~= v2 then
+        return v1 < v2
+    else
+        return CompareRGBA(color1, color2)
+    end
 end
 
 function GenerateTheme(accent, accent2, bg)

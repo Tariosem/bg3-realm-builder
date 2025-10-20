@@ -24,19 +24,21 @@ MCM.Keybinding.SetCallback("key_toggle_items_browser", function()
         return
     end
 
-    local effectsBrowser, itemsBrowser = RBMenu:GetBrowsers()
+    local effectsBrowser, itemsBrowser = RBMenu.effectBrowser, RBMenu.itemBrowser
     if itemsBrowser then
-        if itemsBrowser.panel.Open then
+        if itemsBrowser.panel and itemsBrowser.panel.Open then
             itemsBrowser.panel.Open = false
             if itemsBrowser.panel.OnClose then
                 itemsBrowser.panel:OnClose()
             end
+        elseif not itemsBrowser.panel then
+            itemsBrowser:Render()
         else
             itemsBrowser:Focus()
         end
     end
 
-    if effectsBrowser and effectsBrowser.panel.Open then
+    if effectsBrowser and effectsBrowser.panel and effectsBrowser.panel.Open then
         effectsBrowser.panel.Open = false
         if effectsBrowser.panel.OnClose then
             effectsBrowser.panel:OnClose()
@@ -49,18 +51,20 @@ MCM.Keybinding.SetCallback("key_toggle_effects_browser", function()
         return
     end
 
-    local effectsBrowser, itemsBrowser = RBMenu:GetBrowsers()
+    local effectsBrowser, itemsBrowser = RBMenu.effectBrowser, RBMenu.itemBrowser
     if effectsBrowser then
-        if effectsBrowser.panel.Open then
+        if effectsBrowser.panel and effectsBrowser.panel.Open then
             effectsBrowser.panel.Open = false
             if effectsBrowser.panel.OnClose then
                 effectsBrowser.panel:OnClose()
             end
+        elseif not effectsBrowser.panel then
+            effectsBrowser:Render()
         else
             effectsBrowser:Focus()
         end
     end
-    if itemsBrowser and itemsBrowser.panel.Open then
+    if itemsBrowser and itemsBrowser.panel and itemsBrowser.panel.Open then
         itemsBrowser.panel.Open = false
         if itemsBrowser.panel.OnClose then
             itemsBrowser.panel:OnClose()

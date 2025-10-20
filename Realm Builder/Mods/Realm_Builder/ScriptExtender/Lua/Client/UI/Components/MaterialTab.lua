@@ -1,13 +1,26 @@
 --- @class MaterialTab
 --- @field Parent ExtuiTreeParent
 --- @field Editor MaterialEditor
---- @field new fun(parent: ExtuiTreeParent, materialName: string, materialFunc:fun():Material , materialPreset:string):MaterialTab
+--- @field ResetFuncs table<string, fun()>
+--- @field UpdateFuncs table<string, fun(newValue: number[]?)>
+--- @field ParamNodeRefs table<string, ExtuiSelectable>
+--- @field MaterialName string
+--- @field new fun(parent: ExtuiTreeParent, materialName: string, materialFunc:fun():Material , paramsSrc: fun():MaterialParametersSet):MaterialTab
 MaterialTab = _Class("MaterialEditor")
 
-function MaterialTab:__init(parent, materialName, materialFunc, maretialPreset)
+
+--- @class MaterialDropData
+--- @field MaterialProxy MaterialProxy|MaterialEditor|MaterialPresetProxy
+--- @field PresetProxy MaterialPresetProxy
+--- @field SuccessApply boolean
+
+---@param parent ExtuiTreeParent
+---@param materialName string
+---@param materialFunc fun():Material
+---@param paramsSrc fun():MaterialParametersSet
+function MaterialTab:__init(parent, materialName, materialFunc, paramsSrc)
     self.Parent = parent
-    self.Editor = MaterialEditor.new(materialFunc, materialName, maretialPreset)
-    self.GetMaterial = materialFunc
+    self.Editor = MaterialEditor.new(materialName, materialFunc, paramsSrc)
     self.MaterialName = materialName
 
     self.ResetFuncs = {}
@@ -17,17 +30,19 @@ end
 function MaterialTab:Render()
     local sourceFileName = GetLastPath(self.Editor.SourceFile) or "N/A"
     local parent = self.Parent
-    local parentNode = parent:AddSelectable("[+] " .. sourceFileName .. "##" .. self.MaterialName)
+    local parentNode = parent:AddSelectable("[-] " .. sourceFileName .. "##" .. self.MaterialName)
     local group = parent:AddGroup("MaterialEditorGroup##" .. self.MaterialName, parentNode) -- Tree has issues with drag-and-drop, so use a Selectable + Group to emulate tree behavior.
-    group.Visible = false
+    group.Visible = true
 
     local managePopup = parent:AddPopup("Manage##" .. self.MaterialName)
     self:SetupManagePopup(managePopup)
 
     parentNode.CanDrag = true
-    parentNode.DragDropType = "MaterialPreset"
+    parentNode.DragDropType = MATERIALPRESET_DRAGDROP_TYPE
+
     parentNode.UserData = {
-        MaterialProxy = self.Editor
+        MaterialProxy = self.Editor,
+        Parameters = self.Editor.Parameters
     }
 
     parentNode.OnClick = function (sel)
@@ -45,23 +60,29 @@ function MaterialTab:Render()
     end
 
     parentNode.OnDragDrop = function (sel, drop)
+        sel.UserData.PresetProxy = self.Editor.PresetProxy --[[@as MaterialPresetProxy ]]
         if drop.UserData and drop.UserData.MaterialProxy then
-            local proxy = drop.UserData.MaterialProxy --[[@as MaterialProxy]]
+            local params = drop.UserData.Parameters
 
-            Debug(proxy.Parameters)
-            self.Editor:ApplyParameters(proxy.Parameters)
+            self.Editor:ApplyParameters(params)
+            drop.UserData.SuccessApply = true
             for key, func in pairs(self.UpdateFuncs) do
                 local newValue = self.Editor:GetParameter(key)
+                if not newValue then goto continue end
                 func(newValue)
+                ::continue::
             end
+            self.Editor.PresetProxy = drop.UserData.PresetProxy --[[@as MaterialPresetProxy ]]
         end
     end
 
+    local matInstance = self.Editor.Instance()
+
     local params = {
-        [1] = self.Editor.Proxy:GetAllScalarPropertyNames(),
-        [2] = self.Editor.Proxy:GetAllVector2PropertyNames(),
-        [3] = self.Editor.Proxy:GetAllVector3PropertyNames(),
-        [4] = self.Editor.Proxy:GetAllVector4PropertyNames()
+        [1] = self.Editor.ParamSetProxy:GetAllScalarParameterNames(),
+        [2] = self.Editor.ParamSetProxy:GetAllVector2ParameterNames(),
+        [3] = self.Editor.ParamSetProxy:GetAllVector3ParameterNames(),
+        [4] = self.Editor.ParamSetProxy:GetAllVector4ParameterNames()
     }
     local indexToDisplay = {
         [1] = "Scalar Parameters",
@@ -70,18 +91,29 @@ function MaterialTab:Render()
         [4] = "Vector Parameters"
     }
 
-    for i,propNames in ipairs(params) do
-        local propType = indexToDisplay[i]
+    self.ParamNodeRefs = {}
+    for paramType,propNames in ipairs(params) do
+        local propType = indexToDisplay[paramType]
         if #propNames > 0 then
             local typeNode = group:AddTree(propType .. "##" .. self.MaterialName)
             for _,propertyName in ipairs(propNames) do
                 local propertyValue = self.Editor:GetParameter(propertyName)
                 if propertyValue then
                     local allGroup = typeNode:AddGroup("AllPropertiesGroup##" .. self.MaterialName .. propertyName .. tostring(math.random()))
-                    local propNode = allGroup:AddSelectable("[+] " .. propertyName .. "##" .. self.MaterialName)
+                    local propNode = allGroup:AddSelectable("[+] " .. propertyName .. "##" .. self.MaterialName) --[[@as ExtuiSelectable ]]
+                    self.ParamNodeRefs[propertyName] = propNode
                     local paramgroup = allGroup:AddGroup("PropertyGroup##" .. self.MaterialName .. propertyName .. tostring(math.random()))
                     paramgroup.Visible = false
-                    self:RenderProperty(paramgroup, propertyName, propertyValue)
+
+                    propNode.OnHoverEnter = function ()
+                        propertyValue = self.Editor:GetParameter(propertyName) --[[@as number[] ]]
+
+                        self:RenderProperty(paramgroup, propertyName, propertyValue)
+                        propNode.OnHoverEnter = function ()
+                            propNode.Highlight = self.Editor:HasChanged(propertyName) and true or false
+                            typeNode.Framed = self.Editor:HasChangeInType(paramType)
+                        end
+                    end
 
                     propNode.OnClick = function (sel)
                         propNode.Selected = false
@@ -147,7 +179,7 @@ end
 
 --- @param node ExtuiTreeParent
 --- @param propertyName string
---- @param propertyValue number|number[]
+--- @param propertyValue number[]
 function MaterialTab:RenderProperty(node, propertyName, propertyValue)
     local sliders = {} --[[@type ExtuiSliderScalar[] ]]
     local colorPicker = nil
@@ -172,6 +204,8 @@ function MaterialTab:RenderProperty(node, propertyName, propertyValue)
             end
 
             self.Editor:SetParameter(propertyName, newValue)
+
+            self.ParamNodeRefs[propertyName].Highlight = self.Editor:HasChanged(propertyName) and true or false
         end
     end
 
@@ -190,6 +224,8 @@ function MaterialTab:RenderProperty(node, propertyName, propertyValue)
             end
 
             self.Editor:SetParameter(propertyName, newValue)
+
+            self.ParamNodeRefs[propertyName].Highlight = self.Editor:HasChanged(propertyName) and true or false
         end
 
         table.insert(sliders, slider)
@@ -209,6 +245,8 @@ function MaterialTab:RenderProperty(node, propertyName, propertyValue)
                 colorPicker.Color = ToVec4(newValue)
             end
         end
+
+        self.ParamNodeRefs[propertyName].Highlight = self.Editor:HasChanged(propertyName) and true or false
     end
 
     local function updateSliders(newValue)
@@ -222,6 +260,8 @@ function MaterialTab:RenderProperty(node, propertyName, propertyValue)
                 colorPicker.Color = ToVec4(newValue)
             end
         end
+
+        self.ParamNodeRefs[propertyName].Highlight = self.Editor:HasChanged(propertyName) and true or false
     end
 
     self.ResetFuncs[propertyName] = reset
@@ -229,8 +269,17 @@ function MaterialTab:RenderProperty(node, propertyName, propertyValue)
 end
 
 function MaterialTab:ResetAll()
-    for key, func in pairs(self.ResetFuncs) do
-        func()
+    self.Editor:ResetAll()
+
+    for _, resetFunc in pairs(self.ResetFuncs) do
+        resetFunc()
+    end
+end
+
+function MaterialTab:UpdateUIState()
+    for key, updateFunc in pairs(self.UpdateFuncs) do
+        local newValue = self.Editor:GetParameter(key)
+        updateFunc(newValue)
     end
 end
 
@@ -247,14 +296,15 @@ function MaterialTab:SetupManagePopup(popup)
     end)
     btnReset.DontClosePopups = true
 
-    local btnExport = AddSelectableButton(row:AddCell(), "Export As Material##" .. self.MaterialName, function (sel)
-        local res = self.Editor.Proxy:GetResource()
+    local defaultMatPath = "Realm_Builder/Materials/Defaults/"
+    local finalPath = defaultMatPath .. GetLastPath(self.Editor.SourceFile)
 
-        self.Editor:ExportToLSXAsMaterial("SOMETHING")
+    local btnExport = AddSelectableButton(row:AddCell(), "Export As Material##" .. self.MaterialName, function (sel)
+        self.Editor:ExportToLSXAsMaterial(finalPath)
     end)
 
     local btnExportAsPreset = AddSelectableButton(row:AddCell(), "Export As Preset##" .. self.MaterialName, function (sel)
-        self.Editor:ExportToLSXAsMaterialPreset("SOMETHING")
+        self.Editor:ExportToLSXAsMaterialPreset(finalPath)
     end)
 
 end

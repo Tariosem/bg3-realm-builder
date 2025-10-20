@@ -1,3 +1,4 @@
+--- @class IconBrowser
 IconBrowser = _Class("IconBrowser")
 
 --- @class IconsBrowser

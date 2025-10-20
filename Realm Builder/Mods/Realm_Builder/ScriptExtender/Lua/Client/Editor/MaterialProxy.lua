@@ -19,11 +19,18 @@ MaterialProxy = {}
 MaterialProxy.__index = MaterialProxy
 
 --- @class MaterialPresetProxy : MaterialProxy
---- @field new fun(materialPresetName: GUIDSTRING): MaterialPresetProxy|nil
+--- @field new fun(materialPresetName: GUIDSTRING?): MaterialPresetProxy|nil
 --- @field GetResource fun(self): ResourceMaterialPresetResource
 MaterialPresetProxy = {}
 MaterialPresetProxy.__index = MaterialPresetProxy
 setmetatable(MaterialPresetProxy, {__index = MaterialProxy})
+
+--- @class ParametersSetProxy : MaterialProxy
+--- @field new fun(paramSetName: MaterialParametersSet?): ParametersSetProxy|nil
+ParametersSetProxy = {}
+ParametersSetProxy.__index = ParametersSetProxy
+setmetatable(ParametersSetProxy, {__index = MaterialProxy})
+
 
 PropTypeToFunc = {
     [1] = "SetScalar",
@@ -70,6 +77,52 @@ function MaterialProxy.new(materialName)
     end
 
     return nil
+end
+
+function MaterialProxy:__init(materialName)
+    local res = Ext.Resource.Get(materialName, "Material") --[[@as ResourceMaterialResource]]
+    if not res then
+        Error("MaterialProxy: Could not find material: " .. tostring(materialName))
+        return
+    end
+
+    self.Material = materialName
+    self.MaterialType = res.MaterialType
+    self.SourceFile = res.SourceFile
+    self.TypeRefs = {}
+    self.IndexRefs = {}
+    self.BaseValues = {}
+    self.Parameters = {
+        [1] = {}, -- ScalarParameters
+        [2] = {}, -- Vector2Parameters
+        [3] = {}, -- Vector3Parameters
+        [4] = {}, -- VectorParameters
+    }
+    local params = {
+        res.ScalarParameters,
+        res.Vector2Parameters,
+        res.Vector3Parameters,
+        res.VectorParameters
+    }
+
+    for i=1,4 do
+        self.BaseValues[i] = {}
+    end
+
+    for num, paramList in pairs(params) do
+        self.IndexRefs[num] = {}
+        for i, param in pairs(paramList) do
+            local value = type(param.Value) == "number" and {param.Value} or param.Value --[[@as number[] ]]
+            if self.Parameters[num][param.ParameterName] then
+                Warning("MaterialProxy: Duplicate material parameter name '" .. param.ParameterName .. "' in material '" .. materialName .. "'. Overwriting previous value.")
+            end
+            self.TypeRefs[param.ParameterName] = num -- so I just assume that parameter names are unique
+            self.IndexRefs[num][param.ParameterName] = i
+            self.Parameters[num][param.ParameterName] = value
+            self.BaseValues[num][param.ParameterName] = value
+        end
+    end
+
 end
 
 function MaterialPresetProxy.new(materialPresetName)
@@ -126,6 +179,7 @@ function MaterialPresetProxy:__init(materialPresetName)
     for i=1,4 do
         self.Parameters[i] = {}
         self.BaseValues[i] = {}
+        self.IndexRefs[i] = {}
     end
 
     for num, paramList in pairs(params) do
@@ -134,6 +188,7 @@ function MaterialPresetProxy:__init(materialPresetName)
             local parameterName = param.Parameter
             local value = type(param.Value) == "number" and {param.Value} or param.Value --[[@as number[] ]]
             if self.Parameters[num][parameterName] then
+                _D(params)
                 Warning("MaterialPresetProxy: Duplicate material parameter name '" .. parameterName .. "' in material preset '" .. materialPresetName .. "'. Overwriting previous value.")
             end
 
@@ -146,16 +201,26 @@ function MaterialPresetProxy:__init(materialPresetName)
     end
 end
 
-function MaterialProxy:__init(materialName)
-    local res = Ext.Resource.Get(materialName, "Material") --[[@as ResourceMaterialResource]]
-    if not res then
-        Error("MaterialProxy: Could not find material: " .. tostring(materialName))
+function ParametersSetProxy.new(paramSet)
+    if not paramSet then return nil end
+
+    if materialProxies[paramSet] then
+        return materialProxies[paramSet]
+    end
+
+    local mP = setmetatable({}, ParametersSetProxy) --[[@as ParametersSetProxy]]
+    mP:__init(paramSet)
+
+    return mP
+end
+
+---@param paramSet MaterialParametersSet
+function ParametersSetProxy:__init(paramSet)
+    if not paramSet then
+        Error("ParameterSetProxy: Could not find parameter set: " .. tostring(paramSet))
         return
     end
 
-    self.Material = materialName
-    self.MaterialType = res.MaterialType
-    self.SourceFile = res.SourceFile
     self.TypeRefs = {}
     self.IndexRefs = {}
     self.BaseValues = {}
@@ -165,31 +230,55 @@ function MaterialProxy:__init(materialName)
         [3] = {}, -- Vector3Parameters
         [4] = {}, -- VectorParameters
     }
-    local params = {
-        res.ScalarParameters,
-        res.Vector2Parameters,
-        res.Vector3Parameters,
-        res.VectorParameters
-    }
 
     for i=1,4 do
+        self.Parameters[i] = {}
         self.BaseValues[i] = {}
+        self.IndexRefs[i] = {}
     end
+
+    local params = {
+        paramSet.ScalarParameters,
+        paramSet.Vector2Parameters,
+        paramSet.Vector3Parameters,
+        paramSet.VectorParameters
+    }
 
     for num, paramList in pairs(params) do
-        self.IndexRefs[num] = {}
         for i, param in pairs(paramList) do
+            local parameterName = param.ParameterName
             local value = type(param.Value) == "number" and {param.Value} or param.Value --[[@as number[] ]]
-            if self.Parameters[num][param.ParameterName] then
-                Warning("MaterialProxy: Duplicate material parameter name '" .. param.ParameterName .. "' in material '" .. materialName .. "'. Overwriting previous value.")
+            if self.Parameters[num][parameterName] then
+                Warning("ParameterSetProxy: Duplicate material parameter name '" .. parameterName .. "' in parameter set. Overwriting previous value.")
             end
-            self.TypeRefs[param.ParameterName] = num -- so I just assume that parameter names are unique
-            self.IndexRefs[num][param.ParameterName] = i
-            self.Parameters[num][param.ParameterName] = value
-            self.BaseValues[num][param.ParameterName] = value
+
+            self.TypeRefs[parameterName] = num
+            self.IndexRefs[num][parameterName] = i
+            self.Parameters[num][parameterName] = value
+            self.BaseValues[num][parameterName] = value
+            ::continue::
         end
     end
+end
 
+function ParametersSetProxy:GetParameter(paramName)
+    local typeRef = self.TypeRefs[paramName]
+    if not typeRef then
+        return nil
+    end
+
+    local indexRef = self.IndexRefs[typeRef][paramName]
+    if not indexRef then
+        return nil
+    end
+
+    local param = nil
+    param = self.Parameters[typeRef][paramName]
+    if not param then
+        return nil
+    end
+
+    return param
 end
 
 ---@return ResourceMaterialResource
@@ -386,7 +475,7 @@ function MaterialProxy:GetAllProperties()
     return self.Parameters
 end
 
-function MaterialProxy:GetAllScalarPropertyNames()
+function MaterialProxy:GetAllScalarParameterNames()
     local scalars = {}
     for propertyName,_ in pairs(self.IndexRefs[1]) do
         table.insert(scalars, propertyName)
@@ -395,7 +484,7 @@ function MaterialProxy:GetAllScalarPropertyNames()
     return scalars
 end
 
-function MaterialProxy:GetAllVector2PropertyNames()
+function MaterialProxy:GetAllVector2ParameterNames()
     local vec2s = {}
     for propertyName,_ in pairs(self.IndexRefs[2]) do
         table.insert(vec2s, propertyName)
@@ -404,7 +493,7 @@ function MaterialProxy:GetAllVector2PropertyNames()
     return vec2s
 end
 
-function MaterialProxy:GetAllVector3PropertyNames()
+function MaterialProxy:GetAllVector3ParameterNames()
     local vec3s = {}
     for propertyName,_ in pairs(self.IndexRefs[3]) do
         table.insert(vec3s, propertyName)
@@ -413,7 +502,7 @@ function MaterialProxy:GetAllVector3PropertyNames()
     return vec3s
 end
 
-function MaterialProxy:GetAllVector4PropertyNames()
+function MaterialProxy:GetAllVector4ParameterNames()
     local vec4s = {}
     for propertyName,_ in pairs(self.IndexRefs[4]) do
         table.insert(vec4s, propertyName)

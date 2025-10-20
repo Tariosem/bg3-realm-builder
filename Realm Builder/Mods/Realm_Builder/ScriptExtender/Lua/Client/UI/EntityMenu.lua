@@ -1,8 +1,8 @@
---- @class EntityMenu
+--- @class SceneMenu
 --- @field entityTabs table<string, EntityTab>
-EntityMenu = _Class("EntityMenu")
+SceneMenu = _Class("EntityMenu")
 
-function EntityMenu:__init(parent)
+function SceneMenu:__init(parent)
     self.parent = parent
     
     self.isAttach = true
@@ -15,12 +15,10 @@ function EntityMenu:__init(parent)
     self.isValid = true
     self.selectedGuids = {}
 
-    self.iconBrowser = ItemIconBrowser:Add(RB_ItemManager, GetLoca("Items"))
-    self.iconBrowser.panel.Open = false
     self.entityTabs = {}
 end
 
-function EntityMenu:NewEntityAdded(guids)
+function SceneMenu:NewEntityAdded(guids)
     local list = NormalizeGuidList(guids)
 
     for _, guid in ipairs(list) do
@@ -34,7 +32,7 @@ function EntityMenu:NewEntityAdded(guids)
     self:UpdateList()
 end
 
-function EntityMenu:EntityDeleted(guids)
+function SceneMenu:EntityDeleted(guids)
     local list = NormalizeGuidList(guids)
     Debug("EntityMenu:EntityDeleted", list)
     for _, guid in ipairs(list) do
@@ -50,7 +48,7 @@ function EntityMenu:EntityDeleted(guids)
 end
 
 
-function EntityMenu:Render()
+function SceneMenu:Render()
 
     if self.isAttach and self.parent then
         self.panel = self.parent:AddTabItem("Props")
@@ -70,7 +68,7 @@ function EntityMenu:Render()
     self:RenderMainArea()
 end
 
-function EntityMenu:RenderMenu()
+function SceneMenu:RenderMenu()
     if self.isWindow then
         self.mainMenu = self.panel:AddMainMenu()
         self.debugMenu = self.mainMenu:AddMenu(GetLoca("Debug"))
@@ -106,13 +104,14 @@ function EntityMenu:RenderMenu()
     ApplyDangerSelectableStyle(self.bruteForceDeleteAllButton)
 end
 
-function EntityMenu:RenderSideBar()
+function SceneMenu:RenderSideBar()
     local panel = self.mainPanel.SideBar
     local tree = EntityStore.Tree
 
     local treeList = TreeList.new(panel, "PropsTree", tree, "Guid") --[[@as TreeList]]
 
     local rightClickPopup = panel:AddPopup("PropRightClickPopup") --[[@as ExtuiPopup]]
+    self:SetupSelectablePopup(rightClickPopup)
     self.imageRefs = {}
 
     treeList.OnDetach = function()
@@ -152,8 +151,7 @@ function EntityMenu:RenderSideBar()
         local image = imageGroup:AddImageButton(propData.Guid, icon, IMAGESIZE.TINY) --[[@as ExtuiImageButton]]
 
         local selectable = node:AddSelectable(displayName) --[[@as ExtuiSelectable]]
-        selectable.SameLine = true
-        selectable.SpanAllColumns = false
+        self:SetupLeaf(selectable, key, node)
     
         self.imageRefs[key] = image
         image.Tint = propData.IconTintColor or {1,1,1,1}
@@ -167,27 +165,10 @@ function EntityMenu:RenderSideBar()
             })
             propData.Visible = not propData.Visible
             SetAlphaByBool(image, propData.Visible)
-            SetAlphaByBool(selectable, propData.Visible)
+            SetAlphaByBool(sel.leafRefs[key], propData.Visible)
         end
 
-        selectable.OnRightClick = function()
-            if not TableContains(self.selectedGuids, propData.Guid) then
-                table.insert(self.selectedGuids, propData.Guid)
-            end
-            Debug(self.selectedGuids)
-            self:SetupSelectablePopup(rightClickPopup)
-            rightClickPopup:Open()
-        end
 
-        selectable.OnClick = function()
-            self:FocusTab(key)
-        end
-
-        selectable.UserData = {
-            Others = {
-                image,
-            }
-        }
         SetAlphaByBool(image, propData.Visible)
         SetAlphaByBool(selectable, propData.Visible)
 
@@ -199,50 +180,7 @@ function EntityMenu:RenderSideBar()
 
         local popup = node:AddPopup("TreeRightClickPopup" .. key)
 
-        treeSelectable.OnRightClick = function()
-            popup:Open()
-        end
-
-        popup.UserData = {
-            Others = {}
-        }
-
-        local renameInput = popup:AddInputText("") --[[@as ExtuiInputText]]
-        renameInput.IDContext  = "RenameGroupInput" .. key
-        renameInput.Hint = GetLoca("Enter new group name, or leave empty to ungroup")
-        
-        local renameSub = SubscribeKeyInput({ Key = "RETURN" }, function (e)
-            local ok, focused = pcall(IsFocused, renameInput)
-            if not ok then return UNSUBSCRIBE_SYMBOL end
-
-            if focused then
-                local newName = renameInput.Text
-                if newName == "" then
-                    tree:RemoveButKeepChildren(key)
-                    self.propTreeList:ClearSelection()
-                    self.selectedGuids = {}
-                    self:UpdateList()
-                    return UNSUBSCRIBE_SYMBOL
-                end
-                if newName and newName ~= key then
-                    if tree:Find(newName) then
-                        Warning("Group with name '" .. newName .. "' already exists.")
-                    else
-                        tree:Rename(key, newName)
-                        if sel.collapsedTree[key] then
-                            sel.collapsedTree[newName] = sel.collapsedTree[key]
-                            sel.collapsedTree[key] = nil
-                        end
-
-                        self.propTreeList:ClearSelection()
-                        self.selectedGuids = {}
-                        self:UpdateList()
-                    end
-                end
-
-                return UNSUBSCRIBE_SYMBOL
-            end
-        end)
+        self:SetupTree(treeSelectable, key, node)
 
         return treeSelectable
     end
@@ -279,7 +217,207 @@ function EntityMenu:RenderSideBar()
     self.propTreeList = treeList   
 end
 
-function EntityMenu:GroupLogic(from, target)
+function SceneMenu:SetupLeaf(sel, key, node)
+    local selectable = sel
+
+    selectable.SameLine = true
+    selectable.SpanAllColumns = false
+
+    local propData = EntityStore:GetEntity(key) --[[@as EntityData]]
+    selectable.OnRightClick = function()
+        if not TableContains(self.selectedGuids, propData.Guid) then
+            table.insert(self.selectedGuids, propData.Guid)
+        end
+        Debug(self.selectedGuids)
+        self:SetupSelectablePopup()
+    end
+
+    local doubleClickLastTime = 0
+    local clickTimer = nil
+    local doubleClickThreshold = 300
+
+    selectable.OnClick = function()
+        local currentTime = Ext.Timer.MonotonicTime()
+        Debug("Selectable clicked at time:", currentTime)
+        if currentTime - doubleClickLastTime <= doubleClickThreshold then
+            if self.IsRenaming then return end
+            if clickTimer then
+                Timer:Cancel(clickTimer)
+                clickTimer = nil
+            end
+            selectable:Destroy()
+            self.propTreeList.leafRefs[key] = nil
+            Debug("Double click detected for key:", key)
+            self:SetupRenameInput(node, key)
+        else
+            clickTimer = Timer:After(doubleClickThreshold, function()
+                self:FocusTab(key)
+            end)
+        end
+        doubleClickLastTime = currentTime
+    end
+
+    self.propTreeList.leafRefs[key] = selectable
+end
+
+function SceneMenu:SetupTree(sel, key, node)
+    local selectable = sel
+
+    local doubleClickLastTime = 0
+    local clickTimer = nil
+    local doubleClickThreshold = 300
+    
+    selectable.OnClick = function()
+        local currentTime = Ext.Timer.MonotonicTime()
+        Debug("Selectable clicked at time:", currentTime)
+        if currentTime - doubleClickLastTime <= doubleClickThreshold then
+            if clickTimer then
+                Timer:Cancel(clickTimer)
+                clickTimer = nil
+            end
+            Debug("Double click detected for tree key:", key)
+            selectable:Destroy()
+            self.propTreeList.treeRefs[key] = nil
+            self:SetupCollectionRenameInput(node, key)
+        else
+        end
+        doubleClickLastTime = currentTime
+    end
+
+    self.propTreeList.treeRefs[key] = selectable
+end
+
+function SceneMenu:SetupCollectionRenameInput(node, key)
+    self.IsRenaming = true
+    local input = node:AddInputText("",  key) --[[@as ExtuiInputText]]
+    input.SameLine = true
+
+    local function tryToRename(newName)
+        if newName and newName ~= key then
+            EntityStore.Tree:Rename(key, newName)
+
+            self.propTreeList.leafRefs[key] = nil
+            self:UpdateList()
+        end
+    end
+
+    Timer:After(1000, function (timerID)
+        local focusTimer = Timer:EveryFrame(function (timerID)
+            local ok, focused = pcall(IsFocused, input)
+            if not ok then
+                local tryToDestroy = function()
+                    if input and not input.Destroyed then
+                        input:Destroy()
+                        local newSelectable = node:AddSelectable(key) --[[@as ExtuiSelectable]]
+                        self:SetupTree(newSelectable, key, node)
+                    end
+                end
+                pcall(tryToDestroy)
+                return UNSUBSCRIBE_SYMBOL
+            end
+
+            if not focused then
+                local newName = input.Text
+
+                input:Destroy()
+
+                tryToRename(newName)
+
+                return UNSUBSCRIBE_SYMBOL
+            end
+        end)
+    end)
+
+    local enterSub = SubscribeKeyInput({ Key = "RETURN" }, function (e)
+        local ok, focused = pcall(IsFocused, input)
+        if not ok then return UNSUBSCRIBE_SYMBOL end
+
+        if focused then
+            local newName = input.Text
+            
+            input:Destroy()
+
+            tryToRename(newName)
+
+            return UNSUBSCRIBE_SYMBOL
+        end
+    end)
+end
+
+function SceneMenu:SetupRenameInput(node, key)
+    self.IsRenaming = true
+    local propData = EntityStore:GetEntity(key) --[[@as EntityData]]
+    local input = node:AddInputText("",  propData.DisplayName) --[[@as ExtuiInputText]]
+    input.SameLine = true
+
+    local function tryToRename(newName)
+        if newName and newName ~= propData.DisplayName then
+            EntityStore:RegisterDisplayName(newName, propData.Guid, propData.DisplayName)
+
+            if self.entityTabs[key] then
+                local tab = self.entityTabs[key]
+                if tab.isVisible then
+                    tab:Refresh()
+                end
+            end
+
+            self.propTreeList.leafRefs[key] = nil
+            self:UpdateList()
+        end
+    end
+
+    Timer:After(1000, function (timerID)
+        local focusTimer = Timer:EveryFrame(function (timerID)
+            local ok, focused = pcall(IsFocused, input)
+            if not ok then
+                local tryToDestroy = function()
+                    if input and not input.Destroyed then
+                        input:Destroy()
+                        local newSelectable = node:AddSelectable( propData.DisplayName) --[[@as ExtuiSelectable]]
+                        self:SetupLeaf(newSelectable, key, node)
+                    end
+                end
+                pcall(tryToDestroy)
+                return UNSUBSCRIBE_SYMBOL
+            end
+
+            if not focused then
+                local newName = input.Text
+
+                input:Destroy()
+
+                tryToRename(newName)
+
+                local newSelectable = node:AddSelectable(propData.DisplayName) --[[@as ExtuiSelectable]]
+
+                self:SetupLeaf(newSelectable, key, node)
+                self.propTreeList:SetUpLeaf(newSelectable, key, node)
+
+
+                return UNSUBSCRIBE_SYMBOL
+            end
+        end)
+    end)
+        
+
+    local enterSub = SubscribeKeyInput({ Key = "RETURN" }, function (e)
+        local ok, focused = pcall(IsFocused, input)
+        if not ok then return UNSUBSCRIBE_SYMBOL end
+
+        if focused then
+            local newName = input.Text
+
+            input:Destroy()
+
+            tryToRename(newName)
+
+            return UNSUBSCRIBE_SYMBOL
+        end
+    end)
+
+end
+
+function SceneMenu:GroupLogic(from, target)
     if not from or not target or from == target then
         return
     end
@@ -316,12 +454,14 @@ function EntityMenu:GroupLogic(from, target)
     self:UpdateList()
 end
 
-function EntityMenu:SetupSelectablePopup(popup)
-    if popup and popup.UserData then
-        for _, obj in pairs(popup.UserData.Others) do
-            obj:Destroy()
-        end
+function SceneMenu:SetupSelectablePopup(popup)
+    if not popup and not self.EntityPopup then
+        Warning("SceneMenu:SetupSelectablePopup: Invalid popup")
+        return
     end
+    if self.EntityPopup then self.EntityPopup:Open() return end
+
+    self.EntityPopup = popup or self.EntityPopup
     local tree = EntityStore.Tree
 
     local ttable = popup:AddTable("PropRightClickPopupTable", 1) --[[@as ExtuiTable]]
@@ -405,20 +545,19 @@ function EntityMenu:SetupSelectablePopup(popup)
         end
     end)
 
-    popup.UserData = {
-        Others = {
-            ttable
-        }
-    }
 end
 
-function EntityMenu:RenderMainArea()
+function SceneMenu:SetupCollectionSelectablePopup(popup)
+    -- TBD
+end
+
+function SceneMenu:RenderMainArea()
     local panel = self.mainPanel.MainArea
 
     self.mainArea = panel
 end
 
-function EntityMenu:CreateEntityTab(ent, opts)
+function SceneMenu:CreateEntityTab(ent, opts)
     --self.props[prop.Guid] = prop
 
     local entityTab = nil
@@ -430,15 +569,8 @@ function EntityMenu:CreateEntityTab(ent, opts)
     end
 
     if entityTab then
-        entityTab.OnChange = function(changeLib)
+        entityTab.OnChange = function()
             if not entityTab.isValid then return end
-
-            if self.iconBrowser and changeLib then
-                if self.iconBrowser.updateTagsFn and self.iconBrowser.updateTagsFn[TakeTailTemplate(entityTab.templateId)] then
-                    self.iconBrowser.updateTagsFn[TakeTailTemplate(entityTab.templateId)]()
-                end
-                self.iconBrowser:AddTagsFilter()
-            end
 
             if self.imageRefs and self.imageRefs[ent.Guid] then
                 self.imageRefs[ent.Guid].Tint = EntityStore[ent.Guid].IconTintColor or {1,1,1,1}
@@ -462,7 +594,7 @@ function EntityMenu:CreateEntityTab(ent, opts)
     return nil
 end
 
-function EntityMenu:FocusTab(guid, doDetach)
+function SceneMenu:FocusTab(guid, doDetach)
     local entityTab = self.entityTabs[guid]
     if guid == self.presentingProp and entityTab.isVisible == false then
         self.presentingProp = nil
@@ -490,7 +622,7 @@ function EntityMenu:FocusTab(guid, doDetach)
     end
 end
 
-function EntityMenu:FocusEntityVisualTab(guid)
+function SceneMenu:FocusEntityVisualTab(guid)
     local entityTab = self.entityTabs[guid]
     if entityTab and entityTab.isValid then
 
@@ -505,12 +637,12 @@ function EntityMenu:FocusEntityVisualTab(guid)
     end
 end
 
-function EntityMenu:UpdateList()
+function SceneMenu:UpdateList()
     self.propTreeList:RenderList()
 end
 
-function EntityMenu:Add(parent)
-    local menu = EntityMenu.new(parent)
+function SceneMenu:Add(parent)
+    local menu = SceneMenu.new(parent)
     menu:Render()
     return menu
 end

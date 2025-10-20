@@ -1,3 +1,4 @@
+--- @class ItemIconBrowser : IconBrowser
 ItemIconBrowser = _Class("ItemIconBrowser", IconBrowser)
 
 function ItemIconBrowser:GetConfig()
@@ -511,8 +512,7 @@ function ItemIconBrowser:RenderItemSpawnTab(popup, iconImage, entry)
     end
 end
 
-function ItemIconBrowser:Add(Lib, searchData, DisplayName)
-    local instance = ItemIconBrowser.new(Lib, searchData, DisplayName)
-    instance:Render()
+function ItemIconBrowser.Add(Lib, DisplayName)
+    local instance = ItemIconBrowser.new(Lib, DisplayName)
     return instance
 end

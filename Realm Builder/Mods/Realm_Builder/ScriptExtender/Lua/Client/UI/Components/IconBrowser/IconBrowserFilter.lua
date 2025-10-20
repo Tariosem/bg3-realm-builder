@@ -128,7 +128,10 @@ function IconBrowser:AddTagsFilter()
     end
 
     self.tagsFilterElements = {}
-    self.tagsFilterOpenButton = self.tagsFilterOpenButton or self.topMenuBar:AddMenu("Tags Filter >")
+    self.tagsFilterOpenButton = self.tagsFilterOpenButton and self.topMenuBar:AddMenu("Tags Filter >")
+    if not self.tagsFilterOpenButton then
+        self.tagsFilterOpenButton = self.topMenuBar:AddMenu("Tags Filter >")
+    end
 
     self.tagsFilter = self.tagsFilter or self:SetupTagFilterWindow()
 

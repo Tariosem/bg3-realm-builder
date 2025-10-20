@@ -34,17 +34,18 @@ function RegisterWindow(guid, displayName, iType, instance, pos, size)
         size = {screenWidth * 0.2, screenHeight * 0.6}
     end
 
-    local basename = displayName .. " - " .. iType
+    local basename = displayName .. "##" .. guid .. "-" .. iType
     local finalname = basename
 
     for _, win in ipairs(WindowMap[guid]) do
         if win.isValid and win.finalName == finalname then
+            Debug("[Window] Window with name " .. finalname .. " already exists for GUID: " .. guid .. ", deleting existing window.")
             DeleteWindow(win.window)
         end
     end
 
     --- @type ExtuiWindow
-    local windowHandle = Ext.IMGUI.NewWindow(finalname .. "##" .. guid)
+    local windowHandle = Ext.IMGUI.NewWindow(finalname, false)
 
     if WindowMap[guid] == nil then
         WindowMap[guid] = {}

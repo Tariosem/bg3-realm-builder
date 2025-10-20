@@ -269,6 +269,7 @@ end
 function Gizmo:DeleteItem()
     local guid = self.Guid
     --Debug("Gizmo:DeleteItem", guid)
+    self:StopListeners()
     NetChannel.Delete:SendToServer({ Guid = guid })
     self.Guid = nil
 end

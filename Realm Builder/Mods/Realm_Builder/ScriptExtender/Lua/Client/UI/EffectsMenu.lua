@@ -9,8 +9,6 @@ function EffectsMenu:__init(parent)
     self.panel = nil
     self.parent = parent or nil
     self.customEffects = {}
-    self.iconBrowser = EffectIconBrowser:Add(RB_MultiEffectManager, GetLoca("Effects"))
-    self.iconBrowser.panel.Open = false
     self.customEffectsTabs = {}
     self.isVisible = false
     self.isAttach = true
@@ -118,36 +116,12 @@ function EffectsMenu:Render()
 
     self.topRow = topTable:AddRow()
 
-    local browserButton = self.topRow:AddCell():AddButton(GetLoca("Effects Browser"))
-
-    ApplyInfoButtonStyle(browserButton)
     self.detachButtonContainer = self.topRow:AddCell()
     self.detachButton = nil
     if self.isAttach then
         self.detachButton = self.detachButtonContainer:AddButton(GetLoca("Detach"))
     else
         self.detachButton = self.detachButtonContainer:AddButton(GetLoca("Attach"))
-    end
-
-    browserButton.OnClick = function()
-        if self.iconBrowser then
-            self.iconBrowser.panel.Open = not self.iconBrowser.panel.Open
-        else
-            if next(RB_MultiEffectManager.Data) == nil then
-                Error("[Effects Menu] MultiEffectsSearchData is empty, can't open browser")
-                return
-            end
-            self.iconBrowser = EffectIconBrowser:Add(RB_MultiEffectManager, GetLoca("Effects"))
-        end
-    end
-
-    browserButton.OnRightClick = function()
-        if self.iconBrowser then
-            self.iconBrowser:Destroy()
-            self.iconBrowser = nil
-        end
-
-        self.iconBrowser = EffectIconBrowser:Add(RB_MultiEffectManager, GetLoca("Effects"))
     end
 
     self.detachButton.OnClick = function()

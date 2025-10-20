@@ -1,4 +1,5 @@
 --- @class MultiEffectManager:ManagerBase
+--- @field new fun():MultiEffectManager
 MultiEffectManager = _Class("MultiEffectManager", ManagerBase)
 function MultiEffectManager:__init()
     ManagerBase.__init(self)
