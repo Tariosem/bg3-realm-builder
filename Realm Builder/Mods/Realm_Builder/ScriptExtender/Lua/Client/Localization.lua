@@ -1,3 +1,14 @@
+---@return string
+function MakeTranslatedHandle()
+    local template = "hxxxxxxxxgxxxxgxxxxgxxxxgxxxxxxxxxxx"
+    local handle = template:gsub("x", function()
+        return string.format("%x", math.random(0, 15))
+    end)
+
+    return handle
+end
+
+
 local StringToHandle = {}
 
 local unseenStrings = {}
@@ -24,12 +35,19 @@ local function ExportUnseenStrings()
         table.insert(toSave, str)
     end
 
-    local filePath = GetLocalizationPath()
-    Ext.IO.SaveFile(filePath, Ext.Json.Stringify(toSave))
-    print("Saved " .. #toSave .. " unseen strings to " .. filePath)
+    local xmlString = LSXHelpers.GenerateLocalization(toSave, 1)
+
+    local path = "Realm_Builder/Mods/Realm_Builder/Localization/UnseenStrings.lsx"
+    local suc = Ext.IO.SaveFile(path, xmlString)
+
+    if not suc then
+        Error("ExportUnseenStrings: Failed to save unseen strings LSX file at " .. path)
+        return nil
+    end
+
+    return suc
 end
 
-local function LoadStringHandles()
-    
-
-end
+Ext.RegisterConsoleCommand("rb_export_unseen_strings", function()
+    ExportUnseenStrings()
+end)

@@ -291,11 +291,14 @@ end
 function KeybindManager:Load(data)
     for module, events in pairs(data) do
         for eventName, keyInfo in pairs(events) do
-            if not self:Bind(module, eventName, keyInfo.Key, keyInfo.Modifiers) then
-                self:Rebind(module, eventName, keyInfo.Key, keyInfo.Modifiers)
-            end
+            self:ForceBindTo(module, eventName, keyInfo.Key, keyInfo.Modifiers)
         end
     end
+end
+
+function KeybindManager:ForceBindTo(module, eventName, key, modifiers)
+    self:Unbind(module, eventName)
+    self:Bind(module, eventName, key, modifiers)
 end
 
 function KeybindManager:SaveToFile()
@@ -345,7 +348,7 @@ end
 --- @field Unregister fun(self:KeybindModule, eventName:string)
 --- @field Bind fun(self:KeybindModule, eventName:string, key:SDLScanCode, modifiers:SDLKeyModifier?)
 --- @field Unbind fun(self:KeybindModule, eventName:string)
---- @field Rebind fun(self:KeybindModule, eventName:string, newKey:SDLScanCode, newModifiers:SDLKeyModifier[]?)
+--- @field Rebind fun(self:KeybindModule, eventName:string, newKey:SimplifiedInputCode, newModifiers:SDLKeyModifier[]?)
 --- @field RebindByInput fun(self:KeybindModule, eventName:string, callback:fun(e:Keybinding, conflictModule:string?, conflictEvent:string?)?)
 --- @field GetEvents fun(self:KeybindModule):table<string, KeybindRegistry>
 --- @field GetEvent fun(self:KeybindModule, eventName:string):KeybindRegistry|nil
@@ -380,7 +383,7 @@ RegisterOnSessionLoaded(function()
 end)
 
 
-Ext.RegisterConsoleCommand("DumpKBS", function()
+Ext.RegisterConsoleCommand("rb_dump_keybinds", function()
     local bindings = KeybindManager:GetAllBindings()
     for _, binding in ipairs(bindings) do
         print(string.format("%s:%s => %s", binding.Module, binding.EventName, binding.Identifier))

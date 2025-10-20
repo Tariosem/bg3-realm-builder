@@ -2,6 +2,25 @@ MATERIALPRESET_DRAGDROP_TYPE = "MaterialPreset"
 
 MaterialPresetsMenu = MaterialPresetsMenu or {}
 
+local function colorPresetComparator(a,b)
+    local aR, aG, aB = a.UIColor[1], a.UIColor[2], a.UIColor[3]
+    local bR, bG, bB = b.UIColor[1], b.UIColor[2], b.UIColor[3]
+    local aH, aS, aV = RGBtoHSV(aR, aG, aB)
+    local bH, bS, bV = RGBtoHSV(bR, bG, bB)
+
+    if aH ~= bH then
+        return aH < bH
+    elseif aS ~= bS then
+        return aS < bS
+    elseif aV ~= bV then
+        return aV < bV
+    else
+        local aName = a.DisplayName and a.DisplayName:Get() or ""
+        local bName = b.DisplayName and b.DisplayName:Get() or ""
+        return aName < bName
+    end
+end
+
 function MaterialPresetsMenu:Render()
     if self.Visible then return end
 
@@ -25,8 +44,32 @@ function MaterialPresetsMenu:RenderPresetsList()
 end
 
 function MaterialPresetsMenu:RenderCustomMaterialPresets(header)
-    
+    local cT = AddCollapsingTable(header, nil, "Recent", { CollapseDirection = "Right" })
+    cT.Table.BordersInnerV = true
 
+    local mainList = cT.MainArea
+    local workshopList = cT.SideBar
+
+    local mainWindow = mainList:AddChildWindow("MainMaterialPresets")
+    local mainTable = mainWindow:AddTable("MaterialPresets", 10)
+
+    local namePrior = false
+    local Comparator = function(a,b)
+        if namePrior then
+            local aName = a.DisplayName or ""
+            local bName = b.DisplayName or ""
+            return aName < bName
+        end
+
+        return colorPresetComparator(a,b)
+    end
+
+
+
+
+end
+
+function MaterialPresetsMenu:SetupWorklist()
 
 end
 
@@ -53,11 +96,6 @@ function MaterialPresetsMenu:RenderCCMaterialPresets(header)
     end
 end
 
-function MaterialPresetsMenu:RenderAllMaterialPresets()
-    local header = self.panel:AddCollapsingHeader("All Material Presets")
-
-end
-
 ---@param preset ResourceCharacterCreationColor
 ---@param parent ExtuiTreeParent
 ---@return ExtuiColorEdit
@@ -71,7 +109,10 @@ function MaterialPresetsMenu:RenderPresetColorBox(preset, parent)
     colorBox.DragDropType = MATERIALPRESET_DRAGDROP_TYPE
 
     colorBox.OnDragStart = function (sel)
-        colorBox.DragPreview:AddText(preset.DisplayName and preset.DisplayName:Get() or "Unnamed Preset")
+        local previewColorBox = colorBox.DragPreview:AddColorEdit("##PreviewColorBox")
+        previewColorBox.Color = preset.UIColor
+        previewColorBox.NoInputs = true
+        colorBox.DragPreview:AddText(preset.DisplayName and preset.DisplayName:Get() or "Unnamed Preset").SameLine = true
         if not preset.ResourceUUID then return end
         if sel.UserData then return end
         local presetProxy = MaterialPresetProxy.new(preset.MaterialPresetUUID)
@@ -142,73 +183,85 @@ function MaterialPresetsMenu:RenderCCPresetList(presetName, parent)
         local res = Ext.StaticData.Get(resId, presetName) --[[@as ResourceCharacterCreationColor]]
         table.insert(allRes, res)
     end
-
-
-    table.sort(allRes, function(a,b)
-        local aR, aG, aB = a.UIColor[1], a.UIColor[2], a.UIColor[3]
-        local bR, bG, bB = b.UIColor[1], b.UIColor[2], b.UIColor[3]
-        local aH, aS, aV = RGBtoHSV(aR, aG, aB)
-        local bH, bS, bV = RGBtoHSV(bR, bG, bB)
-        local aName = a.DisplayName and a.DisplayName:Get() or ""
-        local bName = b.DisplayName and b.DisplayName:Get() or ""
-
-        if aH ~= bH then
-            return aH < bH
-        elseif aS ~= bS then
-            return aS < bS
-        elseif aV ~= bV then
-            return aV < bV
-        else
+    local namePrior = false
+    local Comparator = function(a,b)
+        if namePrior then
+            local aName = a.DisplayName and a.DisplayName:Get() or ""
+            local bName = b.DisplayName and b.DisplayName:Get() or ""
             return aName < bName
         end
-    end)
+
+        return colorPresetComparator(a,b)
+    end
+
+    table.sort(allRes, Comparator)
 
     local uuidToCells = {}
-    for _,res in ipairs(allRes) do
-        local cell = row:AddCell()
-        local colorBox = self:RenderPresetColorBox(res, cell)
 
-        colorBox.OnDragEnd = function (sel)
-            Timer:Ticks(1, function()
-                if sel.UserData and sel.UserData.SuccessApply then
-                    -- Add to recent
-                    table.insert(recentQueue, 1, res)
+    local function renderAllResources()
+        for _,res in ipairs(allRes) do
+            local cell = row:AddCell()
+            local colorBox = self:RenderPresetColorBox(res, cell)
 
-                    -- Remove duplicates
-                    local seen = {}
-                    local uniqueRecent = {}
-                    for _,recent in ipairs(recentQueue) do
-                        if not seen[recent.ResourceUUID] then
-                            table.insert(uniqueRecent, recent)
-                            seen[recent.ResourceUUID] = true
+            colorBox.OnDragEnd = function (sel)
+                Timer:Ticks(1, function()
+                    if sel.UserData and sel.UserData.SuccessApply then
+                        -- Add to recent
+                        table.insert(recentQueue, 1, res)
+
+                        -- Remove duplicates
+                        local seen = {}
+                        local uniqueRecent = {}
+                        for _,recent in ipairs(recentQueue) do
+                            if not seen[recent.ResourceUUID] then
+                                table.insert(uniqueRecent, recent)
+                                seen[recent.ResourceUUID] = true
+                            end
+                        end
+                        recentQueue = uniqueRecent
+
+                        -- Trim to maxRecent
+                        while #recentQueue > maxRecent do
+                            table.remove(recentQueue, #recentQueue)
+                        end
+
+                        -- Refresh
+                        recentTable:Destroy()
+                        recentTable = recentList:AddTable("RecentCCPresets", 4)
+                        recentRow = recentTable:AddRow()
+                        for _,recent in ipairs(recentQueue) do
+                            local recentCell = recentRow:AddCell()
+                            self:RenderPresetColorBox(recent, recentCell)
                         end
                     end
-                    recentQueue = uniqueRecent
 
-                    -- Trim to maxRecent
-                    while #recentQueue > maxRecent do
-                        table.remove(recentQueue, #recentQueue)
-                    end
+                    sel.UserData.SuccessApply = false
+                end)
+            end
 
-                    -- Re-render recent list
-                    recentTable:Destroy()
-                    recentTable = recentList:AddTable("RecentCCPresets", 4)
-                    recentRow = recentTable:AddRow()
-                    for _,recent in ipairs(recentQueue) do
-                        local recentCell = recentRow:AddCell()
-                        self:RenderPresetColorBox(recent, recentCell)
-                    end
-                end
-
-                sel.UserData.SuccessApply = false
-            end)
+            uuidToCells[res.ResourceUUID] = cell
         end
+    end
 
-        uuidToCells[res.ResourceUUID] = cell
+    renderAllResources()
+
+    local sortButton = leftSearchCell:AddButton("Hue##CCPresetSort")
+    local stooltip = sortButton:Tooltip():AddText("Sort presets by Hue")
+
+    sortButton.OnClick = function ()
+        uuidToCells = {}
+        namePrior = not namePrior
+        table.sort(allRes, Comparator)
+        row:Destroy()
+        row = mainTable:AddRow()
+        renderAllResources()
+        stooltip.Label = namePrior and "Sort presets by Name" or "Sort presets by Hue"
+        sortButton.Label = namePrior and "Name##CCPresetSort" or "Hue##CCPresetSort"
     end
 
     local searchInput = leftSearchCell:AddInputText("##CCPresetSearch")
     searchInput.Hint = "Search Presets..."
+    searchInput.SameLine = true
 
     local debounceTimer = nil
 
@@ -279,6 +332,11 @@ function MaterialPresetsMenu:RenderCCPresetList(presetName, parent)
         mainTable.Columns = math.floor(cols)
     end
 
+    Timer:Ticks(10, function ()
+        cT.OnWidthChange()
+    end)
+
 end
+
 
 MaterialPresetsMenu:Render()

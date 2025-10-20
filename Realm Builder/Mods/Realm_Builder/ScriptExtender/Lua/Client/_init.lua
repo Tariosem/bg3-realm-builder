@@ -132,13 +132,8 @@ end
 
 RegisterOnSessionLoaded(Realm_Builder_Population, 0)
 
-PROPTAB_DEBUG_FUNCTION = function(guid, templateId, displayName)
-    local entity = Ext.Entity.Get(guid) --[[@as EntityHandle]]
 
-    _D(entity.Tag)
-end
-
-Ext.RegisterConsoleCommand("OpenTheBloodyGate", function()
+Ext.RegisterConsoleCommand("rb_open_the_bloody_gates", function()
     if GLOBAL_DEBUG_WINDOW then
         GLOBAL_DEBUG_WINDOW.Open = true
     end

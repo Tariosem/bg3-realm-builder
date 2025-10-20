@@ -66,17 +66,10 @@ function MaterialTab:Render()
 
             self.Editor:ApplyParameters(params)
             drop.UserData.SuccessApply = true
-            for key, func in pairs(self.UpdateFuncs) do
-                local newValue = self.Editor:GetParameter(key)
-                if not newValue then goto continue end
-                func(newValue)
-                ::continue::
-            end
+            self:UpdateUIState()
             self.Editor.PresetProxy = drop.UserData.PresetProxy --[[@as MaterialPresetProxy ]]
         end
     end
-
-    local matInstance = self.Editor.Instance()
 
     local params = {
         [1] = self.Editor.ParamSetProxy:GetAllScalarParameterNames(),
@@ -88,91 +81,91 @@ function MaterialTab:Render()
         [1] = "Scalar Parameters",
         [2] = "Vector2 Parameters",
         [3] = "Vector3 Parameters",
-        [4] = "Vector Parameters"
+        [4] = "Vector4 Parameters"
     }
 
+    self.ParamTypeNodeRefs = {}
     self.ParamNodeRefs = {}
     for paramType,propNames in ipairs(params) do
         local propType = indexToDisplay[paramType]
-        if #propNames > 0 then
-            local typeNode = group:AddTree(propType .. "##" .. self.MaterialName)
-            for _,propertyName in ipairs(propNames) do
-                local propertyValue = self.Editor:GetParameter(propertyName)
-                if propertyValue then
-                    local allGroup = typeNode:AddGroup("AllPropertiesGroup##" .. self.MaterialName .. propertyName .. tostring(math.random()))
-                    local propNode = allGroup:AddSelectable("[+] " .. propertyName .. "##" .. self.MaterialName) --[[@as ExtuiSelectable ]]
-                    self.ParamNodeRefs[propertyName] = propNode
-                    local paramgroup = allGroup:AddGroup("PropertyGroup##" .. self.MaterialName .. propertyName .. tostring(math.random()))
-                    paramgroup.Visible = false
+        if #propNames < 1 then goto continue end
 
-                    propNode.OnHoverEnter = function ()
-                        propertyValue = self.Editor:GetParameter(propertyName) --[[@as number[] ]]
+        local typeNode = group:AddTree(propType .. "##" .. self.MaterialName)
+        self.ParamTypeNodeRefs[paramType] = typeNode
+        for _,propertyName in ipairs(propNames) do
+            local allGroup = typeNode:AddGroup("AllPropertiesGroup##" .. self.MaterialName .. propertyName .. tostring(math.random()))
+            local propNode = allGroup:AddSelectable("[+] " .. propertyName .. "##" .. self.MaterialName) --[[@as ExtuiSelectable ]]
+            self.ParamNodeRefs[propertyName] = propNode
+            local paramgroup = allGroup:AddGroup("PropertyGroup##" .. self.MaterialName .. propertyName .. tostring(math.random()))
+            paramgroup.Visible = false
 
-                        self:RenderProperty(paramgroup, propertyName, propertyValue)
-                        propNode.OnHoverEnter = function ()
-                            propNode.Highlight = self.Editor:HasChanged(propertyName) and true or false
-                            typeNode.Framed = self.Editor:HasChangeInType(paramType)
+            propNode.OnHoverEnter = function ()
+                local paramValue = self.Editor:GetParameter(propertyName) --[[@as number[] ]]
+
+                self:RenderProperty(paramgroup, propertyName, paramValue)
+                propNode.OnHoverEnter = function ()
+                    propNode.Highlight = self.Editor:HasChanged(propertyName) and true or false
+                    typeNode.Framed = self.Editor:HasChangeInType(paramType)
+                end
+            end
+
+            propNode.OnClick = function (sel)
+                propNode.Selected = false
+                paramgroup.Visible = not paramgroup.Visible
+                propNode.Label = (paramgroup.Visible and "[-] " or "[+] ") .. propertyName .. "##" .. self.MaterialName
+            end
+
+            propNode.UserData = {
+                MaterialProxy = self.Editor,
+                ParameterName = propertyName
+            }
+
+            propNode.CanDrag = true
+            propNode.DragDropType = "ParameterValue"
+
+            propNode.OnDragStart = function (sel)
+                propNode.DragPreview:AddText(propertyName)
+
+                local value = self.Editor:GetParameter(propertyName)
+                if not value then return end
+                if #value >= 3 then
+                    local colorRect = propNode.DragPreview:AddColorEdit("##" .. self.MaterialName .. propertyName)
+                    colorRect.Color = {value[1], value[2], value[3], value[4] or 1}
+                else
+                    for i=1, #value do
+                        value[i] = FormatDecimal(value[i], 2)
+                    end
+                    propNode.DragPreview:AddText("Value: " .. table.concat(value, ", "))
+                end
+
+            end
+
+            propNode.OnDragDrop = function (sel, drop)
+                if drop.UserData and drop.UserData.ParameterName then
+                    local paramName = drop.UserData.ParameterName --[[@as string ]]
+                    local proxy = drop.UserData.MaterialProxy --[[@as MaterialEditor ]]
+                    local newValue = proxy:GetParameter(paramName)
+                    local currentValue = self.Editor:GetParameter(propertyName)
+                    if newValue and currentValue then
+                        if not #newValue == #currentValue then
+                            Error("Cannot drop parameter '" .. paramName .. "' onto parameter '" .. propertyName .. "' due to mismatched sizes.")
+                            return
                         end
+                    else
+                        return -- Invalid parameters
                     end
 
-                    propNode.OnClick = function (sel)
-                        propNode.Selected = false
-                        paramgroup.Visible = not paramgroup.Visible
-                        propNode.Label = (paramgroup.Visible and "[-] " or "[+] ") .. propertyName .. "##" .. self.MaterialName
+                    self.Editor:SetParameter(propertyName, newValue)
+
+                    local updateFunc = self.UpdateFuncs[propertyName]
+                    if updateFunc then
+                        updateFunc(newValue)
                     end
-
-                    propNode.UserData = {
-                        MaterialProxy = self.Editor,
-                        ParameterName = propertyName
-                    }
-
-                    propNode.CanDrag = true
-                    propNode.DragDropType = "ParameterValue"
-
-                    propNode.OnDragStart = function (sel)
-                        propNode.DragPreview:AddText(propertyName)
-
-                        local value = self.Editor:GetParameter(propertyName)
-                        if not value then return end
-                        if #value >= 3 then
-                            local colorRect = propNode.DragPreview:AddColorEdit("##" .. self.MaterialName .. propertyName)
-                            colorRect.Color = {value[1], value[2], value[3], value[4] or 1}
-                        else
-                            for i=1, #value do
-                                value[i] = FormatDecimal(value[i], 2)
-                            end
-                            propNode.DragPreview:AddText("Value: " .. table.concat(value, ", "))
-                        end
-
-                    end
-
-                    propNode.OnDragDrop = function (sel, drop)
-                        if drop.UserData and drop.UserData.ParameterName then
-                            local paramName = drop.UserData.ParameterName --[[@as string ]]
-                            local proxy = drop.UserData.MaterialProxy --[[@as MaterialEditor ]]
-                            local newValue = proxy:GetParameter(paramName)
-                            local currentValue = self.Editor:GetParameter(propertyName)
-                            if newValue and currentValue then
-                                if not #newValue == #currentValue then
-                                    Error("Cannot drop parameter '" .. paramName .. "' onto parameter '" .. propertyName .. "' due to mismatched sizes.")
-                                    return
-                                end
-                            else
-                                return -- Invalid parameters
-                            end
-
-                            self.Editor:SetParameter(propertyName, newValue)
-
-                            local updateFunc = self.UpdateFuncs[propertyName]
-                            if updateFunc then
-                                updateFunc(newValue)
-                            end
-                        end
-                    end
-
                 end
             end
         end
+
+        ::continue::
     end
     
 end
@@ -269,17 +262,30 @@ function MaterialTab:RenderProperty(node, propertyName, propertyValue)
 end
 
 function MaterialTab:ResetAll()
+    self.Editor.PresetProxy = nil
+    self.Editor.Parameters = {
+        [1] = {},
+        [2] = {},
+        [3] = {},
+        [4] = {}
+    }
     self.Editor:ResetAll()
-
-    for _, resetFunc in pairs(self.ResetFuncs) do
-        resetFunc()
-    end
+    
+    self:UpdateUIState()
 end
 
 function MaterialTab:UpdateUIState()
     for key, updateFunc in pairs(self.UpdateFuncs) do
         local newValue = self.Editor:GetParameter(key)
         updateFunc(newValue)
+    end
+
+    for key, propNode in pairs(self.ParamNodeRefs) do
+        propNode.Highlight = self.Editor:HasChanged(key) and true or false
+    end
+
+    for paramType, typeNode in pairs(self.ParamTypeNodeRefs) do
+        typeNode.Framed = self.Editor:HasChangeInType(paramType)
     end
 end
 

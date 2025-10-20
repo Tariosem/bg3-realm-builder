@@ -273,7 +273,7 @@ function SetDebugLevel(level)
     end
 end
 
-Ext.RegisterConsoleCommand("RB_DEBUG_LEVEL", function(cmd, level)
+Ext.RegisterConsoleCommand("rb_debug_level", function(cmd, level)
     if not level or level == "" then
         _P("[Realm Builder] Current debug level: " .. tostring(debugLevels[RB_DEBUG_LEVEL + 1]))
         return
@@ -291,7 +291,7 @@ Ext.RegisterConsoleCommand("RB_DEBUG_LEVEL", function(cmd, level)
 
 end)
 
-Ext.RegisterConsoleCommand("RB_DEBUG_PRINT", function(cmd, ...)
+Ext.RegisterConsoleCommand("rb_test_printer", function(cmd, ...)
     local msg = parse(...)
     local sth = _C():GetAllComponentNames()
     if msg == "" then
@@ -305,7 +305,7 @@ Ext.RegisterConsoleCommand("RB_DEBUG_PRINT", function(cmd, ...)
     Critical(msg or sth)
 end)
 
-Ext.RegisterConsoleCommand("How_many_globals", function()
+Ext.RegisterConsoleCommand("rb_how_many_globals", function()
     local count = 0
     for k, v in pairs(Mods["Realm_Builder"]) do
         _P(" -" .. k)

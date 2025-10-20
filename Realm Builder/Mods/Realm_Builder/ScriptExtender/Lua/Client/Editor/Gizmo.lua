@@ -31,6 +31,11 @@ function Gizmo:__init(editor)
     self.Picker = GizmoPicker.new(self)
     self.Subscription = {}
     self.Timers = {}
+
+    Ext.Events.GameStateChanged:Subscribe(function (e)
+        Debug(e.Name)
+    end)
+
 end
 
 function Gizmo:EmptyDrag()

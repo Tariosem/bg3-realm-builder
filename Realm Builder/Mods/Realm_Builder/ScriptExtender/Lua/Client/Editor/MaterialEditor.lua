@@ -164,15 +164,11 @@ function MaterialEditor:ApplyParameters(parameters)
     if not mat then return false end
 
     for i,params in pairs(parameters) do
+        i = tonumber(i) --[[@as number]]
         for paramName, value in pairs(params) do
-            if not self.ParamSetProxy:GetParameterType(paramName) then
-                --Warning("MaterialEditor: Could not determine parameter type for '" .. tostring(paramName) .. "'. Skipping.")
-                goto continue
-            end
+            if not self.ParamSetProxy:GetParameterType(paramName) then goto continue end
             local applyValue = #value == 1 and value[1] or value
             mat[PropTypeToFunc[#value]](mat, paramName, applyValue)
-            self.Parameters = self.Parameters or {}
-            self.Parameters[i] = self.Parameters[i] or {}
             self.Parameters[i][paramName] = value
             ::continue::
         end
@@ -198,23 +194,15 @@ function MaterialEditor:ResetAll()
         return false
     end
 
-    for ptype,params in pairs(self.Proxy.Parameters) do
-        for paramName,_ in pairs(params) do
-            local value = self.Proxy:GetParameter(paramName)
-            if self.PresetProxy then
-                local presetValue = self.PresetProxy:GetParameter(paramName)
-                if presetValue then
-                    value = presetValue
-                end
-            end
-            if value then
-                local funcName = PropTypeToFunc[#value]
-                local applyValue = #value == 1 and value[1] or value
-                mat[funcName](mat, paramName, applyValue)
+    for ptype,params in pairs(self.ParamSetProxy.Parameters) do
+        for paramName,value in pairs(params) do
+            local funcName = PropTypeToFunc[#value]
+            local applyValue = #value == 1 and value[1] or value
 
-            end
+            mat[funcName](mat, paramName, applyValue)
+
+            self.Parameters[ptype][paramName] = nil
         end
-        self.Parameters[ptype] = {}
     end
 end
 
@@ -326,11 +314,11 @@ local function createPresetParamAttrNodes(parameterName, value)
     end
 
     attrs = {
-        LSXUtils.AttrNode("Color", LSXValueType.bool, parameterName:find("Color") ~= nil or parameterName:find("Colour") ~= nil),
-        LSXUtils.AttrNode("Custom", LSXValueType.bool, false),
-        LSXUtils.AttrNode("Enabled", LSXValueType.bool, true),
-        LSXUtils.AttrNode("Value", valueType, saveValue),
-        LSXUtils.AttrNode("Parameter", LSXValueType.FixedString, parameterName),
+        LSXHelpers.AttrNode("Color", LSXValueType.bool, parameterName:find("Color") ~= nil or parameterName:find("Colour") ~= nil),
+        LSXHelpers.AttrNode("Custom", LSXValueType.bool, false),
+        LSXHelpers.AttrNode("Enabled", LSXValueType.bool, true),
+        LSXHelpers.AttrNode("Value", valueType, saveValue),
+        LSXHelpers.AttrNode("Parameter", LSXValueType.FixedString, parameterName),
     }
     
     return attrs
@@ -357,7 +345,7 @@ end
 
 
 function MaterialEditor:ExportToLSXAsMaterial(path)
-    local root = LSXUtils.new()
+    local root = LSXHelpers.new()
     if not root then
         Error("CustomMaterialProxy: Could not create LSXTableNode for export.")
         return nil
@@ -427,23 +415,23 @@ function MaterialEditor:ExportToLSXAsMaterial(path)
 end
 
 function MaterialEditor:ExportToLSXAsMaterialPreset(path)
-    local root = LSXUtils.new()
+    local root = LSXHelpers.new()
     if not root then
         Error("CustomMaterialProxy: Could not create LSXTableNode for export.")
         return nil
     end
 
-    local presetRegion = LSXUtils.RegionNodeWrapper("MaterialPresetBank", root)
+    local presetRegion = LSXHelpers.RegionNodeWrapper("MaterialPresetBank", root)
     local childrenWrapper = LSXNode.new("children")
     presetRegion:AppendChild(childrenWrapper)
     local resNode = LSXNode.new("node", {id="Resource"})
     childrenWrapper:AppendChild(resNode)
 
     local baseAttr = {
-        LSXUtils.AttrNode("ID", LSXValueType.FixedString, Uuid_v4()),
-        LSXUtils.AttrNode("Name", LSXValueType.LSString, "Custom Material Preset"):AddComment("Change me!"),
-        LSXUtils.AttrNode("Localized", LSXValueType.bool, false),
-        LSXUtils.AttrNode("_OriginalFileVersion_", LSXValueType.int64, "144115198813274414"),
+        LSXHelpers.AttrNode("ID", LSXValueType.FixedString, Uuid_v4()),
+        LSXHelpers.AttrNode("Name", LSXValueType.LSString, "Custom Material Preset"):AddComment("Change me!"),
+        LSXHelpers.AttrNode("Localized", LSXValueType.bool, false),
+        LSXHelpers.AttrNode("_OriginalFileVersion_", LSXValueType.int64, "144115198813274414"),
     }
     resNode:AppendChildren(baseAttr)
 
@@ -453,7 +441,7 @@ function MaterialEditor:ExportToLSXAsMaterialPreset(path)
     resNode:AppendChild(secondChildrenWrapper)
 
     local presetsNode = LSXNode.new("node", {id="Presets"}, {
-        LSXUtils.AttrNode("MaterialPresetResource", LSXValueType.FixedString, ""),
+        LSXHelpers.AttrNode("MaterialPresetResource", LSXValueType.FixedString, ""),
     })
     secondChildrenWrapper:AppendChild(presetsNode)
 

@@ -573,7 +573,7 @@ function Radiant(text, startColor, endColor, mode, options)
     }
 end
 
-Ext.RegisterConsoleCommand("RB_DEBUG_RADIANT", function(cmd, mode, text)
+Ext.RegisterConsoleCommand("rb_test_radiant", function(cmd, mode, text)
     local text = text or "Hello World"
     mode = mode or "rainbow"
 

@@ -21,7 +21,4 @@ RequireFiles("Server/", {
     "Subscribe",
 })
 
-Ext.RegisterConsoleCommand("RBDEBUG", function()
-end)
-
 --Ext.Require("Server/Test/_init.lua") 

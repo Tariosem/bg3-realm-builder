@@ -1,3 +1,5 @@
+StyleHelpers = StyleHelpers or {}
+
 ---@param parent ExtuiTreeParent|ExtuiStyledRenderable
 ---@param label string
 ---@param default number
@@ -681,18 +683,11 @@ function AddSelectableButton(parent, label, onClick)
 end
 
 ---@param parent ExtuiTreeParent
----@param label any
----@param color any
----@param onChange any
----@return unknown
-function AddSimpleColorPicker(parent, label, color, onChange)
-    local colorPicker = parent:AddColorEdit(label)
-    colorPicker.Color = color or {1, 1, 1, 1}
-    colorPicker.IDContext = "SimpleColorPicker_" .. label
-    colorPicker.OnChange = function(c)
-        if onChange then
-            onChange(c.Color)
-        end
-    end
-    return colorPicker
+function StyleHelpers.AddSelectionTable(parent)
+    local tab = parent:AddTable("SelectionTable##" .. Uuid_v4(), 1) --[[@as ExtuiTable]]
+    tab.BordersInnerH = true
+
+    local row = tab:AddRow() --[[@as ExtuiTableRow]]
+
+    return tab, row
 end

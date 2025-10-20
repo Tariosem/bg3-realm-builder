@@ -91,7 +91,7 @@ function StopUpdateingCamera()
     DeactiveCameraTimer()
 end
 
-Ext.RegisterConsoleCommand("CameraBindTimer", function (cmd, args)
+Ext.RegisterConsoleCommand("rb_camera_timer_inspect", function (cmd, args)
     if args == "Cancel" then
         DeactiveCameraTimer()
     elseif args == "Start" then
@@ -103,7 +103,7 @@ Ext.RegisterConsoleCommand("CameraBindTimer", function (cmd, args)
             _P("CameraBindTimer: Timer is not active.")
         end
     else
-        _P("Usage: CameraBindTimer <Start|Cancel|Status>")
+        _P("Usage: rb_camera_timer_inspect <Start|Cancel|Status>")
     end
 end)
 

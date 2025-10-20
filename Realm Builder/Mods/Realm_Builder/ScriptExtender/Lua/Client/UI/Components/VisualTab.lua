@@ -76,7 +76,7 @@ function VisualTab:SetupTemplate()
     if not ClientVisualPresetData[templateName] then
         ClientVisualPresetData[templateName] = {}
     end
-    self.savedModifiedParams = ClientVisualPresetData[templateName]
+    self.savedPresets = ClientVisualPresetData[templateName]
 end
 
 function VisualTab:ReapplyCurrentChanges()
@@ -379,10 +379,64 @@ function VisualTab:RenderAttachmentsSection()
         self.attachmentsHeader = self.panel:AddCollapsingHeader(GetLoca("Attachments"))
     end
 
-    local matPresets = {}
     if CIsCharacter(self.guid) and entity.CharacterCreationAppearance then
-        
+        local cca = entity.CharacterCreationAppearance --[[@as CharacterCreationAppearance]]
+        local ccaPresetgroup = self.attachmentsHeader:AddTree(GetLoca("Character Creation Material Presets"))
+
+        local allColors = {
+            SkinColor = cca.SkinColor,
+            HairColor = cca.HairColor,
+            EyeColor = cca.EyeColor,
+            LeftEyeColor = cca.SecondEyeColor,
+        }
+
+        ccaPresetgroup.OnHoverEnter = function()
+
+            local colorTypes = {
+                SkinColor = "CharacterCreationSkinColor",
+                HairColor = "CharacterCreationHairColor",
+                EyeColor = "CharacterCreationEyeColor",
+                LeftEyeColor = "CharacterCreationEyeColor",
+            }
+            
+            local twoColTable = ccaPresetgroup:AddTable("CCAPresetsTable", 2)
+            local row = twoColTable:AddRow()
+            for ctype, color in pairs(allColors) do
+                if not color or color == GUID_NULL then goto continue end
+                local res = Ext.StaticData.Get(color, colorTypes[ctype]) --[[@as ResourceCharacterCreationColor]]
+                local cell = row:AddCell()
+                local preset = MaterialPresetsMenu:RenderPresetColorBox(res, cell)
+                local prefixText = cell:AddText(GetLoca(ctype))
+                prefixText.SameLine = true
+                
+
+                ::continue::
+            end
+
+            ccaPresetgroup.OnHoverEnter = nil
+        end
+
     end
+
+    local keyWords = {
+        body = GetLoca("Body"),
+        head = GetLoca("Head"),
+        horn = GetLoca("Horn"),
+        tail = GetLoca("Tail"),
+        hair = GetLoca("Hair"),
+        beard = GetLoca("Beard"),
+        genital = GetLoca("Genital"),
+    }
+
+    local keyWordsArr = {
+        "body",
+        "head",
+        "horn",
+        "tail",
+        "genital",
+        "hair",
+        "beard",
+    }
 
     local attachments = visual.Attachments or {}
 
@@ -391,11 +445,21 @@ function VisualTab:RenderAttachmentsSection()
         if #attach.Visual.ObjectDescs == 0 then goto continue end
         local source = attach.Visual.VisualResource and attach.Visual.VisualResource.SourceFile or "Unknown Model"
         local gr2FileName = GetLastPath(source)
-        local attachNode = self.attachmentsHeader:AddTree(gr2FileName .. "##" .. tostring(attIndex))
+
+        local lowerGr2FileName = string.lower(gr2FileName)
+        local displayName = gr2FileName
+
+        for _, keyword in ipairs(keyWordsArr) do
+            if lowerGr2FileName:find(keyword) then
+                displayName = keyWords[keyword] .. " (" .. gr2FileName .. ")"
+                break
+            end
+        end
+        
+
+        local attachNode = self.attachmentsHeader:AddTree(displayName .. "##" .. tostring(attIndex))
 
         for descIndex, obj in ipairs(attach.Visual.ObjectDescs) do
-            local objFlags = LightCToArray(obj.Flags)
-
             local modelName = obj.Renderable and obj.Renderable.Model and obj.Renderable.Model.Name or "Unknown Model"
             local objToggle = attachNode:AddSelectable("[+] " .. modelName .. "##" .. tostring(attIndex) .. "_" .. tostring(descIndex))
             local objNode = AddIndent(attachNode):AddGroup("ObjectDescGroup##" .. tostring(attIndex) .. "_" .. tostring(descIndex))
@@ -541,7 +605,6 @@ function VisualTab:RenderMaterialEditor()
             goto continue
         end
 
-        _D(desc)
         local renderable = desc.Renderable --[[@as RenderableObject]]
 
         local material = renderable.ActiveMaterial --[[@as AppliedMaterial]]
@@ -1389,7 +1452,7 @@ function VisualTab:Save(name, overwrite)
         return false
     end
 
-    if self.savedModifiedParams and self.savedModifiedParams[name] and not overwrite then
+    if self.savedPresets and self.savedPresets[name] and not overwrite then
         ConfirmPopup:QuickConfirm(
             string.format(GetLoca("A preset named '%s' already exists. Overwrite?"), name),
             function()
@@ -1447,6 +1510,7 @@ function VisualTab:Save(name, overwrite)
 
     --Info("Saved VisualTab preset as '" .. saveName .. "' for template: " .. templateId)
     self.currentPreset = saveName
+    self.savedPresets[saveName] = DeepCopy(oriFile[saveName])
     if IsPartyMember(self.guid) then
     
     else
@@ -1482,10 +1546,10 @@ function VisualTab:Load(notoverwrite)
     end
     
     for name, presetData in pairs(data) do
-        if self.savedModifiedParams and self.savedModifiedParams[name] and not notoverwrite then
+        if self.savedPresets and self.savedPresets[name] and not notoverwrite then
             --Warning("Preset already loaded, skipping: " .. name)
         else
-            self.savedModifiedParams[name] = presetData
+            self.savedPresets[name] = presetData
         end
     end
 
@@ -1540,11 +1604,11 @@ function VisualTab:Remove(name)
         return false
     end
 
-    if self.savedModifiedParams then
-        self.savedModifiedParams[name] = nil
+    if self.savedPresets then
+        self.savedPresets[name] = nil
     end
 
-    if #self.savedModifiedParams == 0 then
+    if #self.savedPresets == 0 then
         local refFilePath = GetVisualReferencePath()
         local refFile = Ext.Json.Parse(Ext.IO.LoadFile(refFilePath) or "{}")
         if refFile[templateName] then
@@ -1560,12 +1624,12 @@ function VisualTab:Remove(name)
 end
 
 function VisualTab:LoadPreset(name)
-    if not self.savedModifiedParams then
+    if not self.savedPresets then
         Error("No saved preset found with name: " .. name)
         return false
     end
 
-    local preset = self.savedModifiedParams[name]
+    local preset = self.savedPresets[name]
 
     if not preset or not preset.ModifiedParams then
         Warning("Preset not found or invalid: " .. name .. ", object: " .. self.templateName)
@@ -1583,11 +1647,12 @@ function VisualTab:LoadPreset(name)
     VisualHelpers.ApplyVisualParams(self.guid, presetParams)
 
     self.currentPreset = name
-    self.modifiedParams = DeepCopy(presetParams)
+    self.modifiedParams = presetParams or {}
 
     for key, matParams in pairs(preset.Materials or {}) do
         if self.Materials[key] then
             self.Materials[key].Editor:ApplyParameters(matParams)
+            self.Materials[key]:UpdateUIState()
         end
     end
 
@@ -1619,13 +1684,13 @@ function VisualTab:TryUpdate(key)
 end
 
 function VisualTab:_getAllPresetNames()
-    if not self.savedModifiedParams then
+    if not self.savedPresets then
         return {}
     end
 
     local names = {}
     local templateName = self.templateName or GetTemplateNameForGuid(self.guid)
-    for name, entry in pairs(self.savedModifiedParams) do
+    for name, entry in pairs(self.savedPresets) do
         if entry.TemplateName == templateName then
             table.insert(names, name)
         end
