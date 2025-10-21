@@ -91,6 +91,7 @@ NetChannel.SpawnPreview:SetRequestHandler(function(data, userID)
     RotateTo(preview, rotation[1], rotation[2], rotation[3], rotation[4])
     OsirisHelpers.Propify(preview)
     Osi.ClearTag(preview, RB_PROP_TAG)
+    Osi.SetCanInteract(preview, 0)
 
     return {Guid = preview, TemplateId = template}
 end)

@@ -64,6 +64,18 @@ function Vector:Dot(b) return Ext.Math.Dot(self, b) end
 function Vector:Cross(b) return Vector.new(Cross(self, b)) end
 function Vector:Inverse() return Vector.new(Ext.Math.Inverse(self)) end
 
+function Vector:Sanitize(defaultVec)
+    defaultVec = Vector.new(defaultVec or {0, 0, 0}, #self)
+    for i = 1, #self do
+        local v = self[i]
+        if type(v) ~= "number" or v ~= v or v == math.huge or v == -math.huge then
+            self = defaultVec
+            break
+        end
+    end
+    return self
+end
+
 Vec2.__index = function(t, k)
     if AxisIndexMap[k] then return rawget(t, AxisIndexMap[k])
     elseif rawget(t, k) then return rawget(t, k)

@@ -22,11 +22,12 @@ local function colorPresetComparator(a,b)
 end
 
 function MaterialPresetsMenu:Render()
-    if self.Visible then return end
+    if self.isVisible then return end
 
     self.panel = RegisterWindow("generic", "Material Presets", "Menu", self)
+    self.panel.Closeable = true
 
-    self.Visible = true
+    self.isVisible = true
     self:RenderPresetsList()
 end
 
@@ -54,7 +55,7 @@ function MaterialPresetsMenu:RenderCustomMaterialPresets(header)
     local mainTable = mainWindow:AddTable("MaterialPresets", 10)
 
     local namePrior = false
-    local Comparator = function(a,b)
+    local comparator = function(a,b)
         if namePrior then
             local aName = a.DisplayName or ""
             local bName = b.DisplayName or ""
@@ -64,7 +65,7 @@ function MaterialPresetsMenu:RenderCustomMaterialPresets(header)
         return colorPresetComparator(a,b)
     end
 
-
+    
 
 
 end
@@ -336,7 +337,19 @@ function MaterialPresetsMenu:RenderCCPresetList(presetName, parent)
         cT.OnWidthChange()
     end)
 
+    parent.OnExpand = function ()
+        cT.OnWidthChange()
+    end
 end
 
+--- @param mat MaterialEditor
+function MaterialPresetsMenu:SaveMaterialPreset(mat)
+    if not mat then return end
+
+    local parameters = DeepCopy(mat.Parameters)
+    
+    local newName 
+
+end
 
 MaterialPresetsMenu:Render()

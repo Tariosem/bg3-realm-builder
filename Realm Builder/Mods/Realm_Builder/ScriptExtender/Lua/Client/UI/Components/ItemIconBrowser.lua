@@ -160,6 +160,7 @@ function ItemIconBrowser:SetupTemplatePreview(entry)
         Rotation = startRot,
     }, function (response)
         previewItem = response.Guid
+        TransformEditor:AddToBlacklist(previewItem)
 
         stickTimer = Timer:EveryFrame(function (timerID)
             if not previewItem then return UNSUBSCRIBE_SYMBOL end
@@ -186,7 +187,15 @@ function ItemIconBrowser:SetupTemplatePreview(entry)
             if rotationOffset then
                 hitRot = Ext.Math.QuatMul(hitRot, rotationOffset)
             end
-            
+
+            local selectedGuid = self.selectedGuid or CGetHostCharacter()
+
+            hitPos = Vec3.new(hitPos)
+            hitRot = Quat.new(hitRot)
+
+            hitPos:Sanitize({CGetPosition(selectedGuid)})
+            hitRot:Sanitize({CGetRotation(selectedGuid)})
+
             NetChannel.SetTransform:SendToServer({
                 Guid = previewItem,
                 Transforms = {
@@ -227,6 +236,7 @@ function ItemIconBrowser:SetupTemplatePreview(entry)
                 NetChannel.Delete:SendToServer({ Guid = previewItem })
                 previewItem = nil
                 self.IsPreviewing = false
+                TransformEditor:RemoveFromBlacklist(previewItem)
                 return UNSUBSCRIBE_SYMBOL
             end
         end)

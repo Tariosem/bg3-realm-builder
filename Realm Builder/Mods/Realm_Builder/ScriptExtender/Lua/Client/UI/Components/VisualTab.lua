@@ -272,8 +272,6 @@ function VisualTab:RenderPresetsCell()
     warningImage.SameLine = true
     warningImage:Tooltip():AddText(GetLoca("Some changes will affect all instances of the same template."))
     warningImage:Tooltip():AddText(GetLoca("If 'Reset All' doesn't work, reload a save."))
-    warningImage:Tooltip():AddBulletText("Template: " .. self.templateName)
-
 
     resetAllButton.OnClick = function ()
         Timer:Ticks(10, function ()
@@ -420,7 +418,7 @@ function VisualTab:RenderAttachmentsSection()
 
     local keyWords = {
         body = GetLoca("Body"),
-        head = GetLoca("Head"),
+        _head_ = GetLoca("Head"),
         horn = GetLoca("Horn"),
         tail = GetLoca("Tail"),
         hair = GetLoca("Hair"),
@@ -430,7 +428,7 @@ function VisualTab:RenderAttachmentsSection()
 
     local keyWordsArr = {
         "body",
-        "head",
+        "_head_",
         "horn",
         "tail",
         "genital",
@@ -619,13 +617,25 @@ function VisualTab:RenderMaterialEditor()
         local function getliveMat()
             return VisualHelpers.GetMaterial(self.guid, descIndex)
         end
+
+        local function getliveParams()
+            local mat = getliveMat()
+            if not mat then return nil end
+            return mat.Parameters
+        end
+
+        --- @return MaterialParametersSet|nil
+
+        local keyName = meshName .. "." .. tostring(descIndex)
     
-        local materialEditor = MaterialTab.new(materialNode, material.MaterialName, getliveMat) --[[@as MaterialTab]]
+        local materialEditor = self.Materials[keyName] or MaterialTab.new(materialNode, material.MaterialName, getliveMat, getliveParams) --[[@as MaterialTab]]
+        materialEditor.Parent = materialNode
+        materialEditor.Editor.Instance = getliveMat
+        materialEditor.Editor.ParamsSrc = getliveParams
+        materialEditor.Editor.ParamSetProxy = ParametersSetProxy.new(getliveParams()) --[[@as ParametersSetProxy]]
         materialEditor:Render()
 
         self:RenderScaleSliders(materialNode, descIndex, meshName)
-
-        local keyName = meshName .. "_" .. tostring(descIndex)
 
         self.Materials[keyName] = materialEditor
 

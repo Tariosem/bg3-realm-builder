@@ -329,15 +329,4 @@ function EntityStore:GetBindInfo(guid)
     return BindDatas[guid] or {}
 end
 
-function EntityStore:BuildDisplayNameToTemplateTree()
-    local tree = TreeTable.new()
-    
-    return tree
-end
-
-function EntityStore:RestoreTreeListFromTable()
-
-
-end
-
 EntityStore:SetupServerListeners()

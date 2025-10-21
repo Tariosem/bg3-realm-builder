@@ -56,6 +56,8 @@ function MaterialEditor:__init(originMaterial, matSrc, paramsSrc, materialPreset
 
 end
 
+--- this function return a value for a given parameter name
+--- it first checks the local changes, then preset, then original material proxy
 ---@param paramName string
 ---@return number[]?
 function MaterialEditor:GetParameter(paramName)

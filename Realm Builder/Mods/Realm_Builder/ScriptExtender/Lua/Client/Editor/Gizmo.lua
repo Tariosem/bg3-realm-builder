@@ -541,7 +541,7 @@ function Gizmo:SetupDragging()
                                 return UNSUBSCRIBE_SYMBOL
                             end
                             if not VisualHelpers.GetEntityVisual(guid) then cnt = cnt + 1 end
-                            GizmoVisualizer.VisualizeRotateSymbol(guid, axis)
+                            GizmoVisualizer.VisualizeRotatePointer(guid, axis)
                             return UNSUBSCRIBE_SYMBOL
                         end)
                         table.insert(self.RotatePointer, guid)
@@ -619,6 +619,7 @@ function Gizmo:StopWithoutCallbacks()
     self._rotLastAngle = nil
     self._rotAccum = nil
     self.Editor._accuDelta = nil
+    self.Editor._delta = nil
     GizmoVisualizer.ScaleMultiplier = {1.0, 1.0, 1.0}
     for _,guid in ipairs(self.RotatePointer or {}) do
         GizmoVisualizer.HideGizmo(guid)
@@ -693,7 +694,7 @@ function Gizmo:VisualizeRotatePointer()
     for a,_ in pairs(self.SelectedAxis) do axis = a end
 
     for _,guid in ipairs(self.RotatePointer or {}) do
-        GizmoVisualizer.VisualizeRotateSymbol(guid, axis)
+        GizmoVisualizer.VisualizeRotatePointer(guid, axis)
     end
 
     local startQuat = self.Editor.StartTransforms[target].RotationQuat

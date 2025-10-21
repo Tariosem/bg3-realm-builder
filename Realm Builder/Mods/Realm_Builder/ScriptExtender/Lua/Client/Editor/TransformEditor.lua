@@ -16,6 +16,7 @@ TransformEditor = {
     StartTransforms = {},
     Step = 1,
     Subscriptions = {},
+    Blacklist = {},
     Disabled = false,
 }
 
@@ -54,7 +55,7 @@ function TransformEditor:Select(selection, notRecordHistory)
 
     self.Target = {}
     for guid,_ in pairs(selection) do
-        if not EntityExists(guid) then goto continue end
+        if not EntityExists(guid) or self.Blacklist[guid] then goto continue end
         table.insert(self.Target, guid)
         ::continue::
     end
@@ -73,6 +74,20 @@ function TransformEditor:Select(selection, notRecordHistory)
             end
         })
     end
+end
+
+function TransformEditor:AddToBlacklist(guid)
+    if not guid then return end
+    if not self.Blacklist then
+        self.Blacklist = {}
+    end
+    self.Blacklist[guid] = true
+end
+
+function TransformEditor:RemoveFromBlacklist(guid)
+    if not guid then return end
+    if not self.Blacklist then return end
+    self.Blacklist[guid] = nil
 end
 
 function TransformEditor:PopupNotify()

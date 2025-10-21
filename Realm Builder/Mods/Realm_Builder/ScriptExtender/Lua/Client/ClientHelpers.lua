@@ -181,13 +181,14 @@ end
 --- which is the localization used by the game
 ---@param names string[]
 ---@param version number|fun(name:string):number
----@return string, table<string, string> uuidToNameMap
+---@return string, table<string, string>, table<string, string>
 function LSXHelpers.GenerateLocalization(names, version)
     local root = LSXNode.new("contentList", {
         ["xmlns:xsd"] = "http://www.w3.org/2001/XMLSchema",
         ["xmlns:xsi"] = "http://www.w3.org/2001/XMLSchema-instance",
     })
-    local uuidToNameMap = {}
+    local stringToHandle = {}
+    local handleToString = {}
 
     for _, name in ipairs(names) do
         local ver = 1
@@ -205,8 +206,8 @@ function LSXHelpers.GenerateLocalization(names, version)
         })
         contentNode:SetInnerText(name)
         root:AppendChild(contentNode)
-        uuidToNameMap[handle] = name
+        handleToString[handle] = name
     end
 
-    return root:Stringify({Indent = 2}), uuidToNameMap
+    return root:Stringify({Indent = 2}), handleToString, stringToHandle
 end

@@ -66,7 +66,7 @@ if GLOBAL_DEBUG_WINDOW then
     GLOBAL_DEBUG_WINDOW.Open = true
 end
 
-local function UpdateConstantsByScale(scale)
+local function UpdateParamsByScale(scale)
     local apply = scale
 
     for name,constant in pairs(PICKER_INTERSERCTION_PARAMS) do
@@ -112,7 +112,7 @@ end
 
 --- @return Vec3|nil, Quat|nil
 function GizmoPicker:GetTransform()
-    UpdateConstantsByScale(self.Scale)
+    UpdateParamsByScale(self.Scale)
 
     return self.Position, self.Rotation
 end

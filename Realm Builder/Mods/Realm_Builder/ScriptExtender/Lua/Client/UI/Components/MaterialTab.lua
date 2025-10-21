@@ -297,6 +297,10 @@ function MaterialTab:SetupManagePopup(popup)
 
     local row = tt:AddRow()
 
+    local saveBtn = AddSelectableButton(row:AddCell(), "Save Changes##" .. self.MaterialName, function (sel)
+        MaterialPresetsMenu:SaveMaterialPreset(self.Editor)
+    end)
+
     local btnReset = AddSelectableButton(row:AddCell(), "Reset All##" .. self.MaterialName, function (sel)
         self:ResetAll()
     end)

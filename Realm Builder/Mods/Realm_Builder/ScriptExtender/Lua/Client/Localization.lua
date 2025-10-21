@@ -35,10 +35,12 @@ local function ExportUnseenStrings()
         table.insert(toSave, str)
     end
 
-    local xmlString = LSXHelpers.GenerateLocalization(toSave, 1)
+    local xmlString, handleToString, stringToHandle = LSXHelpers.GenerateLocalization(toSave, 1)
 
     local path = "Realm_Builder/Mods/Realm_Builder/Localization/UnseenStrings.lsx"
+    local stringToHandlePath = "Realm_Builder/Mods/Realm_Builder/Localization/UnseenStrings_StringToHandle.json"
     local suc = Ext.IO.SaveFile(path, xmlString)
+    Ext.IO.SaveFile(stringToHandlePath, Ext.Json.Stringify(stringToHandle))
 
     if not suc then
         Error("ExportUnseenStrings: Failed to save unseen strings LSX file at " .. path)

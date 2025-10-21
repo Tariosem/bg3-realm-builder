@@ -56,7 +56,6 @@ function EntityHelpers.FilterUuidsByType(guids)
             table.insert(groups.Unmapped, guid)
             --Debug("Unmapped entity type for "..tostring(guid))
         else
-            Debug("Entity not found for "..tostring(guid))
         end
     end
     return groups

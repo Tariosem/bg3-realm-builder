@@ -144,7 +144,7 @@ function GizmoVisualizer.ResetGizmoAxis(axis, guid)
     GizmoVisualizer.ScaleGizmo(axis, guid, rend)
 end
 
-function GizmoVisualizer.VisualizeRotateSymbol(guid, axis)
+function GizmoVisualizer.VisualizeRotatePointer(guid, axis)
     local rotateScale = GizmoVisualizer.Scale[AxisIndexMap[axis]] or 1.0
     local scale = ToVec3((0.6 * rotateScale) / 0.81)
 
@@ -204,7 +204,7 @@ function GizmoVisualizer.SetLineLength(guid, length, width)
         length = 0
     end
     if width and type(width) ~= "number" then
-        width = 0.05
+        width = 0.3
     end
 
     local entity = Ext.Entity.Get(guid)

@@ -71,11 +71,6 @@ local function genratePowerEasing(pow, name)
     end
 end
 
-genratePowerEasing(2, "Quad")
-genratePowerEasing(3, "Cubic")
-genratePowerEasing(4, "Quart")
-genratePowerEasing(5, "Quint")
-
 -- https://easings.net/
 EasingFuncs = {
     Linear = function(t) return t end,
@@ -180,6 +175,11 @@ EasingFuncs = {
         end
     end,
 }
+
+genratePowerEasing(2, "Quad")
+genratePowerEasing(3, "Cubic")
+genratePowerEasing(4, "Quart")
+genratePowerEasing(5, "Quint")
 
 --- @class RunningAnimation
 --- @field Stop fun():number, number
