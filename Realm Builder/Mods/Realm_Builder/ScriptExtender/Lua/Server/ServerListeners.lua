@@ -403,11 +403,11 @@ NetChannel.UpdateDummies:SetHandler(function (data, userID)
     end
 end)
 
-NetChannel.PlayEffect:SetHandler(function(channel, data, userID)
+NetChannel.PlayEffect:SetHandler(function(data, userID)
     EM:PlayEffects(data)
 end)
 
-NetChannel.StopEffect:SetHandler(function(channel, data, userID)
+NetChannel.StopEffect:SetHandler(function(data, userID)
     if data.Type == "All" then
         EM:StopAllEffects()
     elseif data.Type == "FxName" then

@@ -238,7 +238,6 @@ function SceneMenu:SetupLeaf(sel, key, node)
 
     selectable.OnClick = function()
         local currentTime = Ext.Timer.MonotonicTime()
-        Debug("Selectable clicked at time:", currentTime)
         if currentTime - doubleClickLastTime <= doubleClickThreshold then
             if self.IsRenaming then return end
             if clickTimer then
@@ -247,7 +246,6 @@ function SceneMenu:SetupLeaf(sel, key, node)
             end
             selectable:Destroy()
             self.propTreeList.leafRefs[key] = nil
-            Debug("Double click detected for key:", key)
             self:SetupRenameInput(node, key)
         else
             clickTimer = Timer:After(doubleClickThreshold, function()

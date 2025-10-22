@@ -396,10 +396,18 @@ function VisualTab:RenderAttachmentsSection()
                 EyeColor = "CharacterCreationEyeColor",
                 LeftEyeColor = "CharacterCreationEyeColor",
             }
+
+            local colorOrder = {
+                "EyeColor",
+                "LeftEyeColor",
+                "HairColor",
+                "SkinColor",
+            }
             
             local twoColTable = ccaPresetgroup:AddTable("CCAPresetsTable", 2)
             local row = twoColTable:AddRow()
-            for ctype, color in pairs(allColors) do
+            for _, ctype in ipairs(colorOrder) do
+                local color = allColors[ctype]
                 if not color or color == GUID_NULL then goto continue end
                 local res = Ext.StaticData.Get(color, colorTypes[ctype]) --[[@as ResourceCharacterCreationColor]]
                 local cell = row:AddCell()
@@ -407,7 +415,6 @@ function VisualTab:RenderAttachmentsSection()
                 local prefixText = cell:AddText(GetLoca(ctype))
                 prefixText.SameLine = true
                 
-
                 ::continue::
             end
 

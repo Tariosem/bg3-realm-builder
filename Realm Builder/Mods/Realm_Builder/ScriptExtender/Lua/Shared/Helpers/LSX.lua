@@ -83,7 +83,9 @@ end
 --- @field __comments string[]
 --- @field __innerText string|nil
 --- @field __attrOrder string[]|nil
+--- @field __stringify fun(self: LSXNode, stringifyOpts: LSXStringfiyOptions): string
 --- @field Stringify fun(self: LSXNode, stringifyOpts?: LSXStringfiyOptions): string
+--- @field Unserialize fun(str: string): LSXNode?
 --- @field SetInnerText fun(self: LSXNode, text: string): LSXNode -- returns self
 --- @field SetName fun(self: LSXNode, name: string): LSXNode -- returns self
 --- @field SetAttribute fun(self: LSXNode, key: string, value: any): LSXNode -- returns self
@@ -97,7 +99,10 @@ end
 --- @field SortChildren fun(self: LSXNode, comparator: fun(a: LSXNode, b: LSXNode):boolean)
 --- @field RemoveChild fun(self: LSXNode, index: number)
 --- @field RemoveChildren fun(self: LSXNode, predicate: fun(child: LSXNode):boolean)
+--- @field Clear fun(self: LSXNode)
+--- @field ClearChildren fun(self: LSXNode)
 --- @field AddComment fun(self: LSXNode, comment: string): LSXNode return self
+--- @field ClearComments fun(self: LSXNode)
 --- @field new fun(key: string, value: table<string, any>?, children: LSXNode[]?, comments: string[]|string?): LSXNode
 --- @field FromTable fun(t: table, rootKey: string): LSXNode?
 LSXNode = {}
@@ -188,7 +193,7 @@ function LSXNode:__stringify(stringifyOpts)
                 seen[key] = true
             end
         end
-        -- For determinism, sort remaining keys so output is stable across runs
+        -- For any remaining keys not in __attrOrder, sort them alphabetically
         local remainingKeys = {}
         for key, _ in pairs(node.__attributes or {}) do
             if not seen[key] then
@@ -260,6 +265,116 @@ function LSXNode:__stringify(stringifyOpts)
     end
 
     return table.concat(lines, '\n')
+end
+
+local function parseAttributes(attrStr)
+    local attrs, order = {}, {}
+    if not attrStr or attrStr == "" then
+        return attrs, order
+    end
+    for key, val in attrStr:gmatch("([%w_:%-]+)%s*=%s*\"(.-)\"") do
+        table.insert(order, key)
+        attrs[key] = val:gsub("&lt;", "<")
+                        :gsub("&gt;", ">")
+                        :gsub("&quot;", "\"")
+                        :gsub("&apos;", "'")
+                        :gsub("&amp;", "&")
+    end
+    return attrs, order
+end
+
+function LSXNode.Unserialize(str)
+    -- remove XML declaration
+    str = str:gsub("<%?xml.-%?>", "")
+    str = str:gsub("\r", "") -- normalize newlines
+
+    local stack = {}
+    local root = nil
+    local i = 1
+    local len = #str
+
+    while i <= len do
+        local commentStart, commentEnd, commentText = str:find("<!--(.-)-->", i)
+        local tagStart, tagEnd, tagText = str:find("<([^>]+)>", i)
+
+        -- no more tags
+        if not tagStart then break end
+
+        -- capture comments before the tag
+        if commentStart and commentStart < tagStart then
+            local comments = {}
+            while commentStart and commentStart < tagStart do
+                table.insert(comments, commentText:gsub("^%s+", ""):gsub("%s+$", ""))
+                commentStart, commentEnd, commentText = str:find("<!--(.-)-->", commentEnd + 1)
+            end
+            if #stack > 0 then
+                local top = stack[#stack]
+                top.__comments = top.__comments or {}
+                for _, c in ipairs(comments) do
+                    table.insert(top.__comments, c)
+                end
+            end
+        end
+
+        -- capture inner text between tags
+        local text = str:sub(i, tagStart - 1)
+        text = text:gsub("^[%s\n\t]+", ""):gsub("[%s\n\t]+$", "")
+        if #text > 0 and #stack > 0 then
+            local top = stack[#stack]
+            if not top.__innerText then
+                top.__innerText = text
+            else
+                top.__innerText = top.__innerText .. text
+            end
+        end
+
+        local tag = tagText
+        if tag:sub(1, 1) == "!" then
+            -- comment or doctype, ignore
+        elseif tag:sub(1, 1) == "/" then
+            -- closing tag
+            local name = tag:match("^/(%S+)")
+            local node = table.remove(stack)
+            if not node then
+                error("Unexpected closing tag </" .. (name or "?") .. ">")
+            end
+            if node.__name ~= name then
+                error(string.format("Mismatched tag: <%s> ... </%s>", node.__name, name))
+            end
+
+            if #stack == 0 then
+                root = node
+            else
+                local parent = stack[#stack]
+                parent:AppendChild(node)
+            end
+
+        elseif tag:sub(-1) == "/" then
+            -- self-closing
+            local inside = tag:sub(1, -2)
+            local name, attrStr = inside:match("^(%S+)%s*(.*)$")
+            local node = LSXNode.new(name)
+            node.__attributes, node.__attrOrder = parseAttributes(attrStr)
+
+            if #stack == 0 then
+                root = node
+            else
+                local parent = stack[#stack]
+                parent:AppendChild(node)
+            end
+
+        else
+            -- opening tags
+            local name, attrStr = tag:match("^(%S+)%s*(.*)$")
+            local node = LSXNode.new(name)
+            node.__attributes, node.__attrOrder = parseAttributes(attrStr)
+            table.insert(stack, node)
+        end
+
+        i = tagEnd + 1
+    end
+
+    return root
 end
 
 function LSXNode:SetInnerText(text)

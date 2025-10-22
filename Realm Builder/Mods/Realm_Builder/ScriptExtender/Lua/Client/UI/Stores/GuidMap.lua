@@ -4,6 +4,28 @@
 local dummyUpdateTimer = nil 
 local clientVisualDummies = {}
 
+local function postUpdateDummies()
+    local dummiesInfo = {}
+    local post = {}
+    for uuid, dummy in pairs(GetAllDummies()) do
+        if #dummy:GetAllComponentNames() == 0 then
+            ClearDummyData()
+            Timer:Cancel(dummyUpdateTimer)
+            dummyUpdateTimer = nil
+            post.Deactive = true
+            break
+        end
+        local x, y, z = VisualHelpers.GetVisualPosition(dummy)
+        local pitch, yaw, roll, w = VisualHelpers.GetVisualRotation(dummy)
+        dummiesInfo[uuid] = {}
+        dummiesInfo[uuid].Position = {x, y, z}
+        dummiesInfo[uuid].Rotation = {pitch, yaw, roll, w}
+    end
+    post.DummyInfos = dummiesInfo
+
+    NetChannel.UpdateDummies:SendToServer(post)
+end
+
 --- @diagnostic disable-next-line
 Ext.Entity.OnCreate("Visual", function (entity)
     if not entity then
@@ -29,28 +51,6 @@ Ext.Entity.OnCreate("Visual", function (entity)
                     end
                 end)
             end
-        end
-
-        local function postUpdateDummies()
-            local dummiesInfo = {}
-            local post = {}
-            for uuid, dummy in pairs(GetAllDummies()) do
-                if #dummy:GetAllComponentNames() == 0 then
-                    ClearDummyData()
-                    Timer:Cancel(dummyUpdateTimer)
-                    dummyUpdateTimer = nil
-                    post.Deactive = true
-                    break
-                end
-                local x, y, z = VisualHelpers.GetVisualPosition(dummy)
-                local pitch, yaw, roll, w = VisualHelpers.GetVisualRotation(dummy)
-                dummiesInfo[uuid] = {}
-                dummiesInfo[uuid].Position = {x, y, z}
-                dummiesInfo[uuid].Rotation = {pitch, yaw, roll, w}
-            end
-            post.DummyInfos = dummiesInfo
-
-            NetChannel.UpdateDummies:SendToServer(post)
         end
 
         if not dummyUpdateTimer then
@@ -138,11 +138,18 @@ local function mapTLDummies()
 
         if dummy then
             clientVisualDummies[owner.Uuid.EntityUuid] = dummy
+            SetClientDummyEntity(owner.Uuid.EntityUuid, dummy)
             local displayNameComponent = owner.DisplayName
             Debug("Set TLPreview dummy for owner: " .. (displayNameComponent and displayNameComponent.Name:Get() or owner.Uuid.EntityUuid))
             local visualTab = VisualTab.FetchByGuid(owner.Uuid.EntityUuid)
             if visualTab then
                 visualTab:ReapplyCurrentChanges()
+            end
+
+            if not dummyUpdateTimer then
+                dummyUpdateTimer = Timer:EveryFrame(function()
+                    postUpdateDummies()
+                end)
             end
         end
     end

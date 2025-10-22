@@ -56,7 +56,6 @@ end
 function Gizmo:SetTarget(targets)
     if not targets or #targets == 0 then
         self:DeleteItem()
-        self.Targets = {}
         return
     end
 

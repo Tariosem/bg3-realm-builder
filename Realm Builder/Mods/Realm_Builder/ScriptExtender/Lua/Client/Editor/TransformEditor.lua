@@ -157,6 +157,7 @@ end
 function TransformEditor:Clear()
     self.Target = nil
     self.StartTransforms = {}
+    self.Gizmo:SetTarget(self.Target)
 end
 
 function TransformEditor:SetMode(mode)
@@ -181,9 +182,6 @@ function TransformEditor:RegisterEvents()
 
     local teMod = KeybindManager:CreateModule("TransformEditor")
     teMod:AddModuleCondition(function(e)
-        return self.Target and #self.Target > 0 or false
-    end)
-    teMod:AddModuleCondition(function(e)
         return self.Disabled ~= true
     end)
     self.TransformEditorMod = teMod
@@ -198,24 +196,28 @@ function TransformEditor:RegisterEvents()
     end)
 
     teMod:RegisterEvent("RotateMode", function (e)
+        if not self.Target or #self.Target == 0 then return end
         if e.Event == "KeyDown" then
             self:SetMode("Rotate")
         end
     end)
 
     teMod:RegisterEvent("TranslateMode", function (e)
+        if not self.Target or #self.Target == 0 then return end
         if e.Event == "KeyDown" then
             self:SetMode("Translate")
         end
     end)
 
     teMod:RegisterEvent("ScaleMode", function (e)
+        if not self.Target or #self.Target == 0 then return end
         if e.Event == "KeyDown" then
             self:SetMode("Scale")
         end
     end)
 
     teMod:RegisterEvent("FollowTarget", function (e)
+        if not self.Target or #self.Target == 0 then return end
         if e.Event ~= "KeyDown" or not e.Pressed then return end
 
         if self.Gizmo and self.Target then
@@ -224,6 +226,7 @@ function TransformEditor:RegisterEvents()
     end)
 
     restrain(teMod:RegisterEvent("DeleteSelection", function (e)
+        if not self.Target or #self.Target == 0 then return end
         if e.Event ~= "KeyDown" or not e.Pressed then return end
 
         local guids = NormalizeGuidList(self.Target)

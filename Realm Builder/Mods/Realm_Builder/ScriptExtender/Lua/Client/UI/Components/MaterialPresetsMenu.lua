@@ -1,5 +1,19 @@
 MATERIALPRESET_DRAGDROP_TYPE = "MaterialPreset"
 
+--- @class MaterialPresetData
+--- @field DisplayName string
+--- @field UIColor number[]
+--- @field Parameters table<string, any>
+
+--- @class MaterialPresetsMenu
+--- @field isVisible boolean
+--- @field panel ExtuiWindow
+--- @field CustomMaterialPresets table<string, MaterialPresetData>
+--- @field UpdateCustomMaterialPresetsList fun(self:MaterialPresetsMenu)
+--- @field SaveMaterialPreset fun(self:MaterialPresetsMenu, mat:MaterialEditor)
+--- @field RenderPresetColorBox fun(self:MaterialPresetsMenu, preset:ResourceCharacterCreationColor, parent:ExtuiTreeParent):ExtuiColorEdit
+--- @field RenderCustomColorBox fun(self:MaterialPresetsMenu, preset:MaterialPresetData, parent:ExtuiTreeParent):ExtuiColorEdit
+--- @field RenderCCPresetList fun(self:MaterialPresetsMenu, presetName:string, parent:ExtuiTreeParent)
 MaterialPresetsMenu = MaterialPresetsMenu or {}
 
 local function colorPresetComparator(a,b, aName, bName)
@@ -111,6 +125,7 @@ end
 
 ---@param parent ExtuiTreeParent
 function MaterialPresetsMenu:SetupWorklist(parent)
+    local importBtn = parent:AddButton("Import Preset from Workshop")
 
 end
 
@@ -196,7 +211,6 @@ function MaterialPresetsMenu:RenderCustomColorBox(preset, parent)
     colorBox.Color = preset.UIColor
     colorBox:Tooltip():AddText(preset.DisplayName or "Unnamed Preset")
     colorBox.NoInputs = true
-    colorBox.NoPicker = true
     colorBox.CanDrag = true
     colorBox.DragDropType = MATERIALPRESET_DRAGDROP_TYPE
 
@@ -234,7 +248,12 @@ function MaterialPresetsMenu:RenderCustomColorBox(preset, parent)
         colorBox:SetColor("Border", HexToRGBA("FFFFFFFF"))
     end
 
+    colorBox.OnChange = function ()
+        preset.UIColor = colorBox.Color
+    end
+
     local selectTable = managePopup:AddTable("ManagePresetTable", 1)
+    selectTable.BordersInnerH = true
     local selectRow = selectTable:AddRow()
 
     local deleteBtn = AddSelectableButton(selectRow:AddCell(), "Delete Preset##" .. preset.DisplayName, function (sel)
@@ -244,7 +263,7 @@ function MaterialPresetsMenu:RenderCustomColorBox(preset, parent)
     ApplyDangerSelectableStyle(deleteBtn)
 
     local renameBtn = AddSelectableButton(selectRow:AddCell(), "Rename Preset##" .. preset.DisplayName, function (sel)
-        local renamePopup = parent:AddPopup("RenamePresetPopup##" .. preset.DisplayName)
+        local renamePopup = parent:AddPopup("RenamePresetPopup##" .. preset.DisplayName) --[[@as ExtuiPopup]]
         
         local renameInput = renamePopup:AddInputText("##RenamePresetInput", preset.DisplayName)
         renameInput.Hint = "Enter new preset name ..."
@@ -252,6 +271,7 @@ function MaterialPresetsMenu:RenderCustomColorBox(preset, parent)
         renamePopup:Open()
 
         local function destoryRenamePopup()
+            --- @diagnostic disable-next-line
             if renamePopup then renamePopup:Destroy() renamePopup = nil end
         end
 
@@ -261,7 +281,7 @@ function MaterialPresetsMenu:RenderCustomColorBox(preset, parent)
 
             if e.Key == "RETURN" and isFocus then
                 local newName = renameInput.Text
-                if newName and newName ~= "" and newName ~= preset.DisplayName then
+                if newName and newName ~= "" and newName ~= preset.DisplayName and not self.CustomMaterialPresets[newName] then
                     -- Rename
                     self.CustomMaterialPresets[newName] = preset
                     self.CustomMaterialPresets[preset.DisplayName] = nil
@@ -275,6 +295,7 @@ function MaterialPresetsMenu:RenderCustomColorBox(preset, parent)
 
         Timer:After(1000, function()
             local focusTimer = Timer:EveryFrame(function ()
+                if not renamePopup then return UNSUBSCRIBE_SYMBOL end
                 local ok, isFocus = pcall(IsFocused, renamePopup)
                 if not ok then destoryRenamePopup() return UNSUBSCRIBE_SYMBOL end
 
