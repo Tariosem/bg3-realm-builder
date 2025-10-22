@@ -293,12 +293,31 @@ function SceneMenu:SetupCollectionRenameInput(node, key)
     input.SameLine = true
 
     local function tryToRename(newName)
+        if newName and newName == "" then
+            EntityStore.Tree:RemoveButKeepChildren(key)
+            self:UpdateList()
+            self.IsRenaming = false
+            return
+        end
+
         if newName and newName ~= key then
             EntityStore.Tree:Rename(key, newName)
 
             self.propTreeList.leafRefs[key] = nil
-            self:UpdateList()
         end
+
+        local newSelectable = node:AddSelectable(newName) --[[@as ExtuiSelectable]]
+        self:SetupTree(newSelectable, newName, node)
+        self.propTreeList:SetUpTree(newSelectable, newName, node)
+        self.propTreeList.treeRefs[newName] = newSelectable
+        local orginNode = self.propTreeList.nodeRefs[key]
+        self.propTreeList.nodeRefs[newName] = orginNode
+        self.propTreeList.nodeRefs[key] = nil
+        local orginState = self.propTreeList.collapsedTree[key]
+        self.propTreeList.collapsedTree[newName] = orginState
+        self.propTreeList.collapsedTree[key] = nil
+
+        self.IsRenaming = false
     end
 
     Timer:After(1000, function (timerID)
@@ -351,7 +370,8 @@ function SceneMenu:SetupRenameInput(node, key)
     input.SameLine = true
 
     local function tryToRename(newName)
-        if newName and newName ~= propData.DisplayName then
+        
+        if newName and newName ~= propData.DisplayName and newName ~= "" then
             EntityStore:RegisterDisplayName(newName, propData.Guid, propData.DisplayName)
 
             if self.entityTabs[key] then
@@ -360,10 +380,14 @@ function SceneMenu:SetupRenameInput(node, key)
                     tab:Refresh()
                 end
             end
-
-            self.propTreeList.leafRefs[key] = nil
-            self:UpdateList()
         end
+        
+        local newSelectable = node:AddSelectable(newName) --[[@as ExtuiSelectable]]
+        self:SetupLeaf(newSelectable, key, node)
+        self.propTreeList:SetUpLeaf(newSelectable, key, node)
+        self.propTreeList.leafRefs[key] = newSelectable
+
+        self.IsRenaming = false
     end
 
     Timer:After(1000, function (timerID)
@@ -387,12 +411,6 @@ function SceneMenu:SetupRenameInput(node, key)
                 input:Destroy()
 
                 tryToRename(newName)
-
-                local newSelectable = node:AddSelectable(propData.DisplayName) --[[@as ExtuiSelectable]]
-
-                self:SetupLeaf(newSelectable, key, node)
-                self.propTreeList:SetUpLeaf(newSelectable, key, node)
-
 
                 return UNSUBSCRIBE_SYMBOL
             end
@@ -535,7 +553,7 @@ function SceneMenu:SetupSelectablePopup(popup)
     local makeLsxBtn = AddSelectableButton(row:AddCell(), GetLoca("Export LSX"), function()
         if self.selectedGuids and #self.selectedGuids > 0 then
             for _, guid in ipairs(self.selectedGuids) do
-                local suc = LSXHelpers.MakeItemLSX(guid, "Default")
+                local suc = LSXHelpers.SerializeItem(guid, "Default")
                 if suc then
                     Info(string.format(GetLoca("Prop LSX for '%s' exported successfully."), guid))
                 else

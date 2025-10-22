@@ -329,6 +329,8 @@ NetChannel.Bind:SetHandler(function(data, userID)
             BindManager:Unbind(guid)
         elseif data.Type == "UpdateOffset" then
             BindManager:UpdateOffset(guid)
+        elseif data.Type == "SetAttributes" then
+            BindManager:UpdateAttributes(guid, data.Attributes)
         else
             local success = BindManager:Bind(guid, data.Parent, data.Attributes)
             if not success then

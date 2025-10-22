@@ -64,7 +64,7 @@ NetChannel.SetAttributes = Ext.Net.CreateChannel(ModuleUUID, "SetAttributes")
 NetChannel.ManageGizmo = Ext.Net.CreateChannel(ModuleUUID, "ManageGizmo")
 
 --- @class BindChannel : NetChannel
---- @field SendToServer fun(channel:self , data: {Type: "Bind"|"Unbind"|"UpdateOffset", Guid: GUIDSTRING|GUIDSTRING[], Parent: GUIDSTRING, Attributes: table<'FollowParent'|'KeepLookingAt', boolean>})
+--- @field SendToServer fun(channel:self , data: {Type: "Bind"|"Unbind"|"UpdateOffset"|"SetAttributes", Guid: GUIDSTRING|GUIDSTRING[], Parent: GUIDSTRING, Attributes: table<'FollowParent'|'KeepLookingAt', boolean>})
 NetChannel.Bind = Ext.Net.CreateChannel(ModuleUUID, "Bind")
 
 --- @class SpawnPresetChannel : NetChannel

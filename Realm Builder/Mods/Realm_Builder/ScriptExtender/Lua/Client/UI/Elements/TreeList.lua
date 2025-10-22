@@ -570,38 +570,29 @@ function TreeList:SetUpTree(tree, key)
 
     local userOnClick = tree.OnClick
 
-    local lastClickTime = 0
-    local doubleClickThreshold = 300 -- milliseconds
     tree.OnClick = function(sel)
         sel.Selected = false
 
-        local currentTime = Ext.Utils.MonotonicTime()
-        if currentTime - lastClickTime < doubleClickThreshold then
-            Debug("Double click detected on tree node: " .. tostring(key))
-            self:ExpandAll(key)
-        else
-            local function recurSel(pparent)
-                local parentNode = self.tree:Find(pparent)
-                if parentNode then
-                    for ikey, cont in pairs(parentNode) do
-                        if self.leafRefs[ikey] then
-                            self:ToggleSelected(ikey)
-                        else
-                            recurSel(ikey)
-                        end
+        local function recurSel(pparent)
+            local parentNode = self.tree:Find(pparent)
+            if parentNode then
+                for ikey, cont in pairs(parentNode) do
+                    if self.leafRefs[ikey] then
+                        self:ToggleSelected(ikey)
+                    else
+                        recurSel(ikey)
                     end
                 end
             end
-
-            if self.GroupSelect then
-                self:ClearSelection()
-                recurSel(key)
-            else
-                toggleFunc()
-            end
         end
 
-        lastClickTime = currentTime
+        if self.GroupSelect then
+            self:ClearSelection()
+            recurSel(key)
+        else
+            toggleFunc()
+        end
+
 
         if userOnClick then
             userOnClick(sel)

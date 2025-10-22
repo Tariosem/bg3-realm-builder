@@ -29,7 +29,6 @@ function BindManager:Bind(child, parent, attributes)
     end
 
     if not child or not parent then
-        Warning("Invalid child or parent guid")
         return false
     end
 
@@ -135,6 +134,16 @@ function BindManager:Unbind(child)
     end
 
     return true
+end
+
+function BindManager:UpdateAttributes(child, attributes)
+    if not self.BindStores[child] then return end
+    if attributes.KeepLookingAt ~= nil then
+        self.BindStores[child].KeepLookingAt = attributes.KeepLookingAt
+    end
+    if attributes.FollowParent ~= nil then
+        self.BindStores[child].FollowParent = attributes.FollowParent
+    end
 end
 
 function BindManager:UpdateOffset(child)

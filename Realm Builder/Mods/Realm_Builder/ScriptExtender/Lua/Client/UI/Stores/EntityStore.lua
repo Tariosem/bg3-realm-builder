@@ -323,6 +323,7 @@ function EntityStore:GetBindParent(guid)
     return BindDatas[guid] and BindDatas[guid].BindParent or nil
 end
 
+
 --- @param guid GUIDSTRING
 --- @return BindInfo|nil
 function EntityStore:GetBindInfo(guid)

@@ -1,3 +1,6 @@
+--- so the reset of the code is most about finding and tracking dummies on the client side
+--- every time we find a dummy we store it and in visual helpers we redirect visual get/set to the dummy if it exists
+
 local dummyUpdateTimer = nil 
 local clientVisualDummies = {}
 

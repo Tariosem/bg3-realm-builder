@@ -35,10 +35,10 @@ function LSXHelpers.new()
 end
 
 
-function LSXHelpers.MakeItemLSX(guid, modName)
+function LSXHelpers.SerializeItem(guid, modName)
     local curLevel = _C().Level.LevelName
     local propData = EntityStore:GetEntity(guid)
-    local entity = Ext.Entity.Get(guid)
+    local entity = Ext.Entity.Get(guid) --[[@as EntityHandle]]
     if not propData then
         Error("MakePropLSX: No prop data found for GUID " .. tostring(guid))
         return nil
@@ -50,9 +50,10 @@ function LSXHelpers.MakeItemLSX(guid, modName)
         return nil
     end
 
-    local regionWrapper = LSXHelpers.RegionNodeWrapper("Templates", root)
+    local regionNode = root:AppendChild(LSXNode.new("region", { id = "Templates" }))
+    local templateNode = regionNode:AppendChild(LSXNode.new("node", { id = "Templates" }))
 
-    local firstChildren = regionWrapper:AppendChild(LSXNode.new("Children"))
+    local firstChildren = templateNode:AppendChild(LSXNode.new("Children"))
 
     local gameObjectNode = firstChildren:AppendChild(LSXNode.new("node", { id = "GameObjects" }))
 
@@ -62,13 +63,12 @@ function LSXHelpers.MakeItemLSX(guid, modName)
         LSXHelpers.AttrNode("LevelName", "FixedString", curLevel),
         LSXHelpers.AttrNode("Type", "FixedString", "item"),
         LSXHelpers.AttrNode("TemplateName", "FixedString", TakeTailTemplate(propData.TemplateId)),
-        LSXHelpers.AttrNode("GravityType", "uint8", propData.Gravity and 0 or 1),
+        LSXHelpers.AttrNode("GravityType", "uint8", entity.GravityDisabled and 1 or entity.GravityDisabledUntilMoved and 2 or 0), -- 0 = Enabled, 1 = Disabled, 2 = Disabled until moved
     }
 
     gameObjectNode:AppendChildren(basicAttrs)
 
     local secondChidren = gameObjectNode:AppendChild(LSXNode.new("Children"))
-
     local transformNode = secondChidren:AppendChild(LSXNode.new("node", { id = "Transform" }))
 
 
@@ -84,7 +84,6 @@ function LSXHelpers.MakeItemLSX(guid, modName)
     }
 
     transformNode:AppendChildren(transformAttrs)
-
 
     local layerListNode = secondChidren:AppendChild(LSXNode.new("node", { id = "LayerList" }))
 
@@ -106,19 +105,7 @@ function LSXHelpers.MakeItemLSX(guid, modName)
         modName = "Mods"
     end
 
-    local path = string.format("Realm_Builder/LSX/%s/Mods/%s/Levels/%s/items/%s", modName, modName, curLevel, propData.DisplayName)
-
-    --- Sanitize path
-    path:gsub("[<>:\"/\\|%?%*]", "_")
-
-    local suc = Ext.IO.SaveFile(path, root:Stringify())
-
-    if not suc then
-        Error("MakePropLSX: Failed to save LSX file at " .. path)
-        return nil
-    end
-
-    return suc
+    return root:Stringify({ Indent = 2 }), guid
 end
 
 ---@param marerialPresetUUID GUIDSTRING
@@ -127,7 +114,7 @@ end
 ---@param UIColor string
 ---@param presetType "EyeColor"|"HairColor"|"SkinColor"
 ---@return LSXNode
-function LSXHelpers.MakeCharacterCreationLSXNode(marerialPresetUUID, displayName, internalName, UIColor, presetType)
+function LSXHelpers.BuildCCANode(marerialPresetUUID, displayName, internalName, UIColor, presetType)
     local node = LSXNode.new("node", { id = "CharacterCreation"..presetType })
 
     local attrs = {
@@ -140,20 +127,6 @@ function LSXHelpers.MakeCharacterCreationLSXNode(marerialPresetUUID, displayName
 
     node:AppendChildren(attrs)
 
-    return node
-end
-
----@param regionName string
----@return LSXNode
-function LSXHelpers.RegionNodeWrapper(regionName, parent)
-    local regionNode = LSXNode.new("region", {id = regionName})
-
-    if parent then
-        parent:AppendChild(regionNode)
-    end
-
-    local node = LSXNode.new("node", {id = regionName})
-    regionNode:AppendChild(node)
     return node
 end
 
@@ -171,14 +144,13 @@ function LSXHelpers.AttrNode(id, type, value)
     return attrNode
 end
 
---- so this basically generates an LSX file like:
+--- so this basically generates an XML string like this:
 --- <?xml version="1.0" encoding="utf-8"?>
 --- <contentList xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
 ---   <content contentuid="generated-guid" version="1">name1</content>
 ---   <content contentuid="generated-guid" version="1">name2</content>
 ---  ...
 --- </contentList>
---- which is the localization used by the game
 ---@param names string[]
 ---@param version number|fun(name:string):number
 ---@return string, table<string, string>, table<string, string>
@@ -210,4 +182,118 @@ function LSXHelpers.GenerateLocalization(names, version)
     end
 
     return root:Stringify({Indent = 2}), handleToString, stringToHandle
+end
+
+
+local function createPresetParamAttrNodes(parameterName, value)
+    local attrs = {}
+    local valueType = DetermineLSXValueType(value)
+    local saveValue = #value == 1 and value[1] or value
+    if not valueType then
+        Warning("CustomMaterialProxy: Could not determine LSX value type for preset parameter '" .. tostring(parameterName) .. "'. Skipping.")
+        return nil
+    end
+
+    attrs = {
+        LSXHelpers.AttrNode("Color", LSXValueType.bool, parameterName:find("Color") ~= nil or parameterName:find("Colour") ~= nil),
+        LSXHelpers.AttrNode("Custom", LSXValueType.bool, false),
+        LSXHelpers.AttrNode("Enabled", LSXValueType.bool, true),
+        LSXHelpers.AttrNode("Value", valueType, saveValue),
+        LSXHelpers.AttrNode("Parameter", LSXValueType.FixedString, parameterName),
+    }
+    
+    return attrs
+end
+
+local function createPresetParameterNodes(matRes, parameters)
+    local paramNodes = {} --[[@as LSXNode[] ]]
+    for i,params in pairs(parameters) do
+        for paramName,value in pairs(params) do
+            local node = LSXNode.new("node", { id= PropTypeToField[i] })
+            local attrs = createPresetParamAttrNodes(paramName, value)
+            if not attrs then
+                Warning("CustomMaterialProxy: Could not create LSX attribute nodes for parameter '" .. tostring(paramName) .. "'. Skipping parameter.")
+            else
+                node:AppendChildren(attrs)
+                node:SortChildren(function (a,b) return a:GetAttribute("id") < b:GetAttribute("id") end)
+                table.insert(paramNodes, node)
+            end
+        end
+    end
+
+    return paramNodes
+end
+
+---@param parameters table<1|2|3|4, table<string, number[]>>
+---@param uuid GUIDSTRING
+---@return string?
+function LSXHelpers.SerializeMaterialPreset(parameters, uuid)
+    local root = LSXHelpers.new()
+    if not root then
+        Error("CustomMaterialProxy: Could not create LSXTableNode for export.")
+        return nil
+    end
+
+    local presetRegion = root:AppendChild(LSXNode.new("region", {id = "MaterialPresetBank"}))
+    local presetNode = presetRegion:AppendChild(LSXNode.new("node", {id = "MaterialPresetBank"}))
+
+    local childrenWrapper = LSXNode.new("children")
+    presetNode:AppendChild(childrenWrapper)
+    local resNode = LSXNode.new("node", {id="Resource"})
+    childrenWrapper:AppendChild(resNode)
+
+    local baseAttr = {
+        LSXHelpers.AttrNode("ID", LSXValueType.FixedString, uuid),
+        LSXHelpers.AttrNode("Name", LSXValueType.LSString, "Custom Material Preset"):AddComment("Change me!"),
+        LSXHelpers.AttrNode("Localized", LSXValueType.bool, false),
+        LSXHelpers.AttrNode("_OriginalFileVersion_", LSXValueType.int64, "144115198813274414"),
+    }
+    resNode:AppendChildren(baseAttr)
+
+    resNode:SortChildren(function(a,b) return a:GetAttribute("id") < b:GetAttribute("id") end)
+
+    local secondChildrenWrapper = LSXNode.new("children")
+    resNode:AppendChild(secondChildrenWrapper)
+
+    local presetsNode = LSXNode.new("node", {id="Presets"}, {
+        LSXHelpers.AttrNode("MaterialPresetResource", LSXValueType.FixedString, ""),
+    })
+    secondChildrenWrapper:AppendChild(presetsNode)
+
+    local thirdChildrenWrapper = LSXNode.new("children") 
+    presetsNode:AppendChild(thirdChildrenWrapper)
+
+    local colorPresetNode = LSXNode.new("node", {id="ColorPresets"})
+    thirdChildrenWrapper:AppendChild(colorPresetNode)
+    local colorPresetAttrNodes = {
+        LSXNode.new("attribute", {
+            id = "ForcePresetValues",
+            type = LSXValueType.bool,
+            value = false,
+        }),
+        LSXNode.new("attribute", {
+            id = "GroupName",
+            type = LSXValueType.FixedString,
+            value = "",
+        }),
+        LSXNode.new("attribute", {
+            id = "MaterialPresetResource",
+            type = LSXValueType.FixedString,
+            value = "",
+        }),
+    }
+    colorPresetNode:AppendChildren(colorPresetAttrNodes)
+
+    local matePresetNode = LSXNode.new("node", {id="MaterialPresets"})
+    thirdChildrenWrapper:AppendChild(matePresetNode)
+
+    local paramNodes = createPresetParameterNodes(nil, parameters)
+
+    if paramNodes then
+        thirdChildrenWrapper:AppendChildren(paramNodes)
+    end
+
+    local xmlString = root:Stringify()
+
+    return xmlString
 end

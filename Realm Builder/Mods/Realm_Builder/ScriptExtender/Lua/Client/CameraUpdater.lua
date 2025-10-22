@@ -68,15 +68,15 @@ local function CameraUnbind(guid)
     end
 end
 
-NetChannel.CameraBind.OnMessage = function(sel, data)
+NetChannel.CameraBind:SetHandler(function (data, userID)
     local child = data.Guid
-
+    
     if data.Type == "Bind" then
         CameraBind(child)
     elseif data.Type == "Unbind" then
         CameraUnbind(child)
     end
-end
+end)
 
 function StartUpdateingCamera()
     if CameraUpdateTimer == nil then

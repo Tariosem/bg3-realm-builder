@@ -2,7 +2,7 @@ MATERIALPRESET_DRAGDROP_TYPE = "MaterialPreset"
 
 MaterialPresetsMenu = MaterialPresetsMenu or {}
 
-local function colorPresetComparator(a,b)
+local function colorPresetComparator(a,b, aName, bName)
     local aR, aG, aB = a.UIColor[1], a.UIColor[2], a.UIColor[3]
     local bR, bG, bB = b.UIColor[1], b.UIColor[2], b.UIColor[3]
     local aH, aS, aV = RGBtoHSV(aR, aG, aB)
@@ -15,8 +15,6 @@ local function colorPresetComparator(a,b)
     elseif aV ~= bV then
         return aV < bV
     else
-        local aName = a.DisplayName and a.DisplayName:Get() or ""
-        local bName = b.DisplayName and b.DisplayName:Get() or ""
         return aName < bName
     end
 end
@@ -26,6 +24,8 @@ function MaterialPresetsMenu:Render()
 
     self.panel = RegisterWindow("generic", "Material Presets", "Menu", self)
     self.panel.Closeable = true
+
+    self.CustomMaterialPresets = {}
 
     self.isVisible = true
     self:RenderPresetsList()
@@ -45,7 +45,7 @@ function MaterialPresetsMenu:RenderPresetsList()
 end
 
 function MaterialPresetsMenu:RenderCustomMaterialPresets(header)
-    local cT = AddCollapsingTable(header, nil, "Recent", { CollapseDirection = "Right" })
+    local cT = AddCollapsingTable(header, nil, "Export", { CollapseDirection = "Right" })
     cT.Table.BordersInnerV = true
 
     local mainList = cT.MainArea
@@ -62,15 +62,55 @@ function MaterialPresetsMenu:RenderCustomMaterialPresets(header)
             return aName < bName
         end
 
-        return colorPresetComparator(a,b)
+        return colorPresetComparator(a,b, a.DisplayName or "", b.DisplayName or "")
     end
 
-    
+    local row = mainTable:AddRow()
+    local nameToCells = {}
+
+    local function renderAllCustomPresets()
+        local presetsList = {}
+        for _,preset in pairs(self.CustomMaterialPresets) do
+            table.insert(presetsList, preset)
+        end
+
+        table.sort(presetsList, comparator)
+
+        for _,preset in ipairs(presetsList) do
+            local cell = row:AddCell()
+            local colorBox = self:RenderCustomColorBox(preset, cell)
+
+        end
+    end
+
+    renderAllCustomPresets()
+
+    self.UpdateCustomMaterialPresetsList = function ()
+        nameToCells = {}
+        row:Destroy()
+        row = mainTable:AddRow()
+        renderAllCustomPresets()
+    end
+
+    local sortButton = cT.TitleCell:AddButton("Hue##CustomPresetSort")
+    local stooltip = sortButton:Tooltip():AddText("Sort presets by Hue")
+
+    sortButton.OnClick = function ()
+        nameToCells = {}
+        namePrior = not namePrior
+        row:Destroy()
+        row = mainTable:AddRow()
+        renderAllCustomPresets()
+        stooltip.Label = namePrior and "Sort presets by Name" or "Sort presets by Hue"
+        sortButton.Label = namePrior and "Name##CustomPresetSort" or "Hue##CustomPresetSort"
+    end
 
 
+    self:SetupWorklist(workshopList)
 end
 
-function MaterialPresetsMenu:SetupWorklist()
+---@param parent ExtuiTreeParent
+function MaterialPresetsMenu:SetupWorklist(parent)
 
 end
 
@@ -151,6 +191,108 @@ function MaterialPresetsMenu:RenderPresetColorBox(preset, parent)
     return colorBox
 end
 
+function MaterialPresetsMenu:RenderCustomColorBox(preset, parent)
+    local colorBox = parent:AddColorEdit("##" .. preset.DisplayName)
+    colorBox.Color = preset.UIColor
+    colorBox:Tooltip():AddText(preset.DisplayName or "Unnamed Preset")
+    colorBox.NoInputs = true
+    colorBox.NoPicker = true
+    colorBox.CanDrag = true
+    colorBox.DragDropType = MATERIALPRESET_DRAGDROP_TYPE
+
+    local managePopup = parent:AddPopup("ManagePresetPopup##" .. preset.DisplayName)
+
+    colorBox.OnDragStart = function (sel)
+        local previewColorBox = colorBox.DragPreview:AddColorEdit("##PreviewColorBox")
+        previewColorBox.Color = preset.UIColor
+        previewColorBox.NoInputs = true
+        colorBox.DragPreview:AddText(preset.DisplayName).SameLine = true
+        if sel.UserData then return end
+        sel.UserData = {
+            Parameters = preset.Parameters,
+            SuccessApply = false,
+        }
+    end
+
+    colorBox.OnDragDrop = function (drop)
+        colorBox.Color = preset.UIColor
+    end
+
+    colorBox.OnRightClick = function ()
+        colorBox.Color = preset.UIColor
+        managePopup:Open()
+    end
+
+    colorBox.OnHoverEnter = function ()
+        colorBox.Color = preset.UIColor
+        colorBox:SetStyle("FrameBorderSize", 2)
+        colorBox:SetColor("Border", HexToRGBA("FFFFD500"))
+    end
+
+    colorBox.OnHoverLeave = function ()
+        colorBox:SetStyle("FrameBorderSize", 0)
+        colorBox:SetColor("Border", HexToRGBA("FFFFFFFF"))
+    end
+
+    local selectTable = managePopup:AddTable("ManagePresetTable", 1)
+    local selectRow = selectTable:AddRow()
+
+    local deleteBtn = AddSelectableButton(selectRow:AddCell(), "Delete Preset##" .. preset.DisplayName, function (sel)
+        self.CustomMaterialPresets[preset.DisplayName] = nil
+        self:UpdateCustomMaterialPresetsList()
+    end)
+    ApplyDangerSelectableStyle(deleteBtn)
+
+    local renameBtn = AddSelectableButton(selectRow:AddCell(), "Rename Preset##" .. preset.DisplayName, function (sel)
+        local renamePopup = parent:AddPopup("RenamePresetPopup##" .. preset.DisplayName)
+        
+        local renameInput = renamePopup:AddInputText("##RenamePresetInput", preset.DisplayName)
+        renameInput.Hint = "Enter new preset name ..."
+
+        renamePopup:Open()
+
+        local function destoryRenamePopup()
+            if renamePopup then renamePopup:Destroy() renamePopup = nil end
+        end
+
+        local enterConfirmSub = SubscribeKeyInput({ Key = "RETURN" }, function (e)
+            local ok, isFocus = pcall(IsFocused, renameInput)
+            if not ok then destoryRenamePopup() return UNSUBSCRIBE_SYMBOL end
+
+            if e.Key == "RETURN" and isFocus then
+                local newName = renameInput.Text
+                if newName and newName ~= "" and newName ~= preset.DisplayName then
+                    -- Rename
+                    self.CustomMaterialPresets[newName] = preset
+                    self.CustomMaterialPresets[preset.DisplayName] = nil
+                    preset.DisplayName = newName
+                    self:UpdateCustomMaterialPresetsList()
+                end
+                destoryRenamePopup()
+                return UNSUBSCRIBE_SYMBOL
+            end
+        end)
+
+        Timer:After(1000, function()
+            local focusTimer = Timer:EveryFrame(function ()
+                local ok, isFocus = pcall(IsFocused, renamePopup)
+                if not ok then destoryRenamePopup() return UNSUBSCRIBE_SYMBOL end
+
+                if not isFocus then
+                    enterConfirmSub:Unsubscribe()
+                    destoryRenamePopup()
+                else
+                end
+            end)
+        end)
+
+    end)
+
+
+
+    return colorBox
+end
+
 function MaterialPresetsMenu:RenderCCPresetList(presetName, parent)
     local cT = AddCollapsingTable(parent, nil, "Recent", { CollapseDirection = "Right" })
     cT.Table.BordersInnerV = true
@@ -186,13 +328,13 @@ function MaterialPresetsMenu:RenderCCPresetList(presetName, parent)
     end
     local namePrior = false
     local Comparator = function(a,b)
+        local aName = a.DisplayName and a.DisplayName:Get() or ""
+        local bName = b.DisplayName and b.DisplayName:Get() or ""
         if namePrior then
-            local aName = a.DisplayName and a.DisplayName:Get() or ""
-            local bName = b.DisplayName and b.DisplayName:Get() or ""
             return aName < bName
         end
 
-        return colorPresetComparator(a,b)
+        return colorPresetComparator(a,b, aName, bName)
     end
 
     table.sort(allRes, Comparator)
@@ -348,8 +490,22 @@ function MaterialPresetsMenu:SaveMaterialPreset(mat)
 
     local parameters = DeepCopy(mat.Parameters)
     
-    local newName 
+    local newName = "New Preset"
 
+    local cnt = 1
+    while self.CustomMaterialPresets[newName] do
+        cnt = cnt + 1
+        newName = newName .. " (" .. tostring(cnt) .. ")" 
+    end
+
+    self.CustomMaterialPresets[newName] = {
+        DisplayName = newName,
+        UIColor = mat:GetPreviewColor(),
+        Parameters = parameters,
+    }
+
+    self:UpdateCustomMaterialPresetsList()
 end
+
 
 MaterialPresetsMenu:Render()

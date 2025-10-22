@@ -11,6 +11,7 @@ LSXValueType = {
     uint64 = "uint64",
     int64 = "int64",
     float = "float",
+    fvec2 = "fvec2",
     fvec3 = "fvec3",
     fvec4 = "fvec4",
     guid = "guid",

@@ -165,8 +165,8 @@ function TransformToolbar:RegisterKeyInputEvents()
             if e.Event ~= "KeyDown" then return end
             if not TransformEditor.Target or #TransformEditor.Target == 0 then return end
             local targets = NormalizeGuidList(TransformEditor.Target)
-            local paramsOn = { Guid = targets , Attributes = {} }
-            local paramsOff = { Guid = targets , Attributes = {} }
+            local paramsOn = { Guid = targets , Attributes = {} , Type = "SetAttributes"}
+            local paramsOff = { Guid = targets , Attributes = {} , Type = "SetAttributes"}
             paramsOn.Attributes[field] = valueOn
             paramsOff.Attributes[field] = valueOff
             channel:SendToServer(paramsOn)
@@ -414,19 +414,6 @@ function TransformToolbar:RenderTopBar()
     notice.Font = "Tiny"
     notice:SetColor("Text", HexToRGBA("C4B5B5B5"))
 
-
-    operatorInput.OnChange = function (input)
-        self:SetupOperator()
-        local newText = input.Text
-        if tonumber(newText) then
-            newText = "NUM_" .. newText
-        end
-        self.Operator:ParseInput({ Key = newText:upper() })
-        input.Text = ""
-        if self.Operator then
-            input.Hint = tostring(self.Operator)
-        end
-    end
     self.OperatorInput = operatorInput
 
     local spaceCombo = centerCell:AddCombo("Space")
@@ -589,6 +576,9 @@ function TransformToolbar:CreateBindPopup(guid)
 
         local right = row1:AddCell()
         local nearByCombo = NearbyCombo.new(right)
+        local excludeEntites = {}
+        table.insert(excludeEntites, guid)
+
         nearByCombo.ExcludeEntries = {guid}
 
         nearByCombo:SetSelected(curParent)
@@ -627,16 +617,16 @@ function TransformToolbar:CreateBindPopup(guid)
             checkbox.OnChange = function(e)
                 local newValue = checkedToValue(e.Checked)
                 local attr = { [field] = newValue }
-                NetChannel.Bind:SendToServer({ Guid = {guid}, Attributes = attr })
+                NetChannel.Bind:SendToServer({ Type = "SetAttributes", Guid = {guid}, Attributes = attr })
                 info[field] = newValue
                 HistoryManager:PushCommand({
                     Undo = function()
                         local undoValue = checkedToValue(not e.Checked)
-                        NetChannel.Bind:SendToServer({ Guid = {guid}, Attributes = { [field] = undoValue } })
+                        NetChannel.Bind:SendToServer({ Type = "SetAttributes", Guid = {guid}, Attributes = { [field] = undoValue } })
                         info[field] = undoValue
                     end,
                     Redo = function()
-                        NetChannel.Bind:SendToServer({ Guid = {guid}, Attributes = attr })
+                        NetChannel.Bind:SendToServer({ Type = "SetAttributes", Guid = {guid}, Attributes = attr })
                         info[field] = newValue
                     end
                 })

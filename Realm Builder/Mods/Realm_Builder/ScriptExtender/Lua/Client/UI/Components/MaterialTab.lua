@@ -61,13 +61,15 @@ function MaterialTab:Render()
 
     parentNode.OnDragDrop = function (sel, drop)
         sel.UserData.PresetProxy = self.Editor.PresetProxy --[[@as MaterialPresetProxy ]]
-        if drop.UserData and drop.UserData.MaterialProxy then
+        if drop.UserData and drop.UserData.Parameters then
             local params = drop.UserData.Parameters
 
             self.Editor:ApplyParameters(params)
             drop.UserData.SuccessApply = true
             self:UpdateUIState()
-            self.Editor.PresetProxy = drop.UserData.PresetProxy --[[@as MaterialPresetProxy ]]
+            if drop.UserData.PresetProxy then
+                self.Editor.PresetProxy = drop.UserData.PresetProxy --[[@as MaterialPresetProxy ]]
+            end
         end
     end
 
@@ -202,8 +204,14 @@ function MaterialTab:RenderProperty(node, propertyName, propertyValue)
         end
     end
 
+    local range = {min = -10, max = 50}
+    if propertyName:find("Roughness") or propertyName:find("Metallic") then
+        range.min = 0
+        range.max = 1
+    end
+
     for i=1, #propertyValue do
-        local slider = AddSliderWithStep(node, propertyName .. "##" .. self.MaterialName .. i, propertyValue[i], -10, 100, 0.1, propertyName:find("Index") ~= nil)
+        local slider = AddSliderWithStep(node, propertyName .. "##" .. self.MaterialName .. i, propertyValue[i], range.min, range.max, 0.1, propertyName:find("Index") ~= nil)
 
         slider.OnChange = function (sel)
             local newValue = { sliders[1].Value[1], sliders[2] and sliders[2].Value[1] or 0, sliders[3] and sliders[3].Value[1] or 0, sliders[4] and sliders[4].Value[1] or 0 } --[[@as number[] ]]
@@ -297,7 +305,7 @@ function MaterialTab:SetupManagePopup(popup)
 
     local row = tt:AddRow()
 
-    local saveBtn = AddSelectableButton(row:AddCell(), "Save Changes##" .. self.MaterialName, function (sel)
+    local saveBtn = AddSelectableButton(row:AddCell(), "Save To Material Preset##" .. self.MaterialName, function (sel)
         MaterialPresetsMenu:SaveMaterialPreset(self.Editor)
     end)
 

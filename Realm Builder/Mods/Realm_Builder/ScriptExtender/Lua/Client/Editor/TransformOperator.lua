@@ -218,7 +218,7 @@ function TransformOperator:SetSpace(space)
     self:Visualize()
 end
 
---- @param e SimplifiedInputEvent
+--- @param e SimplifiedInputEvent|string
 function TransformOperator:ParseInput(e)
     if e.Event ~= "KeyDown" then return end
 
@@ -240,7 +240,7 @@ function TransformOperator:ParseInput(e)
         self:SetSpace(keyToSpace[e.Key])
 
     elseif KeybindHelpers.ParseInputToCharInput(e) then
-        local char = KeybindHelpers.ParseInputToCharInput(e)
+        local char = KeybindHelpers.ParseInputToCharInput(e) --[[@as string ]]
         if char == "." or char == "," then
             if not self.Num:find("%.") then
                 self.Num = self.Num .. "."

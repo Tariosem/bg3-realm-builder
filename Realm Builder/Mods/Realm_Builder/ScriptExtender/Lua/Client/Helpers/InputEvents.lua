@@ -113,7 +113,7 @@ end
 
 --- @class SimplifiedInputEvent
 --- @field Event "KeyDown"|"KeyUp"
---- @field Key  SDLScanCode|"LMB"|"RMB"|"MMB" (mouse buttons)
+--- @field Key  SimplifiedInputCode
 --- @field Pressed boolean
 --- @field Repeat boolean
 --- @field Modifiers? SDLKeyModifier
