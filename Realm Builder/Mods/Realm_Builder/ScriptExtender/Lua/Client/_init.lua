@@ -52,7 +52,6 @@ RequireFiles("Client/", {
     "KeybindManager",
     "UI/_init",
     "Editor/__init",
-    "ClientHelpers",
     "MCM",
     "CameraUpdater",
 })

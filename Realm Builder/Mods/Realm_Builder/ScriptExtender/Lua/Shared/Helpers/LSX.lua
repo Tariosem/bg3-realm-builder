@@ -3,6 +3,7 @@ LSXValueType = {
     TranslatedString = "TranslatedString",
     FixedString = "FixedString",
     LSString = "LSString",
+    LSWString = "LSWString",
     bool = "bool",
     uint8 = "uint8",
     int8 = "int8",
@@ -45,7 +46,8 @@ local defaultStringifyOptions = {
     Indent = 4,
     IncludeComments = true,
     MaxDepth = 100,
-    InlcudeHeader = true,
+    IncludeHeader = true,
+    AutoFindRoot = false,
 }
 
 local function validateStringifyOptions(opts)
@@ -62,8 +64,11 @@ local function validateStringifyOptions(opts)
     if opts.MaxDepth and type(opts.MaxDepth) == "number" and opts.MaxDepth >= 0 then
         validOpts.MaxDepth = opts.MaxDepth
     end
-    if opts.InlcudeHeader ~= nil and type(opts.InlcudeHeader) == "boolean" then
-        validOpts.InlcudeHeader = opts.InlcudeHeader
+    if opts.IncludeHeader ~= nil and type(opts.IncludeHeader) == "boolean" then
+        validOpts.IncludeHeader = opts.IncludeHeader
+    end
+    if opts.AutoFindRoot ~= nil and type(opts.AutoFindRoot) == "boolean" then
+        validOpts.AutoFindRoot = opts.AutoFindRoot
     end
 
     return validOpts
@@ -74,6 +79,7 @@ end
 --- @field IncludeComments boolean
 --- @field IncludeHeader boolean -- whether to include the XML declaration
 --- @field MaxDepth number
+--- @field AutoFindRoot boolean -- whether to automatically find the root node by traversing parent references
 
 --- @class LSXNode
 --- @field __name string
@@ -159,25 +165,41 @@ function LSXNode.new(name, attrs, children, comments)
 end
 
 
-function LSXNode:Stringify(stringifyOpts)
-    stringifyOpts = validateStringifyOptions(stringifyOpts or {})
-    stringifyOpts.Indent = stringifyOpts.Indent or 4
-    stringifyOpts.IncludeComments = stringifyOpts.IncludeComments ~= false
-    local content = self:__stringify(stringifyOpts)
+function LSXNode:Stringify(opts)
+    opts = validateStringifyOptions(opts or {})
 
-    return   content
+    if not opts.AutoFindRoot then
+        return self:__stringify(opts)
+    end
+
+    local seen = {}
+    local cur = self
+    while cur do
+        if seen[cur] then
+            Error("LSXNode:Stringify: Recursive parent reference detected, aborting AutoFindRoot")
+            return self:__stringify(opts)
+        end
+        seen[cur] = true
+
+        if not cur.__parent then
+            return cur:__stringify(opts)
+        end
+        cur = cur.__parent
+    end
+
+    Warning("LSXNode:Stringify: AutoFindRoot failed, falling back to self")
+    return self:__stringify(opts)
 end
 
 function LSXNode:__stringify(stringifyOpts)
     local indentStep = stringifyOpts.Indent
     local lines = {}
 
-    if stringifyOpts.InlcudeHeader then
+    if stringifyOpts.IncludeHeader then
         table.insert(lines, '<?xml version="1.0" encoding="utf-8"?>')
     end
 
     -- iterative DFS using stack. Each frame: { node = <LSXTableNode>, state = 'enter'|'exit', depth = number }
-    -- maybe use my own treetable to avoid recursion?
     local function buildAttrStr(node)
         local attrs = {}
         local seen = {}
@@ -193,7 +215,7 @@ function LSXNode:__stringify(stringifyOpts)
                 seen[key] = true
             end
         end
-        -- For any remaining keys not in __attrOrder, sort them alphabetically
+        -- To make struct consistent, sort remaining keys alphabetically
         local remainingKeys = {}
         for key, _ in pairs(node.__attributes or {}) do
             if not seen[key] then
@@ -300,7 +322,7 @@ function LSXNode.Unserialize(str)
         -- no more tags
         if not tagStart then break end
 
-        -- capture comments before the tag
+        -- capture comments before the tag to attach to parent
         if commentStart and commentStart < tagStart then
             local comments = {}
             while commentStart and commentStart < tagStart do
@@ -330,16 +352,16 @@ function LSXNode.Unserialize(str)
 
         local tag = tagText
         if tag:sub(1, 1) == "!" then
-            -- comment or doctype, ignore
+            -- comment , ignore
         elseif tag:sub(1, 1) == "/" then
             -- closing tag
             local name = tag:match("^/(%S+)")
             local node = table.remove(stack)
             if not node then
-                error("Unexpected closing tag </" .. (name or "?") .. ">")
+                Error("Unexpected closing tag </" .. (name or "?") .. ">")
             end
             if node.__name ~= name then
-                error(string.format("Mismatched tag: <%s> ... </%s>", node.__name, name))
+                Error(string.format("Mismatched tag: <%s> ... </%s>", node.__name, name))
             end
 
             if #stack == 0 then

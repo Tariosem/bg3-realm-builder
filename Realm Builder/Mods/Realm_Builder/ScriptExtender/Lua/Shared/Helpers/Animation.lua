@@ -301,3 +301,48 @@ function GetAllEasings(namdDescend)
     table.sort(easings, namdDescend and function(a,b) return a>b end or function(a,b) return a<b end)
     return easings
 end
+
+GuiAnim = {}
+
+---@param gui ExtuiStyledRenderable
+---@param dur number|nil
+---@param freq number|nil
+---@param amp number|nil
+---@return RunningAnimation?
+function GuiAnim.Vibrate(gui, dur, freq, amp, fps)
+    local amplitude = tonumber(amp) or 10
+    local frequency = tonumber(freq) or 30       -- Hz
+    local duration = tonumber(dur) or 500        -- ms
+    local framePerSecond = tonumber(fps) or 90
+
+    local originalPos = gui.PositionOffset
+
+    local phaseX = math.random() * 2 * math.pi
+    local phaseY = math.random() * 2 * math.pi
+
+    local startTime = Ext.Utils.MonotonicTime()
+    local anim = AnimateValue(framePerSecond, {0,0}, {1,1}, duration, AnimationEasing.EaseOutSine,
+        function()
+            gui.PositionOffset = originalPos
+        end,
+        function(value, eased)
+            local now = Ext.Utils.MonotonicTime()
+            local elapsedMs = now - startTime
+            local tsec = elapsedMs / 1000.0
+
+            local angleX = 2 * math.pi * frequency * tsec + phaseX
+            local angleY = 2 * math.pi * frequency * tsec + phaseY
+            local oscX = math.sin(angleX)
+            local oscY = math.sin(angleY)
+
+            local jitter = (math.random() * 2 - 1) * (amplitude * 0.15)
+
+            local offsetX = (oscX * amplitude + jitter) * (1 - eased)
+            local offsetY = (oscY * amplitude + jitter) * (1 - eased)
+
+            gui.PositionOffset = {offsetX, offsetY}
+        end
+    )
+
+    return anim
+end

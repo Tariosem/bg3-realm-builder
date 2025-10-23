@@ -363,9 +363,7 @@ function MaterialEditor:ExportToLSXAsMaterial(path)
             id = "Name",
             type = LSXValueType.LSString,
             value = "Custom Material"
-        },
-        nil,
-        "Change me!"),
+        }),
         LSXNode.new("attribute", {
             id = "SourceFile",
             type = LSXValueType.LSString,
@@ -418,10 +416,5 @@ function MaterialEditor:ExportToLSXAsMaterialPreset(path)
         end
     end
 
-    local newUuid = Uuid_v4()
-    local stringfiy = LSXHelpers.SerializeMaterialPreset(self.Parameters, newUuid) or "<!-- Error generating material preset LSX -->"
-
-
-    Ext.IO.SaveFile(path .. ".lsx", stringfiy)
 end
 

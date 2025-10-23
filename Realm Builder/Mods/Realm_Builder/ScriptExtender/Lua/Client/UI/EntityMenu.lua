@@ -551,12 +551,8 @@ function SceneMenu:SetupSelectablePopup(popup)
     local makeLsxBtn = AddSelectableButton(row:AddCell(), GetLoca("Export LSX"), function()
         if self.selectedGuids and #self.selectedGuids > 0 then
             for _, guid in ipairs(self.selectedGuids) do
-                local suc = LSXHelpers.SerializeItem(guid, "Default")
-                if suc then
-                    Info(string.format(GetLoca("Prop LSX for '%s' exported successfully."), guid))
-                else
-                    Error(string.format(GetLoca("Failed to export Prop LSX for '%s'."), guid))
-                end
+                local node = LSXHelpers.BuildItem(guid, "Default")
+                
             end
         end
     end)

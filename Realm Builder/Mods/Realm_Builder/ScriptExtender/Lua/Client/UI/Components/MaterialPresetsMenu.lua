@@ -3,7 +3,14 @@ MATERIALPRESET_DRAGDROP_TYPE = "MaterialPreset"
 --- @class MaterialPresetData
 --- @field DisplayName string
 --- @field UIColor number[]
---- @field Parameters table<string, any>
+--- @field Parameters table<1|2|3|4, table<string, any>>
+
+--- @class RB_CCAModCache
+--- @field ModName string
+--- @field AuthorName string
+--- @field Description string
+--- @field Version vec4
+--- @field MaterialPresets table<string, MaterialPresetData[]>
 
 --- @class MaterialPresetsMenu
 --- @field isVisible boolean
@@ -59,7 +66,7 @@ function MaterialPresetsMenu:RenderPresetsList()
 end
 
 function MaterialPresetsMenu:RenderCustomMaterialPresets(header)
-    local cT = AddCollapsingTable(header, nil, "Export", { CollapseDirection = "Right" })
+    local cT = AddCollapsingTable(header, nil, "Export", { CollapseDirection = "Right", SideBarWidth = 600 })
     cT.Table.BordersInnerV = true
 
     local mainList = cT.MainArea
@@ -124,9 +131,371 @@ function MaterialPresetsMenu:RenderCustomMaterialPresets(header)
 end
 
 ---@param parent ExtuiTreeParent
-function MaterialPresetsMenu:SetupWorklist(parent)
-    local importBtn = parent:AddButton("Import Preset from Workshop")
+---@param ccaModPack RB_CCAModCache?
+function MaterialPresetsMenu:SetupWorklist(parent, ccaModPack)
+    local modName = ccaModPack and ccaModPack.ModName or ""
+    local authorName = ccaModPack and ccaModPack.AuthorName or ""
+    local description = ccaModPack and ccaModPack.Description or ""
+    local version = ccaModPack and ccaModPack.Version or {1,0,0,0}
+    local selectedMPs = ccaModPack and ccaModPack.MaterialPresets or {
+        CharacterCreationEyeColors = {},
+        CharacterCreationHairColors = {},
+        CharacterCreationSkinColors = {},
+    }
 
+    local function quickCheckIfExportable()
+        if not modName or modName == "" then
+            return false
+        end
+
+        if not authorName or authorName == "" then
+            return false
+        end
+
+        if #selectedMPs.CharacterCreationEyeColors == 0 and
+           #selectedMPs.CharacterCreationHairColors == 0 and
+           #selectedMPs.CharacterCreationSkinColors == 0 then
+            return false
+        end
+
+        return true
+    end
+
+    local function refreshSelectedList()
+        -- declaration
+    end
+
+    local modNameText = parent:AddText("Mod Name:")
+
+    local modNameInput = parent:AddInputText("##MaterialPresetModName")
+    modNameInput.Hint = "Enter Mod Name..."
+
+    modNameInput.OnChange = function ()
+        modName = modNameInput.Text
+    end
+
+    local authorNameText = parent:AddText("Author Name:")
+    local authorNameInput = parent:AddInputText("##MaterialPresetAuthorName")
+    authorNameInput.Hint = "Enter Author Name..."
+    authorNameInput.OnChange = function ()
+        authorName = authorNameInput.Text
+    end
+
+    local descriptionText = parent:AddText("Description:")
+    local descriptionInput = parent:AddInputText("##MaterialPresetDescription")
+    descriptionInput.Hint = "Enter Description..."
+    descriptionInput.OnChange = function ()
+        description = descriptionInput.Text
+    end
+
+    local versionText = parent:AddText("Version (Major.Minor.Revision.Build):")
+    local versionInput = parent:AddInputInt("##MaterialPresetVersion")
+    versionInput.Components = 4
+    versionInput.OnChange = function ()
+        version = { versionInput.Value[1], versionInput.Value[2], versionInput.Value[3], versionInput.Value[4] }
+    end
+
+
+    local importBtn = nil --[[@type ExtuiSelectable]]
+    local importTT = nil --[[@type ExtuiText]]
+
+    importBtn = AddSelectableButton(parent, "Import", function (sel)
+        local fileContent = MaterialPresetsMenu:ImportFromFile(modName)
+        Timer:After(100, function ()
+            importBtn:SetStyle("Alpha", 1)
+            importBtn:SetColor("Text", HexToRGBA("FFFFFFFF"))
+        end)
+
+        if not fileContent then
+            importTT.Label = "Failed to import material presets: Mod '" .. modName .. "' not found in CCA_Cache."
+            importBtn:SetColor("Text", HexToRGBA("FFFF0000"))
+            GuiAnim.Vibrate(importBtn)
+            return
+        end
+        authorName = fileContent.AuthorName or ""
+        description = fileContent.Description or ""
+        version = fileContent.Version or {1,0,0,0}
+        selectedMPs = fileContent.MaterialPresets or {
+            CharacterCreationEyeColors = {},
+            CharacterCreationHairColors = {},
+            CharacterCreationSkinColors = {},
+        }
+        modNameInput.Text = modName
+        authorNameInput.Text = authorName
+        descriptionInput.Text = description
+        versionInput.Value = { version[1] or 1, version[2] or 0, version[3] or 0, version[4] or 0 }
+        refreshSelectedList()
+
+        importTT.Label = "Imported material presets from mod '" .. modName .. "'."
+        importBtn:SetColor("Text", HexToRGBA("FF00CCCC"))
+    end)
+    importTT = importBtn:Tooltip():AddText("Import by mod name from Realm_Builder/CCA_Cache/")
+
+    local exportBtn = nil --[[@type ExtuiSelectable]]
+    local exportTT = nil --[[@type ExtuiText]]
+    exportBtn = AddSelectableButton(parent, "Export", function (sel)
+        if not quickCheckIfExportable() then
+            GuiAnim.Vibrate(exportBtn)
+            exportTT.Label = "Cannot export material presets: Missing required information."
+            Warning("Cannot export material presets: Missing required information.")
+            return
+        end
+
+        exportTT.Label = "Exported material presets to mod '" .. modName .. "'."
+        MaterialPresetsMenu:ExportToMod(modName, authorName, description, version, selectedMPs)
+    end)
+    exportTT = exportBtn:Tooltip():AddText("Export material presets to Realm_Builder/CCA/")
+
+    exportBtn.OnHoverEnter = function ()
+        if not quickCheckIfExportable() then
+            exportBtn:SetStyle("Alpha", 0.5)
+            exportBtn:SetColor("Text", HexToRGBA("FFFF0000"))
+        else
+            exportBtn:SetStyle("Alpha", 1)
+            exportBtn:SetColor("Text", HexToRGBA("FF00CCCC"))
+        end
+    end
+
+    local selectedList = parent:AddChildWindow("SelectedMaterialPresets")
+
+    selectedList:AddSeparatorText("Eye Color Presets")
+    local eyeTab = selectedList:AddTable("EyeColorPresets", 1)
+
+    selectedList:AddSeparatorText("Hair Color Presets")
+    local hairTab = selectedList:AddTable("HairColorPresets", 1)
+
+    selectedList:AddSeparatorText("Skin Color Presets")
+    local skinTab = selectedList:AddTable("SkinColorPresets", 1)
+
+    local allTabs = {
+        CharacterCreationEyeColors = eyeTab,
+        CharacterCreationHairColors = hairTab,
+        CharacterCreationSkinColors = skinTab,
+    }
+    local allRows = {}
+
+    function refreshSelectedList()
+        for key,tab in pairs(allTabs) do
+            if allRows[key] then
+                allRows[key]:Destroy()
+            end
+            local row = allTabs[key]:AddRow()
+            allRows[key] = row
+            for _,preset in pairs(selectedMPs[key]) do
+                local cell = row:AddCell()
+                local colorBox = cell:AddColorEdit("##" .. preset.DisplayName)
+                local nameInput = cell:AddInputText("##" .. preset.DisplayName .. "NameInput", preset.DisplayName)
+                colorBox.Color = preset.UIColor
+                colorBox.NoInputs = true
+
+                nameInput.SameLine = true
+                nameInput.Hint = "Preset Name..."
+                nameInput.OnChange = function ()
+                    if nameInput.Text ~= "" then
+                        preset.DisplayName = nameInput.Text
+                    end
+                end
+
+                colorBox.OnChange = function ()
+                    preset.UIColor = colorBox.Color
+                end
+
+                local managePopup = cell:AddPopup("ManageSelectedPresetPopup##" .. preset.DisplayName)
+                colorBox.OnRightClick = function ()
+                    managePopup:Open()
+                end
+
+                local selectTable = managePopup:AddTable("ManageSelectedPresetTable", 1)
+                local selectRow = selectTable:AddRow()
+                local deleteBtn = AddSelectableButton(selectRow:AddCell(), "Remove Preset##" .. preset.DisplayName, function (sel)
+                    for i,p in ipairs(selectedMPs[key]) do
+                        if p == preset then
+                            table.remove(selectedMPs[key], i)
+                            break
+                        end
+                    end
+                    refreshSelectedList()
+                end)
+                ApplyDangerSelectableStyle(deleteBtn)
+
+            end
+
+            local emptyBox = row:AddCell():AddColorEdit("Add##EmptyBox " .. key)
+            emptyBox.Color = {0,0,0,0}
+            emptyBox.NoInputs = true
+            emptyBox.NoPicker = true
+
+            emptyBox:Tooltip():AddText("Drop Material Preset Here to Add to list")
+
+            emptyBox.CanDrag = true
+            emptyBox.DragDropType = MATERIALPRESET_DRAGDROP_TYPE
+
+            emptyBox.OnDragDrop = function (sel, drop)
+                if drop.UserData and drop.UserData.Parameters then
+                    local presetData = {
+                        DisplayName = drop.UserData.DisplayName or "Unnamed Preset",
+                        UIColor = DeepCopy(drop.UserData.UIColor or {1,1,1,1}),
+                        Parameters = DeepCopy(drop.UserData.Parameters or {}),
+                    }
+                    if not next(presetData.Parameters) then
+                        Warning("Failed to add preset to selected list: No parameters found.")
+                        return
+                    end
+
+                    table.insert(selectedMPs[key], presetData)
+                    refreshSelectedList()
+                end
+            end
+ 
+        end
+    end
+
+    refreshSelectedList()
+end
+
+--- simply load from CCA_Cache folder
+---@param modName string
+---@return RB_CCAModCache?
+function MaterialPresetsMenu:ImportFromFile(modName)
+    local filePath = string.format("Realm_Builder/CCA_Cache/_%s__Cache.json", modName)
+
+    local jsonStr = Ext.IO.LoadFile(filePath)
+
+    if not jsonStr then
+        Warning("ImportFromFile: Failed to load CCA mod cache file at " .. filePath)
+        return nil
+    end
+
+    local cacheFile = Ext.Json.Parse(jsonStr) --- @type RB_CCAModCache
+
+    return cacheFile
+end
+
+---@param modName string
+---@param authorName string
+---@param description string
+---@param version vec4
+---@param selectedMPs table<string, MaterialPresetData[]>
+function MaterialPresetsMenu:ExportToMod(modName, authorName, description, version, selectedMPs)
+    local startTime = Ext.Timer.MonotonicTime() 
+    local suc = true
+
+    --- build mods metalsx first
+    local metaLsx = LSXHelpers.BuildModMeta(Uuid_v4(), modName, authorName, version, description)
+    local mataFilePath = RealmPaths.GetCCAModMetaPath(modName)
+
+    suc = Ext.IO.SaveFile(mataFilePath, metaLsx:Stringify({ Indent = 4 }))
+
+    if not suc then
+        Warning("ExportToMod: Failed to save mod meta file at " .. mataFilePath)
+    end
+
+    --- build localization file first because CC presets need it
+    
+    local names = {}
+
+    for presetType, presets in pairs(selectedMPs) do
+        for _,preset in pairs(presets) do
+            if preset.DisplayName then
+                table.insert(names, preset.DisplayName)
+            end
+        end
+    end
+
+    local locaLsx, handleToString, stringToHandle = LSXHelpers.GenerateLocalization(names, 1)
+
+    local locaFilePath = RealmPaths.GetCCALocalizationPath(modName, "English") -- currently assume English only
+
+    suc = Ext.IO.SaveFile(locaFilePath, locaLsx)
+
+    if not suc then
+        Warning("ExportToMod: Failed to save localization file at " .. locaFilePath)
+    end
+
+    --- build material presets file first because CC presets need it
+    
+    local cheapName = {
+        CharacterCreationEyeColors = "_EyeColor_",
+        CharacterCreationHairColors = "_HairColor_",
+        CharacterCreationSkinColors = "_SkinColor_",
+    }
+
+    local matPresetUuids = {}
+    for presetType, presets in pairs(selectedMPs) do
+        if #presets == 0 then goto continue end
+        local materialPresetBank = LSXHelpers.BuildMaterialPresetBank()
+
+        for i,presetData in pairs(presets) do
+            local uuid = Uuid_v4()
+            matPresetUuids[presetData] = uuid
+            local internalName = modName .. cheapName[presetType] .. presetData.DisplayName
+            local presetNode = LSXHelpers.BuildMaterialPresetResourceNode(presetData.Parameters, uuid, internalName)
+
+            materialPresetBank:AppendChild(presetNode)
+        end
+
+        local matPresetFile = RealmPaths.GetCCAMaterialPresetsFile(presetType, modName) 
+        if not matPresetFile then
+            Warning("ExportToMod: Failed to get material presets file path for preset type " .. tostring(presetType))
+            goto continue
+        end
+
+        suc = Ext.IO.SaveFile(matPresetFile, materialPresetBank:Stringify({ Indent = 4, AutoFindRoot = true }))
+
+        if not suc then
+            Warning("ExportToMod: Failed to save material presets file at " .. matPresetFile)
+        end
+
+        ::continue::
+    end
+
+    --- build Character Creation Presets file
+    
+    for presetType, presets in pairs(selectedMPs) do
+        if #presets == 0 then goto continue end
+        local ccaPresetNode = LSXHelpers.BuildCCAPresetsRegionNode(presetType, presets)
+
+        for i, presetData in pairs(presets) do
+            local internalName = modName .. cheapName[presetType] .. presetData.DisplayName
+            local matPresetUuid = matPresetUuids[presetData]
+            local ccaPresetUuid = Uuid_v4()
+
+            local presetNode = LSXHelpers.BuildCCAPresetNode(stringToHandle[presetData.DisplayName], internalName, presetData.UIColor, matPresetUuid, ccaPresetUuid, presetType)
+
+            ccaPresetNode:AppendChild(presetNode)
+        end
+
+        local ccaFilePath = RealmPaths.GetCCAPresetsFile(presetType, modName)
+        if not ccaFilePath then
+            Warning("ExportToMod: Failed to get CCA presets file path for preset type " .. tostring(presetType))
+            goto continue
+        end
+
+        suc = Ext.IO.SaveFile(ccaFilePath, ccaPresetNode:Stringify({ Indent = 4, AutoFindRoot = true }))
+
+        if not suc then
+            Warning("ExportToMod: Failed to save CCA presets file at " .. ccaFilePath)
+        end
+
+        ::continue::
+    end
+
+    local endTime = Ext.Timer.MonotonicTime()
+
+    Debug("ExportToMod: Exported to mod '" .. modName .. "' in " .. tostring(endTime - startTime) .. " ms,")
+
+    --- unserialize xml is possible but for sanity we just save a json cache file
+
+    local cacheFile = {
+        ModName = modName,
+        AuthorName = authorName,
+        Description = description,
+        Version = version,
+        MaterialPresets = selectedMPs,
+    }
+    local jsonStr = Ext.Json.Stringify(cacheFile, { Indent = 4 })
+
+    suc = Ext.IO.SaveFile(string.format("Realm_Builder/CCA_Cache/_%s__Cache.json", modName), jsonStr)
 end
 
 function MaterialPresetsMenu:RenderCCMaterialPresets(header)
@@ -223,6 +592,8 @@ function MaterialPresetsMenu:RenderCustomColorBox(preset, parent)
         colorBox.DragPreview:AddText(preset.DisplayName).SameLine = true
         if sel.UserData then return end
         sel.UserData = {
+            DisplayName = preset.DisplayName,
+            UIColor = preset.UIColor,
             Parameters = preset.Parameters,
             SuccessApply = false,
         }

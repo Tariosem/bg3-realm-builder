@@ -157,7 +157,9 @@ end
 function TransformEditor:Clear()
     self.Target = nil
     self.StartTransforms = {}
-    self.Gizmo:SetTarget(self.Target)
+    if self.Gizmo then
+        self.Gizmo:SetTarget(self.Target)
+    end
 end
 
 function TransformEditor:SetMode(mode)

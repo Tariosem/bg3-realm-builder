@@ -8,9 +8,24 @@ local presetPath = "Realm_Builder/Presets/"
 local localGenPath = "Realm_Builder/Localization/"
 local keybindPath = "Realm_Builder/Keybinds.json"
 
-function GetConfigFilePath()
-    return configPath
-end
+local ccaPath = "Realm_Builder/CCA/"
+
+local ccaModMetaFile = ccaPath .. "%s/Mods/%s/meta.lsx"
+
+local ccaLocalizationFile = ccaPath .. "%s/Localization/%s/%s.xml"
+
+local ccaPresetsPath = ccaPath .. "%s/Public/%s/CharacterCreationPresets/"
+
+local ccaEyeColorFile = ccaPresetsPath .. "CharacterCreationEyeColors.lsx"
+local ccaHairColorFile = ccaPresetsPath .. "CharacterCreationHairColors.lsx"
+local ccaSkinColorFile = ccaPresetsPath .. "CharacterCreationSkinColors.lsx"
+
+local matPresetsPath = ccaPath .. "%s/Public/%s/Content/Assets/Characters/Character Editor Presets/"
+local ccaEyeColorPath = matPresetsPath .. "Eye Presets/[PAK]_%s/"
+local ccaHairColorPath = matPresetsPath .. "Hair Color Presets/[PAK]_%s/"
+local ccaSkinColorPath = matPresetsPath .. "Skin Presets/[PAK]_%s/"
+
+RealmPaths = {}
 
 function GetVisualPresetsPath(templateName)
     return visualPresetsPath .. templateName .. ".json"
@@ -46,4 +61,57 @@ end
 
 function GetKeybindsPath()
     return keybindPath
+end
+
+function RealmPaths.GetCCAModMetaPath(modName)
+    return string.format(ccaModMetaFile, modName, modName)
+end
+
+---@param modName string
+---@param lang string
+---@return string
+function RealmPaths.GetCCALocalizationPath(modName, lang)
+    return string.format(ccaLocalizationFile, modName, lang, modName)
+end
+
+function RealmPaths.GetCCAMaterialPresetsFile(presetType, modName)
+    local ccaMatPresetPath = {
+        CharacterCreationEyeColors = ccaEyeColorPath,
+        CharacterCreationHairColors = ccaHairColorPath,
+        CharacterCreationSkinColors = ccaSkinColorPath,
+    }
+
+    if not ccaMatPresetPath[presetType] then
+        Error("Invalid preset type: " .. tostring(presetType))
+        return nil
+    end
+
+    local path = string.format(ccaMatPresetPath[presetType], modName, modName, modName)
+
+    local filePath = path .. "_merged.lsx"
+
+    return filePath
+end
+
+function RealmPaths.GetCCAPresetsFile(presetType, modName)
+    local ccaPresetPath = {
+        CharacterCreationEyeColors = ccaEyeColorFile,
+        CharacterCreationHairColors = ccaHairColorFile,
+        CharacterCreationSkinColors = ccaSkinColorFile,
+    }
+
+    if not ccaPresetPath[presetType] then
+        Error("Invalid preset type: " .. tostring(presetType))
+        return nil
+    end
+
+    return string.format(ccaPresetPath[presetType], modName, modName)
+end
+
+function RealmPaths.GetCCASkinColorPath(modName)
+    return string.format(ccaSkinColorFile, modName, modName)
+end
+
+function RealmPaths.GetConfigPath()
+    return configPath
 end

@@ -49,6 +49,18 @@ function HexToRGB(hex)
     return { rgba[1], rgba[2], rgba[3] }
 end
 
+function RGBAToHex(r, g, b, a)
+    local function toHex(n)
+        return string.format("%02X", math.floor(Clamp(n * 255, 0, 255)))
+    end
+
+    if a then
+        return "#" .. toHex(a) .. toHex(r) .. toHex(g) .. toHex(b)
+    else
+        return "#" .. toHex(r) .. toHex(g) .. toHex(b)
+    end
+end
+
 function RGBToHSL(r, g, b)
     local maxc = math.max(r, g, b)
     local minc = math.min(r, g, b)
