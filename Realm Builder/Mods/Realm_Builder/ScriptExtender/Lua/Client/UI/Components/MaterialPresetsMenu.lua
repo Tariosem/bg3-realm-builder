@@ -229,7 +229,7 @@ function MaterialPresetsMenu:SetupWorklist(parent, ccaModPack)
         importTT.Label = "Imported material presets from mod '" .. modName .. "'."
         importBtn:SetColor("Text", HexToRGBA("FF00CCCC"))
     end)
-    importTT = importBtn:Tooltip():AddText("Import by mod name from Realm_Builder/CCA_Cache/")
+    importTT = importBtn:Tooltip():AddText("Import by mod name from Realm_Builder/CC_Mod_Cache/")
 
     local exportBtn = nil --[[@type ExtuiSelectable]]
     local exportTT = nil --[[@type ExtuiText]]
@@ -244,7 +244,7 @@ function MaterialPresetsMenu:SetupWorklist(parent, ccaModPack)
         exportTT.Label = "Exported material presets to mod '" .. modName .. "'."
         MaterialPresetsMenu:ExportToMod(modName, authorName, description, version, selectedMPs)
     end)
-    exportTT = exportBtn:Tooltip():AddText("Export material presets to Realm_Builder/CCA/")
+    exportTT = exportBtn:Tooltip():AddText("Export material presets to Realm_Builder/CC_Mods/")
 
     exportBtn.OnHoverEnter = function ()
         if not quickCheckIfExportable() then
@@ -357,7 +357,7 @@ end
 ---@param modName string
 ---@return RB_CCAModCache?
 function MaterialPresetsMenu:ImportFromFile(modName)
-    local filePath = string.format("Realm_Builder/CCA_Cache/_%s__Cache.json", modName)
+    local filePath = RealmPaths.GetCCAModCachePath(modName)
 
     local jsonStr = Ext.IO.LoadFile(filePath)
 
@@ -494,8 +494,13 @@ function MaterialPresetsMenu:ExportToMod(modName, authorName, description, versi
         MaterialPresets = selectedMPs,
     }
     local jsonStr = Ext.Json.Stringify(cacheFile, { Indent = 4 })
+    local filePath = RealmPaths.GetCCAModCachePath(modName)
 
-    suc = Ext.IO.SaveFile(string.format("Realm_Builder/CCA_Cache/_%s__Cache.json", modName), jsonStr)
+    suc = Ext.IO.SaveFile(filePath, jsonStr)
+
+    if not suc then
+        Warning("ExportToMod: Failed to save CCA mod cache file at " .. filePath)
+    end
 end
 
 function MaterialPresetsMenu:RenderCCMaterialPresets(header)

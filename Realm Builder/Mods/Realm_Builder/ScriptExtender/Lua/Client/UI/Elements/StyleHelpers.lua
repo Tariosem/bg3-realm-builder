@@ -159,9 +159,10 @@ function ApplyDefaultSeparatorStyle(s)
 end
 
 function WrapTextTokens(tokens, wrapPos)
-    local wrappedTokens = {}
+    local wrapped = {}
     local currentLen = 0
     wrapPos = wrapPos or 60
+
     local function cloneToken(token, text)
         local newToken = {}
         for k, v in pairs(token) do
@@ -171,26 +172,30 @@ function WrapTextTokens(tokens, wrapPos)
         return newToken
     end
 
+    local function addToken(token, text, forceNewLine)
+        local newToken = cloneToken(token, text)
+        if forceNewLine then
+            currentLen = 0
+            newToken.SameLine = false
+        else
+            newToken.SameLine = currentLen > 0
+        end
+        table.insert(wrapped, newToken)
+        currentLen = currentLen + #text
+    end
+
     for _, token in ipairs(tokens) do
         local text = token.Text or ""
 
         if token.TooltipRef then
             local tokenLen = #text
-
-            if currentLen > 0 and currentLen + tokenLen > wrapPos then
-                currentLen = 0
-            end
-
-            local newToken = cloneToken(token, text)
-            newToken.SameLine = currentLen > 0
-
-            table.insert(wrappedTokens, newToken)
-            currentLen = currentLen + tokenLen
+            local overflow = (currentLen > 0 and currentLen + tokenLen > wrapPos)
+            local forceNewLine = (currentLen == 0 and tokenLen > wrapPos) or overflow
+            addToken(token, text, forceNewLine)
+        
         else
-            local pos = 1
-            local shortSkipCnt = 0
-
-            while pos <= #text do
+            local remaining = text
+            while #remaining > 0 do
                 local spaceLeft = wrapPos - currentLen
 
                 if spaceLeft <= 0 then
@@ -198,127 +203,30 @@ function WrapTextTokens(tokens, wrapPos)
                     spaceLeft = wrapPos
                 end
 
-                local remainingText = text:sub(pos)
-                local chunk
-
-                if #remainingText <= spaceLeft then
-                    chunk = remainingText
-                    pos = #text + 1
-                else
-                    local searchArea = remainingText:sub(1, spaceLeft)
-                    local bestBreak = nil
-
-                    for i = #searchArea, 1, -1 do
-                        local char = searchArea:sub(i, i)
-                        if char:match("%s") then
-                            local nextChar = remainingText:sub(i + 1, i + 1)
-                            if not nextChar:match("[%.%,%!%?%;%:]") then
-                                bestBreak = i
-                                break
-                            end
-                        end
-                    end
-
-                    if bestBreak and bestBreak > 1 then
-                        chunk = searchArea:sub(1, bestBreak - 1)
-                        pos = pos + bestBreak
-
-                        while pos <= #text and text:sub(pos, pos):match("%s") do
-                            pos = pos + 1
-                        end
+                if #remaining > spaceLeft then
+                    local search = remaining:sub(1, spaceLeft)
+                    local breakPos = search:find(" [^ ]*$")
+                    if breakPos then
+                        local chunk = search:sub(1, breakPos - 1)
+                        addToken(token, chunk, false)
+                        remaining = remaining:sub(breakPos + 1)
                     else
                         if currentLen > 0 then
                             currentLen = 0
-                            goto continue
                         else
-                            chunk = remainingText
-                            pos = #text + 1
+                            addToken(token, remaining, false)
+                            remaining = ""
                         end
                     end
+                else
+                    addToken(token, remaining, false)
+                    remaining = ""
                 end
-
-                if chunk and chunk ~= "" then
-                    local newToken = cloneToken(token, chunk)
-                    newToken.SameLine = currentLen > 0
-
-                    if #newToken.Text <= 1 and shortSkipCnt < 1 then
-                        newToken.SameLine = true
-                        shortSkipCnt = shortSkipCnt + 1
-                    else
-                        shortSkipCnt = 0
-                    end
-
-                    table.insert(wrappedTokens, newToken)
-                    currentLen = currentLen + #chunk
-                end
-
-                ::continue::
             end
         end
     end
 
-    return wrappedTokens
-end
-
-function RenderTokenTexts(parent, tokens, firstAlwaysSameLine)
-    local elements = {}
-    for _, token in ipairs(tokens) do
-        local text = token.Text or ""
-        local icon = nil
-        local statsName = nil
-        local statsType = nil
-        local statsObj = nil
-        if token.TooltipRef then
-            statsName = token.TooltipRef.Name
-            statsObj = Ext.Stats.Get(statsName)
-            statsType = token.TooltipRef.Type
-        end
-        
-        if token.Icon and not token.TooltipRef then
-            icon = parent:AddImage(token.Icon)
-            icon.ImageData.Size = ToVec2(32 * SCALE_FACTOR)
-        end
-
-        local label = nil
-
-        if token.TooltipRef and statsObj then
-            local statsObjRenderfunc = RenderStatsObject(statsObj, statsType)
-            _,label = statsObjRenderfunc(parent, true)
-        else
-            label = parent:AddText(text)
-        end
-
-        if token.Font then label.Font = token.Font end
-        if token.Color then
-            label:SetColor("Text", token.Color)
-        end
-        if token.Style then
-            for styleVar, styleVal in pairs(token.Style) do
-                label:SetStyle(styleVar, styleVal)
-            end
-        end
-        if token.Tooltip then
-            if icon then
-                token.Tooltip(icon:Tooltip())
-            else
-                token.Tooltip(label:Tooltip())
-            end
-        end
-
-        label.SameLine = token.SameLine == true
-        if firstAlwaysSameLine then
-            label.SameLine = true
-            if icon then
-                icon.SameLine = true
-            end
-            firstAlwaysSameLine = false
-        end
-        if #text <= 5 then
-            label.SameLine = true
-        end
-        table.insert(elements, label)
-    end
-    return elements
+    return wrapped
 end
 
 function AddSimpleTextWrap(parent, text, num)

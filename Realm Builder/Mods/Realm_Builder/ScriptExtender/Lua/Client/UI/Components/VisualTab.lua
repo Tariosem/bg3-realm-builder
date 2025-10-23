@@ -567,7 +567,11 @@ function VisualTab:RenderAttachmentsSection()
             materialTab.Editor.Instance = getliveMat
             materialTab.Editor.ParamsSrc = getliveParams
             materialTab.Editor.ParamSetProxy = ParametersSetProxy.new(getliveParams()) --[[@as ParametersSetProxy]]
-            materialTab:Render()
+
+            objToggle.OnHoverEnter = function ()
+                materialTab:Render()
+                objToggle.OnHoverEnter = nil
+            end
 
             self.Materials[keyName] = materialTab
 

@@ -8,7 +8,8 @@ local presetPath = "Realm_Builder/Presets/"
 local localGenPath = "Realm_Builder/Localization/"
 local keybindPath = "Realm_Builder/Keybinds.json"
 
-local ccaPath = "Realm_Builder/CCA/"
+local ccaPath = "Realm_Builder/CC_Mods/"
+local ccaModCachePath = "Realm_Builder/CC_Mod_Cache/"
 
 local ccaModMetaFile = ccaPath .. "%s/Mods/%s/meta.lsx"
 
@@ -72,6 +73,10 @@ end
 ---@return string
 function RealmPaths.GetCCALocalizationPath(modName, lang)
     return string.format(ccaLocalizationFile, modName, lang, modName)
+end
+
+function RealmPaths.GetCCAModCachePath(modName)
+    return string.format(ccaModCachePath .. "_%s_Cache.json", modName)
 end
 
 function RealmPaths.GetCCAMaterialPresetsFile(presetType, modName)

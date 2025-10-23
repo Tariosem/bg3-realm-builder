@@ -23,6 +23,36 @@ NetChannel.Spawn:SetHandler(function(data, userID)
     NetChannel.Entities.Added:Broadcast({Entities = {entInfo}})
 end)
 
+NetChannel.Spawn:SetRequestHandler(function(data, userID)
+    local template = data.TemplateId
+    local position = data.Position
+    local rotation = data.Rotation
+    local entInfo = data.EntInfo
+    local rtype = data.Type
+
+    if rtype == "Preview" then
+        local previewItem = PreviewTemplate(template, table.unpack(position), table.unpack(rotation), entInfo and entInfo.VisualPreset)
+        return {Guid = previewItem, TemplateId = template}
+    end
+
+    local newGuid = EntityManager:CreateAt(template, position[1], position[2], position[3], rotation[1], rotation[2], rotation[3], rotation[4])
+
+    if not newGuid then
+        Warning("Spawn: Failed to create entity at position.")
+        return {Guid = nil, TemplateId = template}
+    end
+
+    EntityManager:SetEntity(newGuid, entInfo or {})
+
+    entInfo.Visible = true
+    entInfo.Guid = newGuid
+    entInfo.TemplateId = template
+
+    NetChannel.Entities.Added:Broadcast({Entities = {entInfo}})
+
+    return {Guid = newGuid, TemplateId = Osi.GetTemplate(newGuid)}
+end)
+
 NetChannel.Duplicate:SetRequestHandler(function(data, user)
     local guids = NormalizeGuidList(data.Guid)
     local newGuids = {}

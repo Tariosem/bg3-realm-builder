@@ -9,6 +9,7 @@ local BORDER_COLOR = HexToRGBA("FFFFA43C")
 --- @field args string[]|nil
 --- @field condition string|nil
 --- @field effect ParsedString|nil
+--- @field effects ParsedString[]|nil
 
 function StatsParser:ParseString(boostStr)
     local results = {}
@@ -56,6 +57,8 @@ function StatsParser:ParseString(boostStr)
 
     local splitPass = split(boostStr)
 
+
+    local sameCondition = {}
     for _, expr in ipairs(splitPass) do
         expr = expr:match("^%s*(.-)%s*$")
 
@@ -66,11 +69,17 @@ function StatsParser:ParseString(boostStr)
         local cond, inner = expr:match("^IF%s*%((.*)%)%s*:%s*(.+)$")
         if cond and inner then
             local effect = self:ParseString(inner)
-            table.insert(results, {
-                name = "IF",
-                condition = cond,
-                effect = effect[1]
-            })
+            if not sameCondition[cond] then
+                table.insert(results, {
+                    name = "IF",
+                    condition = cond,
+                    effects = { table.unpack(effect) }
+                })
+                sameCondition[cond] = #results
+            else
+                local existing = results[sameCondition[cond]]
+                table.insert(existing.effects, table.unpack(effect))
+            end
             goto continue
         end
 
@@ -139,8 +148,6 @@ function StatsParser:ParseString(boostStr)
     
     return results
 end
-
-
 
 function StripLSTags(desc)
     if not desc or desc == "" then return desc end
@@ -221,19 +228,119 @@ local function replaceMaxWithBestModifier(expr)
     end
 end
 
+local levelMapUuidCache = {}
+
+local function parseNumberText(numberStr)
+    local levelMapValueTooltip = nil
+    if numberStr:sub(1, #"LevelMapValue") == "LevelMapValue" then
+        local statName = numberStr:match("LevelMapValue%((.-)%)")
+        local lmvObj = nil --[[@as ResourceLevelMap?]]
+        if levelMapUuidCache[statName] then
+            lmvObj = Ext.StaticData.Get(levelMapUuidCache[statName], "LevelMap")
+        else
+            local allRes = Ext.StaticData.GetAll("LevelMap")
+            for _, res in pairs(allRes) do
+                local resObj = Ext.StaticData.Get(res, "LevelMap") --[[@as ResourceLevelMap]]
+                levelMapUuidCache[resObj.Name] = res
+                if resObj and resObj.Name == statName then
+                    lmvObj = resObj
+                end
+            end
+        end
+
+        if lmvObj then
+            levelMapValueTooltip = function(parent)
+                local function formatVariant(variant)
+                    local vtype = type(variant)
+                    if vtype == "number" then
+                        return tostring(variant)
+                    elseif vtype == "userdata" then
+                        return tostring(variant.AmountOfDices) .. tostring(variant.DiceValue)
+                    else
+                        return tostring(variant)
+                    end
+                end
+
+                if lmvObj.FallbackValue then
+                    local fallbackStr = formatVariant(lmvObj.FallbackValue)
+                    parent:AddBulletText("Fallback Value: ") 
+                    local varStr = parent:AddText(fallbackStr)
+                    varStr:SetColor("Text", HIGHLIGHT_COLOR)
+                    varStr.SameLine = true
+                end
+
+                local mapTable = parent:AddTable("Level Map Values", 2)
+                mapTable.ColumnDefs[1] = { WidthFixed = true }
+                mapTable.ColumnDefs[2] = { WidthStretch = true }
+                mapTable.RowBg = true
+                mapTable.Borders = true
+                local lasrVar = nil
+                for i, variant in ipairs(lmvObj.LevelMaps or {}) do
+                    local variantStr = formatVariant(variant)
+                    if variantStr == lasrVar then
+                        goto continue
+                    else
+                        lasrVar = variantStr
+                    end
+
+                    local row = mapTable:AddRow()
+                    local levelCell = row:AddCell()
+                    local valueCell = row:AddCell()
+                    levelCell:AddText(string.format("Level %d ->", i)):SetColor("Text", {1, 1, 1, 1})
+                    valueCell:AddText(variantStr):SetColor("Text", HIGHLIGHT_COLOR)
+                    ::continue::
+                end
+
+            end
+        end
+        numberStr = GetLoca("<Progress with level>")
+    end
+       
+    if numberStr:sub(1, 3) == "max" then
+        numberStr = replaceMaxWithBestModifier(numberStr)
+    end
+
+
+    local token = { Text = numberStr , Tooltip = levelMapValueTooltip }
+
+    return token
+end
+
 StatsParameterHandler = {
+    LevelMapValue = function(param)
+        local statName = param.args[1] or "Unknown"
+        local lmvObj = Ext.StaticData.GetAll("LevelMap")
+        local foundObj = nil --[[@as ResourceLevelMap?]]
+        for _, res in pairs(lmvObj) do
+            local resObj = Ext.StaticData.Get(res, "LevelMap") --[[@as ResourceLevelMap]]
+            if resObj and resObj.Name == statName then
+                foundObj = resObj
+                break
+            end
+        end
+
+        local token = parseNumberText("LevelMapValue(" .. statName .. ")")
+        token.Color = HIGHLIGHT_COLOR
+        return {
+            token
+        }
+    end,
+
     DealDamage = function(param)
         local damage = param.args[1] or ""
         local damageType = param.args[2] or nil
 
+
+        local damageNumberToken = parseNumberText(damage)
         local damageColor = DAMAGE_TYPES_COLOR[damageType] or DAMAGE_TYPES_COLOR["Slashing"]
-        
-        if damage:sub(1, 3) == "max" then
-            damage = replaceMaxWithBestModifier(damage)
+        damageNumberToken.Color = damageColor
+
+        if damageType == "MainMeleeWeaponDamageType" then
+            damageType = "main-hand melee"
         end
 
         local tokens = {
-            { Text = string.format("%s", damage), Color = damageColor},
+            damageNumberToken,
             { Text = string.format(" %s damage", damageType), Color = damageColor}
         }
 
@@ -260,23 +367,31 @@ StatsParameterHandler = {
 
     RegainHitPoints = function(param)
         local amount = param.args[1] or ""
+        local numberToken = parseNumberText(amount)
+        numberToken.Color = DAMAGE_TYPES_COLOR["HitPoint"]
+        numberToken.Text = numberToken.Text .. " hit points"
         return {
-            { Text = string.format("%s hit points", amount), Color = DAMAGE_TYPES_COLOR["HitPoint"] }
+            numberToken,
         }
     end,
     
     GainTemporaryHitPoints = function(param)
         local amount = param.args[1] or ""
+        local numberToken = parseNumberText(amount)
+        numberToken.Color = DAMAGE_TYPES_COLOR["HitPoint"]
+        numberToken.Text = numberToken.Text .. " temporary hit points"
         return {
-            { Text = string.format("%s temporary hit points", amount), Color = DAMAGE_TYPES_COLOR["HitPoint"] }
+            numberToken,
         }
     end,
 
     TemporaryHP = function(param)
         local amount = param.args[1] or ""
+        local numberToken = parseNumberText(amount)
+        numberToken.Color = DAMAGE_TYPES_COLOR["HitPoint"]
         return {
             { Text = "Gain " },
-            { Text = string.format("%s", amount), Color = DAMAGE_TYPES_COLOR["HitPoint"] },
+            numberToken,
             { Text = " temporary hit points" }
         }
     end,
@@ -709,13 +824,13 @@ function RenderStatsObject(statsObj, type)
         local refEle = nil
         if useTextLink then
             name = parent:AddTextLink(GetLoca(statsObj.DisplayName or "Unknown", "Unknown"))
+            name.IDContext = Uuid_v4()
             refEle = name
         else
             name = parent:AddText(GetLoca(statsObj.DisplayName or "Unknown", "Unknown"))
             refEle = image
         end
         name.SameLine = true
-
 
         local tooltipRendered = false
         refEle.OnHoverEnter = function()
@@ -788,6 +903,7 @@ local function ablityBoostRenderer(boost)
     return simpleRenderer(ability, bonus)
 end
 
+--- @type table<string, fun(boost: any): fun(parent: ExtuiTreeParent): ExtuiText>
 StatsBoostHandlers = {}
 StatsBoostHandlers = {
     UnlockSpell = function(boost)
@@ -1108,7 +1224,7 @@ StatsBoostHandlers = {
     end,
 
     IF = function(boost)
-        if not boost.effect then
+        if not boost.effects or #boost.effects == 0 then
             return function() end 
         end
 
@@ -1116,38 +1232,50 @@ StatsBoostHandlers = {
 
         local wrpaedTokens = WrapTextTokens(conditionTokens, 60)
 
-        local effectHandler = StatsBoostHandlers[boost.effect.name]
-        if effectHandler then
-            local boostRender = effectHandler(boost.effect)
-            if boostRender then
-                local renderFunc = function(parent)
-                    local bulletText = parent:AddBulletText("If ")
-                    RenderTokenTexts(parent, wrpaedTokens, true)
-                    if boost.Icon then
-                        local image = parent:AddImage(boost.Icon, ToVec2(32 * SCALE_FACTOR))
-                        image.SameLine = true
-                        if boost.Tooltip then
-                            boost.Tooltip(image:Tooltip())
-                        end
-                    elseif boost.Tooltip then
-                        boost.Tooltip(bulletText:Tooltip())
-                    end
-
-                    parent:AddDummy(20,5)
-                    local conditionText = parent:AddText(GetLoca("Then :"))
-                    conditionText.SameLine = true
-
-                    local bullet = boostRender(parent)
-                    if bullet then
-                        bullet.SameLine = true
-                    end
-
+        local boostRenders = {}
+        for _, effect in ipairs(boost.effects or {}) do
+            _D(effect)
+            local handler = StatsBoostHandlers[effect.name]
+            if handler then
+                local boostRender = handler(effect)
+                if boostRender then
+                    table.insert(boostRenders, boostRender)
                 end
-                return renderFunc
+            else
+                Warning("No handler for boost effect:", effect.name)
             end
         end
 
-        return function() end
+        --- @param parent ExtuiTreeParent
+        local renderFunc = function(parent)
+            local tab = parent:AddTable("Conditional Effect", 2)
+            tab.Borders = true
+
+            local row = tab:AddRow()
+
+            local conditionCell = row:AddCell()
+            local bulletText = conditionCell:AddBulletText("If ")
+            RenderTokenTexts(conditionCell, wrpaedTokens, true)
+
+            if boost.Icon then
+                local image = parent:AddImage(boost.Icon, ToVec2(32 * SCALE_FACTOR))
+                image.SameLine = true
+                if boost.Tooltip then
+                    boost.Tooltip(image:Tooltip())
+                end
+            elseif boost.Tooltip then
+                boost.Tooltip(bulletText:Tooltip())
+            end
+
+            local boostCell = row:AddCell()
+            local conditionText = boostCell:AddText(GetLoca("Then :"))
+
+            for _, boostRender in ipairs(boostRenders) do
+                boostRender(boostCell)
+            end
+        end
+
+        return renderFunc
     end,
 }
 
@@ -1181,36 +1309,6 @@ function StatsParser:ParseParams(descParams)
             goto continue
         end
 
-        if param.name:match("[%+%-%*/]") or param.name:match("Level") or param.name:match("Dex") or param.name:match("Str") then
-            parsed[nextIndex] = { { Text = param.name, Color = HIGHLIGHT_COLOR } }
-            nextIndex = nextIndex + 1
-            goto continue
-        end
-
-        if param.name:match("^%d+%%$") then
-            parsed[nextIndex] = { { Text = param.name, Color = HIGHLIGHT_COLOR } }
-            nextIndex = nextIndex + 1
-            goto continue
-        end
-
-        if param.name:match("^%d+d%d+$") then
-            parsed[nextIndex] = { { Text = param.name, Color = HIGHLIGHT_COLOR } }
-            nextIndex = nextIndex + 1
-            goto continue
-        end
-
-        if param.name:match("^[%+%-]%d+$") then
-            parsed[nextIndex] = { { Text = param.name, Color = HIGHLIGHT_COLOR } }
-            nextIndex = nextIndex + 1
-            goto continue
-        end
-
-        if param.name:match("^%d*%.%d+$") then
-            parsed[nextIndex] = { { Text = param.name, Color = HIGHLIGHT_COLOR } }
-            nextIndex = nextIndex + 1
-            goto continue
-        end
-
         if handler then
             local parsedParam = handler(param)
             if parsedParam then
@@ -1218,13 +1316,15 @@ function StatsParser:ParseParams(descParams)
                 parsed[nextIndex] = parsedParam
                 nextIndex = nextIndex + 1
             end
-        else
-            --Warning("No handler for param", param.name)
-            --Warning("Storing unknown param", param.name, "at index", nextIndex)
-            --Info("Original params string:", descParams)
-            parsed[nextIndex] = { { Text = param.name } }
-            nextIndex = nextIndex + 1
+
+            goto continue
         end
+
+        --Warning("No handler for param", param.name)
+        --Warning("Storing unknown param", param.name, "at index", nextIndex)
+        --Info("Original params string:", descParams)
+        parsed[nextIndex] = { { Text = param.name, Color = HIGHLIGHT_COLOR } }
+        nextIndex = nextIndex + 1
         ::continue::
     end
 
@@ -1344,89 +1444,7 @@ function StatsParser:ParseDesc(desc, descRef, descParams, depth, isTooltip)
         parent:SetColor("Border", HexToRGBA("FFC69800"))
         local wrappedTokens = WrapTextTokens(tokens, wrapPos or 60)
 
-        for _, token in ipairs(wrappedTokens) do
-            if token.Icon then
-                local icon = token.Icon
-                local image = parent:AddImage(icon, ToVec2((token.IconSize or 16) * SCALE_FACTOR))
-                image.SameLine = true
-            end
-
-            local t = nil
-            local image = nil
-
-            if token.TooltipRef then
-                
-                local statsObj, statsType = GetStatsObjByName(token.TooltipRef.Name)
-                
-                if CheckIcon(statsObj and statsObj.Icon) ~= "Item_Unknown" then
-                    image = parent:AddImage(statsObj.Icon, ToVec2(48 * SCALE_FACTOR))
-                end
-                t = parent:AddTextLink((token.Text or "") .. "##" .. Uuid_v4())
-
-                
-
-                if statsObj and not isTooltip then
-                    local desc = statsObj.Description
-                    local descParam = statsType ~= "Tag" and statsObj.DescriptionParams or nil
-
-                    local tooltipRendered = false
-                    
-                    t.OnHoverEnter = function()
-                        if tooltipRendered then
-                            return
-                        end
-                        tooltipRendered = true
-                        RenderStatsObjectTitle(statsObj, t:Tooltip(), statsType, true)
-
-                        if statsType == "SpellData" then
-                            renderSpellAttrs(statsObj, t:Tooltip())
-                        end
-                    end
-
-                    if depth < maxDepth - 2 then
-                        
-                        local popupRendered = false
-                        local descPopup = nil
-
-                        t.OnClick = function()
-                            if not popupRendered then
-                                popupRendered = true
-                                descPopup = parent:AddPopup((token.TooltipRef.Name or "Tooltip") .. "##" .. Uuid_v4())
-                                RenderStatsObjectTitle(statsObj, descPopup, statsType)
-
-                                if statsType == "SpellData" then
-                                    renderSpellAttrs(statsObj, descPopup)
-                                end
-                            end
-
-                            descPopup:Open()
-                        end
-
-                    end
-                else
-                    t:Tooltip():AddText(""..(token.TooltipRef.Name or ""))
-                end
-
-            else
-                t = parent:AddText(token.Text or "")
-            end
-
-            if token.Color then
-                t:SetColor("Text", token.Color)
-            end
-
-            if token.Font then
-                t.Font = token.Font
-            end
-
-            if image then
-                image.SameLine = token.SameLine
-                t.SameLine = true
-            else
-                t.SameLine = token.SameLine
-            end
-        end
-
+        RenderTokenTexts(parent, wrappedTokens, isTooltip, depth)
     end
 
     return render
