@@ -34,9 +34,8 @@ end
 
 
 --- @param guid any
---- @param modName any
 --- @return LSXNode?
-function LSXHelpers.BuildItem(guid, modName)
+function LSXHelpers.BuildItem(guid)
     local entity = Ext.Entity.Get(guid) --[[@as EntityHandle]]
     local curLevel = entity.Level.LevelName
     local propData = EntityStore:GetEntity(guid)
@@ -99,10 +98,6 @@ function LSXHelpers.BuildItem(guid, modName)
 
     objectNode:AppendChildren(layerAttr)
 
-    if not modName then
-        modName = "Mods"
-    end
-
     return root
 end
 
@@ -124,7 +119,7 @@ function LSXHelpers.AttrNode(id, attrType, value, version)
         attrNode:SetAttribute("version", version)
     end
 
-    attrNode:SetAttrOrder({"id", "type", "value", "version"})
+    attrNode:SetAttrOrder({"id", "type", valueKey, "version"})
     return attrNode
 end
 
@@ -295,7 +290,7 @@ function LSXHelpers.BuildCCAPresetNode(displayName, internalName, uiColor, matPU
     local hex = RGBAToHex(uiColor[1], uiColor[2], uiColor[3], uiColor[4])
 
     local attrs = {
-        LSXHelpers.AttrNode("DisplayName", "TranslatedString", displayName, 1), -- see GenerateLocalization
+        LSXHelpers.AttrNode("DisplayName", "TranslatedString", displayName, 1),
         LSXHelpers.AttrNode("MaterialPresetUUID", "guid", matPUuid),
         LSXHelpers.AttrNode("Name", "FixedString", internalName),
         LSXHelpers.AttrNode("UUID", "guid", uuid),
@@ -323,7 +318,7 @@ end
 
 local function computeVersionNumber(major, minor, revision, build)
     local version = major * 2^48 + minor * 2^32 + revision * 2^16 + build
-    return tostring(version)
+    return string.format("%d", math.floor(tonumber(version) or 0))
 end
 
 --- generate a meta.lsx file for a mod
@@ -332,8 +327,8 @@ end
 ---@param author string
 ---@param version vec4
 ---@param description string
----@return LSXNode, LSXNode, LSXNode -- root, configNode, dependenciesNode
-function LSXHelpers.BuildModMeta(uuid, modName, author, version, description)
+---@return LSXNode, LSXNode, LSXNode -- root, conflictNode, dependenciesNode
+function LSXHelpers.BuildModMeta(uuid, modName, internalName, author, version, description)
     uuid = uuid or Uuid_v4()
     modName = modName or "Unnamed Mod"
     author = author or "Unknown Author"
@@ -341,7 +336,6 @@ function LSXHelpers.BuildModMeta(uuid, modName, author, version, description)
     description = description or ""
 
     local version64 = computeVersionNumber(version[1], version[2], version[3], version[4]) --[[@as number|string]]
-    version64 = string.format("%d", math.floor(tonumber(version64) or 0))
 
     local root = LSXHelpers.new()
     root:GetChild(1):SetAttribute("lslib_meta", nil)
@@ -362,7 +356,7 @@ function LSXHelpers.BuildModMeta(uuid, modName, author, version, description)
         LSXHelpers.AttrNode("Author", "LSString", author),
         LSXHelpers.AttrNode("CharacterCreationLevelName", "FixedString", ""),
         LSXHelpers.AttrNode("Description", "LSString", description),
-        LSXHelpers.AttrNode("Folder", "LSString", modName),
+        LSXHelpers.AttrNode("Folder", "LSString", internalName),
         LSXHelpers.AttrNode("LobbyLevelName", "FixedString", ""),
         LSXHelpers.AttrNode("MD5", "LSString", ""),
         LSXHelpers.AttrNode("MainMenuBackgroundVideo", "FixedString", ""),
@@ -387,5 +381,5 @@ function LSXHelpers.BuildModMeta(uuid, modName, author, version, description)
         LSXHelpers.AttrNode("Version64", "int64", version64)
     )
 
-    return root, configNode, dependenciesNode
+    return root, conflictNode, dependenciesNode
 end

@@ -183,29 +183,7 @@ end
 function MaterialEditor:GetPreviewColor()
     --- traverse vec3 and vec4 parameters contains "Color" in their name and compute an color for preview
     
-    local color = Vec4.new(0.5, 0.5, 0.5, 1)
-
-    local cnt = 0
-    for ptype, params in pairs(self.Parameters) do
-        if ptype == 3 or ptype == 4 then
-            for paramName, value in pairs(params) do
-                if paramName:lower():find("color") then
-                    local newVec4 = Vec4.new(value)
-
-                    color = color + newVec4
-                    cnt = cnt + 1
-                end
-            end
-        end
-    end
-
-    color = color / math.max(cnt, 1)
-
-    AdjustColor(color, 0.8, 1.2)
-
-    color[4] = 1.0
-
-    return color
+    return MaterialProxy.GetPreviewColor(self)
 end
 
 function MaterialEditor:ClearParameters()

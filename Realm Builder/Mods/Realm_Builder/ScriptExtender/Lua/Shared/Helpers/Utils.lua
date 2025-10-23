@@ -8,11 +8,16 @@ function Uuid_v4()
     return uuid
 end
 
----@param str string
+---@param str string?
 ---@return boolean
 function IsUuid(str)
+    if not str then return false end
+
     if type(str) ~= "string" then return false end
-    return str:match("^[%x]+%-%x+%-%x+%-%x+%-%x+$") ~= nil
+
+    if str == GUID_NULL then return false end
+
+    return str:match("^%x%x%x%x%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%x%x%x%x%x%x%x%x$") ~= nil
 end
 
 ---@param t table

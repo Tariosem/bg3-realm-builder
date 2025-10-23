@@ -410,6 +410,7 @@ function VisualTab:RenderAttachmentsSection()
                 local color = allColors[ctype]
                 if not color or color == GUID_NULL then goto continue end
                 local res = Ext.StaticData.Get(color, colorTypes[ctype]) --[[@as ResourceCharacterCreationColor]]
+                if not res then goto continue end
                 local cell = row:AddCell()
                 local preset = MaterialPresetsMenu:RenderPresetColorBox(res, cell)
                 local prefixText = cell:AddText(GetLoca(ctype))

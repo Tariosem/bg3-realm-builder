@@ -43,11 +43,13 @@ local function serializeNonStringAttributes(value)
 end
 
 local defaultStringifyOptions = {
+    Beautify = false,
     Indent = 4,
     IncludeComments = true,
-    MaxDepth = 100,
+    MaxDepth = 64,
     IncludeHeader = true,
     AutoFindRoot = false,
+    AvoidRecursion = true,
 }
 
 local function validateStringifyOptions(opts)
@@ -70,16 +72,25 @@ local function validateStringifyOptions(opts)
     if opts.AutoFindRoot ~= nil and type(opts.AutoFindRoot) == "boolean" then
         validOpts.AutoFindRoot = opts.AutoFindRoot
     end
+    if opts.AvoidRecursion ~= nil and type(opts.AvoidRecursion) == "boolean" then
+        validOpts.AvoidRecursion = opts.AvoidRecursion
+    end
+    if opts.Beautify ~= nil and type(opts.Beautify) == "boolean" then
+        validOpts.Beautify = opts.Beautify
+    end
 
     return validOpts
 end
 
 --- @class LSXStringfiyOptions
---- @field Indent number
---- @field IncludeComments boolean
---- @field IncludeHeader boolean -- whether to include the XML declaration
---- @field MaxDepth number
---- @field AutoFindRoot boolean -- whether to automatically find the root node by traversing parent references
+--- @field Beautify boolean whether auto sort children by name
+--- NOTE: this may break lsx structure (e.g. make <version> the last child, actually uglify XD) (default: false)
+--- @field Indent number (default: 4)
+--- @field IncludeComments boolean (default: true)
+--- @field IncludeHeader boolean -- whether to include the XML declaration (default: true)
+--- @field MaxDepth number (default: 64)
+--- @field AutoFindRoot boolean -- whether to automatically find the root node by traversing parent references (default: false)
+--- @field AvoidRecursion boolean (default: true)
 
 --- @class LSXNode
 --- @field __name string
@@ -110,7 +121,6 @@ end
 --- @field AddComment fun(self: LSXNode, comment: string): LSXNode return self
 --- @field ClearComments fun(self: LSXNode)
 --- @field new fun(key: string, value: table<string, any>?, children: LSXNode[]?, comments: string[]|string?): LSXNode
---- @field FromTable fun(t: table, rootKey: string): LSXNode?
 LSXNode = {}
 LSXNode.__index = LSXNode
 
@@ -200,6 +210,7 @@ function LSXNode:__stringify(stringifyOpts)
     end
 
     -- iterative DFS using stack. Each frame: { node = <LSXTableNode>, state = 'enter'|'exit', depth = number }
+    -- avoid recursion by defaults
     local function buildAttrStr(node)
         local attrs = {}
         local seen = {}
@@ -215,14 +226,15 @@ function LSXNode:__stringify(stringifyOpts)
                 seen[key] = true
             end
         end
-        -- To make struct consistent, sort remaining keys alphabetically
         local remainingKeys = {}
         for key, _ in pairs(node.__attributes or {}) do
             if not seen[key] then
                 table.insert(remainingKeys, key)
             end
         end
-        table.sort(remainingKeys)
+        if stringifyOpts.Beautify then
+            table.sort(remainingKeys)
+        end
         for _, key in ipairs(remainingKeys) do
             local value = (node.__attributes or {})[key]
             if value ~= nil then
@@ -247,12 +259,12 @@ function LSXNode:__stringify(stringifyOpts)
         local pad = string.rep(' ', curDepth * indentStep)
 
         if frame.state == 'enter' then
-            if seen[node] then
-                table.insert(lines, pad .. string.format('<!-- Error: Recursive reference to "%s" skipped -->', tostring(node.__name or 'Node')))
+            if seen[node] and stringifyOpts.AvoidRecursion then
+                table.insert(lines, pad .. string.format('<!-- Info: Recursive reference to "%s" skipped -->', tostring(node.__name or 'Node')))
                 goto continue
             end
             if curDepth > stringifyOpts.MaxDepth then
-                table.insert(lines, pad .. string.format('<!-- Warning: Max depth exceeded at "%s" -->', tostring(node.__name or 'Node')))
+                table.insert(lines, pad .. string.format('<!-- Info: MaxDepth (%d) exceeded at node "%s", skipping further serialization -->', stringifyOpts.MaxDepth, tostring(node.__name or 'Node')))
                 goto continue
             end
 
@@ -264,6 +276,9 @@ function LSXNode:__stringify(stringifyOpts)
 
             local attrStr = buildAttrStr(node)
             local children = node.__children or {}
+            if stringifyOpts.Beautify then
+                table.sort(children, function(a,b) return (a.__name or '') < (b.__name or '') end)
+            end
             if #children > 0 then
                 table.insert(lines, pad .. string.format('<%s%s>', node.__name or 'Node', attrStr))
                 -- push exit frame
@@ -306,8 +321,7 @@ local function parseAttributes(attrStr)
 end
 
 function LSXNode.Unserialize(str)
-    -- remove XML declaration
-    str = str:gsub("<%?xml.-%?>", "")
+    str = str:gsub("<%?xml.-%?>", "") -- remove XML declaration
     str = str:gsub("\r", "") -- normalize newlines
 
     local stack = {}

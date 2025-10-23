@@ -13,7 +13,6 @@ function GetPickingGuid()
     local returnGuid = nil
     local entity = nil
 
-
     if not mouseRay then return nil end
     local allPartyMembers = GetAllPartyMembers()
     local closestPartyMemberhit = nil
@@ -69,10 +68,12 @@ end
 --[[
     Converts a 2D screen-space coordinate into a world-space ray.
 
-    Conceptually equivalent to:
+    Conceptually similar to the following glm code:
         worldNear = glm::unProjectZO(vec3(mouseX, mouseY, 0.0), view, proj, viewport)
         worldFar  = glm::unProjectZO(vec3(mouseX, mouseY, 1.0), view, proj, viewport)
         rayDir    = glm::normalize(worldFar - worldNear)
+
+    though I don't why we have to subtract near from far to get the correct direction.
 ]]
 ---@param cameraHandle EntityHandle?
 ---@param mouseX number?
@@ -125,7 +126,7 @@ function ScreenToWorldRay(cameraHandle, mouseX, mouseY, screenW, screenH)
     local worldNear = Vec3.new({ worldNear4.x, worldNear4.y, worldNear4.z })
     local worldFar  = Vec3.new({ worldFar4.x,  worldFar4.y,  worldFar4.z })
 
-    -- don't know why but need to subtract near from far to get correct direction
+    -- mystery
     local dir = worldNear - worldFar
     local origin
     if controller.IsOrthographic then

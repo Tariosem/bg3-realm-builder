@@ -1,4 +1,4 @@
--- yoinked from EasyDye
+-- yoinked from EasyDye, thanks to Aahz
 Paperdoll = {}
 
 ---@param entity EntityHandle
