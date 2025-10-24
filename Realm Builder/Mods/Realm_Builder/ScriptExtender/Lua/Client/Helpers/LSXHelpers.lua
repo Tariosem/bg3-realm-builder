@@ -136,14 +136,13 @@ end
 --- </contentList>
 ---@param names string[]
 ---@param version number|fun(name:string):number
----@return string, table<string, string>, table<string, string> -- content, handleToString, stringToHandle
+---@return string, table<string, string[]> -- content, handleToString, stringToHandle
 function LSXHelpers.GenerateLocalization(names, version)
     local root = LSXNode.new("contentList", {
         ["xmlns:xsd"] = "http://www.w3.org/2001/XMLSchema",
         ["xmlns:xsi"] = "http://www.w3.org/2001/XMLSchema-instance",
     })
-    local stringToHandle = {}
-    local handleToString = {}
+    local stringToHandles = {}
 
     for _, name in ipairs(names) do
         local ver = 1
@@ -161,14 +160,14 @@ function LSXHelpers.GenerateLocalization(names, version)
         })
         contentNode:SetInnerText(name)
         root:AppendChild(contentNode)
-        handleToString[handle] = name
-        stringToHandle[name] = handle -- this maybe overwritten if there are duplicate names
+        stringToHandles[name] = stringToHandles[name] or handle
+        table.insert(stringToHandles, handle)
     end
 
     local content = root:Stringify({ Indent = 4, IncludeHeader = false })
     content = '<?xml version="1.0" ?>\n' .. content
 
-    return content, handleToString, stringToHandle
+    return content, stringToHandles
 end
 
 
@@ -274,7 +273,7 @@ end
 ---@param uiColor vec4
 ---@param matPUuid GUIDSTRING
 ---@param uuid GUIDSTRING
----@param presetType "CharacterCreationEyeColor"|"CharacterCreationHairColor"|"CharacterCreationSkinColor"
+---@param presetType "CharacterCreationEyeColors"|"CharacterCreationHairColors"|"CharacterCreationSkinColors"
 ---@return LSXNode
 function LSXHelpers.BuildCCAPresetNode(displayName, internalName, uiColor, matPUuid, uuid, presetType)
     if presetType:sub(-1) == "s" then
@@ -316,11 +315,6 @@ function LSXHelpers.BuildCCAPresetsRegionNode(presetsType)
     return childrenNode
 end
 
-local function computeVersionNumber(major, minor, revision, build)
-    local version = major * 2^48 + minor * 2^32 + revision * 2^16 + build
-    return string.format("%d", math.floor(tonumber(version) or 0))
-end
-
 --- generate a meta.lsx file for a mod
 ---@param uuid string
 ---@param modName string
@@ -335,7 +329,7 @@ function LSXHelpers.BuildModMeta(uuid, modName, internalName, author, version, d
     version = version or {1,0,0,0}
     description = description or ""
 
-    local version64 = computeVersionNumber(version[1], version[2], version[3], version[4]) --[[@as number|string]]
+    local version64 = ComputeVersion64(version[1], version[2], version[3], version[4]) --[[@as number|string]]
 
     local root = LSXHelpers.new()
     root:GetChild(1):SetAttribute("lslib_meta", nil)

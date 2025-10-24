@@ -70,11 +70,11 @@ function MaterialTab:Render(parent)
         if drop.UserData and drop.UserData.Parameters then
             local params = drop.UserData.Parameters
 
-            self.Editor:ApplyParameters(params)
+            self:ApplyParameters(params)
             drop.UserData.SuccessApply = true
             self:UpdateUIState()
             if drop.UserData.PresetProxy then
-                self.Editor.PresetProxy = drop.UserData.PresetProxy --[[@as MaterialPresetProxy ]]
+                self:SetPreset(drop.UserData.PresetProxy)
             end
         end
         if drop.UserData and drop.UserData.ParameterName then
@@ -161,13 +161,11 @@ function MaterialTab:Render(parent)
             end
 
             propNode.OnDragDrop = function (sel, drop)
-                if drop.UserData and drop.UserData.ParameterName then
-                    local paramName = drop.UserData.ParameterName --[[@as string ]]
+                if drop.UserData and drop.UserData.ParameterValue then
                     local newValue = drop.UserData.ParameterValue --[[@as number[] ]]
                     local currentValue = self:GetParameter(propertyName)
                     if newValue and currentValue then
                         if not #newValue == #currentValue then
-                            Error("Cannot drop parameter '" .. paramName .. "' onto parameter '" .. propertyName .. "' due to mismatched sizes.")
                             return
                         end
                     else
@@ -324,10 +322,6 @@ function MaterialTab:SetupManagePopup(popup)
 
     local row = tt:AddRow()
 
-    local saveBtn = AddSelectableButton(row:AddCell(), "Save To Material Preset##" .. self.MaterialName, function (sel)
-        MaterialPresetsMenu:SaveMaterialPreset(self.Editor)
-    end)
-
     local btnReset = AddSelectableButton(row:AddCell(), "Reset All##" .. self.MaterialName, function (sel)
         self:ResetAll()
     end)
@@ -409,6 +403,11 @@ function MaterialTab:SavePreset()
     MaterialPresetsMenu:SaveMaterialPreset(self.Editor)
 end
 
+function MaterialTab:SetPreset(presetProxy)
+    self.Editor.PresetProxy = presetProxy
+    self:UpdateUIState()
+end
+
 --- @class MaterialMixerTab : MaterialTab
 --- @field ParametersSetProxy ParametersSetProxy
 --- @field new fun(parameters: RB_ParameterSet):MaterialMixerTab
@@ -422,6 +421,7 @@ function MaterialMixerTab:__init(parameters)
     self.Parent.OnClose = function (win)
         DeleteWindow(self.Parent)
     end
+
 
     self.MaterialName = "MaterialMixerEditor"
     self.ParentNodeName = "Material Mixer"
@@ -449,19 +449,14 @@ function MaterialMixerTab:Render(parent)
 
     self.parentNode = parentNode
     self.group = group
-    
 
     parentNode.OnDragDrop = function (sel, drop)
         if drop.UserData and drop.UserData.Parameters then
             local params = drop.UserData.Parameters
 
-            for itype, typeParams in pairs(params) do
-                for paramName, paramValue in pairs(typeParams) do
-                    self:SetParameter(paramName, paramValue)
-                end
-            end
+            self:ApplyParameters(params)
+            drop.UserData.SuccessApply = true
         end
-
         if drop.UserData and drop.UserData.ParameterName then
             local paramName = drop.UserData.ParameterName --[[@as string ]]
             local newValue = drop.UserData.ParameterValue --[[@as number[] ]]
@@ -481,12 +476,12 @@ function MaterialMixerTab:GetAllParameterNames()
 end
 
 function MaterialMixerTab:SetParameter(name, value)
-    local ifRefresh = self.ParametersSetProxy:GetParameter(name) ~= nil
+    local ifRefresh = self.ParametersSetProxy:GetParameter(name) == nil
 
     self.ParametersSetProxy:SetParameter(name, value)
 
     if ifRefresh then
-        self:Render()      
+        self:Render()
     else
         self:UpdateUIState()
     end
@@ -530,16 +525,16 @@ function MaterialMixerTab:ApplyParameters(params)
     self:Render()
 end
 
+function MaterialMixerTab:SetPreset(presetProxy)
+    self:UpdateUIState()
+end
+
 function MaterialMixerTab:SetupManagePopup(popup)
 
     local tt = popup:AddTable("ManageTable##" .. self.MaterialName, 1)
     tt.BordersInnerH = true
 
     local row = tt:AddRow()
-
-    local saveBtn = AddSelectableButton(row:AddCell(), "Save To Material Preset##" .. self.MaterialName, function (sel)
-        MaterialPresetsMenu:SaveMaterialPreset(self.ParametersSetProxy)
-    end)
 
     local btnReset = AddSelectableButton(row:AddCell(), "Reset All##" .. self.MaterialName, function (sel)
         self:ResetAll()

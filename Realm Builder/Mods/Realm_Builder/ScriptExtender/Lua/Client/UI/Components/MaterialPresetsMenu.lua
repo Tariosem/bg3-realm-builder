@@ -4,11 +4,14 @@ MATERIALPRESET_DRAGDROP_TYPE = "MaterialPreset"
 --- @field DisplayName string
 --- @field UIColor number[]
 --- @field Parameters table<1|2|3|4, table<string, any>>
+--- @field ExportType "CharacterCreationEyeColors"|"CharacterCreationHairColors"|"CharacterCreationSkinColors"
+--- @field Disabled boolean -- if true, preset will not be exported, but still be saved
+--- @field Deleted boolean -- temp tag, won't be saved
 
---- @class RB_CCAModCache
+--- @class RB_CCMod_Pack
 --- @field ModName string
 --- @field ModuleUUID string
---- @field AuthorName string
+--- @field Author string
 --- @field Description string
 --- @field Version vec4
 --- @field MaterialPresets table<string, MaterialPresetData[]>
@@ -16,7 +19,7 @@ MATERIALPRESET_DRAGDROP_TYPE = "MaterialPreset"
 --- @class MaterialPresetsMenu
 --- @field isVisible boolean
 --- @field panel ExtuiWindow
---- @field CustomMaterialPresets table<string, MaterialPresetData>
+--- @field cachedMods table<string, RB_CCMod_Pack>
 --- @field UpdateCustomMaterialPresetsList fun(self:MaterialPresetsMenu)
 --- @field SaveMaterialPreset fun(self:MaterialPresetsMenu, mat:MaterialEditor)
 --- @field RenderPresetColorBox fun(self:MaterialPresetsMenu, preset:ResourceCharacterCreationColor, parent:ExtuiTreeParent):ExtuiColorEdit
@@ -47,9 +50,7 @@ function MaterialPresetsMenu:Render()
     self.panel = RegisterWindow("generic", "Material Presets", "Menu", self)
     self.panel.Closeable = true
 
-    self.cachedMods = {} --- @type table<string, RB_CCAModCache>
-
-    self.CustomMaterialPresets = {}
+    self.cachedMods = {} --- @type table<string, RB_CCMod_Pack>
 
     self.isVisible = true
     self:RenderPresetsList()
@@ -58,9 +59,7 @@ end
 function MaterialPresetsMenu:RenderPresetsList()
     if not self.panel then return end
 
-    local customMPHeader = self.panel:AddCollapsingHeader("Custom Material Presets")
-
-    self:RenderCustomMaterialPresets(customMPHeader)
+    self:RenderCustomMaterialPresets()
 
     local ccPresetsHeader = self.panel:AddCollapsingHeader("Character Creation Material Presets")
 
@@ -68,97 +67,56 @@ function MaterialPresetsMenu:RenderPresetsList()
 
 end
 
-function MaterialPresetsMenu:RenderCustomMaterialPresets(header)
-    local cT = AddCollapsingTable(header, nil, "Export", { CollapseDirection = "Right", SideBarWidth = 600 })
-    cT.Table.BordersInnerV = true
+function MaterialPresetsMenu:RenderCustomMaterialPresets()
 
-    local mainList = cT.MainArea
-    local workshopList = cT.SideBar
+    local workshopWindow = RegisterWindow("generic", "Material Presets Workshop", "Export Menu", self)
 
-    local mainWindow = mainList:AddChildWindow("MainMaterialPresets")
-    local mainTable = mainWindow:AddTable("MaterialPresets", 10)
-
-    local namePrior = false
-    local comparator = function(a,b)
-        if namePrior then
-            local aName = a.DisplayName or ""
-            local bName = b.DisplayName or ""
-            return aName < bName
-        end
-
-        return colorPresetComparator(a,b, a.DisplayName or "", b.DisplayName or "")
-    end
-
-    local row = mainTable:AddRow()
-    local nameToCells = {}
-
-    local function renderAllCustomPresets()
-        local presetsList = {}
-        for _,preset in pairs(self.CustomMaterialPresets) do
-            table.insert(presetsList, preset)
-        end
-
-        table.sort(presetsList, comparator)
-
-        for _,preset in ipairs(presetsList) do
-            local cell = row:AddCell()
-            local colorBox = self:RenderCustomColorBox(preset, cell)
-
-        end
-    end
-
-    renderAllCustomPresets()
-
-    self.UpdateCustomMaterialPresetsList = function ()
-        nameToCells = {}
-        row:Destroy()
-        row = mainTable:AddRow()
-        renderAllCustomPresets()
-    end
-
-    local sortButton = cT.TitleCell:AddButton("Hue##CustomPresetSort")
-    local stooltip = sortButton:Tooltip():AddText("Sort presets by Hue")
-
-    sortButton.OnClick = function ()
-        nameToCells = {}
-        namePrior = not namePrior
-        row:Destroy()
-        row = mainTable:AddRow()
-        renderAllCustomPresets()
-        stooltip.Label = namePrior and "Sort presets by Name" or "Sort presets by Hue"
-        sortButton.Label = namePrior and "Name##CustomPresetSort" or "Hue##CustomPresetSort"
-    end
-
-
-    self:SetupWorklist(workshopList)
+    self:SetupWorkspace(workshopWindow)
 end
 
 ---@param parent ExtuiTreeParent
----@param ccaModPack RB_CCAModCache?
-function MaterialPresetsMenu:SetupWorklist(parent, ccaModPack)
-    local modName = ccaModPack and ccaModPack.ModName or ""
-    local authorName = ccaModPack and ccaModPack.AuthorName or ""
-    local description = ccaModPack and ccaModPack.Description or ""
-    local version = ccaModPack and ccaModPack.Version or {1,0,0,0}
-    local selectedMPs = ccaModPack and ccaModPack.MaterialPresets or {
-        CharacterCreationEyeColors = {},
-        CharacterCreationHairColors = {},
-        CharacterCreationSkinColors = {},
+---@param ccaModPack RB_CCMod_Pack?
+function MaterialPresetsMenu:SetupWorkspace(parent, ccaModPack)
+    local infoTab = parent:AddTable("MaterialPresetsWorkspaceTable", 2)
+    local mainRow = infoTab:AddRow()
+
+    infoTab.ColumnDefs[1] = { WidthStretch = true }
+    infoTab.ColumnDefs[2] = { WidthFixed = true }
+
+    infoTab.BordersInnerV = true
+
+    --- @type RB_CCMod_Pack
+    local exportSettings = ccaModPack or { 
+        ModName = "",
+        Author = "",
+        Description = "",
+        Version = {1,0,0,0},
+        MaterialPresets = {},
     }
 
-    local function quickCheckIfExportable()
-        if not modName or modName == "" then
-            return false
-        end
+    local function checkIfExportable()
+        if not exportSettings.ModName or exportSettings.ModName == "" then return false, "no mod name" end
+        if not exportSettings.Author or exportSettings.Author == "" then return false, "no author" end
+        if #(exportSettings.MaterialPresets) == 0 then return false, "no presets" end
 
-        if not authorName or authorName == "" then
-            return false
-        end
+        for i=#(exportSettings.MaterialPresets),1,-1 do
+            local preset = exportSettings.MaterialPresets[i]
 
-        if #selectedMPs.CharacterCreationEyeColors == 0 and
-           #selectedMPs.CharacterCreationHairColors == 0 and
-           #selectedMPs.CharacterCreationSkinColors == 0 then
-            return false
+            if preset.Deleted then
+                table.remove(exportSettings.MaterialPresets, i)
+                goto continue
+            end
+
+            if not preset.Disabled then
+                if not preset.DisplayName or preset.DisplayName == "" then
+                    return false, "preset with no name"
+                end
+                if not preset.ExportType or preset.ExportType == "" then
+                    return false, preset.DisplayName .. "preset with no export type"
+                end
+            end
+
+            ::continue::
         end
 
         return true
@@ -168,236 +126,403 @@ function MaterialPresetsMenu:SetupWorklist(parent, ccaModPack)
         -- declaration
     end
 
-    local modNameText = parent:AddText("Mod Name:")
+    local exportCell = mainRow:AddCell()
+    local refreshExport = self:RenderExportSettingPanel(exportCell, exportSettings)
 
-    local modNameInput = parent:AddInputText("##MaterialPresetModName")
-    modNameInput.Hint = "Enter Mod Name..."
-
-    modNameInput.OnChange = function ()
-        modName = modNameInput.Text
-    end
-
-    local authorNameText = parent:AddText("Author Name:")
-    local authorNameInput = parent:AddInputText("##MaterialPresetAuthorName")
-    authorNameInput.Hint = "Enter Author Name..."
-    authorNameInput.OnChange = function ()
-        authorName = authorNameInput.Text
-    end
-
-    local descriptionText = parent:AddText("Description:")
-    local descriptionInput = parent:AddInputText("##MaterialPresetDescription")
-    descriptionInput.Hint = "Enter Description..."
-    descriptionInput.OnChange = function ()
-        description = descriptionInput.Text
-    end
-
-    local versionText = parent:AddText("Version (Major.Minor.Revision.Build):")
-    local versionInput = parent:AddInputInt("##MaterialPresetVersion")
-    versionInput.Components = 4
-    versionInput.OnChange = function ()
-        version = { versionInput.Value[1], versionInput.Value[2], versionInput.Value[3], versionInput.Value[4] }
-    end
-
-
-    local importBtn = nil --[[@type ExtuiSelectable]]
-    local importTT = nil --[[@type ExtuiText]]
-
-    importBtn = AddSelectableButton(parent, "Import", function (sel)
-        local fileContent = MaterialPresetsMenu:ImportFromFile(modName)
-        Timer:After(100, function ()
-            importBtn:SetStyle("Alpha", 1)
-            importBtn:SetColor("Text", HexToRGBA("FFFFFFFF"))
-        end)
-
-        if not fileContent then
-            importTT.Label = "Failed to import material presets: Mod '" .. modName .. "' not found in CCA_Cache."
-            importBtn:SetColor("Text", HexToRGBA("FFFF0000"))
-            GuiAnim.Vibrate(importBtn)
-            return
-        end
-        authorName = fileContent.AuthorName or ""
-        description = fileContent.Description or ""
-        version = fileContent.Version or {1,0,0,0}
-        selectedMPs = fileContent.MaterialPresets or {
-            CharacterCreationEyeColors = {},
-            CharacterCreationHairColors = {},
-            CharacterCreationSkinColors = {},
-        }
-        modNameInput.Text = modName
-        authorNameInput.Text = authorName
-        descriptionInput.Text = description
-        versionInput.Value = { version[1] or 1, version[2] or 0, version[3] or 0, version[4] or 0 }
+    local importWindow = exportCell:AddChildWindow("ImportCCAWindow")
+    local refreshImport = self:RenderImportCCASection(importWindow, exportSettings, function ()
+        refreshExport()
         refreshSelectedList()
-
-        importTT.Label = "Imported material presets from mod '" .. modName .. "'."
-        importBtn:SetColor("Text", HexToRGBA("FF00CCCC"))
     end)
-    importTT = importBtn:Tooltip():AddText("Import by mod name from Realm_Builder/CC_Mod_Cache/")
+    
+    local presetTabCell = mainRow:AddCell()
 
-    local exportBtn = nil --[[@type ExtuiSelectable]]
-    local exportTT = nil --[[@type ExtuiText]]
-    exportBtn = AddSelectableButton(parent, "Export", function (sel)
-        if not quickCheckIfExportable() then
-            GuiAnim.Vibrate(exportBtn)
-            exportTT.Label = "Cannot export material presets: Missing required information."
-            Warning("Cannot export material presets: Missing required information.")
+    local topOpeTab = presetTabCell:AddTable("PresetTypesTopTab", 2)
+    topOpeTab.ColumnDefs[1] = { WidthStretch = true }
+    topOpeTab.ColumnDefs[2] = { WidthFixed = true }
+
+    local topRow = topOpeTab:AddRow()
+
+    local leftCell,rightCell = topRow:AddCell(), topRow:AddCell()
+
+    local namePrior = false
+    local sortButton = leftCell:AddButton("Hue##ExportPresetSort")
+    local stooltip = sortButton:Tooltip():AddText("Sort presets by Hue")
+
+    sortButton.OnClick = function ()
+        namePrior = not namePrior
+        refreshSelectedList()
+        stooltip.Label = namePrior and "Sort presets by Name" or "Sort presets by Hue"
+        sortButton.Label = namePrior and "Name##ExportPresetSort" or "Hue##ExportPresetSort"
+    end
+
+    local saveButton = rightCell:AddButton("Save")
+    saveButton.OnClick = function (sel)
+        if not checkIfExportable() then
+            GuiAnim.Vibrate(saveButton)
             return
         end
 
-        exportTT.Label = "Exported material presets to mod '" .. modName .. "'."
-        MaterialPresetsMenu:ExportToMod(modName, authorName, description, version, selectedMPs)
-    end)
+        local modName = exportSettings.ModName
+        local authorName = exportSettings.Author
+        local description = exportSettings.Description
+        local version = exportSettings.Version
+        local matPresets = DeepCopy(exportSettings.MaterialPresets)
+        local uuid = exportSettings.ModuleUUID or Uuid_v4()
+
+        if not IsUuid(uuid) then
+            uuid = Uuid_v4()
+        end
+
+        self:SaveModCache(modName, authorName, description, version, matPresets, modName:gsub("%s+", "_"), uuid)
+
+        Debug("MaterialPresetsMenu: Saved material presets to cache.")
+    end
+
+    local exportBtn = nil --[[@type ExtuiButton]]
+    local exportTT = nil --[[@type ExtuiText]]
+    exportBtn = rightCell:AddButton("Export") 
+    
+    exportBtn.OnClick = function (sel)        
+        local exportable, reason = checkIfExportable()
+
+        if not exportable then
+            GuiAnim.Vibrate(exportBtn)
+            exportTT.Label = "Cannot export material presets: " .. reason
+            return
+        end
+
+        MaterialPresetsMenu:ExportToMod(exportSettings)
+        refreshImport()
+    end
+
     exportTT = exportBtn:Tooltip():AddText("Export material presets to Realm_Builder/CC_Mods/")
 
     exportBtn.OnHoverEnter = function ()
-        if not quickCheckIfExportable() then
+        if not checkIfExportable() then
             exportBtn:SetStyle("Alpha", 0.5)
             exportBtn:SetColor("Text", HexToRGBA("FFFF0000"))
+            exportBtn:SetColor("Button", HexToRGBA("88FF0000"))
         else
             exportBtn:SetStyle("Alpha", 1)
             exportBtn:SetColor("Text", HexToRGBA("FF00CCCC"))
+            exportBtn:SetColor("Button", HexToRGBA("8800CCCC"))
         end
     end
 
-    local selectedList = parent:AddChildWindow("SelectedMaterialPresets")
+    local presetTab = presetTabCell:AddTable("PresetTypesTab", 5)
 
-    selectedList:AddSeparatorText("Eye Color Presets")
-    local eyeTab = selectedList:AddTable("EyeColorPresets", 1)
+    presetTab.RowBg = true
+    presetTab.Borders = true
 
-    selectedList:AddSeparatorText("Hair Color Presets")
-    local hairTab = selectedList:AddTable("HairColorPresets", 1)
-
-    selectedList:AddSeparatorText("Skin Color Presets")
-    local skinTab = selectedList:AddTable("SkinColorPresets", 1)
-
-    local allTabs = {
-        CharacterCreationEyeColors = eyeTab,
-        CharacterCreationHairColors = hairTab,
-        CharacterCreationSkinColors = skinTab,
+    presetTab.ColumnDefs = {
+        { WidthFixed = true },
+        { WidthFixed = true },
+        { WidthStretch = true },
+        { WidthFixed = true },
+        { WidthFixed = true },
     }
-    local allRows = {}
+
+    local displayRow = presetTab:AddRow()
+
+    displayRow:AddCell():AddText("Export")
+    displayRow:AddCell():AddText("UI Color")
+    displayRow:AddCell():AddText("Display Name")
+    displayRow:AddCell():AddText("Export Type")
+    displayRow:AddCell():AddText("Manage")
+    
+    local presetRow = presetTab:AddRow()
+
+    local allRows = {} --- @type ExtuiTableRow[]
 
     function refreshSelectedList()
-        for key,tab in pairs(allTabs) do
-            if allRows[key] then
-                allRows[key]:Destroy()
-            end
-            local row = allTabs[key]:AddRow()
-            allRows[key] = row
-            for _,preset in pairs(selectedMPs[key]) do
-                local cell = row:AddCell()
-                local colorBox = cell:AddColorEdit("##" .. preset.DisplayName)
-                local nameInput = cell:AddInputText("##" .. preset.DisplayName .. "NameInput", preset.DisplayName)
-                colorBox.Color = preset.UIColor
-                colorBox.NoInputs = true
-                colorBox.CanDrag = true
-                colorBox.DragDropType = MATERIALPRESET_DRAGDROP_TYPE
+        for _,r in pairs(allRows) do
+            r:Destroy()
+        end
 
-                colorBox.UserData = {
-                    Parameters = preset.Parameters,
+        local mPs = exportSettings.MaterialPresets
+
+        table.sort(mPs, function (a, b)
+            if namePrior then
+                return a.DisplayName < b.DisplayName
+            end
+
+            return colorPresetComparator(a,b, a.DisplayName, b.DisplayName)
+        end)
+
+        for _,preset in pairs(mPs) do
+            local r = self:RenderExportPresetRow(presetTab, preset)
+            table.insert(allRows, r)
+        end
+
+        local emptyBox = presetRow:AddCell():AddColorEdit("Add##EmptyBox ")
+        emptyBox.Color = {0,0,0,0}
+        emptyBox.NoInputs = true
+        emptyBox.NoPicker = true
+
+        emptyBox:Tooltip():AddText("Drop Material Preset Here to Add to list")
+
+        emptyBox.CanDrag = true
+        emptyBox.DragDropType = MATERIALPRESET_DRAGDROP_TYPE
+
+        emptyBox.OnDragDrop = function (sel, drop)
+            if drop.UserData and drop.UserData.Parameters then
+                local presetData = {
+                    DisplayName = drop.UserData.DisplayName or "Unnamed Preset",
+                    UIColor = DeepCopy(drop.UserData.UIColor or {1,1,1,1}),
+                    Parameters = DeepCopy(drop.UserData.Parameters or {}),
                 }
-
-                nameInput.SameLine = true
-                nameInput.Hint = "Preset Name..."
-                nameInput.OnChange = function ()
-                    if nameInput.Text ~= "" then
-                        preset.DisplayName = nameInput.Text
-                    end
+                if not next(presetData.Parameters) then
+                    Warning("Failed to add preset to selected list: No parameters found.")
+                    return
                 end
 
-                colorBox.OnChange = function ()
-                    preset.UIColor = colorBox.Color
-                end
-
-                local managePopup = cell:AddPopup("ManageSelectedPresetPopup##" .. preset.DisplayName)
-                colorBox.OnRightClick = function ()
-                    managePopup:Open()
-                end
-
-                colorBox.OnDragStart = function (sel)
-                    local colorPreview = colorBox.DragPreview:AddColorEdit("##PreviewColorBox")
-                    colorPreview.Color = preset.UIColor
-                    colorPreview.NoInputs = true
-                    colorBox.DragPreview:AddText(preset.DisplayName).SameLine = true
-                end
-
-                colorBox.OnDragDrop = function (sel, drop)
-                    if drop.UserData and drop.UserData.Parameters then
-                        preset.Parameters = DeepCopy(drop.UserData.Parameters or {})
-                        if drop.UserData.UIColor then
-                            preset.UIColor = DeepCopy(drop.UserData.UIColor or {1,1,1,1})
-                            colorBox.Color = preset.UIColor
-                        end
-                        local tooltip = colorBox:Tooltip():AddText(" Overwrite Preset Parameters with Dropped Preset ")
-                        Timer:After(5000, function ()
-                            tooltip:Destroy()
-                        end)
-                    end
-                end
-
-                local selectTable = managePopup:AddTable("ManageSelectedPresetTable", 1)
-                local selectRow = selectTable:AddRow()
-                local deleteBtn = AddSelectableButton(selectRow:AddCell(), "Remove Preset##" .. preset.DisplayName, function (sel)
-                    for i,p in ipairs(selectedMPs[key]) do
-                        if p == preset then
-                            table.remove(selectedMPs[key], i)
-                            break
-                        end
-                    end
-                    refreshSelectedList()
-                end)
-                ApplyDangerSelectableStyle(deleteBtn)
-
-                local openMatMixerBtn = AddSelectableButton(selectRow:AddCell(), "Open in Material Mixer##" .. preset.DisplayName, function (sel)
-                    local materialMixer = MaterialMixerTab.new(preset.Parameters)
-                    materialMixer:Render()
-                end)
+                table.insert(mPs, presetData)
+                refreshSelectedList()
             end
-
-            local emptyBox = row:AddCell():AddColorEdit("Add##EmptyBox " .. key)
-            emptyBox.Color = {0,0,0,0}
-            emptyBox.NoInputs = true
-            emptyBox.NoPicker = true
-
-            emptyBox:Tooltip():AddText("Drop Material Preset Here to Add to list")
-
-            emptyBox.CanDrag = true
-            emptyBox.DragDropType = MATERIALPRESET_DRAGDROP_TYPE
-
-            emptyBox.OnDragDrop = function (sel, drop)
-                if drop.UserData and drop.UserData.Parameters then
-                    local presetData = {
-                        DisplayName = drop.UserData.DisplayName or "Unnamed Preset",
-                        UIColor = DeepCopy(drop.UserData.UIColor or {1,1,1,1}),
-                        Parameters = DeepCopy(drop.UserData.Parameters or {}),
-                    }
-                    if not next(presetData.Parameters) then
-                        Warning("Failed to add preset to selected list: No parameters found.")
-                        return
-                    end
-
-                    table.insert(selectedMPs[key], presetData)
-                    refreshSelectedList()
-                end
-            end
- 
         end
     end
 
     refreshSelectedList()
 end
 
---- simply load from CCA_Cache folder
----@param modName string
----@return RB_CCAModCache?
-function MaterialPresetsMenu:ImportFromFile(modName)
-    modName = modName:gsub("%s+", "_")
+---@param parent ExtuiTreeParent
+---@param settings RB_CCMod_Pack
+function MaterialPresetsMenu:RenderExportSettingPanel(parent, settings)
+    local modNameText = parent:AddText("Mod Name:")
+    local modNameInput = parent:AddInputText("##MaterialPresetModName")
+    modNameInput.Hint = "Enter Mod Name..."
 
-    if self.cachedMods and self.cachedMods[modName] then
-        return self.cachedMods[modName]
+    modNameInput.OnChange = function ()
+        settings.ModName = modNameInput.Text
+    end
+    modNameInput.Text = settings.ModName or ""
+
+    local authorNameText = parent:AddText("Author Name:")
+    local authorNameInput = parent:AddInputText("##MaterialPresetAuthorName")
+    authorNameInput.Hint = "Enter Author Name..."
+    authorNameInput.OnChange = function ()
+        settings.Author = authorNameInput.Text
+    end
+    authorNameInput.Text = settings.Author or ""
+
+    local descriptionText = parent:AddText("Description:")
+    local descriptionInput = parent:AddInputText("##MaterialPresetDescription")
+    descriptionInput.Hint = "Enter Description..."
+    descriptionInput.OnChange = function ()
+        settings.Description = descriptionInput.Text
+    end
+    descriptionInput.Multiline = true
+    descriptionInput.Text = settings.Description or ""
+
+    local versionText = parent:AddText("Version:")
+    local versionInput = parent:AddInputInt("##MaterialPresetVersion")
+    versionInput.Components = 4
+    versionInput.OnChange = function ()
+        settings.Version = { versionInput.Value[1], versionInput.Value[2], versionInput.Value[3], versionInput.Value[4] }
+    end
+    versionInput.Value = { settings.Version[1], settings.Version[2], settings.Version[3], settings.Version[4] }
+
+    local function refresh()
+        modNameInput.Text = settings.ModName or ""
+        authorNameInput.Text = settings.Author or ""
+        descriptionInput.Text = settings.Description or ""
+        versionInput.Value = { settings.Version[1], settings.Version[2], settings.Version[3], settings.Version[4] }
     end
 
-    local filePath = RealmPaths.GetCCAModCachePath(modName)
+    return refresh
+end
+
+---@param parent ExtuiTreeParent
+---@param exportSettings RB_CCMod_Pack
+---@param onImportComplete fun()
+function MaterialPresetsMenu:RenderImportCCASection(parent, exportSettings, onImportComplete)
+    local importText = parent:AddText("Import Character Creation Material Presets from existing CCA Mods:")
+
+    local openedTrees = {}
+    local function refreshCached()
+        DestroyAllChilds(parent)
+
+        local cache = nil
+
+        if not next(self.cachedMods) then
+            local locStr = Ext.IO.LoadFile(RealmPaths.GetCCAModCacheRefPath())
+            cache = locStr and Ext.Json.Parse(locStr) or {}
+        else
+            cache = self.cachedMods
+        end
+
+        if not cache then
+            Debug("Warning: No cached CCA mods found for import.")
+            cache = {}
+        end
+
+        for modName,versions in pairs(cache) do
+            local modNameSel = parent:AddSelectable((openedTrees[modName] and "[-]" or "[+]") .. modName .. "##ImportCCAMod_" .. modName)
+            local group = parent:AddGroup("ImportCCAModGroup_" .. modName)
+            group.Visible = openedTrees[modName] or false
+
+            modNameSel.OnClick = function ()
+                group.Visible = not group.Visible
+                modNameSel.Label = (group.Visible and "[-]" or "[+]") .. modName .. "##ImportCCAMod_" .. modName
+                openedTrees[modName] = group.Visible
+            end
+
+            for version,_ in pairs(versions) do
+                local versionSel = group:AddSelectable("Version " .. version .. "##ImportCCAModVersion_" .. modName .. "_" .. version)
+                versionSel.OnClick = function ()
+                    local ccaModPack = self:ImportFromFile(modName, version)
+                    if not ccaModPack then
+                        Warning("Failed to import CCA mod pack for mod " .. modName .. " version " .. version)
+                        return
+                    end
+
+                    exportSettings = DeepCopy(ccaModPack)
+
+                    onImportComplete()
+                end
+            end
+
+        end
+    end
+
+    refreshCached()
+
+    return refreshCached
+end
+
+---@param parentTab ExtuiTable
+---@param obj MaterialPresetData
+function MaterialPresetsMenu:RenderExportPresetRow(parentTab, obj)
+    local row = parentTab:AddRow()
+    local confirmCell = row:AddCell()
+    local uiColorCell = row:AddCell()
+    local nameCell = row:AddCell()
+    local typeCell = row:AddCell()
+    local manageCell = row:AddCell()
+
+    local confirmExportCheck = confirmCell:AddCheckbox("##ConfirmExport" .. obj.DisplayName)
+    local colorBox = uiColorCell:AddColorEdit("##" .. obj.DisplayName)
+    local nameInput = nameCell:AddInputText("##" .. obj.DisplayName .. "NameInput", obj.DisplayName)
+    local typeCombo = typeCell:AddCombo("##" .. obj.DisplayName .. "TypeCombo")
+    local manageBtn = manageCell:AddButton("···##" .. obj.DisplayName)
+
+    confirmExportCheck.Checked = not obj.Disabled
+    confirmExportCheck.OnChange = function ()
+        obj.Disabled = not confirmExportCheck.Checked
+        row:SetColor("TableRowBg", obj.Disabled and HexToRGBA("FF323232") or HexToRGBA("FFD6FFB1"))
+        row:SetColor("TableRowBgAlt", obj.Disabled and HexToRGBA("FF313131") or HexToRGBA("FFD6FFB1"))
+    end
+
+    colorBox.Color = obj.UIColor
+    colorBox.NoInputs = true
+    colorBox.CanDrag = true
+    colorBox.DragDropType = MATERIALPRESET_DRAGDROP_TYPE
+
+    colorBox.UserData = {
+        Parameters = obj.Parameters,
+    }
+
+    nameInput.SameLine = true
+    nameInput.Hint = "Preset Name..."
+    nameInput.OnChange = function ()
+        if nameInput.Text ~= "" then
+            obj.DisplayName = nameInput.Text
+        end
+    end
+
+    colorBox.OnChange = function ()
+        obj.UIColor = colorBox.Color
+    end
+
+    local managePopup = manageCell:AddPopup("ManageSelectedPresetPopup##" .. obj.DisplayName)
+    colorBox.OnRightClick = function ()
+        managePopup:Open()
+    end
+
+    colorBox.OnDragStart = function (sel)
+        local colorPreview = colorBox.DragPreview:AddColorEdit("##PreviewColorBox")
+        colorPreview.Color = obj.UIColor
+        colorPreview.NoInputs = true
+        colorBox.DragPreview:AddText(obj.DisplayName).SameLine = true
+    end
+
+    colorBox.OnDragDrop = function (sel, drop)
+        if drop.UserData and drop.UserData.Parameters then
+            obj.Parameters = DeepCopy(drop.UserData.Parameters or {})
+            if drop.UserData.UIColor then
+                obj.UIColor = DeepCopy(drop.UserData.UIColor or {1,1,1,1})
+                colorBox.Color = obj.UIColor
+            end
+            local tooltip = colorBox:Tooltip():AddText(" Overwrite Preset Parameters with Dropped Preset ")
+            Timer:After(5000, function ()
+                tooltip:Destroy()
+            end)
+        end
+    end
+
+    local typeOptions = {
+        GetLoca("Eye Color"),
+        GetLoca("Hair Color"),
+        GetLoca("Skin Color"),
+    }
+    local indexToType = {
+        [1] = "CharacterCreationEyeColors",
+        [2] = "CharacterCreationHairColors",
+        [3] = "CharacterCreationSkinColors",
+    }
+    local typeToIndex = {
+        ["CharacterCreationEyeColors"] = 0,
+        ["CharacterCreationHairColors"] = 1,
+        ["CharacterCreationSkinColors"] = 2,
+    }
+
+    --- combo index start from 0, lua table start from 1
+
+    typeCombo.Options = typeOptions
+    typeCombo.OnChange = function ()
+        local index = typeCombo.SelectedIndex + 1
+        obj.ExportType = indexToType[index]
+    end
+    if obj.ExportType then
+        typeCombo.SelectedIndex = typeToIndex[obj.ExportType]
+    end
+
+    manageBtn.OnClick = function (btn)
+        managePopup:Open()
+    end
+
+    local selectTable = managePopup:AddTable("ManageSelectedPresetTable", 1)
+    local selectRow = selectTable:AddRow()
+    local deleteBtn = AddSelectableButton(selectRow:AddCell(), "Remove Preset##" .. obj.DisplayName, function (sel)
+        obj.Deleted = true
+        row:Destroy()
+    end)
+    ApplyDangerSelectableStyle(deleteBtn)
+
+    local openMatMixerBtn = AddSelectableButton(selectRow:AddCell(), "Material Cocktail ##" .. obj.DisplayName, function (sel)
+        local materialMixer = MaterialMixerTab.new(obj.Parameters)
+        materialMixer:Render()
+    end)
+
+end
+
+--- simply load from CCA_Cache folder
+---@param modName string
+---@param version vec4|string
+---@return RB_CCMod_Pack?
+function MaterialPresetsMenu:ImportFromFile(modName, version)
+    modName = modName:gsub("%s+", "_")
+    local versionStr = type(version) == "string" and version or BuildVersionString(version)
+
+    if self.cachedMods and self.cachedMods[modName] then
+        local cachedMod = self.cachedMods[modName][versionStr]
+        if cachedMod then
+            return cachedMod
+        end
+    end
+
+    local filePath = RealmPaths.GetCCAModCachePath(modName, version)
 
     local jsonStr = Ext.IO.LoadFile(filePath)
 
@@ -406,37 +531,43 @@ function MaterialPresetsMenu:ImportFromFile(modName)
         return nil
     end
 
-    local cacheFile = Ext.Json.Parse(jsonStr) --- @type RB_CCAModCache
+    local cacheFile = Ext.Json.Parse(jsonStr) --- @type RB_CCMod_Pack
 
-    self.cachedMods[modName] = cacheFile
+    self.cachedMods[modName] = self.cachedMods[modName] or {}
+    self.cachedMods[modName][versionStr] = cacheFile
 
     return cacheFile
 end
 
----@param modName string
----@param authorName string
----@param description string
----@param version vec4
----@param selectedMPs table<string, MaterialPresetData[]>
-function MaterialPresetsMenu:ExportToMod(modName, authorName, description, version, selectedMPs)
+---@param modPack RB_CCMod_Pack
+function MaterialPresetsMenu:ExportToMod(modPack)
     local startTime = Ext.Timer.MonotonicTime() 
     local suc = true
 
-    local modInternalName = modName:gsub("%s+", "_")
-    local internalNames = {}
-    for _,presets in pairs(selectedMPs) do
-        for _,preset in pairs(presets) do
-            internalNames[preset] = preset.DisplayName:gsub("%s+", "_")
-        end
+    local modName = modPack.ModName
+    local authorName = modPack.Author
+    local description = modPack.Description
+    local version = modPack.Version
+    local matPresets = modPack.MaterialPresets
+    local existUuid = modPack.ModuleUUID --[[@type GUIDSTRING?]]
+
+    if not IsUuid(existUuid) then
+        existUuid = nil
     end
 
-    -- prefer reusing the existing ModuleUUID, so the game recognizes this as the same mod.
-    local imported = self:ImportFromFile(modName) --[[@as RB_CCAModCache]]
-    local isUuid = IsUuid(imported and imported.ModuleUUID or nil)
+    -- sanitize mod internal name
 
-    local modUuid = isUuid and imported.ModuleUUID or Uuid_v4()
+    local modInternalName = modName:gsub("%s+", "_")
+    local internalNames = {}
+    for _,preset in pairs(matPresets) do
+        internalNames[preset] = preset.DisplayName:gsub("%s+", "_")
+    end
 
-    --- build mods metalsx first
+    -- prefer reusing the existing ModuleUUID, so the game recognizes this as the same mod. 
+
+    local modUuid = existUuid and existUuid or Uuid_v4()
+
+    --- build mod meta.lsx first
     local metaLsx = LSXHelpers.BuildModMeta(modUuid, modName, modInternalName, authorName, version, description)
     local mataFilePath = RealmPaths.GetCCAModMetaPath(modInternalName)
 
@@ -450,23 +581,19 @@ function MaterialPresetsMenu:ExportToMod(modName, authorName, description, versi
     
     local names = {}
 
-    for presetType, presets in pairs(selectedMPs) do
-        for _,preset in pairs(presets) do
-            if preset.DisplayName then
-                table.insert(names, preset.DisplayName)
-            end
+    for _, preset in pairs(matPresets) do
+        if preset.DisplayName and not preset.Disabled then
+            table.insert(names, preset.DisplayName)
         end
     end
 
-    local locaLsx, handleToString, stringToHandle = LSXHelpers.GenerateLocalization(names, 1)
+    local locaLsx, stringToHandles = LSXHelpers.GenerateLocalization(names, 1)
 
     local locaFilePath = RealmPaths.GetCCALocalizationPath(modInternalName, "English") -- currently assume English only
 
     suc = Ext.IO.SaveFile(locaFilePath, locaLsx)
 
-    if not suc then
-        Warning("ExportToMod: Failed to save localization file at " .. locaFilePath)
-    end
+    if not suc then Warning("ExportToMod: Failed to save localization file at " .. locaFilePath) end
 
     --- build material presets file first because CC presets need it
     
@@ -476,64 +603,86 @@ function MaterialPresetsMenu:ExportToMod(modName, authorName, description, versi
         CharacterCreationSkinColors = "_SkinColor_",
     }
 
+    local banks = {
+        CharacterCreationEyeColors = LSXHelpers.BuildMaterialPresetBank(),
+        CharacterCreationHairColors = LSXHelpers.BuildMaterialPresetBank(),
+        CharacterCreationSkinColors = LSXHelpers.BuildMaterialPresetBank(),
+    }
 
     local matPresetUuids = {}
-    for presetType, presets in pairs(selectedMPs) do
-        if #presets == 0 then goto continue end
-        local materialPresetBank = LSXHelpers.BuildMaterialPresetBank()
 
-        for i,presetData in pairs(presets) do
-            local uuid = Uuid_v4()
-            matPresetUuids[presetData] = uuid
-            local internalName = modInternalName .. cheapName[presetType] .. internalNames[presetData]
-            local presetNode = LSXHelpers.BuildMaterialPresetResourceNode(presetData.Parameters, uuid, internalName)
+    -- build material preset banks
 
-            materialPresetBank:AppendChild(presetNode)
-        end
+    for _, preset in pairs(matPresets) do
+        if preset.Disabled then goto continue end
+        local presetType = preset.ExportType
+        local materialPresetBank = banks[presetType]
 
-        local matPresetFile = RealmPaths.GetCCAMaterialPresetsFile(presetType, modInternalName)
-        if not matPresetFile then
-            Warning("ExportToMod: Failed to get material presets file path for preset type " .. tostring(presetType))
-            goto continue
-        end
+        local uuid = Uuid_v4()
+        matPresetUuids[preset] = uuid
+        local internalName = modInternalName .. cheapName[presetType] .. internalNames[preset]
+        local presetNode = LSXHelpers.BuildMaterialPresetResourceNode(preset.Parameters, uuid, internalName)
 
-        suc = Ext.IO.SaveFile(matPresetFile, materialPresetBank:Stringify({ Indent = 4, AutoFindRoot = true }))
-
-        if not suc then
-            Warning("ExportToMod: Failed to save material presets file at " .. matPresetFile)
-        end
+        materialPresetBank:AppendChild(presetNode)
 
         ::continue::
     end
 
-    --- build Character Creation Presets file
+    -- export material preset banks
+
+    for presetType, bank in pairs(banks) do
+        if bank:CountChildren() == 0 then goto continue end
+        local matPresetFile = RealmPaths.GetCCAMaterialPresetsFile(presetType, modInternalName) --[[@as string]]
+
+        suc = Ext.IO.SaveFile(matPresetFile, bank:Stringify({ Indent = 4, AutoFindRoot = true }))
+
+        if not suc then Warning("ExportToMod: Failed to save material presets file at " .. matPresetFile) end
+
+        ::continue::
+    end
+
+    --- build Character Creation Presets definition
     
-    for presetType, presets in pairs(selectedMPs) do
-        if #presets == 0 then goto continue end
-        local ccaPresetNode = LSXHelpers.BuildCCAPresetsRegionNode(presetType, presets)
+    --- @type table<string, LSXNode>
+    local ccaDefNode = {
+        CharacterCreationEyeColors = {},
+        CharacterCreationHairColors = {},
+        CharacterCreationSkinColors = {},
+    }
 
-        for i, presetData in pairs(presets) do
-            local internalName = modInternalName .. cheapName[presetType] .. internalNames[presetData]
-            local matPresetUuid = matPresetUuids[presetData]
-            local ccaPresetUuid = Uuid_v4()
+    for presetType,_ in pairs(ccaDefNode) do
+        ccaDefNode[presetType] = LSXHelpers.BuildCCAPresetsRegionNode(presetType)
+    end
+    
+    for _, preset in pairs(matPresets) do
+        if preset.Disabled then goto continue end
+        local presetType = preset.ExportType
+        local ccaPresetNode = ccaDefNode[presetType]
 
-            local presetNode = LSXHelpers.BuildCCAPresetNode(stringToHandle[presetData.DisplayName], internalName, presetData.UIColor, matPresetUuid, ccaPresetUuid, presetType)
+        local internalName = modInternalName .. cheapName[presetType] .. internalNames[preset]
+        local matPresetUuid = matPresetUuids[preset]
+        local ccaPresetUuid = Uuid_v4()
 
-            ccaPresetNode:AppendChild(presetNode)
-        end
+        local topHanlde = #stringToHandles[preset.DisplayName]
+        local handle = stringToHandles[preset.DisplayName][topHanlde]
+        table.remove(stringToHandles[preset.DisplayName], topHanlde) -- use up one handle per preset
 
-        local ccaFilePath = RealmPaths.GetCCAPresetsFile(presetType, modInternalName)
-        if not ccaFilePath then
-            Warning("ExportToMod: Failed to get CCA presets file path for preset type " .. tostring(presetType))
-            goto continue
-        end
+        local presetNode = LSXHelpers.BuildCCAPresetNode(handle, internalName, preset.UIColor, matPresetUuid, ccaPresetUuid, presetType)
 
-        suc = Ext.IO.SaveFile(ccaFilePath, ccaPresetNode:Stringify({ Indent = 4, AutoFindRoot = true }))
+        ccaPresetNode:AppendChild(presetNode)
 
-        if not suc then
-            Warning("ExportToMod: Failed to save CCA presets file at " .. ccaFilePath)
-        end
+        ::continue::
+    end
 
+    -- export CC presets definition file
+
+    for presetType, def in pairs(ccaDefNode) do
+        if def:CountChildren() == 0 then goto continue end
+        local ccaFilePath = RealmPaths.GetCCAPresetsFile(presetType, modInternalName) --[[@as string]]
+
+        suc = Ext.IO.SaveFile(ccaFilePath, def:Stringify({ Indent = 4, AutoFindRoot = true }))
+
+        if not suc then Warning("ExportToMod: Failed to save CCA presets file at " .. ccaFilePath) end
         ::continue::
     end
 
@@ -543,24 +692,48 @@ function MaterialPresetsMenu:ExportToMod(modName, authorName, description, versi
 
     --- unserialize xml is possible but for sanity we just save a json cache file
 
+    self:SaveModCache(modName, authorName, description, version, matPresets, modInternalName, modUuid)
+end
+
+function MaterialPresetsMenu:SaveModCache(modName, authorName, description, version, matPresets, modInternalName, modUuid)
     local cacheFile = {
         ModName = modName,
         AuthorName = authorName,
         Description = description,
         Version = version,
-        MaterialPresets = selectedMPs,
+        MaterialPresets = matPresets,
         ModuleUUID = modUuid,
     }
+    cacheFile = DeepCopy(cacheFile)
     local jsonStr = Ext.Json.Stringify(cacheFile, { Indent = 4 })
-    local filePath = RealmPaths.GetCCAModCachePath(modInternalName)
+    local filePath = RealmPaths.GetCCAModCachePath(modInternalName, version)
 
-    suc = Ext.IO.SaveFile(filePath, jsonStr)
+    local suc = Ext.IO.SaveFile(filePath, jsonStr)
 
-    self.cachedMods[modInternalName] = cacheFile
+    self.cachedMods[modInternalName] = self.cachedMods[modInternalName] or {}
+    self.cachedMods[modInternalName][BuildVersionString(version)] = cacheFile
 
     if not suc then
         Warning("ExportToMod: Failed to save CCA mod cache file at " .. filePath)
     end
+
+    self:CreateCacheRefs()
+end
+
+function MaterialPresetsMenu:CreateCacheRefs()
+    local allRefs = {}
+
+    for modName,modCache in pairs(self.cachedMods) do
+        allRefs[modName] = {}
+        for version,cache in pairs(modCache) do
+            allRefs[modName][version] = {
+                ModuleUUID = cache.ModuleUUID,
+                MaterialPresetCount = #cache.MaterialPresets,
+            }
+        end
+    end
+
+    Ext.IO.SaveFile(RealmPaths.GetCCAModCacheRefPath(), Ext.Json.Stringify(allRefs, { Indent = 4 }))
 end
 
 function MaterialPresetsMenu:RenderCCMaterialPresets(header)
@@ -648,121 +821,6 @@ function MaterialPresetsMenu:RenderPresetColorBox(preset, parent)
         local materialMixer = MaterialMixerTab.new(presetProxy.Parameters)
         materialMixer:Render()
     end)
-
-    return colorBox
-end
-
-function MaterialPresetsMenu:RenderCustomColorBox(preset, parent)
-    local colorBox = parent:AddColorEdit("##" .. preset.DisplayName)
-    colorBox.Color = preset.UIColor
-    colorBox:Tooltip():AddText(preset.DisplayName or "Unnamed Preset")
-    colorBox.NoInputs = true
-    colorBox.CanDrag = true
-    colorBox.DragDropType = MATERIALPRESET_DRAGDROP_TYPE
-
-    local managePopup = parent:AddPopup("ManagePresetPopup##" .. preset.DisplayName)
-
-    colorBox.OnDragStart = function (sel)
-        local previewColorBox = colorBox.DragPreview:AddColorEdit("##PreviewColorBox")
-        previewColorBox.Color = preset.UIColor
-        previewColorBox.NoInputs = true
-        colorBox.DragPreview:AddText(preset.DisplayName).SameLine = true
-        if sel.UserData then return end
-        sel.UserData = {
-            DisplayName = preset.DisplayName,
-            UIColor = preset.UIColor,
-            Parameters = preset.Parameters,
-            SuccessApply = false,
-        }
-    end
-
-    colorBox.OnDragDrop = function (drop)
-        colorBox.Color = preset.UIColor
-    end
-
-    colorBox.OnRightClick = function ()
-        colorBox.Color = preset.UIColor
-        managePopup:Open()
-    end
-
-    colorBox.OnHoverEnter = function ()
-        colorBox.Color = preset.UIColor
-        colorBox:SetStyle("FrameBorderSize", 2)
-        colorBox:SetColor("Border", HexToRGBA("FFFFD500"))
-    end
-
-    colorBox.OnHoverLeave = function ()
-        colorBox:SetStyle("FrameBorderSize", 0)
-        colorBox:SetColor("Border", HexToRGBA("FFFFFFFF"))
-    end
-
-    colorBox.OnChange = function ()
-        preset.UIColor = colorBox.Color
-    end
-
-    local selectTable = managePopup:AddTable("ManagePresetTable", 1)
-    selectTable.BordersInnerH = true
-    local selectRow = selectTable:AddRow()
-
-    local openMatMixerBtn = AddSelectableButton(selectRow:AddCell(), "Open in Material Mixer##" .. preset.DisplayName, function (sel)
-        local materialMixer = MaterialMixerTab.new(preset.Parameters)
-        materialMixer:Render()
-    end)
-
-    local deleteBtn = AddSelectableButton(selectRow:AddCell(), "Delete Preset##" .. preset.DisplayName, function (sel)
-        self.CustomMaterialPresets[preset.DisplayName] = nil
-        self:UpdateCustomMaterialPresetsList()
-    end)
-    ApplyDangerSelectableStyle(deleteBtn)
-
-    local renameBtn = AddSelectableButton(selectRow:AddCell(), "Rename Preset##" .. preset.DisplayName, function (sel)
-        local renamePopup = parent:AddPopup("RenamePresetPopup##" .. preset.DisplayName) --[[@as ExtuiPopup]]
-        
-        local renameInput = renamePopup:AddInputText("##RenamePresetInput", preset.DisplayName)
-        renameInput.Hint = "Enter new preset name ..."
-
-        renamePopup:Open()
-
-        local function destoryRenamePopup()
-            --- @diagnostic disable-next-line
-            if renamePopup then renamePopup:Destroy() renamePopup = nil end
-        end
-
-        local enterConfirmSub = SubscribeKeyInput({ Key = "RETURN" }, function (e)
-            local ok, isFocus = pcall(IsFocused, renameInput)
-            if not ok then destoryRenamePopup() return UNSUBSCRIBE_SYMBOL end
-
-            if e.Key == "RETURN" and isFocus then
-                local newName = renameInput.Text
-                if newName and newName ~= "" and newName ~= preset.DisplayName and not self.CustomMaterialPresets[newName] then
-                    -- Rename
-                    self.CustomMaterialPresets[newName] = preset
-                    self.CustomMaterialPresets[preset.DisplayName] = nil
-                    preset.DisplayName = newName
-                    self:UpdateCustomMaterialPresetsList()
-                end
-                destoryRenamePopup()
-                return UNSUBSCRIBE_SYMBOL
-            end
-        end)
-
-        Timer:After(1000, function()
-            local focusTimer = Timer:EveryFrame(function ()
-                if not renamePopup then return UNSUBSCRIBE_SYMBOL end
-                local ok, isFocus = pcall(IsFocused, renamePopup)
-                if not ok then destoryRenamePopup() return UNSUBSCRIBE_SYMBOL end
-
-                if not isFocus then
-                    enterConfirmSub:Unsubscribe()
-                    destoryRenamePopup()
-                else
-                end
-            end)
-        end)
-
-    end)
-
-
 
     return colorBox
 end
@@ -957,29 +1015,5 @@ function MaterialPresetsMenu:RenderCCPresetList(presetName, parent)
         cT.OnWidthChange()
     end
 end
-
---- @param mat {Parameters: table<string, any>, GetPreviewColor: fun(self): vec4}
-function MaterialPresetsMenu:SaveMaterialPreset(mat)
-    if not mat then return end
-
-    local parameters = DeepCopy(mat.Parameters)
-    
-    local newName = "New Preset"
-
-    local cnt = 1
-    while self.CustomMaterialPresets[newName] do
-        cnt = cnt + 1
-        newName = newName .. " (" .. tostring(cnt) .. ")" 
-    end
-
-    self.CustomMaterialPresets[newName] = {
-        DisplayName = newName,
-        UIColor = mat:GetPreviewColor(),
-        Parameters = parameters,
-    }
-
-    self:UpdateCustomMaterialPresetsList()
-end
-
 
 MaterialPresetsMenu:Render()

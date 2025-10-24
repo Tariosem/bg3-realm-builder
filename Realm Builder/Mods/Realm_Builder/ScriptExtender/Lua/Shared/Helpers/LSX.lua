@@ -38,7 +38,6 @@ local function serializeNonStringAttributes(value)
         return table.concat(value, " ")
     end
 
-    -- fallback: stringify and escape
     return escapeXML(tostring(value))
 end
 
@@ -82,10 +81,10 @@ local function validateStringifyOptions(opts)
     return validOpts
 end
 
---- @class LSXStringfiyOptions
+--- @class LSXStringifyOptions
 --- @field Beautify boolean whether auto sort children by name
 --- NOTE: this may break lsx structure (e.g. make <version> the last child, actually uglify XD) (default: false)
---- @field Indent number (default: 4)
+--- @field Indent number number of spaces to use for indentation (default: 4)
 --- @field IncludeComments boolean (default: true)
 --- @field IncludeHeader boolean -- whether to include the XML declaration (default: true)
 --- @field MaxDepth number (default: 64)
@@ -100,8 +99,8 @@ end
 --- @field __comments string[]
 --- @field __innerText string|nil
 --- @field __attrOrder string[]|nil
---- @field __stringify fun(self: LSXNode, stringifyOpts: LSXStringfiyOptions): string
---- @field Stringify fun(self: LSXNode, stringifyOpts?: LSXStringfiyOptions): string
+--- @field __stringify fun(self: LSXNode, stringifyOpts: LSXStringifyOptions): string
+--- @field Stringify fun(self: LSXNode, stringifyOpts?: LSXStringifyOptions): string
 --- @field Unserialize fun(str: string): LSXNode?
 --- @field SetInnerText fun(self: LSXNode, text: string): LSXNode -- returns self
 --- @field SetName fun(self: LSXNode, name: string): LSXNode -- returns self
@@ -112,7 +111,8 @@ end
 --- @field AppendChildren fun(self: LSXNode, children: LSXNode[]|table[]):LSXNode -- returns self
 --- @field InsertChild fun(self: LSXNode, index: number, child: LSXNode|table?):LSXNode -- returns self
 --- @field GetChild fun(self: LSXNode, index: number): LSXNode?
---- @field GetChildren fun(self: LSXNode): LSXNode[] 
+--- @field GetChildren fun(self: LSXNode): LSXNode[]
+--- @field CountChildren fun(self: LSXNode): number
 --- @field SortChildren fun(self: LSXNode, comparator: fun(a: LSXNode, b: LSXNode):boolean)
 --- @field RemoveChild fun(self: LSXNode, index: number)
 --- @field RemoveChildren fun(self: LSXNode, predicate: fun(child: LSXNode):boolean)
@@ -275,7 +275,8 @@ function LSXNode:__stringify(stringifyOpts)
             end
 
             local attrStr = buildAttrStr(node)
-            local children = node.__children or {}
+            local children = {}
+            for i = 1, #(node.__children or {}) do children[i] = node.__children[i] end
             if stringifyOpts.Beautify then
                 table.sort(children, function(a,b) return (a.__name or '') < (b.__name or '') end)
             end
@@ -365,9 +366,11 @@ function LSXNode.Unserialize(str)
         end
 
         local tag = tagText
-        if tag:sub(1, 1) == "!" then
+        local inside = tag
+        inside = inside:match("^%s*(.-)%s*$") -- trim
+        if inside:sub(-1) == "/" then
             -- comment , ignore
-        elseif tag:sub(1, 1) == "/" then
+        elseif tag:sub(1,1) == "/" then
             -- closing tag
             local name = tag:match("^/(%S+)")
             local node = table.remove(stack)
@@ -385,9 +388,9 @@ function LSXNode.Unserialize(str)
                 parent:AppendChild(node)
             end
 
-        elseif tag:sub(-1) == "/" then
+        elseif inside:sub(-1) == "/" then
             -- self-closing
-            local inside = tag:sub(1, -2)
+            inside = inside:sub(1, -2):match("^%s*(.-)%s*$")
             local name, attrStr = inside:match("^(%S+)%s*(.*)$")
             local node = LSXNode.new(name)
             node.__attributes, node.__attrOrder = parseAttributes(attrStr)
@@ -493,7 +496,7 @@ function LSXNode:AppendChildren(children)
     for _, child in ipairs(children or {}) do
         if not getmetatable(child) or getmetatable(child) ~= LSXNode then
             Error("LSXTableNode:AppendChildren: Invalid child node, skipping")
-            return self
+            goto continue
         end
 
         if child then
@@ -502,6 +505,7 @@ function LSXNode:AppendChildren(children)
         else
             Warning("LSXTableNode:AppendChildren: Invalid child node, skipping")
         end
+        ::continue::
     end
 
     return self
@@ -547,6 +551,10 @@ end
 
 function LSXNode:GetChildren()
     return self.__children or {}
+end
+
+function LSXNode:CountChildren()
+    return #(self.__children or {})
 end
 
 function LSXNode:ClearChildren()

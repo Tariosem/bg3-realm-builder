@@ -94,7 +94,7 @@ function AddSliderStepButton(parent, label, step, slider, direction)
     local button = parent:AddButton(label)
     button.IDContext = Uuid_v4()
 
-    button.UserData = { Step = step or 1, Slider = slider }
+    button.UserData = { Slider = slider }
 
     button.OnClick = function()
         local s = button.UserData.Slider
@@ -110,6 +110,19 @@ function AddSliderStepButton(parent, label, step, slider, direction)
         if s.OnChange then
             s:OnChange()
         end
+    end
+
+    button.OnRightClick = function()
+        local s = button.UserData.Slider
+        if not s then
+            return
+        end
+        
+        local dir = direction == "<" and "<" or ">"
+        local stepMultiplier = dir == "<" and 0.1 or 10
+        local stepValue = s.UserData and s.UserData.Step or (step or 1)
+        stepValue = stepValue * stepMultiplier
+        s.UserData.Step = stepValue
     end
 
     return button

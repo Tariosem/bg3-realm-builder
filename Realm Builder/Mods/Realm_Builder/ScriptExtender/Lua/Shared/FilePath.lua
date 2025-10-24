@@ -10,6 +10,7 @@ local keybindPath = "Realm_Builder/Keybinds.json"
 
 local ccaPath = "Realm_Builder/CC_Mods/"
 local ccaModCachePath = "Realm_Builder/CC_Mod_Cache/"
+local ccaModCacheRefPath = ccaModCachePath .. "CCAModCache_References.json"
 
 local ccaModMetaFile = ccaPath .. "%s/Mods/%s/meta.lsx"
 
@@ -75,8 +76,16 @@ function RealmPaths.GetCCALocalizationPath(modName, lang)
     return string.format(ccaLocalizationFile, modName, lang, modName)
 end
 
-function RealmPaths.GetCCAModCachePath(modName)
-    return string.format(ccaModCachePath .. "_%s_Cache.json", modName)
+function RealmPaths.GetCCAModCachePath(modName, verison)
+    local versionStr = BuildVersionString(verison)
+
+    local fileName = string.format("%s_%s_Cache.json", modName, versionStr)
+
+    return string.format(ccaModCachePath .. fileName)
+end
+
+function RealmPaths.GetCCAModCacheRefPath()
+    return ccaModCacheRefPath
 end
 
 function RealmPaths.GetCCAMaterialPresetsFile(presetType, modName)

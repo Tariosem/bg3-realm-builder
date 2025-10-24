@@ -20,6 +20,20 @@ function IsUuid(str)
     return str:match("^%x%x%x%x%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%x%x%x%x%x%x%x%x$") ~= nil
 end
 
+function ComputeVersion64(major, minor, revision, build)
+    local version = major * 2^48 + minor * 2^32 + revision * 2^16 + build
+    return string.format("%d", math.floor(tonumber(version) or 0))
+end
+
+function BuildVersionString(major, minor, revision, build)
+    return string.format("%d.%d.%d.%d", major, minor, revision, build)
+end
+
+function ParseVersionString(versionStr)
+    local major, minor, revision, build = versionStr:match("^(%d+)%.(%d+)%.(%d+)%.(%d+)$")
+    return tonumber(major) or 0, tonumber(minor) or 0, tonumber(revision) or 0, tonumber(build) or 0
+end
+
 ---@param t table
 ---@return boolean
 function IsArray(t)
