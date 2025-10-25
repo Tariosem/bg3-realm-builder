@@ -87,7 +87,6 @@ function EntityStore:SetupServerListeners()
 
 
     NetChannel.Entities.Deleted:SetHandler(function (data)
-        Debug("Entities.Deleted", data)
         if #data == 0 then
             return
         end

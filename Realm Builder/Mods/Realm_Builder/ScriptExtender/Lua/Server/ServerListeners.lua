@@ -118,6 +118,7 @@ NetChannel.SpawnPreview:SetRequestHandler(function(data, userID)
     end
 
     local preview = Osi.CreateAt(template, position[1], position[2], position[3], 0, 0, "") --[[@as string]]
+    if not preview then return {Guid = nil, TemplateId = template} end
     RotateTo(preview, rotation[1], rotation[2], rotation[3], rotation[4])
     OsirisHelpers.Propify(preview)
     Osi.ClearTag(preview, RB_PROP_TAG)

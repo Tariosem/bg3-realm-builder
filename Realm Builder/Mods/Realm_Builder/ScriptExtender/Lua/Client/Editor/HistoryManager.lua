@@ -5,7 +5,6 @@
 --- @class HistoryManager
 --- @field History table<number, HistoryCommand>
 --- @field MaxHistory number
---- @field new fun(): HistoryManager
 HistoryManager = {
     UndoStack = {},
     RedoStack = {},

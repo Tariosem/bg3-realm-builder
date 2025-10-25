@@ -95,11 +95,12 @@ function ItemIconBrowser:RenderIcon(entry, cell)
     end
 
     iconImage.OnDragStart = function()
-        iconImage.DragPreview:AddImage(entry.Icon, IMAGESIZE.MEDIUM)    
+        iconImage.DragPreview:AddImage(entry.Icon, IMAGESIZE.MEDIUM)
     end
 
     iconImage.OnDragEnd = function()
         if self.IsPreviewing then return end
+
         self:SetupTemplatePreview(entry)
     end
 
@@ -143,7 +144,38 @@ end
 
 --- @param entry RB_Item
 function ItemIconBrowser:SetupTemplatePreview(entry)
+
+    Timer:Ticks(15, function (timerID)
+        local spawnPos, spawnRot = GetPickingHitPosAndRot()
+        if not spawnPos or not spawnRot then return end
+        Commands.SpawnCommand(entry.TemplateId, spawnPos, spawnRot)
+    end)
+
+    if true then return end
+
     self.IsPreviewing = true
+
+    local notif = Notification.new("Is Previewing Item...")
+    notif.Pivot = { 0.5, 0 }
+    notif.Duration = 5000
+    
+    notif:Show("Item Preview", function (panel)
+        local midAlighTab = panel:AddTable("Midddd", 3)
+        midAlighTab.ColumnDefs[1] = { WidthStretch = true }
+        midAlighTab.ColumnDefs[2] = { WidthFixed = true }
+        midAlighTab.ColumnDefs[3] = { WidthStretch = true }
+        local row = midAlighTab:AddRow()
+        local _,midCell,_ = row:AddCell(), row:AddCell(), row:AddCell()
+        local icon = CheckIcon(entry.Icon or "Item_Unknown")
+        local image = midCell:AddImage(icon, ToVec2(64 * SCALE_FACTOR))
+        midCell:AddText(GetLoca(entry.DisplayName) or "Unknown").SameLine = true
+
+        panel:AddText(GetLoca("Left click to spawn the item at the previewed location.")).Font = "Tiny"
+        panel:AddText(GetLoca("Scroll mouse wheel to rotate the item.")).Font = "Tiny"
+        local caution = panel:AddText(GetLoca("Press ESCAPE or BACKSPACE to cancel the preview."))
+        caution:SetColor("Text", HexToRGBA("FFFFFFFF"))
+        caution.Font = "Large"
+    end)
 
     local previewItem = nil
     local mouseButtonSub = nil
@@ -159,15 +191,23 @@ function ItemIconBrowser:SetupTemplatePreview(entry)
         Position = startPos,
         Rotation = startRot,
     }, function (response)
+        if not response.Guid then
+            Warning("[ItemIconBrowser] Failed to spawn preview for templateId: " .. tostring(entry.TemplateId))
+            self.IsPreviewing = false
+            return
+        end
         previewItem = response.Guid
         TransformEditor:AddToBlacklist(previewItem)
 
+        local rotatedirty = false
+        local dirtyRotation = nil
         stickTimer = Timer:EveryFrame(function (timerID)
             if not previewItem then return UNSUBSCRIBE_SYMBOL end
 
             local hitPos, hitRot = nil, nil
 
-            if GetPickingGuid() == previewItem then
+            local hitOnPreview = GetPickingGuid() == previewItem
+            if hitOnPreview then
                 local mouseRay = ScreenToWorldRay()
                 if not mouseRay then return end
                 local planeNormal = Quat.new({CGetRotation(previewItem)}):Rotate(GLOBAL_COORDINATE.Y)
@@ -176,16 +216,25 @@ function ItemIconBrowser:SetupTemplatePreview(entry)
 
                 if not hit then return end
                 hitPos = hit.Position
-                hitRot = startRot
             else
                 hitPos, hitRot = GetPickingHitPosAndRot()
             end
 
-            if not hitPos then hitPos = startPos or Vec3.new(0,0,0) end
-            if not hitRot then hitRot = startRot or Quat.new(0,0,0,1) end
 
-            if rotationOffset then
+            if not hitPos then hitPos = startPos or Vec3.new(0,0,0) end
+            if not hitRot then 
+                if dirtyRotation then
+                    hitRot = DeepCopy(dirtyRotation)
+                    dirtyRotation = nil
+                else
+                    hitRot = {CGetRotation(previewItem)}
+                end
+            end
+
+            if not hitOnPreview or rotatedirty then
                 hitRot = Ext.Math.QuatMul(hitRot, rotationOffset)
+                dirtyRotation = DeepCopy(hitRot)
+                rotatedirty = false
             end
 
             local selectedGuid = self.selectedGuid or CGetHostCharacter()
@@ -228,6 +277,7 @@ function ItemIconBrowser:SetupTemplatePreview(entry)
             local angle = math.rad(15) * (e.ScrollY > 0 and 1 or -1)
             local quatOffset = Quat.new(Ext.Math.QuatFromEuler({0, angle, 0}))
             rotationOffset = Ext.Math.QuatMul(quatOffset, rotationOffset)
+            rotatedirty = true
         end)
 
         cancelSub = SubscribeKeyInput({}, function (e)

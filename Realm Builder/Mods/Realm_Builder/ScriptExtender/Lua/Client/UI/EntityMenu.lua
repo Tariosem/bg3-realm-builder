@@ -34,7 +34,6 @@ end
 
 function SceneMenu:EntityDeleted(guids)
     local list = NormalizeGuidList(guids)
-    Debug("EntityMenu:EntityDeleted", list)
     for _, guid in ipairs(list) do
         if guid ~= nil and guid ~= "" then
             if self.entityTabs[guid] then
@@ -388,7 +387,11 @@ function SceneMenu:SetupSelectablePopup(popup)
         if self.selectedGuids and #self.selectedGuids > 0 then
             for _, guid in ipairs(self.selectedGuids) do
                 local node = LSXHelpers.BuildItem(guid, "Default")
-                
+                if not node then 
+                    Error("Failed to build LSX for guid: " .. guid)
+                    return
+                end
+                Debug(node:Stringify())
             end
         end
     end)

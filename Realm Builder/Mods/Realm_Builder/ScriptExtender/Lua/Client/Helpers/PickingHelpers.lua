@@ -53,8 +53,8 @@ function GetPickingHitPosAndRot(picker)
     if not picker then
         picker = Ext.ClientUI.GetPickingHelper(1)
     end
-    local pos = picker.Inner.Position
-    local normal = picker.Inner.Normal
+    local pos = picker.Inner.SceneryPosition
+    local normal = picker.Inner.SceneryNormal
     local rot = DirectionToQuat(normal, nil, "Y")
     return Vec3.new(pos), Quat.new(rot)
 end

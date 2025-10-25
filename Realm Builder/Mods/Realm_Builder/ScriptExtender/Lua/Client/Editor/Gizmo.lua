@@ -31,11 +31,6 @@ function Gizmo:__init(editor)
     self.Picker = GizmoPicker.new(self)
     self.Subscription = {}
     self.Timers = {}
-
-    Ext.Events.GameStateChanged:Subscribe(function (e)
-        Debug(e.Name)
-    end)
-
 end
 
 function Gizmo:EmptyDrag()
@@ -211,8 +206,6 @@ function Gizmo:SetupListeners()
         if not self.IsDragging then return end
         if e.Pressed and tonumber(e.Button) == 3 then
             self:CancelDragging()
-            --self:EmptyDrag()
-            --self:StopDragging()
         end
     end)
 
@@ -238,7 +231,6 @@ function Gizmo:SetupListeners()
         self:Visualize()
     end)
 
-    
     self.Timers["Stick"] = Timer:EveryFrame(function (timerID)
         if not self.Guid then return end
         local target = self.Targets and self.Targets[1]

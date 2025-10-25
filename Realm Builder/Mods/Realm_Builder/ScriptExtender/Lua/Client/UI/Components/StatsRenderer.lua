@@ -9,6 +9,8 @@
 
 function RenderTokenTexts(parent, tokens, firstAlwaysSameLine)
     local elements = {}
+
+    local oneCharEndurance = true
     for i, token in ipairs(tokens) do
         local text = token.Text or ""
         local icon = nil
@@ -68,8 +70,11 @@ function RenderTokenTexts(parent, tokens, firstAlwaysSameLine)
             firstAlwaysSameLine = false
         end
 
-        if #token.Text == 1 then
+        if #token.Text == 1 and oneCharEndurance then
             label.SameLine = true
+            oneCharEndurance = false
+        else
+            oneCharEndurance = true
         end
 
         table.insert(elements, label)

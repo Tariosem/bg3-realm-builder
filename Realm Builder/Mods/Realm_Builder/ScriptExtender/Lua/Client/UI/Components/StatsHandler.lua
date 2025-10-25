@@ -117,7 +117,7 @@ local function simpleRenderer(text, bonus)
         bonus = "+" .. bonus
     end
     if text == "Movement" then
-        bonus = bonus .. "meters"
+        bonus = bonus .. " meters"
     end
     local function render(parent)
         local bulletText = parent:AddBulletText(string.format("%s", text))

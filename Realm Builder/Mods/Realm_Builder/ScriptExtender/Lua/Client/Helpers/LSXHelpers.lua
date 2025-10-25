@@ -36,6 +36,7 @@ function LSXHelpers.GetPathAfterData(path)
     return path:match("Data[\\/](.*)") or path
 end
 
+--- build a game object LSX node for an item entity
 --- @param guid any
 --- @return LSXNode?
 function LSXHelpers.BuildItem(guid)
@@ -48,14 +49,7 @@ function LSXHelpers.BuildItem(guid)
         return nil
     end
 
-    local root = LSXHelpers.new()
-
-    local regionNode = root:AppendChild(LSXNode.new("region", { id = "Templates" }))
-    local templateNode = regionNode:AppendChild(LSXNode.new("node", { id = "Templates" }))
-
-    local firstChildren = templateNode:AppendChild(LSXNode.new("Children"))
-
-    local gameObjectNode = firstChildren:AppendChild(LSXNode.new("node", { id = "GameObjects" }))
+    local gameObjectNode = LSXNode.new("node", { id = "GameObjects" })
 
     local basicAttrs = {
         LSXHelpers.AttrNode("MapKey", "FixedString", guid),
@@ -101,7 +95,7 @@ function LSXHelpers.BuildItem(guid)
 
     objectNode:AppendChildren(layerAttr)
 
-    return root
+    return gameObjectNode
 end
 
 ---@param id any
@@ -171,6 +165,35 @@ function LSXHelpers.GenerateLocalization(names, version)
     content = '<?xml version="1.0" ?>\n' .. content
 
     return content, stringToHandles
+end
+
+--- @param handleToName table<TranslatedString, string>
+--- @param versions table<TranslatedString, number>?
+--- @return string
+function LSXHelpers.BuildLocalization(handleToName, versions)
+    local root = LSXNode.new("contentList", {
+        ["xmlns:xsd"] = "http://www.w3.org/2001/XMLSchema",
+        ["xmlns:xsi"] = "http://www.w3.org/2001/XMLSchema-instance",
+    })
+
+    for handle, name in pairs(handleToName) do
+        local ver = 1
+        if versions and versions[handle] then
+            ver = versions[handle]
+        end
+
+        local contentNode = LSXNode.new("content", {
+            contentuid = handle,
+            version = ver
+        })
+        contentNode:SetInnerText(name)
+        root:AppendChild(contentNode)
+    end
+
+    local content = root:Stringify({ Indent = 4, IncludeHeader = false })
+    content = '<?xml version="1.0" ?>\n' .. content
+
+    return content
 end
 
 

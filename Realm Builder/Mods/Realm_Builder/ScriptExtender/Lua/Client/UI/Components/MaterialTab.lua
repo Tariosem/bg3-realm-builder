@@ -223,6 +223,15 @@ function MaterialTab:RenderProperty(node, propertyName, propertyValue)
 
     local range = { min = -100, max = 100, step = 0.1 }
     for i=1, #propertyValue do
+        local isIndex = propertyName:find("Index") ~= nil
+        if isIndex then
+            range.min = 0
+            range.step = 1
+        else
+            range.min = -100
+            range.max = 100
+            range.step = 0.1
+        end
         local slider = AddSliderWithStep(node, propertyName .. "##" .. self.MaterialName .. i, propertyValue[i], range.min, range.max, range.step, propertyName:find("Index") ~= nil)
 
         slider.OnChange = function (sel)
@@ -314,7 +323,6 @@ function MaterialTab:UpdateUIState()
         typeNode.Framed = self:HasChangeInType(paramType)
     end
 end
-
 
 ---@param popup ExtuiPopup
 function MaterialTab:SetupManagePopup(popup)

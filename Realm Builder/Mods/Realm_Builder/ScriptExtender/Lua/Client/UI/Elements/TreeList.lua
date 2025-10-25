@@ -447,6 +447,7 @@ function TreeList:SetUpLeaf(selectable, key)
         selectable.Selected = false
     end
 
+    local userOnDragStart = selectable.OnDragStart
     selectable.OnDragStart = function()
         if not self.MultiSelect and not self.GroupSelect then
             self:ClearSelection()
@@ -460,15 +461,20 @@ function TreeList:SetUpLeaf(selectable, key)
             self:RenderLeaf(ikey, row:AddCell())
         end
         self:OnDragStart(key)
+        if userOnDragStart then
+            userOnDragStart()
+        end
     end
 
-    selectable.OnDragEnd = function()
-    end
-
+    local userOnDragDrop = selectable.OnDragDrop
     selectable.OnDragDrop = function(sel, drop)
         local dropped = drop.UserData or {}
-        self:OnDragDrop(dropped.Key, key)
-        self:RenderList()
+        if dropped.Key then
+            self:OnDragDrop(dropped.Key, key)
+        end
+        if userOnDragDrop then
+            userOnDragDrop(sel, drop)
+        end
     end
 
     local userOnClick = selectable.OnClick
@@ -543,17 +549,29 @@ function TreeList:SetUpTree(tree, key)
 
     local parent = self.tree:GetParentKey(key)
 
+    local userOnDragStart = tree.OnDragStart
+
     tree.OnDragStart = function()
         local previewTable = tree.DragPreview:AddTable("##DragPreview", 1)
         self:ApplyTreeTableStyle(previewTable)
         local row = previewTable:AddRow()
         self:RenderTree(key, row:AddCell())
+        if userOnDragStart then
+            userOnDragStart()
+        end
     end
 
+    local userDragDrop = tree.OnDragDrop
     tree.OnDragDrop = function(sel, drop)
         local dropped = drop.UserData or {}
-        self:OnDragDrop(dropped.Key, key)
-        self:RenderList()
+
+        if dropped.Key then
+            self:OnDragDrop(dropped.Key, key)
+        end
+
+        if userDragDrop then
+            userDragDrop(sel, drop)
+        end
     end
 
     local userLabel = tree.Label
@@ -622,8 +640,6 @@ function TreeList:SetUpTree(tree, key)
     end
 
     toggleLabel()
-
-    tree.UserData = tree.UserData or {}
 
     tree.UserData.UpdateLabel = toggleLabel
 
