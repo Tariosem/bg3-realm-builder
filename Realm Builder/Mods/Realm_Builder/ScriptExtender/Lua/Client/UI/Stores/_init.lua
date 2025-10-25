@@ -7,5 +7,4 @@ RequireFiles("Client/UI/Stores/", {
     "ManagerBase",
     "ItemManager",
     "MultiEffectManager",
-    "CustomEffectManager"
 })

@@ -21,6 +21,11 @@ function IsUuid(str)
 end
 
 function ComputeVersion64(major, minor, revision, build)
+    major = tonumber(major) or 0
+    minor = tonumber(minor) or 0
+    revision = tonumber(revision) or 0
+    build = tonumber(build) or 0
+
     local version = major * 2^48 + minor * 2^32 + revision * 2^16 + build
     return string.format("%d", math.floor(tonumber(version) or 0))
 end
@@ -32,6 +37,11 @@ end
 function ParseVersionString(versionStr)
     local major, minor, revision, build = versionStr:match("^(%d+)%.(%d+)%.(%d+)%.(%d+)$")
     return tonumber(major) or 0, tonumber(minor) or 0, tonumber(revision) or 0, tonumber(build) or 0
+end
+
+function StripLSTags(desc)
+    if not desc or desc == "" then return desc end
+    return desc:gsub("%b<>", ""):gsub("%s+", " "):gsub("^%s+", ""):gsub("%s+$", "")
 end
 
 ---@param t table
@@ -506,4 +516,27 @@ function GetCamaraUserID(str)
         return tonumber(string.sub(str, #CameraSymbol + 1))
     end
     return nil
+end
+
+--- Debounce utility function
+---@param func fun(...:any)
+---@param delay number ms
+---@return function
+function Debounce(delay, func)
+    local lastCall = 0
+    local timerId = nil
+
+    return function(...)
+        local args = {...}
+        local now = Ext.Timer.MonotonicTime()
+
+        if timerId then
+            Ext.Timer.Cancel(timerId)
+        end
+
+        timerId = Ext.Timer.WaitForRealtime(delay, function()
+            func(table.unpack(args))
+            timerId = nil
+        end)
+    end
 end

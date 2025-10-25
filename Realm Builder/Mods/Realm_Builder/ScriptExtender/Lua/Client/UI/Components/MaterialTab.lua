@@ -36,7 +36,8 @@ end
 function MaterialTab:Render(parent)
     local sourceFileName = self.ParentNodeName
     parent = parent or self.Parent
-    local parentNode = parent:AddSelectable("[-] " .. sourceFileName .. "##" .. self.MaterialName) --[[@as ExtuiSelectable ]]
+    local uuid = Uuid_v4()
+    local parentNode = parent:AddSelectable("[-] " .. sourceFileName .. "##" .. self.MaterialName .. uuid) --[[@as ExtuiSelectable ]]
     local group = parent:AddGroup("MaterialEditorGroup##" .. self.MaterialName, parentNode) -- Tree is weird with drag-and-drop, so use a Selectable + Group to simulate a collapsible tree node
     group.Visible = true
 
@@ -54,7 +55,7 @@ function MaterialTab:Render(parent)
     parentNode.OnClick = function (sel)
         parentNode.Selected = false
         group.Visible = not group.Visible
-        parentNode.Label = (group.Visible and "[-] " or "[+] ") .. sourceFileName .. "##" .. self.MaterialName
+        parentNode.Label = (group.Visible and "[-] " or "[+] ") .. sourceFileName .. "##" .. self.MaterialName .. uuid
     end
 
     parentNode.OnRightClick = function (sel)
@@ -322,20 +323,42 @@ function MaterialTab:SetupManagePopup(popup)
 
     local row = tt:AddRow()
 
+    local matMixerBtn = AddSelectableButton(row:AddCell(), "Open Material Mixer##" .. self.MaterialName, function (sel)
+        local allParams = self.Editor.ParamSetProxy.Parameters
+        local mixerParams = {}
+        for paramType, typeParams in pairs(allParams) do
+            mixerParams[paramType] = {}
+            for paramName, paramValue in pairs(typeParams) do
+                mixerParams[paramType][paramName] = self.Editor:GetParameter(paramName)
+            end
+        end
+
+        local mixerTab = MaterialMixerTab.new(mixerParams)
+        mixerTab:Render()
+    end)
+
     local btnReset = AddSelectableButton(row:AddCell(), "Reset All##" .. self.MaterialName, function (sel)
         self:ResetAll()
     end)
     btnReset.DontClosePopups = true
 
-    local defaultMatPath = "Realm_Builder/Materials/Defaults/"
+    local defaultMatPath = "Realm_Builder/Materials/"
     local finalPath = defaultMatPath .. self.ParentNodeName
 
     local btnExport = AddSelectableButton(row:AddCell(), "Export As Material##" .. self.MaterialName, function (sel)
-        self.Editor:ExportToLSXAsMaterial(finalPath)
+        local save = LSXHelpers.BuildMaterialResource(self.Editor.Parameters, self.Editor.Material)
+        if save then
+            Ext.IO.SaveFile(finalPath, save:Stringify())
+        end
     end)
 
     local btnExportAsPreset = AddSelectableButton(row:AddCell(), "Export As Preset##" .. self.MaterialName, function (sel)
-        self.Editor:ExportToLSXAsMaterialPreset(finalPath)
+        local save = LSXHelpers.BuildMaterialPresetBank()
+
+        local preset = LSXHelpers.BuildMaterialPresetResourceNode(self.Editor.Parameters, Uuid_v4(), self.ParentNodeName:gsub("%.[lL][sS][fF]$", "") .. "_Preset")
+        save:AppendChild(preset)
+
+        Ext.IO.SaveFile(finalPath, save:Stringify({ AutoFindRoot = true }))
     end)
 
 end
@@ -391,12 +414,12 @@ end
 
 function MaterialTab:ExportMaterial(defaultPath)
     local finalPath = defaultPath or ("Realm_Builder/Materials/Defaults/" .. GetLastPath(self.Editor.SourceFile))
-    self.Editor:ExportToLSXAsMaterial(finalPath)
+    self.Editor:BuildMaterialResource(finalPath)
 end
 
 function MaterialTab:ExportPreset(defaultPath)
     local finalPath = defaultPath or ("Realm_Builder/Materials/Defaults/" .. GetLastPath(self.Editor.SourceFile))
-    self.Editor:ExportToLSXAsMaterialPreset(finalPath)
+    self.Editor:BuildMaterialPresetResource(finalPath)
 end
 
 function MaterialTab:SavePreset()
@@ -536,11 +559,18 @@ function MaterialMixerTab:SetupManagePopup(popup)
 
     local row = tt:AddRow()
 
-    local btnReset = AddSelectableButton(row:AddCell(), "Reset All##" .. self.MaterialName, function (sel)
-        self:ResetAll()
+    local btnReset = AddSelectableButton(row:AddCell(), "Clear All##" .. self.MaterialName, function (sel)
+        self.ParametersSetProxy.Parameters = {
+            [1] = {},
+            [2] = {},
+            [3] = {},
+            [4] = {}
+        }
+        self:Render()
     end)
 
     local btnExport = AddSelectableButton(row:AddCell(), "Export As Material Preset##" .. self.MaterialName, function (sel)
+
     end)
 
     local destroybtn = AddSelectableButton(row:AddCell(), "Destroy Mixer##" .. self.MaterialName, function (sel)

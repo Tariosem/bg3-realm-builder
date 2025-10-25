@@ -133,17 +133,10 @@ function TreeList:RenderTopBar()
 
     searchInput.Hint = "Search..."
     searchInput.Text = self.SearchKeyword or ""
-    searchInput.OnChange = function()
+    searchInput.OnChange = Debounce(50, function()
         self.SearchKeyword = searchInput.Text
-        if debounceTimer then
-            Timer:Cancel(debounceTimer)
-            debounceTimer = nil
-        end
-
-        debounceTimer = Timer:After(50, function()
-            self:Hide(searchInput.Text)
-        end)
-    end
+        self:Hide(searchInput.Text)
+    end)
 end
 
 --- return true to show the item
@@ -479,46 +472,60 @@ function TreeList:SetUpLeaf(selectable, key)
     end
 
     local userOnClick = selectable.OnClick
+    local userLabel = selectable.Label
 
+    local delayTimer = nil
+    local doubleClickThreshold = 12 -- ticks
+    
     selectable.OnClick = function(sel)
-        if self.MultiSelect then
-            self:ToggleSelected(key)
-        elseif self.GroupSelect then
-            if self.lastSelectedKey and self.indexRefs and self.leafRefs[self.lastSelectedKey] then
-                local lastSelectedKey = self.lastSelectedKey
-                local startIdx = self.indexRefs[lastSelectedKey]
-                local endIdx = self.indexRefs[key]
+        if delayTimer then
+            Timer:Cancel(delayTimer)
+            delayTimer = nil
+            self:SetupRenameInput(key, userLabel)
+            return
+        end
 
-                if startIdx and endIdx then
-                    if startIdx > endIdx then
-                        startIdx, endIdx = endIdx, startIdx
-                    end
+        delayTimer = Timer:Ticks(doubleClickThreshold, function()
+            if self.MultiSelect then
+                self:ToggleSelected(key)
+            elseif self.GroupSelect then
+                if self.lastSelectedKey and self.indexRefs and self.leafRefs[self.lastSelectedKey] then
+                    local lastSelectedKey = self.lastSelectedKey
+                    local startIdx = self.indexRefs[lastSelectedKey]
+                    local endIdx = self.indexRefs[key]
 
-                    for i = startIdx, endIdx do
-                        local indexkey = self.indexRefsReverse[i]
-                        self:ToggleSelected(indexkey, true)
+                    if startIdx and endIdx then
+                        if startIdx > endIdx then
+                            startIdx, endIdx = endIdx, startIdx
+                        end
+
+                        for i = startIdx, endIdx do
+                            local indexkey = self.indexRefsReverse[i]
+                            self:ToggleSelected(indexkey, true)
+                        end
+                    else
+                        Warning("Failed to determine range for group select")
+                        self:ToggleSelected(key)
                     end
                 else
-                    Warning("Failed to determine range for group select")
                     self:ToggleSelected(key)
                 end
             else
-                self:ToggleSelected(key)
+                local selected = self.selectedItems[key]
+                for k, v in pairs(self.selectedItems) do
+                    self:ToggleSelected(k, false)
+                end
+                self:ToggleSelected(key, not selected)
             end
-        else
-            local selected = self.selectedItems[key]
-            for k, v in pairs(self.selectedItems) do
-                self:ToggleSelected(k, false)
+
+            self.lastSelectedKey = key
+            self:OnSelect(self.selectedItems)
+
+            if userOnClick then
+                userOnClick(sel)
             end
-            self:ToggleSelected(key, not selected)
-        end
-
-        self.lastSelectedKey = key
-        self:OnSelect(self.selectedItems)
-
-        if userOnClick then
-            userOnClick(sel)
-        end
+            delayTimer = nil
+        end)
     end
 
 end
@@ -570,35 +577,48 @@ function TreeList:SetUpTree(tree, key)
 
     local userOnClick = tree.OnClick
 
+    local delayTimer = nil
+    local doubleClickThreshold = 12 -- ticks
+
     tree.OnClick = function(sel)
         sel.Selected = false
 
-        local function recurSel(pparent)
-            local parentNode = self.tree:Find(pparent)
-            if parentNode then
-                for ikey, cont in pairs(parentNode) do
-                    if self.leafRefs[ikey] then
-                        self:ToggleSelected(ikey)
-                    else
-                        recurSel(ikey)
+        if delayTimer then
+            Timer:Cancel(delayTimer)
+            delayTimer = nil
+            self:SetupRenameInput(key, userLabel)
+            return
+        end
+
+        delayTimer = Timer:Ticks(doubleClickThreshold, function()
+            local function recurSel(pparent)
+                local parentNode = self.tree:Find(pparent)
+                if parentNode then
+                    for ikey, cont in pairs(parentNode) do
+                        if self.leafRefs[ikey] then
+                            self:ToggleSelected(ikey)
+                        else
+                            recurSel(ikey)
+                        end
                     end
                 end
             end
-        end
 
-        if self.GroupSelect then
-            self:ClearSelection()
-            recurSel(key)
-        else
-            toggleFunc()
-        end
+            if self.GroupSelect then
+                self:ClearSelection()
+                recurSel(key)
+            else
+                toggleFunc()
+            end
 
 
-        if userOnClick then
-            userOnClick(sel)
-        end
+            if userOnClick then
+                userOnClick(sel)
+            end
 
-        self:OnSelect(self.selectedItems)
+            self:OnSelect(self.selectedItems)
+            delayTimer = nil
+        end)
     end
 
     toggleLabel()
@@ -629,6 +649,72 @@ function TreeList:SetUpTree(tree, key)
             end
         end
     })
+end
+
+function TreeList:OnRenameInput(key, newName) end
+
+function TreeList:SetupRenameInput(key, userLabel)
+    if self.IsRenaming then return end
+    local isLeaf = self.leafRefs[key] ~= nil
+    local selec = isLeaf and self.leafRefs[key] or self.treeRefs[key]
+    if not selec then return end
+
+    self.IsRenaming = true
+    selec:Destroy()
+
+    local refTable = isLeaf and self.leafRefs or self.treeRefs
+    refTable[key] = nil
+
+    local node = self.nodeRefs[key]
+
+    local input = node:AddInputText("", userLabel) --[[@type ExtuiInputText?]]
+    input.IDContext = "TreeList" .. self.label .. "RenameInput"
+    input.SameLine = true
+
+    local function rerender()
+        if input then
+            input:Destroy()
+            input = nil
+        end
+        self:RenderList()
+        self.IsRenaming = false
+    end
+
+    local function rename()
+        if not input then return end
+        local newName = input.Text
+        input:Destroy()
+        input = nil
+        self:OnRenameInput(key, newName)
+        rerender()
+        self.IsRenaming = false
+    end
+
+    Timer:After(1000, function (timerID)
+        local focusTimer = Timer:EveryFrame(function (timerID)
+            local ok, focused = pcall(IsFocused, input)
+            if not ok then
+                pcall(rerender)
+                return UNSUBSCRIBE_SYMBOL
+            end
+
+            if not focused and input then
+                rename()
+                return UNSUBSCRIBE_SYMBOL
+            end
+        end)
+    end)
+
+    local enterSub = SubscribeKeyInput({ Key = "RETURN" }, function (e)
+        local ok, focused = pcall(IsFocused, input)
+        if not ok then return UNSUBSCRIBE_SYMBOL end
+
+        if focused and input then
+            rename()
+            return UNSUBSCRIBE_SYMBOL
+        end
+    end)
+
 end
 
 function TreeList:RenderCustomTopBar(panel)

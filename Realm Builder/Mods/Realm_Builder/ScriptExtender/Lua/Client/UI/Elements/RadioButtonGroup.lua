@@ -108,7 +108,7 @@ function AddRadioButtonGroup(parent, configs, obj, onChange)
         btn.Disabled = config.Disabled == true
     
         if btn.Disabled then
-            DisableAndSetAlpha(btn)
+            SetImguiDisabled(btn, true)
             if config.Tooltip then
                 showTooltip(btn, config.Tooltip)
             end
@@ -145,7 +145,7 @@ function AddRadioButtonGroup(parent, configs, obj, onChange)
         DisableButton = function(field)
             local btn = btns[field]
             if btn then
-                DisableAndSetAlpha(btn)
+                SetImguiDisabled(btn, true)
                 
                 local config = btn.UserData and btn.UserData.Config
                 if config and config.Tooltip then
@@ -157,8 +157,7 @@ function AddRadioButtonGroup(parent, configs, obj, onChange)
         EnableButton = function(field)
             local btn = btns[field]
             if btn then
-                btn.Disabled = false
-                EnableAndSetAlpha(btn)
+                SetImguiDisabled(btn, false)
                 hideTooltip(btn)
             end
         end,

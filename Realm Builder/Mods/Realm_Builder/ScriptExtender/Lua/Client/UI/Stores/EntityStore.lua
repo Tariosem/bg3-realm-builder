@@ -172,7 +172,7 @@ end
 
 --- @param guid string
 --- @return EntityData|nil
-function EntityStore:GetEntity(guid)
+function EntityStore:GetStoredData(guid)
     return EntityDatas[guid]
 end
 
@@ -253,6 +253,11 @@ end
 function EntityStore:RegisterDisplayName(displayName, guid, discardName)
     if not displayName or displayName == "" then
         return
+    end
+
+    if not discardName then
+        local oriName = EntityDatas[guid] and EntityDatas[guid].DisplayName
+        discardName = oriName
     end
 
     self:RemoveDisplayName(discardName)

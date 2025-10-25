@@ -199,3 +199,34 @@ function Commands.DuplicateCommand(targets)
         -- TODO: implement undo redo 
     end)
 end
+
+function Commands.DeleteCommand(targets)
+    targets = NormalizeGuidList(targets)
+    if #targets == 0 then return end
+
+    local oriEntities = {}
+    for _,guid in pairs(targets) do
+        local entity = Ext.Entity.Get(guid) --[[@as EntityHandle]]
+        if entity then
+            oriEntities[guid] = DeepCopy(EntityStore:GetStoredData(guid))
+        end
+    end
+
+    NetChannel.Delete:SendToServer({ Guid = targets })
+
+    HistoryManager:PushCommand({
+        Undo = function()
+            for _,entityData in pairs(oriEntities) do
+                Commands.SpawnCommand(
+                    entityData.TemplateId,
+                    Vec3.New(entityData.Transform.Position),
+                    Quat.New(entityData.Transform.RotationQuat),
+                    entityData
+                )
+            end
+        end,
+        Redo = function()
+            NetChannel.Delete:SendToServer({ Guid = targets })
+        end
+    })
+end

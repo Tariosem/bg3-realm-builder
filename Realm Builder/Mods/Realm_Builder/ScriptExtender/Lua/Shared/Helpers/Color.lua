@@ -223,7 +223,7 @@ function GenerateTheme(accent, accent2, bg)
     accent2 = accent2 or accent
 
     local function blend(t)
-        return BlendColors(accent, accent2, t)
+        return BlendColors(accent2, accent, t)
     end
 
     ----------------------------------------------------
@@ -241,10 +241,10 @@ function GenerateTheme(accent, accent2, bg)
     colors["Button"]            = AdjustColor(accent, -0.05, -0.1)
     colors["ButtonHovered"]     = AdjustColor(colors["Button"], 0.1, 0)
     colors["ButtonActive"]      = AdjustColor(colors["Button"], -0.1, 0)
-    colors["CheckMark"]         = AdjustColor(accent, 0.1, 0.1)
+    colors["CheckMark"]         = AdjustColor(blend(0.5), 0.2, -0.2)
 
     ----------------------------------------------------
-    -- Frames, Inputs, Sliders
+    -- Frames (Inputs, Sliders, etc.)
     ----------------------------------------------------
     colors["FrameBg"]           = AdjustColor(bg, 0.05, 0)
     colors["FrameBgHovered"]    = AdjustColor(accent, 0.1, 0)
@@ -287,7 +287,7 @@ function GenerateTheme(accent, accent2, bg)
     colors["ScrollbarGrabHovered"] = AdjustColor(colors["ScrollbarGrab"], 0.1, 0)
     colors["ScrollbarGrabActive"]  = AdjustColor(colors["ScrollbarGrab"], -0.1, 0)
     colors["ResizeGrip"]           = AdjustColor(accent, 0.2, -0.2)
-    colors["ResizeGripHovered"]    = AdjustColor(blend(0.5), 0.08, 0)
+    colors["ResizeGripHovered"]    = AdjustColor(blend(0.2), 0.08, 0)
     colors["ResizeGripActive"]     = AdjustColor(accent, -0.1, 0)
 
     ----------------------------------------------------
@@ -309,16 +309,16 @@ function GenerateTheme(accent, accent2, bg)
     ----------------------------------------------------
     colors["Text"]           = {1, 1, 1, 1}
     colors["TextDisabled"]   = AdjustColor(colors["Text"], -0.2, -0.7)
-    colors["TextLink"]       = AdjustColor(accent2, 0.25, 0.25)
+    colors["TextLink"]       = accent2
     colors["TextSelectedBg"] = AdjustColor(accent, 0, 0, -0.3)
 
     ----------------------------------------------------
     -- Plots
     ----------------------------------------------------
-    colors["PlotLines"]            = AdjustColor(blend(0.6), 0.15, -0.45)
-    colors["PlotLinesHovered"]     = AdjustColor(blend(0.4), 0.08, -0.25)
-    colors["PlotHistogram"]        = AdjustColor(blend(0.6), 0.15, -0.45)
-    colors["PlotHistogramHovered"] = AdjustColor(blend(0.4), 0.08, -0.25)
+    colors["PlotLines"]            = AdjustColor(blend(0.3), 0.15, -0.45)
+    colors["PlotLinesHovered"]     = AdjustColor(blend(0.2), 0.08, -0.25)
+    colors["PlotHistogram"]        = AdjustColor(blend(0.3), 0.15, -0.45)
+    colors["PlotHistogramHovered"] = AdjustColor(blend(0.2), 0.08, -0.25)
 
     ----------------------------------------------------
     -- Misc

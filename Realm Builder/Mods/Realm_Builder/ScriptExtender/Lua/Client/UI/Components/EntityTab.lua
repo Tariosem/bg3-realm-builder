@@ -179,7 +179,11 @@ function EntityTab:RenderMainEditor()
     self.deleteButton = self.mainEditor:AddButton(GetLoca("Delete"))
     ApplyDangerButtonStyle(self.deleteButton)
     self.deleteButton.OnClick = function()
-        self.deleteAction()
+        ConfirmPopup:DangerConfirm(
+            GetLoca("Are you sure you want to delete") .. " " .. self.displayName .. "?",
+            function()
+                Commands.DeleteCommand(self.guid)
+            end)
     end
 
     if self.persistent then

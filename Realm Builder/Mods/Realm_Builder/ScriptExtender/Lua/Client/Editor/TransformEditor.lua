@@ -234,7 +234,7 @@ function TransformEditor:RegisterEvents()
         local guids = NormalizeGuidList(self.Target)
         local props = {}
         for _,guid in pairs(guids) do
-            if not EntityStore:GetEntity(guid) then
+            if not EntityStore:GetStoredData(guid) then
             else
                 table.insert(props, guid)
             end
@@ -334,14 +334,15 @@ function TransformEditor:RegisterEvents()
                 if self.PointVisualizations and self.PointVisualizations[cnt] then
                     local pointGuid = self.PointVisualizations[cnt]
 
-                    NetChannel.SetTransform:SendToServer({ Guid = pointGuid, Transforms = {[pointGuid] = newPointTransform} })
-                    for _,axis in pairs({"X","Y","Z"}) do
-                        if gizmo.SelectedAxis and gizmo.SelectedAxis[axis] then
-                            GizmoVisualizer.HighLightGizmoAxis(axis, pointGuid)
-                        else
-                            GizmoVisualizer.HideGizmoAxis(axis, pointGuid)
+                    NetChannel.SetTransform:RequestToServer({ Guid = pointGuid, Transforms = {[pointGuid] = newPointTransform} }, function()
+                        for _,axis in pairs({"X","Y","Z"}) do
+                            if gizmo.SelectedAxis and gizmo.SelectedAxis[axis] then
+                                GizmoVisualizer.HighLightGizmoAxis(axis, pointGuid)
+                            else
+                                GizmoVisualizer.HideGizmoAxis(axis, pointGuid)
+                            end
                         end
-                    end
+                    end)
                 else
                     NetChannel.Visualize:RequestToServer({
                         Type = "Point",

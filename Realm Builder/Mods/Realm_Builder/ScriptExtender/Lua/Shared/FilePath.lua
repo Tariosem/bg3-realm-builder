@@ -76,8 +76,8 @@ function RealmPaths.GetCCALocalizationPath(modName, lang)
     return string.format(ccaLocalizationFile, modName, lang, modName)
 end
 
-function RealmPaths.GetCCAModCachePath(modName, verison)
-    local versionStr = BuildVersionString(verison)
+function RealmPaths.GetCCAModCachePath(modName, version)
+    local versionStr = type(version) == "table" and BuildVersionString(version[1], version[2], version[3], version[4]) or version
 
     local fileName = string.format("%s_%s_Cache.json", modName, versionStr)
 

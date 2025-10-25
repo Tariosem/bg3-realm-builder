@@ -11,11 +11,6 @@
 --- @field new fun(originMaterial: GUIDSTRING, matSrc:fun():Material , paramsSrc:fun():MaterialParametersSet, materialPreset: GUIDSTRING?):MaterialEditor
 MaterialEditor = _Class("MaterialEditor")
 
-local function GetPathAfterData(path)
-    return path:match("Data[\\/](.*)") or path
-end
-
-
 ---@param originMaterial string
 ---@param matSrc fun():Material
 ---@param paramsSrc fun():MaterialParametersSet
@@ -28,7 +23,7 @@ function MaterialEditor:__init(originMaterial, matSrc, paramsSrc, materialPreset
     end
 
     self.Material = originMaterial or ""
-    self.SourceFile = GetPathAfterData(matRes.SourceFile or "")
+    self.SourceFile = LSXHelpers.GetPathAfterData(matRes.SourceFile or "")
     self.MaterialType = matRes.MaterialType or 0
     self.DiffusionProfileUUID = matRes.DiffusionProfileUUID or ""
 
@@ -219,180 +214,14 @@ function MaterialEditor:Reapply()
     self:ApplyParameters(self.Parameters)
 end
 
-function DetermineLSXValueType(value)
-    if type(value) == "boolean" then
-        return LSXValueType.bool
-    elseif type(value) == "number" then
-        return LSXValueType.float
-    elseif type(value) == "string" then
-        return LSXValueType.FixedString
-    elseif type(value) == "table" then
-        if #value == 1 then
-            return LSXValueType.float
-        elseif #value == 2 then
-            return LSXValueType.fvec2
-        elseif #value == 3 then
-            return LSXValueType.fvec3
-        elseif #value == 4 then
-            return LSXValueType.fvec4
-        end
-    end
-    
-    return LSXValueType.LSString
-end
+function MaterialEditor:BuildMaterialPresetResource(path)
+    local bank = LSXHelpers.BuildMaterialPresetBank()
 
-local function createParameterAttrNodes(paramObj, overrideValue)
-    local attrs = {}
-    for k, v in pairs(paramObj) do
-        local valueType = DetermineLSXValueType(v)
-        if not valueType then
-            Warning("CustomMaterialProxy: Could not determine LSX value type for parameter '" .. tostring(paramObj.ParameterName) .. "'. Skipping.")
-            return nil
-        end
+    local uuid = Uuid_v4()
+    local resource = LSXHelpers.BuildMaterialPresetResourceNode(self.Parameters, uuid, "Custom_Material_Preset")
 
-        local value = v
-        if k == "Value" and overrideValue then
-            value = #overrideValue == 1 and overrideValue[1] or overrideValue
-        end
+    bank:AppendChild(resource)
 
-        local attr = LSXNode.new("attribute", {
-            id = k,
-            type = valueType,
-            value = value
-        })
-
-        table.insert(attrs, attr)
-    end
-    return attrs
-end
-
----@param matRes ResourceMaterialResource
----@param parameters table<number, table<string, number[]>>
----@return LSXNode|nil
-local function createParameterNodes(matRes, parameters)
-    local paramNodes = {} --[[@as LSXNode[] ]]
-    local paramList = {
-        matRes.ScalarParameters,
-        matRes.Vector2Parameters,
-        matRes.Vector3Parameters,
-        matRes.VectorParameters,
-        matRes.Texture2DParameters,
-        matRes.VirtualTextureParameters
-    }
-    local indexToNodeName = {
-        [1] = "ScalarParameters",
-        [2] = "Vector2Parameters",
-        [3] = "Vector3Parameters",
-        [4] = "VectorParameters",
-        [5] = "Texture2DParameters",
-        [6] = "VirtualTextureParameters"
-    }
-
-    for i,params in pairs(paramList) do
-        for _,param in pairs(params) do
-            local node = LSXNode.new("node", { id=indexToNodeName[i] })
-            local paramName = param.ParameterName
-            local value = nil
-            if i < 5 then
-                value = parameters[i][paramName] or param.Value
-                if type(value) == "number" then
-                    value = { value }
-                end
-            end
-            local attrs = createParameterAttrNodes(param, value)
-            if not attrs then
-                Warning("CustomMaterialProxy: Could not create LSX attribute nodes for parameter '" .. tostring(paramName) .. "'. Skipping parameter.")
-            else
-                node:AppendChildren(attrs)
-                node:SortChildren(function (a,b) return a:GetAttribute("id") < b:GetAttribute("id") end)
-                table.insert(paramNodes, node)
-            end
-        end
-    end
-
-    return paramNodes
-end
-
-function MaterialEditor:ExportToLSXAsMaterial(path)
-    local root = LSXHelpers.new()
-    if not root then
-        Error("CustomMaterialProxy: Could not create LSXTableNode for export.")
-        return nil
-    end
-
-    local matRes = Ext.Resource.Get(self.Material, "Material") --[[@as ResourceMaterialResource]]
-    if not matRes then
-        Error("CustomMaterialProxy: Could not find origin material resource for '" .. tostring(self.Material) .. "'. Cannot export to LSX.")
-        return nil
-    end
-
-    local matRegion = root:AppendChild(LSXNode.new("region", {id="MaterialBank"}))
-    local matNode = matRegion:AppendChild(LSXNode.new("node", {id="MaterialBank"}))
-    local childrenWrapper = matNode:AppendChild(LSXNode.new("children"))
-    local resNode = childrenWrapper:AppendChild(LSXNode.new("node", {id="Resource"}))
-
-    local baseAttr = {
-        LSXNode.new("attribute", {
-            id = "ID",
-            type = LSXValueType.guid,
-            value = self.Material
-        }),
-        LSXNode.new("attribute", {
-            id = "Name",
-            type = LSXValueType.LSString,
-            value = "Custom Material"
-        }),
-        LSXNode.new("attribute", {
-            id = "SourceFile",
-            type = LSXValueType.LSString,
-            value = self.SourceFile or ""
-        }),
-        LSXNode.new("attribute", {
-            id = "MaterialType",
-            type = LSXValueType.uint8,
-            value = self.MaterialType or 0
-        }),
-        LSXNode.new("attribute", {
-            id = "DiffusionProfileUUID",
-            type = LSXValueType.FixedString,
-            value = matRes.DiffusionProfileUUID or ""
-        }),
-    }
-    resNode:AppendChildren(baseAttr)
-
-    resNode:SortChildren(function(a,b) return a:GetAttribute("id") < b:GetAttribute("id") end)
-
-    local secondChildrenWrapper = LSXNode.new("children")
-    resNode:AppendChild(secondChildrenWrapper)
-    local paramNodes = createParameterNodes(matRes, self.Parameters)
-    if paramNodes then
-        secondChildrenWrapper:AppendChildren(paramNodes)
-    end
-
-    local xmlString = root:Stringify()
-
-    local success = Ext.IO.SaveFile(path .. ".lsx", xmlString)
-
-    if not success then
-        Warning("CustomMaterialProxy: Could not save LSX file to path: " .. tostring(path))
-        return nil
-    end
-
-    return success
-end
-
-function MaterialEditor:ExportToLSXAsMaterialPreset(path)
-
-    
-    local presetParams = self.PresetProxy and self.PresetProxy.Parameters or {}
-
-    for typeIndex, paramTable in pairs(presetParams) do
-        for paramName,value in pairs(paramTable) do
-            if not self.Parameters[typeIndex][paramName] then
-                self.Parameters[typeIndex][paramName] = value
-            end
-        end
-    end
-
+    return bank, uuid
 end
 

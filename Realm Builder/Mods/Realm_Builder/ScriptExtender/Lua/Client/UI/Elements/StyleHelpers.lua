@@ -185,9 +185,9 @@ function WrapTextTokens(tokens, wrapPos)
         return newToken
     end
 
-    local function addToken(token, text, forceNewLine)
+    local function addToken(token, text, newLine)
         local newToken = cloneToken(token, text)
-        if forceNewLine then
+        if newLine then
             currentLen = 0
             newToken.SameLine = false
         else
@@ -197,15 +197,13 @@ function WrapTextTokens(tokens, wrapPos)
         currentLen = currentLen + #text
     end
 
-    for _, token in ipairs(tokens) do
+    for i, token in ipairs(tokens) do
         local text = token.Text or ""
 
         if token.TooltipRef then
             local tokenLen = #text
-            local overflow = (currentLen > 0 and currentLen + tokenLen > wrapPos)
-            local forceNewLine = (currentLen == 0 and tokenLen > wrapPos) or overflow
-            addToken(token, text, forceNewLine)
-        
+            local overflow = (currentLen + tokenLen > wrapPos)
+            addToken(token, text, overflow)
         else
             local remaining = text
             while #remaining > 0 do
@@ -221,23 +219,66 @@ function WrapTextTokens(tokens, wrapPos)
                     local breakPos = search:find(" [^ ]*$")
                     if breakPos then
                         local chunk = search:sub(1, breakPos - 1)
-                        addToken(token, chunk, false)
+
+                        local nextChar = remaining:sub(breakPos + 1, breakPos + 1)
+                        local nextCharInNextToken = false
+
+                        if not nextChar or nextChar == "" then
+                            local nextToken = tokens[i + 1]
+                            if nextToken and nextToken.Text and #nextToken.Text > 0 then
+                                nextChar = nextToken.Text:sub(1, 1)
+                                nextCharInNextToken = true
+                            end
+                        end
+
+                        if nextChar and nextChar:match("[%.,%(%)%[%]%{%}\"'“”‘’]") then
+                            local chunk = remaining:sub(1, breakPos) .. nextChar
+                            if nextCharInNextToken then
+                                local nextToken = tokens[i + 1]
+                                nextToken.Text = nextToken.Text:sub(2)
+                            else
+                                remaining = remaining:sub(breakPos + 2)
+                            end
+
+                            addToken(token, chunk)
+                            remaining = remaining:sub(breakPos + 2)
+                            goto continue_token
+                        end
+
+                        if nextChar and nextChar:match("%s") then
+                            breakPos = breakPos + 1
+                        end
+
+                        if nextChar:match("%s") then
+                            breakPos = breakPos + 1
+                        end
+
+                        addToken(token, chunk)
                         remaining = remaining:sub(breakPos + 1)
                     else
                         if currentLen > 0 then
                             currentLen = 0
                         else
-                            addToken(token, remaining, false)
-                            remaining = ""
+                            local chunk = remaining:sub(1, spaceLeft)
+                            addToken(token, chunk)
+                            remaining = remaining:sub(spaceLeft + 1)
                         end
                     end
                 else
                     addToken(token, remaining, false)
                     remaining = ""
                 end
+
+                ::continue_token::
             end
         end
     end
+
+    Debug("Before Wrap:")
+    _D(tokens)
+
+    Debug("After Wrap:")
+    _D(wrapped)
 
     return wrapped
 end
@@ -426,13 +467,13 @@ end
 
 --- @param extui ExtuiStyledRenderable
 --- @param alpha number?
-function DisableAndSetAlpha(extui, alpha)
+local function DisableAndSetAlpha(extui, alpha)
     if not extui then return end
     extui.Disabled = true
     extui:SetStyle("Alpha", alpha or 0.6)
 end
 
-function EnableAndSetAlpha(extui)
+local function EnableAndSetAlpha(extui)
     if not extui then return end
     extui.Disabled = false
     extui:SetStyle("Alpha", 1)
@@ -459,13 +500,12 @@ function DestroyAllChilds(parent)
     end
 end
 
-local created = false
-
 function AddStyleDebugWindow(extui)
-    if created then return end
-    created = true
-
-    local window = RegisterWindow("generic", "debug", "IDONTKNOW")
+    local window = Ext.IMGUI.NewWindow("Style Debugger##" .. Uuid_v4())
+    window.Closeable = true
+    window.OnClose = function()
+        window:Destroy()
+    end
     for idon, value in pairs(extui) do
         if type(value) == "boolean" then
             ---@diagnostic disable
@@ -595,10 +635,10 @@ function AddSelectableButton(parent, label, onClick)
     button.IDContext = "SelectableButton_" .. label
     button.Label = label
     button.OnClick = function(s)
+        s.Selected = false
         if onClick then
             onClick(s)
         end
-        s.Selected = false
     end
     return button
 end

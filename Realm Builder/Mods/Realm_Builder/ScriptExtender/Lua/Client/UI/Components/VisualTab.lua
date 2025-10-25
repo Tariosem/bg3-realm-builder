@@ -489,42 +489,6 @@ function VisualTab:RenderAttachmentsSection()
             end
 
             local matName = obj.Renderable.ActiveMaterial.Material.Name
-
-            --[[objNode.OnHoverEnter = function ()
-
-
-                local visual = VisualHelpers.GetEntityVisual(self.guid)
-                if not visual then
-                    return
-                end
-                local attachments = visual.Attachments or {}
-                local attach = attachments[attIndex]
-                if not attach then
-                    return
-                end
-
-                local desc = attach.Visual.ObjectDescs[descIndex]
-                if not desc then
-                    return
-                end
-
-                local renderable = desc.Renderable
-                if not renderable then
-                    return
-                end
-
-
-                NetChannel.Visualize:RequestToServer({
-                    Type = "Box",
-                    Min = renderable.WorldBound.Min,
-                    Max = renderable.WorldBound.Max,
-                    LineThickness = 0.2,
-                    Duration = 2000
-                }, function (response)
-    
-                end)
-            end]]
-
             local function getliveMat()
                 local visual = VisualHelpers.GetEntityVisual(self.guid)
                 if not visual then
@@ -561,7 +525,7 @@ function VisualTab:RenderAttachmentsSection()
                 return mat.Material.Parameters
             end
 
-            local keyName = gr2FileName .. "." .. modelName
+            local keyName = gr2FileName .. "." .. modelName .. "." .. tostring(attIndex) .. "." .. tostring(descIndex)
 
             local materialTab = self.Materials[keyName] or MaterialTab.new(objNode, matName, getliveMat, getliveParams) --[[@as MaterialTab]]
             materialTab.Parent = objNode
@@ -571,6 +535,7 @@ function VisualTab:RenderAttachmentsSection()
 
             objToggle.OnHoverEnter = function ()
                 materialTab:Render()
+                materialTab:UpdateUIState()
                 objToggle.OnHoverEnter = nil
             end
 
@@ -1053,35 +1018,11 @@ function VisualTab:RenderLightComponent(node, component, compIndex)
                     saveLightProperty(key, propName, {sliderA.Value[1], sliderB.Value[1], sliderC.Value[1], sliderD.Value[1]})
                 end
 
-                sliderB.OnChange = function(slider)
-                    local entity = Ext.Entity.Get(self.guid)
-                    if not entity.Effect then return end
-                    local keyFrames = entity.Effect.Timeline.Components[compIndex].Properties[propName].KeyFrames
-                    for keyFrameIndex, keyFrame in ipairs(keyFrames) do
-                        VisualHelpers.ChangeABCDFrames(keyFrame.Frames, sliderA.Value[1], sliderB.Value[1], sliderC.Value[1], sliderD.Value[1])
-                    end
-                    saveLightProperty(key, propName, {sliderA.Value[1], sliderB.Value[1], sliderC.Value[1], sliderD.Value[1]})
-                end
+                sliderB.OnChange = sliderA.OnChange
 
-                sliderC.OnChange = function(slider)
-                    local entity = Ext.Entity.Get(self.guid)
-                    if not entity.Effect then return end
-                    local keyFrames = entity.Effect.Timeline.Components[compIndex].Properties[propName].KeyFrames
-                    for keyFrameIndex, keyFrame in ipairs(keyFrames) do
-                        VisualHelpers.ChangeABCDFrames(keyFrame.Frames, sliderA.Value[1], sliderB.Value[1], sliderC.Value[1], sliderD.Value[1])
-                    end
-                    saveLightProperty(key, propName, {sliderA.Value[1], sliderB.Value[1], sliderC.Value[1], sliderD.Value[1]})
-                end
+                sliderC.OnChange = sliderA.OnChange
 
-                sliderD.OnChange = function(slider)
-                    local entity = Ext.Entity.Get(self.guid)
-                    if not entity.Effect then return end
-                    local keyFrames = entity.Effect.Timeline.Components[compIndex].Properties[propName].KeyFrames
-                    for keyFrameIndex, keyFrame in ipairs(keyFrames) do
-                        VisualHelpers.ChangeABCDFrames(keyFrame.Frames, sliderA.Value[1], sliderB.Value[1], sliderC.Value[1], sliderD.Value[1])
-                    end
-                    saveLightProperty(key, propName, {sliderA.Value[1], sliderB.Value[1], sliderC.Value[1], sliderD.Value[1]})
-                end
+                sliderD.OnChange = sliderA.OnChange
 
                 valueResetButton.OnClick = function(sel, updateInit)
                     local entity = Ext.Entity.Get(self.guid)

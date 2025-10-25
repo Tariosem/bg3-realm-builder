@@ -69,6 +69,7 @@ function EffectsMenu:Render()
         )
     end
 
+    local detachCell = nil
     if self.isWindow then
         self.mainMenu = self.panel:AddMainMenu()
         self.fileMenu = self.mainMenu:AddMenu(GetLoca("File"))
@@ -78,6 +79,7 @@ function EffectsMenu:Render()
         local menuRow = menuTable:AddRow()
         local fileCell = menuRow:AddCell()
         local debugCell = menuRow:AddCell()
+        detachCell = menuRow:AddCell()
 
         local fileOpenBtn = fileCell:AddSelectable(GetLoca("File"))
         local debugOpenBtn = debugCell:AddSelectable(GetLoca("Debug"))
@@ -109,32 +111,21 @@ function EffectsMenu:Render()
     
     --#region Utility
 
-    local topTable = self.panel:AddTable("PropsMenuTopTable", 2)
-
-    topTable.ColumnDefs[1] = { WidthStretch = true }
-    topTable.ColumnDefs[2] = { WidthStretch = false, WidthFixed = true}
-
-    self.topRow = topTable:AddRow()
-
-    self.detachButtonContainer = self.topRow:AddCell()
-    self.detachButton = nil
-    if self.isAttach then
-        self.detachButton = self.detachButtonContainer:AddButton(GetLoca("Detach"))
-    else
-        self.detachButton = self.detachButtonContainer:AddButton(GetLoca("Attach"))
-    end
-
-    self.detachButton.OnClick = function()
-        if self.parent then
+    if detachCell then
+        local detachButton = AddSelectableButton(detachCell, GetLoca("Detach"), function()
+            if not self.parent then return end
             self.isAttach = not self.isAttach
-            self.isVisible = true
             self:Refresh()
-        end
+        end)
     end
 
     if self.isWindow then
         self.panel.Closeable = true
-        self.panel.OnClose = self.detachButton.OnClick
+        self.panel.OnClose = function()
+            if not self.parent then return end
+            self.isAttach = true
+            self:Refresh()
+        end
     end
 
     --#endregion Utility

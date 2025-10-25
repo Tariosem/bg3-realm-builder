@@ -22,7 +22,7 @@ function SceneMenu:NewEntityAdded(guids)
     local list = NormalizeGuidList(guids)
 
     for _, guid in ipairs(list) do
-        local ent = EntityStore:GetEntity(guid)
+        local ent = EntityStore:GetStoredData(guid)
         if ent and not self.entityTabs[guid] then
             local opts = {}
             table.insert(opts, "IsAttach")
@@ -137,7 +137,7 @@ function SceneMenu:RenderSideBar()
     end
 
     treeList.RenderLeaf = function(sel, key, node)
-        local propData = EntityStore:GetEntity(key)
+        local propData = EntityStore:GetStoredData(key)
         if not propData then
             Warning("Prop data missing for key: " .. key)
             return node:AddSelectable(key .. " (Missing)") --[[@as ExtuiSelectable]]
@@ -187,7 +187,7 @@ function SceneMenu:RenderSideBar()
 
     treeList.FilterFunc = function(sel, key, keywords)
         local words = SplitBySpace(keywords)
-        local propData = EntityStore:GetEntity(key)
+        local propData = EntityStore:GetStoredData(key)
         if not propData then
             if not tree:IsLeaf(key) then
                 for _, word in ipairs(words) do
@@ -207,9 +207,27 @@ function SceneMenu:RenderSideBar()
     treeList.RenderOrder = function(aKey, bKey)
         if aKey == bKey then return false end
         if not aKey or not bKey then return false end
-        local aName = tree:IsLeaf(aKey) and (EntityStore:GetEntity(aKey) and EntityStore:GetEntity(aKey).DisplayName or aKey) or aKey
-        local bName = tree:IsLeaf(bKey) and (EntityStore:GetEntity(bKey) and EntityStore:GetEntity(bKey).DisplayName or bKey) or bKey
+        local aName = tree:IsLeaf(aKey) and (EntityStore:GetStoredData(aKey) and EntityStore:GetStoredData(aKey).DisplayName or aKey) or aKey
+        local bName = tree:IsLeaf(bKey) and (EntityStore:GetStoredData(bKey) and EntityStore:GetStoredData(bKey).DisplayName or bKey) or bKey
         return string.lower(aName) < string.lower(bName)
+    end
+
+    treeList.OnRenameInput = function(sel, key, newName)
+        local isEntity = EntityStore:GetStoredData(key)
+        local oriName = isEntity and (isEntity.DisplayName or key) or key
+        if oriName == newName then return end
+
+        if isEntity then
+            EntityStore:RegisterDisplayName(newName, key)
+            if self.entityTabs[key] then
+                local tab = self.entityTabs[key]
+                if tab.isVisible then
+                    tab:Refresh()
+                end
+            end
+        else
+            tree:Rename(key, newName)
+        end
     end
 
     treeList:Render()
@@ -223,7 +241,7 @@ function SceneMenu:SetupLeaf(sel, key, node)
     selectable.SameLine = true
     selectable.SpanAllColumns = false
 
-    local propData = EntityStore:GetEntity(key) --[[@as EntityData]]
+    local propData = EntityStore:GetStoredData(key) --[[@as EntityData]]
     selectable.OnRightClick = function()
         if not TableContains(self.selectedGuids, propData.Guid) then
             table.insert(self.selectedGuids, propData.Guid)
@@ -232,27 +250,9 @@ function SceneMenu:SetupLeaf(sel, key, node)
         self:SetupSelectablePopup()
     end
 
-    local doubleClickLastTime = 0
-    local clickTimer = nil
-    local doubleClickThreshold = 300
 
     selectable.OnClick = function()
-        local currentTime = Ext.Timer.MonotonicTime()
-        if currentTime - doubleClickLastTime <= doubleClickThreshold then
-            if self.IsRenaming then return end
-            if clickTimer then
-                Timer:Cancel(clickTimer)
-                clickTimer = nil
-            end
-            selectable:Destroy()
-            self.propTreeList.leafRefs[key] = nil
-            self:SetupRenameInput(node, key)
-        else
-            clickTimer = Timer:After(doubleClickThreshold, function()
-                self:FocusTab(key)
-            end)
-        end
-        doubleClickLastTime = currentTime
+        self:FocusTab(key)
     end
 
     self.propTreeList.leafRefs[key] = selectable
@@ -261,176 +261,12 @@ end
 function SceneMenu:SetupTree(sel, key, node)
     local selectable = sel
 
-    local doubleClickLastTime = 0
-    local clickTimer = nil
-    local doubleClickThreshold = 300
-    
-    selectable.OnClick = function()
-        local currentTime = Ext.Timer.MonotonicTime()
-        Debug("Selectable clicked at time:", currentTime)
-        if currentTime - doubleClickLastTime <= doubleClickThreshold then
-            if clickTimer then
-                Timer:Cancel(clickTimer)
-                clickTimer = nil
-            end
-            Debug("Double click detected for tree key:", key)
-            selectable:Destroy()
-            self.propTreeList.treeRefs[key] = nil
-            self:SetupCollectionRenameInput(node, key)
-        else
-        end
-        doubleClickLastTime = currentTime
+    selectable.SameLine = true
+    selectable.SpanAllColumns = false
+
+    selectable.OnRightClick = function()
+        self:SetupCollectionSelectablePopup()
     end
-
-    self.propTreeList.treeRefs[key] = selectable
-end
-
-function SceneMenu:SetupCollectionRenameInput(node, key)
-    self.IsRenaming = true
-    local input = node:AddInputText("",  key) --[[@as ExtuiInputText]]
-    input.SameLine = true
-
-    local function tryToRename(newName)
-        if newName and newName == "" then
-            EntityStore.Tree:RemoveButKeepChildren(key)
-            self:UpdateList()
-            self.IsRenaming = false
-            return
-        end
-
-        if newName and newName ~= key then
-            EntityStore.Tree:Rename(key, newName)
-
-            self.propTreeList.leafRefs[key] = nil
-        end
-
-        local newSelectable = node:AddSelectable(newName) --[[@as ExtuiSelectable]]
-        self:SetupTree(newSelectable, newName, node)
-        self.propTreeList:SetUpTree(newSelectable, newName, node)
-        self.propTreeList.treeRefs[newName] = newSelectable
-        local orginNode = self.propTreeList.nodeRefs[key]
-        self.propTreeList.nodeRefs[newName] = orginNode
-        self.propTreeList.nodeRefs[key] = nil
-        local orginState = self.propTreeList.collapsedTree[key]
-        self.propTreeList.collapsedTree[newName] = orginState
-        self.propTreeList.collapsedTree[key] = nil
-
-        self.IsRenaming = false
-    end
-
-    Timer:After(1000, function (timerID)
-        local focusTimer = Timer:EveryFrame(function (timerID)
-            local ok, focused = pcall(IsFocused, input)
-            if not ok then
-                local tryToDestroy = function()
-                    if input and not input.Destroyed then
-                        input:Destroy()
-                        local newSelectable = node:AddSelectable(key) --[[@as ExtuiSelectable]]
-                        self:SetupTree(newSelectable, key, node)
-                    end
-                end
-                pcall(tryToDestroy)
-                return UNSUBSCRIBE_SYMBOL
-            end
-
-            if not focused then
-                local newName = input.Text
-
-                input:Destroy()
-
-                tryToRename(newName)
-
-                return UNSUBSCRIBE_SYMBOL
-            end
-        end)
-    end)
-
-    local enterSub = SubscribeKeyInput({ Key = "RETURN" }, function (e)
-        local ok, focused = pcall(IsFocused, input)
-        if not ok then return UNSUBSCRIBE_SYMBOL end
-
-        if focused then
-            local newName = input.Text
-            
-            input:Destroy()
-
-            tryToRename(newName)
-
-            return UNSUBSCRIBE_SYMBOL
-        end
-    end)
-end
-
-function SceneMenu:SetupRenameInput(node, key)
-    self.IsRenaming = true
-    local propData = EntityStore:GetEntity(key) --[[@as EntityData]]
-    local input = node:AddInputText("",  propData.DisplayName) --[[@as ExtuiInputText]]
-    input.SameLine = true
-
-    local function tryToRename(newName)
-        
-        if newName and newName ~= propData.DisplayName and newName ~= "" then
-            EntityStore:RegisterDisplayName(newName, propData.Guid, propData.DisplayName)
-
-            if self.entityTabs[key] then
-                local tab = self.entityTabs[key]
-                if tab.isVisible then
-                    tab:Refresh()
-                end
-            end
-        end
-        
-        local newSelectable = node:AddSelectable(newName) --[[@as ExtuiSelectable]]
-        self:SetupLeaf(newSelectable, key, node)
-        self.propTreeList:SetUpLeaf(newSelectable, key, node)
-        self.propTreeList.leafRefs[key] = newSelectable
-
-        self.IsRenaming = false
-    end
-
-    Timer:After(1000, function (timerID)
-        local focusTimer = Timer:EveryFrame(function (timerID)
-            local ok, focused = pcall(IsFocused, input)
-            if not ok then
-                local tryToDestroy = function()
-                    if input and not input.Destroyed then
-                        input:Destroy()
-                        local newSelectable = node:AddSelectable( propData.DisplayName) --[[@as ExtuiSelectable]]
-                        self:SetupLeaf(newSelectable, key, node)
-                    end
-                end
-                pcall(tryToDestroy)
-                return UNSUBSCRIBE_SYMBOL
-            end
-
-            if not focused then
-                local newName = input.Text
-
-                input:Destroy()
-
-                tryToRename(newName)
-
-                return UNSUBSCRIBE_SYMBOL
-            end
-        end)
-    end)
-        
-
-    local enterSub = SubscribeKeyInput({ Key = "RETURN" }, function (e)
-        local ok, focused = pcall(IsFocused, input)
-        if not ok then return UNSUBSCRIBE_SYMBOL end
-
-        if focused then
-            local newName = input.Text
-
-            input:Destroy()
-
-            tryToRename(newName)
-
-            return UNSUBSCRIBE_SYMBOL
-        end
-    end)
-
 end
 
 function SceneMenu:GroupLogic(from, target)
@@ -513,7 +349,7 @@ function SceneMenu:SetupSelectablePopup(popup)
     local hideButton = AddSelectableButton(row:AddCell(), GetLoca("Hide/Show"), function()
         if self.selectedGuids and #self.selectedGuids > 0 then
             for _, guid in ipairs(self.selectedGuids) do
-                local prop = EntityStore:GetEntity(guid)
+                local prop = EntityStore:GetStoredData(guid)
                 if prop then
                     local data = {
                         Guid = prop.Guid,
