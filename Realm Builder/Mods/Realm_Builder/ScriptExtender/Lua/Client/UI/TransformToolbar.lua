@@ -481,7 +481,8 @@ function TransformToolbar:RenderOtherConfigOptions(panel)
     local stepSlider = AddSliderWithStep(row1:AddCell(), "Step", 1, 0.1, 3, 0.05)
     stepSlider.UserData.StepInput.Visible = false
     stepSlider.OnChange = function (e)
-        TransformEditor.Step = e.Value[1]
+        if not TransformEditor.Gizmo then return end
+        TransformEditor.Gizmo.Step = e.Value[1]
     end
 
     row2:AddCell():AddText("Gizmo Size")

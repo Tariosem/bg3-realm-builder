@@ -8,7 +8,7 @@
 --- @field IsDragging boolean
 --- @field Guid Guid -- Gizmo entity guid
 --- @field Picker GizmoPicker
---- @field Subscription table<string, RBSubscription>
+--- @field Subscriptions table<string, RBSubscription>
 --- @field Timers table<string, TimerID>
 --- @field new fun(editor: TransformEditor): Gizmo
 --- @field OnDragStart fun(self: Gizmo)
@@ -29,12 +29,14 @@ function Gizmo:__init(editor)
     self.Guid = nil
     self.Targets = {}
     self.Picker = GizmoPicker.new(self)
-    self.Subscription = {}
+    self.Subscriptions = {}
     self.Timers = {}
+
+    self.Step = 1.0
 end
 
 function Gizmo:EmptyDrag()
-    self.Editor._accuDelta = nil
+    self._accuDelta = nil
     if self.Mode == "Rotate" then
         self:OnDragRotate({ Angle = 0, Axis = Vec3.new{0,0,0} })
     elseif self.Mode == "Translate" then
@@ -146,7 +148,7 @@ end
 function Gizmo:SetupListeners()
     self:StopListeners()
 
-    self.Subscription["LockAxis"] = SubscribeKeyInput({}, function (e)
+    self.Subscriptions["LockAxis"] = SubscribeKeyInput({}, function (e)
         if not self.IsDragging then return end
         if e.Event ~= "KeyDown" or not e.Pressed or e.Repeat then return end
 
@@ -176,7 +178,7 @@ function Gizmo:SetupListeners()
     end)
 
 
-    self.Subscription["MMBLockAxis"] = SubscribeMouseInput({}, function (e)
+    self.Subscriptions["MMBLockAxis"] = SubscribeMouseInput({}, function (e)
         if not self.IsDragging then return end
         if not e.Pressed or tonumber(e.Button) ~= 2 then return end
 
@@ -192,7 +194,17 @@ function Gizmo:SetupListeners()
         self:RestartDragging(mouseRay, axes)
     end)
 
-    self.Subscription["DragStart"] = SubscribeMouseInput({}, function (e)
+    self.Subscriptions["SlowDown"] = SubscribeKeyInput({ Key = "LSHIFT"}, function (e)
+        if e.Repeat then return end
+        if e.Event == "KeyDown" then
+            self.SlowDown = true
+        else
+            self.SlowDown = false
+        end
+    end)
+
+
+    self.Subscriptions["DragStart"] = SubscribeMouseInput({}, function (e)
         if e.Button == 1 and e.Pressed and self.Picker and not self.IsDragging then
             local mouseRay = ScreenToWorldRay()
             if not mouseRay then Warning("Gizmo:DragStart: Failed to get mouse ray") return end
@@ -202,14 +214,14 @@ function Gizmo:SetupListeners()
         end
     end)
 
-    self.Subscription["DragCancel"] = SubscribeMouseInput({}, function (e)
+    self.Subscriptions["DragCancel"] = SubscribeMouseInput({}, function (e)
         if not self.IsDragging then return end
         if e.Pressed and tonumber(e.Button) == 3 then
             self:CancelDragging()
         end
     end)
 
-    self.Subscription["DragEnd"] = SubscribeMouseInput({}, function (e)
+    self.Subscriptions["DragEnd"] = SubscribeMouseInput({}, function (e)
         if not self.IsDragging then return end
         if e.Button == 1 and not e.Pressed then
             self:StopDragging()
@@ -415,6 +427,7 @@ end
 --- @param ray Ray
 --- @return Vec3|number|nil
 function Gizmo:GetDelta(ray)
+    local lerpFactor = 0.1
     local hit = self:GetHit(ray)
     if not hit or not hit.Position then return nil end
     local startHit = self.StartHit
@@ -432,6 +445,7 @@ function Gizmo:GetDelta(ray)
             local rot = Quat.new(self.Picker.Rotation)
             delta = rot:Inverse():Rotate(worlddelta)
         end
+
     elseif self.Mode == "Rotate" then
         local axis = next(self.SelectedAxis or {})
         if not axis then Warning("Gizmo:GetDelta: No axis selected for rotation") return nil end
@@ -493,7 +507,7 @@ end
 --#endregion math
 
 function Gizmo:SetupDragging()
-    self.Editor._accuDelta = nil
+    self._accuDelta = nil
     self.RotatePointer = self.RotatePointer or {}
     local pickerPos = Vec3.new(self.Picker.Position)
     local pickerRot = Quat.new(self.Picker.Rotation)
@@ -571,6 +585,12 @@ function Gizmo:SetupDragging()
         local delta = self:GetDelta(mouseRay)
         if not delta then return end
 
+        delta = self:StepDelta(delta)
+
+        delta = self:LerpDelta(delta)
+        if not delta then return end -- may return nil to skip this frame
+
+
         if self.Mode == "Rotate" then
             delta = delta --[[@as { Angle:number, Axis:Vec3 }]]
             self:OnDragRotate(delta)
@@ -585,6 +605,74 @@ function Gizmo:SetupDragging()
 
         self:Visualize()
     end)
+end
+
+function Gizmo:StepDelta(delta)
+    if self.Mode == "Translate" then
+        delta = delta * self.Step
+    elseif self.Mode == "Rotate" then
+        delta = { Angle = delta.Angle * self.Step, Axis = delta.Axis }
+    elseif self.Mode == "Scale" then
+        local scaleVec = Vec3.new{1,1,1}
+        delta = scaleVec + (delta - scaleVec) * self.Step
+    end
+    return delta
+end
+
+function Gizmo:LerpDelta(delta)
+    local lerpFactor = 0.1
+    if self.Mode == "Translate" then
+        if self.SlowDown and not self._delta then
+            self._delta = delta
+        elseif self.SlowDown and self._delta then
+            delta = (delta - self._delta) * lerpFactor + self._delta
+        elseif self._delta and not self.SlowDown then
+            self:RegetStartHit()
+            delta = (delta - self._delta) * lerpFactor + self._delta
+            self._accuDelta = (self._accuDelta or Vec3.new{0,0,0}) + delta
+            self._delta = nil
+            return
+        end
+
+        if self._accuDelta then
+            delta = self._accuDelta + delta
+        end
+    elseif self.Mode == "Rotate" then
+        local deltaAngle = delta.Angle
+        if self.SlowDown and not self._delta then
+            self._delta = deltaAngle
+        elseif self.SlowDown and self._delta then
+            deltaAngle = (deltaAngle - self._delta) * lerpFactor + self._delta
+        elseif self._delta and not self.SlowDown then
+            self:RegetStartHit()
+            deltaAngle = (deltaAngle - self._delta) * lerpFactor + self._delta
+            self._accuDelta = (self._accuDelta or 0) + deltaAngle
+            self._delta = nil
+            return
+        end
+
+        if self._accuDelta then
+            delta = { Angle = self._accuDelta + deltaAngle, Axis = delta.Axis }
+        end
+    elseif self.Mode == "Scale" then
+        if self.SlowDown and not self._delta then
+            self._delta = delta
+        elseif self.SlowDown and self._delta then
+            delta = (delta - self._delta) * lerpFactor + self._delta
+        elseif self._delta and not self.SlowDown then
+            self:RegetStartHit()
+            delta = (delta - self._delta) * 0.1 + self._delta
+            self._accuDelta = (self._accuDelta or Vec3.new{1,1,1}) * delta
+            self._delta = nil
+            return
+        end
+        
+        if self._accuDelta then
+            delta = self._accuDelta * delta
+        end
+    end
+
+    return delta
 end
 
 function Gizmo:RegetStartHit()
@@ -609,8 +697,8 @@ function Gizmo:StopWithoutCallbacks()
     self.StartHit = nil
     self._rotLastAngle = nil
     self._rotAccum = nil
-    self.Editor._accuDelta = nil
-    self.Editor._delta = nil
+    self._accuDelta = nil
+    self._delta = nil
     GizmoVisualizer.ScaleMultiplier = {1.0, 1.0, 1.0}
     for _,guid in ipairs(self.RotatePointer or {}) do
         GizmoVisualizer.HideGizmo(guid)
@@ -625,10 +713,10 @@ function Gizmo:OnDragEnd() end
 function Gizmo:DragVisualize() end
 
 function Gizmo:StopListeners()
-    for k,v in pairs(self.Subscription) do
+    for k,v in pairs(self.Subscriptions) do
         if v then
             v:Unsubscribe()
-            self.Subscription[k] = nil
+            self.Subscriptions[k] = nil
         end
     end
     for k,v in pairs(self.Timers) do

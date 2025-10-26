@@ -14,7 +14,6 @@ TransformEditor = {
     Target = nil,
     Debug = false,
     StartTransforms = {},
-    Step = 1,
     Subscriptions = {},
     Blacklist = {},
     Disabled = false,
@@ -188,14 +187,6 @@ function TransformEditor:RegisterEvents()
     end)
     self.TransformEditorMod = teMod
 
-    self.Subscriptions["SlowDown"] = SubscribeKeyInput({ Key = "LSHIFT"}, function (e)
-        if e.Repeat then return end
-        if e.Event == "KeyDown" then
-            self.SlowDown = true
-        else
-            self.SlowDown = false
-        end
-    end)
 
     teMod:RegisterEvent("RotateMode", function (e)
         if not self.Target or #self.Target == 0 then return end
@@ -296,8 +287,6 @@ function TransformEditor:RegisterEvents()
 
     self.Gizmo.OnDragStart = function(gizmo)
         self.IsDragging = true
-        self._accuDelta = nil
-        self._delta = nil
         for _,guid in pairs(NormalizeGuidList(self.Target) or {}) do
             self.StartTransforms[guid] = EntityHelpers.SaveTransform(guid)
         end
@@ -433,26 +422,7 @@ function TransformEditor:RegisterEvents()
         end
     end
 
-    local lerpFactor = 0.1
     self.Gizmo.OnDragTranslate = function(gizmo, delta)
-        delta = delta * self.Step
-
-        if self.SlowDown and not self._delta then
-            self._delta = delta
-        elseif self.SlowDown and self._delta then
-            delta = (delta - self._delta) * lerpFactor + self._delta
-        elseif self._delta and not self.SlowDown then
-            gizmo:RegetStartHit()
-            delta = (delta - self._delta) * lerpFactor + self._delta
-            self._accuDelta = (self._accuDelta or Vec3.new{0,0,0}) + delta
-            self._delta = nil
-            return -- skip this frame to avoid jump
-        end
-
-        if self._accuDelta then
-            delta = delta + self._accuDelta
-        end
-
         local transforms = {}
         for _, guid in pairs(NormalizeGuidList(self.Target) or {}) do
             local newTransform = {}
@@ -479,25 +449,7 @@ function TransformEditor:RegisterEvents()
     end
 
     self.Gizmo.OnDragScale = function(gizmo, delta)
-        local scaleVec = Vec3.new{1,1,1}
-        delta = scaleVec + (delta - scaleVec) * self.Step
         local transforms = {}
-
-        if self.SlowDown and not self._delta then
-            self._delta = delta
-        elseif self.SlowDown and self._delta then
-            delta = (delta - self._delta) * lerpFactor + self._delta
-        elseif self._delta and not self.SlowDown then
-            gizmo:RegetStartHit()
-            delta = (delta - self._delta) * 0.1 + self._delta
-            self._accuDelta = (self._accuDelta or Vec3.new{1,1,1}) * delta
-            self._delta = nil
-            return
-        end
-
-        if self._accuDelta then
-            delta = delta * self._accuDelta
-        end
 
         local cameraMatrix = nil
         if gizmo.Space == "View" then
@@ -553,25 +505,7 @@ function TransformEditor:RegisterEvents()
     end
 
     self.Gizmo.OnDragRotate = function(gizmo, delta)
-        delta.Angle = delta.Angle * self.Step
-
-        local deltaAngle = delta.Angle
-        if self.SlowDown and not self._delta then
-            self._delta = deltaAngle
-        elseif self.SlowDown and self._delta then
-            deltaAngle = (deltaAngle - self._delta) * lerpFactor + self._delta
-        elseif self._delta and not self.SlowDown then
-            gizmo:RegetStartHit()
-            deltaAngle = (deltaAngle - self._delta) * lerpFactor + self._delta
-            self._accuDelta = (self._accuDelta or 0) + deltaAngle
-            self._delta = nil
-            return
-        end
-
-        if self._accuDelta then
-            deltaAngle = deltaAngle + self._accuDelta
-        end
-
+        local deltaAngle = delta.Angle or 0
         local transforms = {}
         for _, guid in pairs(NormalizeGuidList(self.Target) or {}) do
             local newTransform = {}
