@@ -183,17 +183,6 @@ function Trace(...)
     end
 end
 
-local lastTime = 0
-local interval = 1000
-
-function TimedDebug(...)
-    if Ext.Timer.MonotonicTime() - lastTime > interval then
-        lastTime = Ext.Timer.MonotonicTime()
-        Debug(...)
-    end
-end
-
-
 --- Shortcut
 --- @param text string
 --- @param startColor string|table

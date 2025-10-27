@@ -245,7 +245,6 @@ function SceneMenu:SetupLeaf(sel, key, node)
         if not TableContains(self.selectedGuids, propData.Guid) then
             table.insert(self.selectedGuids, propData.Guid)
         end
-        Debug(self.selectedGuids)
         self:SetupSelectablePopup()
     end
 

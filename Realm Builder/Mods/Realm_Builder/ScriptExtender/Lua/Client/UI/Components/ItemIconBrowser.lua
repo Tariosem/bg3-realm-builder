@@ -37,7 +37,7 @@ end
 function ItemIconBrowser:RenderIcon(entry, cell)
     if entry.Uuid == nil then
         Warning("[ItemIconBrowser] Icon with UUID: " .. tostring(entry.Uuid) .. " is missing Uuid field.")
-        Debug(entry)
+        Warning(entry)
         return nil
     end
 

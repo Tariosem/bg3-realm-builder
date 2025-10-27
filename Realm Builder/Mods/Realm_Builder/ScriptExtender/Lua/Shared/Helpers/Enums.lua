@@ -16,37 +16,48 @@ local GuiColorCategory = {
     TextLink = "Color.Text",
     TextSelectedBg = "Color.Text",
 
-    WindowBg = "Color.Window",
-    ChildBg = "Color.Window",
-    PopupBg = "Color.Window",
-    ModalWindowDimBg = "Color.Window",
-    TitleBg = "Color.Window",
-    TitleBgActive = "Color.Window",
-    TitleBgCollapsed = "Color.Window",
+    WindowBg = "Color.Background",
+    ChildBg = "Color.Background",
+    PopupBg = "Color.Background",
+    ModalWindowDimBg = "Color.Background",
+    TitleBg = "Color.Background",
+    TitleBgActive = "Color.Background",
+    TitleBgCollapsed = "Color.Background",
 
     Border = "Color.Border",
     BorderShadow = "Color.Border",
-    TableBorderLight = "Color.Border",
-    TableBorderStrong = "Color.Border",
-    TableHeaderBg = "Color.Border",
 
-    Button = "Color.Widget",
-    ButtonHovered = "Color.Widget",
-    ButtonActive = "Color.Widget",
-    FrameBg = "Color.Widget",
-    FrameBgHovered = "Color.Widget",
-    FrameBgActive = "Color.Widget",
-    SliderGrab = "Color.Widget",
-    SliderGrabActive = "Color.Widget",
-    ScrollbarBg = "Color.Widget",
-    ScrollbarGrab = "Color.Widget",
-    ScrollbarGrabHovered = "Color.Widget",
-    ScrollbarGrabActive = "Color.Widget",
-    ResizeGrip = "Color.Widget",
-    ResizeGripHovered = "Color.Widget",
-    ResizeGripActive = "Color.Widget",
-    CheckMark = "Color.Widget",
+    TableRowBg = "Color.Table",
+    TableRowBgAlt = "Color.Table",
+    TableBorderLight = "Color.Table",
+    TableBorderStrong = "Color.Table",
+    TableHeaderBg = "Color.Table",
 
+
+    Button = "Color.Button",
+    ButtonHovered = "Color.Button",
+    ButtonActive = "Color.Button",
+    CheckMark = "Color.Button",
+    MenuBarBg = "Color.Button",
+
+    FrameBg = "Color.Frame",
+    FrameBgHovered = "Color.Frame",
+    FrameBgActive = "Color.Frame",
+    Header = "Color.Frame",
+    HeaderHovered = "Color.Frame",
+    HeaderActive = "Color.Frame",
+    
+    SliderGrab = "Color.Slider",
+    SliderGrabActive = "Color.Slider",
+    ScrollbarBg = "Color.Slider",
+    ScrollbarGrab = "Color.Slider",
+    ScrollbarGrabHovered = "Color.Slider",
+    ScrollbarGrabActive = "Color.Slider",
+
+    ResizeGrip = "Color.Window",
+    ResizeGripHovered = "Color.Window",
+    ResizeGripActive = "Color.Window",
+    
     Tab = "Color.Tab",
     TabHovered = "Color.Tab",
     TabActive = "Color.Tab",
@@ -58,7 +69,6 @@ local GuiColorCategory = {
     NavWindowingHighlight = "Color.Nav",
     NavWindowingDimBg = "Color.Nav",
 
-    MenuBarBg = "Color.Menu",
     Separator = "Color.Separator",
     SeparatorHovered = "Color.Separator",
     SeparatorActive = "Color.Separator",
@@ -67,9 +77,6 @@ local GuiColorCategory = {
     PlotLinesHovered = "Color.Plot",
     PlotHistogram = "Color.Plot",
     PlotHistogramHovered = "Color.Plot",
-
-    TableRowBg = "Color.Table",
-    TableRowBgAlt = "Color.Table",
 }
 
 --- @enum GuiStyleVarCategory
@@ -86,6 +93,7 @@ local GuiStyleVarCategory = {
 
     ChildRounding = "Var.Child",
     ChildBorderSize = "Var.Child",
+
     PopupRounding = "Var.Popup",
     PopupBorderSize = "Var.Popup",
 
@@ -120,7 +128,7 @@ local GuiStyleVarCategory = {
     TableAngledHeadersAngle = "Var.Table",
 }
 
---- @alias GuiColorCategories "Color.Text"|"Color.Window"|"Color.Border"|"Color.Widget"|"Color.Tab"|"Color.Nav"|"Color.Menu"|"Color.Separator"|"Color.Plot"|"Color.Table"|"Color.Other"
+--- @alias GuiColorCategories "Color.Text"|"Color.Background"|"Color.Border"|"Color.Table"|"Color.Button"|"Color.Frame"|"Color.Slider"|"Color.Window"|"Color.Nav"|"Color.Tab"|"Color.Separator"|"Color.Plot"|"Color.Other"
 --- @alias GuiStyleVarCategories "Var.Global"|"Var.Window"|"Var.Child"|"Var.Popup"|"Var.Frame"|"Var.Scrollbar"|"Var.Tab"|"Var.Separator"|"Var.Layout"|"Var.Align"|"Var.Table"|"Var.Other"
 
 ---@return table <GuiColor, GuiColorCategory>[]

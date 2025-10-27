@@ -88,7 +88,7 @@ function RealmPaths.GetCCAModCacheRefPath()
     return ccaModCacheRefPath
 end
 
-function RealmPaths.GetCCAMaterialPresetsFile(presetType, modName)
+function RealmPaths.GetCCAMaterialPresetsFile(presetType, modName, customName)
     local ccaMatPresetPath = {
         CharacterCreationEyeColors = ccaEyeColorPath,
         CharacterCreationHairColors = ccaHairColorPath,
@@ -102,7 +102,7 @@ function RealmPaths.GetCCAMaterialPresetsFile(presetType, modName)
 
     local path = string.format(ccaMatPresetPath[presetType], modName, modName, modName)
 
-    local filePath = path .. "_merged.lsx"
+    local filePath = path .. "_" .. (customName or "merged") .. ".lsx"
 
     return filePath
 end

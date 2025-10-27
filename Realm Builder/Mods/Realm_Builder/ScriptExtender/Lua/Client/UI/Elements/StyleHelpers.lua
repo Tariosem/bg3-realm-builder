@@ -113,16 +113,24 @@ function AddSliderStepButton(parent, label, step, slider, direction)
     end
 
     button.OnRightClick = function()
-        local s = button.UserData.Slider
+        local s = button.UserData.Slider --[[@as ExtuiSliderInt|ExtuiSliderScalar]]
         if not s then
             return
         end
         
         local dir = direction == "<" and "<" or ">"
-        local stepMultiplier = dir == "<" and 0.1 or 10
-        local stepValue = s.UserData and s.UserData.Step or (step or 1)
-        stepValue = stepValue * stepMultiplier
-        s.UserData.Step = stepValue
+        local factor = 10.0
+        if dir == ">" then
+            local newMin = Vec4.new(s.Min) * factor
+            local newMax = Vec4.new(s.Max) * factor
+            s.Min = newMin
+            s.Max = newMax
+        else
+            local newMin = Vec4.new(s.Min) / factor
+            local newMax = Vec4.new(s.Max) / factor
+            s.Min = newMin
+            s.Max = newMax
+        end
     end
 
     return button
@@ -273,12 +281,6 @@ function WrapTextTokens(tokens, wrapPos)
             end
         end
     end
-
-    Debug("Before Wrap:")
-    _D(tokens)
-
-    Debug("After Wrap:")
-    _D(wrapped)
 
     return wrapped
 end

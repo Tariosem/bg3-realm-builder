@@ -498,7 +498,6 @@ function Gizmo:GetDelta(ray)
         end
 
         delta = scaleVec
-        GizmoVisualizer.ScaleMultiplier = scaleVec
     end
         
     return delta
@@ -601,6 +600,7 @@ function Gizmo:SetupDragging()
         elseif self.Mode == "Scale" then
             delta = delta --[[@as Vec3]]
             self:OnDragScale(delta)
+            GizmoVisualizer.ScaleMultiplier = delta
         end
 
         self:Visualize()

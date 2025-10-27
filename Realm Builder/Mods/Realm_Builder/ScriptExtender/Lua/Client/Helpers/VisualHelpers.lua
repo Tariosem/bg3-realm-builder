@@ -4,7 +4,7 @@ VisualHelpers = VisualHelpers or {}
 --- @return Visual?
 function VisualHelpers.GetEntityVisual(handle)
     if type(handle) == "string" then
-        if IsPartyMember(handle) then
+        if CIsCharacter(handle) then
             local dummy = GetDummyByUuid(handle)
             if dummy then
                 handle = dummy

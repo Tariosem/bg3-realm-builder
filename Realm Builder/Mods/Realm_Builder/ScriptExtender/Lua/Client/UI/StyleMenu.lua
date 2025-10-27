@@ -136,15 +136,17 @@ function StyleMenu:RenderColorPickers()
 
     local colorOrder = {
         "Color.Text",
-        "Color.Window",
+        "Color.Background",
         "Color.Border",
-        "Color.Widget",
-        "Color.Tab",
+        "Color.Table",
+        "Color.Button",
+        "Color.Frame",
+        "Color.Slider",
+        "Color.Window",
         "Color.Nav",
-        "Color.Menu",
+        "Color.Tab",
         "Color.Separator",
         "Color.Plot",
-        "Color.Table",
         "Color.Other"
     }
 
