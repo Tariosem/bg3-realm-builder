@@ -222,6 +222,13 @@ end
 --- @field StoryItem boolean
 --- @field Rarity string
 
+--- @class RB_Character
+--- @field Uuid string
+--- @field TemplateId string
+--- @field TemplateName string
+--- @field DisplayName string
+--- @field Icon string
+
 --- @param template GameObjectTemplate
 --- @return RB_Item?
 function ItemManager:PopulateItem(template, statsObj)
@@ -293,77 +300,6 @@ function ItemManager:PopulateItem(template, statsObj)
 
     return entry
 end
-
---[[function ItemManager:CategorizeItem(entry, statsObj, templateName)
-    entry.ModId = statsObj.ModId
-    local tags = entry.Tags
-    local modInfo = self.modCache[entry.ModId] or Ext.Mod.GetMod(entry.ModId)
-    if modInfo then
-        entry.Mod = modInfo.Info.Name or ""
-        entry.ModAuthor = modInfo.Info.Author or "Unknown"
-        entry.ModVersion = modInfo.Info.ModVersion or ""
-        if VANILLA_MODULES[entry.Mod] then
-            entry.ModAuthor = "Larian"
-        end
-    end
-
-    entry.StatsName = statsObj.Name
-    if statsObj.Rarity and statsObj.Rarity ~= "" then
-        entry.Rarity = statsObj.Rarity
-    end
-
-    if statsObj.InventoryTab and statsObj.InventoryTab ~= "" then
-        
-        local tab = statsObj.InventoryTab
-        if tab == "Equipment" then
-            if EQUIPMENTS_HAS_ARMORTYPE[statsObj.Slot] and statsObj.ArmorType ~= "None" then
-                tags[#tags + 1] = statsObj.ArmorType
-            end
-            if statsObj["Proficiency Group"] and next(statsObj["Proficiency Group"]) ~= nil then
-                for _, prof in pairs(statsObj["Proficiency Group"]) do
-                    if prof == "MartialWeapons" or prof == "SimpleWeapons" then
-                    else
-                        tags[#tags + 1] = prof
-                    end
-                end
-                if EQUIPMENTS_HAS_ARMORTYPE[statsObj.Slot] then
-                    tags[#tags + 1] = statsObj.Slot
-                end
-            else
-                tags[#tags + 1] = statsObj.Slot
-            end
-        elseif tab == "Consumable" then
-            local useType = statsObj.ItemUseType
-            if useType == "Consumable" then
-                tags[#tags + 1] = "Drink"
-            elseif useType == "None" then
-                tags[#tags + 1] = "Food"
-            else
-                tags[#tags + 1] = useType
-            end
-        elseif tab == "Magical" then
-            local objCat = statsObj.ObjectCategory
-            if objCat:sub(1, 11) == "MagicScroll" then
-                tags[#tags + 1] = "Scroll"
-            elseif objCat:sub(1, 5) == "Arrow" then
-                tags[#tags + 1] = "Arrow"
-            elseif objCat == "Throwable" then
-                tags[#tags + 1] = "Grenade"
-            elseif objCat == "Poison" or templateName:sub(1, 11) == "CONS_Poison" or templateName:sub(1, 10) == "GRN_Poison" then
-                tags[#tags + 1] = "Poison"
-            elseif objCat == "" then
-                tags[#tags + 1] = tab
-            else
-                tags[#tags + 1] = objCat
-            end
-        elseif statsObj.Name:sub(1, 4) == "ALCH" or templateName:sub(1, 9) == "CONS_Herb" then
-            tags[#tags + 1] = "Alchemy"
-        else
-            tags[#tags + 1] = tab
-        end
-    end
-    self.modCache[entry.ModId] = modInfo
-end]]
 
 local function categorize_equipment(statsObj, templateName, tags)
     if EQUIPMENTS_HAS_ARMORTYPE[statsObj.Slot] and statsObj.ArmorType ~= "None" then
@@ -543,7 +479,7 @@ function ItemManager:PopulateArmor(statsObj, statsId)
     return baseEntry
 end
 
-function ItemManager:PopulateAllItems()
+function ItemManager:PopulateAllTemplates()
     if self.populated then return -1 end
     local cnt = 0
 
@@ -580,6 +516,9 @@ function ItemManager:PopulateAllItems()
             self.TemplateNameToUuid[object.Name] = object.Id
             cnt = cnt + 1
             ::continue::
+        elseif object.TemplateType == "character" then
+            --- @diagnostic disable-next-line
+            RB_CharacterManager:PopulateCharacter(object) 
         end
     end
 

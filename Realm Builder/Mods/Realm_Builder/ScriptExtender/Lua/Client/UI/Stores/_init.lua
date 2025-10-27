@@ -5,6 +5,7 @@ RequireFiles("Client/UI/Stores/", {
     "NearbyMap",
     "StatsData",
     "ManagerBase",
+    "CharacterManager",
     "ItemManager",
     "MultiEffectManager",
 })

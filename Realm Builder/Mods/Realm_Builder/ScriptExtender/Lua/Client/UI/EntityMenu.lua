@@ -217,7 +217,8 @@ function SceneMenu:RenderSideBar()
         if oriName == newName then return end
 
         if isEntity then
-            EntityStore:RegisterDisplayName(newName, key)
+            local originalDisplayName = isEntity.DisplayName
+            EntityStore:RegisterDisplayName(newName, key, originalDisplayName)
             if self.entityTabs[key] then
                 local tab = self.entityTabs[key]
                 if tab.isVisible then

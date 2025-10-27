@@ -144,11 +144,10 @@ function EntityStore:AddEntity(guid, data)
     EntityDatas[guid] = data
 
     self:RegisterDisplayName(GetDisplayNameForTemplateId(data.TemplateId), guid)
-
+        
     if not self.Tree:Find(guid) then
         self.Tree:AddLeaf(guid, "end")
     end
-
 
     if not EntityDatas[guid].Tags then
         EntityDatas[guid].Tags = {}
@@ -254,11 +253,6 @@ function EntityStore:RegisterDisplayName(displayName, guid, discardName)
         return
     end
 
-    if not discardName then
-        local oriName = EntityDatas[guid] and EntityDatas[guid].DisplayName
-        discardName = oriName
-    end
-
     self:RemoveDisplayName(discardName)
 
     if entityNameBlacklist[displayName] then
@@ -281,6 +275,8 @@ function EntityStore:RegisterDisplayName(displayName, guid, discardName)
         Warning("[Realm Builder] RegisterDisplayName called without guid for name: " .. returnName)
         return
     end
+
+    Debug(GuidToDisplayName)
 
     return returnName
 end

@@ -56,33 +56,23 @@ function Menu:Render()
 
     Timer:Ticks(2, function()
         self.presetMenu = PresetMenu:Add(self.tabBar)
-        --Debug("Finished adding PresetMenu tab, it takes" .. Ext.Timer.MonotonicTime() - now .. "ms")
-        --now = Ext.Timer.MonotonicTime()
     end)
 
     Timer:Ticks(3, function()
         self.entityMenu = SceneMenu:Add(self.tabBar)
-        --Debug("Finished adding PropsMenu tab, it takes" .. Ext.Timer.MonotonicTime() - now .. "ms")
-        --now = Ext.Timer.MonotonicTime()
     end)
 
     Timer:Ticks(4, function()
         self.effectsMenu = EffectsMenu:Add(self.tabBar)
-        --Debug("Finished adding EffectsMenu tab, it takes" .. Ext.Timer.MonotonicTime() - now .. "ms")
-        --now = Ext.Timer.MonotonicTime()
     end)
 
 
     Timer:Ticks(5, function()
         self.editorMenu = TransformToolbar:Add(self.tabBar)
-        --Debug("Finished adding TransformToolbar tab, it takes" .. Ext.Timer.MonotonicTime() - now .. "ms")
-        --now = Ext.Timer.MonotonicTime()
     end)
 
     Timer:Ticks(6, function()
         KeybindMenu:Render(self.tabBar)
-        --Debug("Finished adding KeybindMenu tab, it takes" .. Ext.Timer.MonotonicTime() - now .. "ms")
-        --now = Ext.Timer.MonotonicTime()
     end)
 
     Timer:Ticks(7, function()
@@ -91,6 +81,50 @@ function Menu:Render()
 
     Timer:Ticks(8, function()
         self.effectBrowser = EffectIconBrowser.new(RB_MultiEffectManager, "Effect - Browser")
+    end)
+
+    Timer:Ticks(9, function()
+        self.characterBrowser = CharacterBrowser.new(RB_CharacterManager, "Character - Browser")
+        --self.characterBrowser:Render()
+    end)
+
+    Timer:Ticks(9, function()
+        local tab = self.tabBar:AddTabItem("Materials")
+        local childWin = tab:AddChildWindow("Material Presets Workshop")
+        local window = RegisterWindow("generic", "Material Presets Workshop", "Material Presets Workshop", MaterialPresetsMenu)
+        local render = MaterialPresetsMenu:RenderCustomMaterialPresets(childWin)
+        local isWindow = false
+
+        local tabDetachFunc
+        window.Closeable = true
+        window.Open = false
+        window.OnClose = function ()
+            if not isWindow then return end
+
+            childWin.OnRightClick = tabDetachFunc
+            isWindow = false
+
+            
+
+            DestroyAllChilds(childWin)
+            DestroyAllChilds(window)
+            render(childWin)
+        end
+
+        tabDetachFunc = function ()
+            if isWindow then return end
+            childWin.OnRightClick = tabDetachFunc
+            window.Open = true
+            isWindow = true
+
+            DestroyAllChilds(childWin)
+            DestroyAllChilds(window)
+            MaterialPresetsMenu:RenderCCPresetsLib(childWin)
+            render(window)
+        end
+
+        childWin.OnRightClick = tabDetachFunc
+        
     end)
 
     --print(string.format("[Realm Builder] EffectsMenu initialized in %d ms", Ext.Timer.MonotonicTime() - now))

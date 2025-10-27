@@ -1,3 +1,5 @@
+--- pure spaghetti code ahead, beware ---
+
 --- @class IconBrowser
 IconBrowser = _Class("IconBrowser")
 

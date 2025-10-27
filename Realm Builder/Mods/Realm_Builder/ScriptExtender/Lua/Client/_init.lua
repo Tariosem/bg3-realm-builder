@@ -90,9 +90,8 @@ if GLOBAL_DEBUG_WINDOW then
 
 end
 
-
+RB_CharacterManager = CharacterManager.new()
 RB_ItemManager = ItemManager.new()
-
 RB_MultiEffectManager = MultiEffectManager.new()
 
 --- @param uuid GUIDSTRING
@@ -119,7 +118,7 @@ end
 
 local function Realm_Builder_Population()
     local now = Ext.Timer:MonotonicTime()
-    local itemsCnt = RB_ItemManager:PopulateAllItems()
+    local itemsCnt = RB_ItemManager:PopulateAllTemplates()
     local itemsFinished = Ext.Timer:MonotonicTime()
     local effectsCnt = RB_MultiEffectManager:PopulateAllEffects()
     local effectsFinished = Ext.Timer:MonotonicTime()

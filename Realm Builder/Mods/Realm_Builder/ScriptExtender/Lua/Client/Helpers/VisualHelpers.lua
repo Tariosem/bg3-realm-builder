@@ -26,9 +26,9 @@ function VisualHelpers.GetEntityVisual(handle)
 end
 
 --- @param handle any
---- @return nil
---- @return nil
---- @return nil
+--- @return number?
+--- @return number?
+--- @return number?
 function VisualHelpers.GetVisualPosition(handle)
     local entity = handle
     local visual = VisualHelpers.GetEntityVisual(entity)

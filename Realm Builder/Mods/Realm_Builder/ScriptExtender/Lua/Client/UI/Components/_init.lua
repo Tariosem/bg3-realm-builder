@@ -6,6 +6,7 @@ RequireFiles("Client/UI/Components/", {
     "IconBrowser/_init",
     "ItemIconBrowser",
     "EffectIconBrowser",
+    "CharacterBrowser",
     "EntityTab",
     "EffectTab",
     "CustomEffectTab",

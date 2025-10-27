@@ -196,18 +196,15 @@ function KeybindMenu:RenderEvent(row, moduleName, eventName, module, registry)
         keyButton.Disabled = true
         module:RebindByInput(eventName, function(newKeybind, conflictModule, conflictEvent)
             if not newKeybind then
-                local conflictText = nil
                 if conflictModule and conflictEvent then
-                    keyButton.Label = "Invalid ! "
-                    conflictText = keyCell:AddText("Conflict with " .. conflictModule .. " : " .. conflictEvent)
+                    keyButton.Label = "Conflict with " .. conflictModule .. " : " .. conflictEvent
                 else
-                    keyButton.Label = "Invalid ! "
-                    conflictText = keyCell:AddText("Invalid keybind")
+                    keyButton.Label = "Invalid Key !"
                 end
-                conflictText:SetColor("Text", HexToRGBA("FFFF2424"))
+                keyButton:SetColor("Text", HexToRGBA("FFFF2424"))
                 Timer:After(5000, function()
-                    conflictText:Destroy()
                     keyButton.Disabled = false
+                    keyButton:SetColor("Text", HexToRGBA("FFFFFFFF"))
                     keyButton.Label = getPresentation(module:GetKeyByEvent(eventName))
                 end)
                 return

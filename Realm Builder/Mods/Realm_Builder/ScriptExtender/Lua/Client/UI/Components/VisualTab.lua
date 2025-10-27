@@ -355,20 +355,9 @@ function VisualTab:RenderAttachmentsSection()
     
     local visual = VisualHelpers.GetEntityVisual(self.guid)
 
-    if not entity then
-        Debug("VisualTab:RenderAttachmentsSection - Entity not found for GUID " .. tostring(self.guid))
-        return
-    end
+    if not visual then return end
 
-    if not visual then
-        Debug("VisualTab:RenderAttachmentsSection - Visual not found for GUID " .. tostring(self.guid))
-        return
-    end
-
-    if not visual.Attachments or #visual.Attachments == 0 then
-        Debug("VisualTab:RenderAttachmentsSection - No attachments found for GUID " .. tostring(self.guid))
-        return
-    end
+    if not visual.Attachments or #visual.Attachments == 0 then return end
 
     if self.attachmentsHeader then
         self.attachmentsHeader:Destroy()
@@ -424,26 +413,6 @@ function VisualTab:RenderAttachmentsSection()
 
     end
 
-    local keyWords = {
-        body = GetLoca("Body"),
-        _head_ = GetLoca("Head"),
-        horn = GetLoca("Horn"),
-        tail = GetLoca("Tail"),
-        hair = GetLoca("Hair"),
-        beard = GetLoca("Beard"),
-        genital = GetLoca("Genital"),
-    }
-
-    local keyWordsArr = {
-        "body",
-        "_head_",
-        "horn",
-        "tail",
-        "genital",
-        "hair",
-        "beard",
-    }
-
     local attachments = visual.Attachments or {}
 
     for attIndex,attach in ipairs(attachments) do
@@ -452,16 +421,7 @@ function VisualTab:RenderAttachmentsSection()
         local source = attach.Visual.VisualResource and attach.Visual.VisualResource.SourceFile or "Unknown Model"
         local gr2FileName = GetLastPath(source)
 
-        local lowerGr2FileName = string.lower(gr2FileName)
         local displayName = gr2FileName
-
-        for _, keyword in ipairs(keyWordsArr) do
-            if lowerGr2FileName:find(keyword) then
-                displayName = keyWords[keyword] .. " (" .. gr2FileName .. ")"
-                break
-            end
-        end
-        
 
         local attachNode = self.attachmentsHeader:AddTree(displayName .. "##" .. tostring(attIndex))
 
@@ -550,7 +510,6 @@ function VisualTab:RenderAttachmentsSection()
             end)
 
         end
-
 
         ::continue::
     end

@@ -723,6 +723,9 @@ function GetPartyMemberPosition(uuid)
             local entity = ClientDummyEntity[uuid]
             return VisualHelpers.GetVisualPosition(entity)
         end
+        if VisualHelpers.GetEntityVisual(uuid) then
+            return VisualHelpers.GetVisualPosition(uuid)
+        end
     end
 
     return GetEntityPosition(UuidToHandle(uuid))
