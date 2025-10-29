@@ -51,7 +51,7 @@ end
 
 function RGBAToHex(r, g, b, a)
     local function toHex(n)
-        return string.format("%02X", math.floor(Clamp(n * 255, 0, 255)))
+        return string.format("%02X", math.floor(Ext.Math.Clamp(n * 255, 0, 255)))
     end
 
     if a then
@@ -163,9 +163,9 @@ end
 function AdjustColor(color, dl, ds, da)
     local r, g, b, a = color[1], color[2], color[3], color[4] or 1
     local h, s, l = RGBToHSL(r, g, b)
-    l = Clamp(l + (dl or 0), 0, 1)
-    s = Clamp(s + (ds or 0), 0, 1)
-    a = Clamp(a + (da or 0), 0, 1)
+    l = Ext.Math.Clamp(l + (dl or 0), 0, 1)
+    s = Ext.Math.Clamp(s + (ds or 0), 0, 1)
+    a = Ext.Math.Clamp(a + (da or 0), 0, 1)
     local nr, ng, nb = HSLToRGB(h, s, l)
     return { nr, ng, nb, a }
 end
@@ -180,7 +180,7 @@ end
 ---@param t number
 ---@return vec4
 function BlendColors(color1, color2, t)
-    t = Clamp(t, 0, 1)
+    t = Ext.Math.Clamp(t, 0, 1)
     local r = color1[1] * (1 - t) + color2[1] * t
     local g = color1[2] * (1 - t) + color2[2] * t
     local b = color1[3] * (1 - t) + color2[3] * t

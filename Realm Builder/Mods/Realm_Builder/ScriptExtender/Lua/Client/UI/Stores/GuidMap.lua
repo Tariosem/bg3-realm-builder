@@ -46,7 +46,6 @@ Ext.Entity.OnCreate("Visual", function (entity)
 
                     local visualTab = VisualTab.FetchByGuid(uuid)
                     if visualTab then
-                        visualTab:Refresh()
                         visualTab:ReapplyCurrentChanges()
                     end
                 end)
@@ -77,7 +76,6 @@ Ext.Entity.OnCreate("ClientPaperdoll", function (entity)
             local visualTab = VisualTab.FetchByGuid(ownerGuid)
             if visualTab then
                 Timer:Ticks(5, function()
-                    visualTab:Refresh()
                     visualTab:ReapplyCurrentChanges()
                 end)
             end
@@ -109,7 +107,7 @@ Ext.Entity.OnCreate("ClientCCDummyDefinition", function(entity)
                 clientVisualDummies[uuid] = entity.ClientCCDummyDefinition.Dummy
                 local visualTab = VisualTab.FetchByGuid(uuid)
                 if visualTab then
-                    visualTab:Refresh()
+                    visualTab:ReapplyCurrentChanges()
                 end
                 break
             end

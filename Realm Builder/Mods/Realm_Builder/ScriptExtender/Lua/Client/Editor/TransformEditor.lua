@@ -327,9 +327,9 @@ function TransformEditor:RegisterEvents()
                     NetChannel.SetTransform:RequestToServer({ Guid = pointGuid, Transforms = {[pointGuid] = newPointTransform} }, function()
                         for _,axis in pairs({"X","Y","Z"}) do
                             if gizmo.SelectedAxis and gizmo.SelectedAxis[axis] then
-                                GizmoVisualizer.HighLightGizmoAxis(axis, pointGuid)
+                                gizmo.Visualizer:HighLightGizmoAxis(axis, pointGuid)
                             else
-                                GizmoVisualizer.HideGizmoAxis(axis, pointGuid)
+                                gizmo.Visualizer:HideGizmoAxis(axis, pointGuid)
                             end
                         end
                     end)
@@ -350,9 +350,9 @@ function TransformEditor:RegisterEvents()
                                 if not VisualHelpers.GetEntityVisual(viz) then tryCnt = tryCnt + 1 return end
                                 for _,axis in pairs({"X","Y","Z"}) do
                                     if gizmo.SelectedAxis and gizmo.SelectedAxis[axis] then
-                                        GizmoVisualizer.HighLightGizmoAxis(axis, viz)
+                                        gizmo.Visualizer:HighLightGizmoAxis(axis, viz)
                                     else
-                                        GizmoVisualizer.HideGizmoAxis(axis, viz)
+                                        gizmo.Visualizer:HideGizmoAxis(axis, viz)
                                     end
                                 end
                                 return UNSUBSCRIBE_SYMBOL
@@ -374,10 +374,10 @@ function TransformEditor:RegisterEvents()
         local color = nil
         local selectedAxis = nil
         for axis,_ in pairs(gizmo.SelectedAxis) do
-            color = GizmoVisualizer.AxisLineColor[axis] or {0.9, 0.9, 0.9, 0.8}
+            color = gizmo.Visualizer.AxisLineColor[axis] or {0.9, 0.9, 0.9, 0.8}
             selectedAxis = axis
             if self.LineVisualizations and #self.LineVisualizations > 0 then
-                GizmoVisualizer.SetLineFxColor(self.LineVisualizations[1], color)
+                gizmo.Visualizer:SetLineFxColor(self.LineVisualizations[1], color)
             end
         end
         for cnt,guid in pairs(NormalizeGuidList(self.Target) or {}) do
@@ -387,14 +387,14 @@ function TransformEditor:RegisterEvents()
             local ray = Ray.new(transform.Translate, rot:Rotate(vector))
             if self.LineVisualizations[cnt] then
                 local lineGuid = self.LineVisualizations[cnt]
-                GizmoVisualizer.SetLineFxColor(lineGuid, color)
+                gizmo.Visualizer:SetLineFxColor(lineGuid, color)
                 local newLineTransform = {
                     Translate = ray:At(-100),
                     RotationQuat = DirectionToQuat(ray.Direction * -1),
                 }
                 NetChannel.SetTransform:RequestToServer({ Guid = lineGuid, Transforms = {[lineGuid] = newLineTransform} }, function (response)
                     Timer:Ticks(10, function (timerID)
-                        GizmoVisualizer.SetLineLength(lineGuid, 20)
+                        gizmo.Visualizer:SetLineLength(lineGuid, 20)
                     end)
                 end)
             else
@@ -413,7 +413,7 @@ function TransformEditor:RegisterEvents()
                                 return UNSUBSCRIBE_SYMBOL
                             end
                             if not VisualHelpers.GetEntityVisual(viz) then tryCnt = tryCnt + 1 return end
-                            GizmoVisualizer.SetLineFxColor(viz, color)
+                            gizmo.Visualizer:SetLineFxColor(viz, color)
                             return UNSUBSCRIBE_SYMBOL
                         end)
                         table.insert(self.LineVisualizations, viz)
@@ -546,10 +546,10 @@ function TransformEditor:RegisterEvents()
 
     self.Gizmo.OnDragEnd = function(gizmo)
         for _,v in pairs(self.LineVisualizations or {}) do
-            GizmoVisualizer.SetLineLength(v, 0)
+            gizmo.Visualizer:SetLineLength(v, 0)
         end
         for _,v in pairs(self.PointVisualizations or {}) do
-            GizmoVisualizer.HideGizmo(v)
+            gizmo.Visualizer:HideGizmo(v)
         end
         local redoTransforms = {}
         local undoTransforms = DeepCopy(self.StartTransforms)

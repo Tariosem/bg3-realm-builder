@@ -336,24 +336,21 @@ function TreeList:RenderList()
         local key, depth = item.key, item.depth
         local node = self.tree:Find(key)
         if node then
+            local cell = row:AddCell()
+            local indent = depthIndent(key, cell)
+            cell.UserData = indent
             if self.tree:IsLeaf(key) then
-                local cell = row:AddCell()
-                local indent = depthIndent(key, cell)
                 local ele = self:RenderLeaf(key, indent)
                 self.leafRefs[key] = ele
                 self.nodeRefs[key] = cell
                 self.indexRefs[key] = leafCnt
                 self.indexRefsReverse[leafCnt] = key
                 leafCnt = leafCnt + 1
-                cell.UserData = ele
                 cell.Visible = false
             else
-                local cell = row:AddCell()
-                local indent = depthIndent(key, cell)
                 local ele = self:RenderTree(key, indent)
                 self.treeRefs[key] = ele
                 self.nodeRefs[key] = cell
-                cell.UserData = ele
                 cell.Visible = false
 
                 local childs = collectChilds(key)
@@ -668,9 +665,11 @@ function TreeList:SetUpTree(tree, key)
 end
 
 function TreeList:OnRenameInput(key, newName) end
+function TreeList:OnRenamingInput(key, newName) end
 
 function TreeList:SetupRenameInput(key, userLabel)
     if self.IsRenaming then return end
+    self:OnRenamingInput(key, nil) -- notify rename start
     local isLeaf = self.leafRefs[key] ~= nil
     local selec = isLeaf and self.leafRefs[key] or self.treeRefs[key]
     if not selec then return end
@@ -681,17 +680,13 @@ function TreeList:SetupRenameInput(key, userLabel)
     local refTable = isLeaf and self.leafRefs or self.treeRefs
     refTable[key] = nil
 
-    local node = self.nodeRefs[key]
+    local node = self.nodeRefs[key].UserData
 
     local input = node:AddInputText("", userLabel) --[[@type ExtuiInputText?]]
     input.IDContext = "TreeList" .. self.label .. "RenameInput"
     input.SameLine = true
 
     local function rerender()
-        if input then
-            input:Destroy()
-            input = nil
-        end
         self:RenderList()
         self.IsRenaming = false
     end

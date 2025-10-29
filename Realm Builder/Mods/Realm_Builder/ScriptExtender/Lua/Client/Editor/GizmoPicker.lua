@@ -1,4 +1,3 @@
-local PICKER_INTERSERCTION_PARAMS = {}
 local PICKER_CONSTANTS = {}
 
 PICKER_CONSTANTS.CENTER_SPHERE = {
@@ -37,8 +36,6 @@ PICKER_CONSTANTS.ROTATE_RING = {
     OuterRadius = 0.65
 }
 
-PICKER_INTERSERCTION_PARAMS = DeepCopy(PICKER_CONSTANTS)
-
 if GLOBAL_DEBUG_WINDOW then
     local header = GLOBAL_DEBUG_WINDOW:AddCollapsingHeader("Gizmo Picker Constants")
     for name,constant in pairs(PICKER_CONSTANTS) do
@@ -66,23 +63,6 @@ if GLOBAL_DEBUG_WINDOW then
     GLOBAL_DEBUG_WINDOW.Open = true
 end
 
-local function UpdateParamsByScale(scale)
-    local apply = scale
-
-    for name,constant in pairs(PICKER_INTERSERCTION_PARAMS) do
-        local base = PICKER_CONSTANTS[name]
-        for k,v in pairs(constant) do
-            if type(v) ~= "number" then 
-                for i=1,#v do
-                    constant[k][i] = base[k][i] * (apply or 1)
-                end
-            else
-                constant[k] = base[k] * (apply or 1)
-            end
-        end
-    end
-end
-
 --- @class GizmoPicker
 --- @field Gizmo Gizmo
 --- @field Position Vec3
@@ -104,15 +84,31 @@ GizmoPicker = _Class("GizmoPicker")
 
 function GizmoPicker:__init(gizmo, position, rotation)
     self.Gizmo = gizmo
+    self.Parameters = DeepCopy(PICKER_CONSTANTS)
     self.Position = position or Vec3.new({0,0,0})
     self.Rotation = rotation or Quat.new({0,0,0,1})
     self.AABB = nil
     self.Scale = 1.0
 end
 
+function GizmoPicker:UpdateParamsByScale()
+    for name,constant in pairs(self.Parameters) do
+        local base = PICKER_CONSTANTS[name]
+        for k,v in pairs(constant) do
+            if type(v) ~= "number" then
+                for i=1,#v do
+                    constant[k][i] = base[k][i] * (self.Scale or 1)
+                end
+            else
+                constant[k] = base[k] * (self.Scale or 1)
+            end
+        end
+    end
+end
+
 --- @return Vec3|nil, Quat|nil
 function GizmoPicker:GetTransform()
-    UpdateParamsByScale(self.Scale)
+    self:UpdateParamsByScale()
 
     return self.Position, self.Rotation
 end
@@ -155,7 +151,7 @@ function GizmoPicker:Hit(ray)
     local origin, rotation = self:GetTransform()
     if not origin or not rotation then Warning("GizmoPicker:Hit: No transform found") return nil end
 
-    local params = PICKER_INTERSERCTION_PARAMS
+    local params = self.Parameters
 
     -- Check AABB first
     local aabb = self.AABB or {Min=Vec3.new(-1,-1,-1), Max=Vec3.new(1,1,1)}
@@ -249,7 +245,7 @@ function GizmoPicker:HitRotationTorus(ray, origin, rotation, axes)
     local closest = nil
     local closestAxis = nil
     for axis,dir in pairs(axes) do
-        local params = PICKER_INTERSERCTION_PARAMS.ROTATE_RING
+        local params = self.Parameters.ROTATE_RING
         local hit = ray:IntersectRing(origin, dir, params.InnerRadius, params.OuterRadius)
         --local hit = ray:IntersectTorus(origin, ROTATE_TORUS.MajorRadius, ROTATE_TORUS.MinorRadius, dir) I give up
         if hit and hit.Position then

@@ -89,6 +89,7 @@ end
 
 function TransformOperator:__init(targets, space, mode, axis)
     self.Targets = NormalizeGuidList(targets)
+    self.Visualizer = GizmoVisualizer:new()
     self.AxesCache = {}
     self:InitStartTransforms()
 
@@ -139,7 +140,7 @@ function TransformOperator:Visualize()
         return
     end
 
-    local color = GizmoVisualizer.AxisLineColor[next(self.Axis)] or {1,1,0,1}
+    local color = self.Visualizer.AxisLineColor[next(self.Axis)] or {1,1,0,1}
 
     for _,guid in pairs(self.Targets) do
         local axis = self:GetAxesBySpace(guid, self.Space)[next(self.Axis)]
@@ -160,7 +161,7 @@ function TransformOperator:Visualize()
                         return UNSUBSCRIBE_SYMBOL
                     end
                     if not VisualHelpers.GetEntityVisual(viz) then tryCnt = tryCnt + 1 return end
-                    GizmoVisualizer.SetLineFxColor(viz, color)
+                    self.Visualizer:SetLineFxColor(viz, color)
                     return UNSUBSCRIBE_SYMBOL
                 end)
                 table.insert(self.Visualizations, viz)
@@ -177,7 +178,7 @@ function TransformOperator:ChangeVisualization()
         local guid = self.Targets[cnt]
         cnt = cnt - 1
         table.insert(visualizations, viz)
-        GizmoVisualizer.SetLineFxColor(viz, GizmoVisualizer.AxisLineColor[next(self.Axis)] or {1,1,0,1})
+        self.Visualizer:SetLineFxColor(viz, self.Visualizer.AxisLineColor[next(self.Axis)] or {1,1,0,1})
         local axis = self:GetAxesBySpace(guid, self.Space)[next(self.Axis)]
         local ray = Ray.new(self.StartTransforms[guid].Translate, axis)
         local pos = ray:At(-100)

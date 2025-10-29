@@ -1,4 +1,29 @@
-GizmoVisualizer = {
+--- @class GizmoVisualizer
+--- @field GizmoScale number
+--- @field Scale number[]
+--- @field ScaleMultiplier number[]
+--- @field DefaultColor table<string, number[]>
+--- @field HighlightColor table<string, number[]>
+--- @field HoveredColor table<string, number[]>
+--- @field AxisLineColor table<string, number[]>
+--- @field ResetToDefault fun(self: GizmoVisualizer)
+--- @field GetHighlightColor fun(self: GizmoVisualizer, axis: string): number[]
+--- @field GetHoveredColor fun(self: GizmoVisualizer, axis: string): number[]
+--- @field GetDefaultColor fun(self: GizmoVisualizer, axis: string): number[]
+--- @field ScaleGizmo fun(self: GizmoVisualizer, axis: string, renderable: RenderableObject[]?)
+--- @field HideGizmoAxis fun(self: GizmoVisualizer, axis: string, guid: GUIDSTRING)
+--- @field HideGizmo fun(self: GizmoVisualizer, guid: GUIDSTRING)
+--- @field HighLightGizmoAxis fun(self: GizmoVisualizer, axis: string, guid: GUIDSTRING)
+--- @field HoverGizmoAxis fun(self: GizmoVisualizer, axis: string, guid: GUIDSTRING)
+--- @field ResetGizmoAxis fun(self: GizmoVisualizer, axis: string, guid: GUIDSTRING)
+--- @field VisualizeRotatePointer fun(self: GizmoVisualizer, guid: GUIDSTRING, axis: string)
+--- @field UpdateScale fun(self: GizmoVisualizer, guid: GUIDSTRING): number
+--- @field SetLineFxColor fun(self: GizmoVisualizer, guid: GUIDSTRING, color: number[])
+--- @field SetLineLength fun(self: GizmoVisualizer, guid: GUIDSTRING, length: number, width: number?)
+--- @field new fun(): GizmoVisualizer
+GizmoVisualizer = _Class("GizmoVisualizer")
+
+local GIZMO_VISUALIZER_CONFIG = {
     GizmoScale = 0.1,
     Scale = {
         1.0,
@@ -26,18 +51,38 @@ GizmoVisualizer = {
         Z = HexToRGBA("FF3333FF"),
     },
 }
-GizmoVisualizer.AxisLineColor = GizmoVisualizer.HoveredColor
+GIZMO_VISUALIZER_CONFIG.AxisLineColor = DeepCopy(GIZMO_VISUALIZER_CONFIG.HoveredColor)
 
-local function GetHighlightColor(axis)
-    return GizmoVisualizer.HighlightColor[axis] or {0.9, 0.9, 0.9, 0.8}
+function GizmoVisualizer:__init()
+    self.GizmoScale = 0.1
+    self.Scale = {1.0, 1.0, 1.0}
+    self.ScaleMultiplier = {1.0, 1.0, 1.0}
+    self.DefaultColor = DeepCopy(GIZMO_VISUALIZER_CONFIG.DefaultColor)
+    self.HighlightColor = DeepCopy(GIZMO_VISUALIZER_CONFIG.HighlightColor)
+    self.HoveredColor = DeepCopy(GIZMO_VISUALIZER_CONFIG.HoveredColor)
+    self.AxisLineColor = DeepCopy(GIZMO_VISUALIZER_CONFIG.HoveredColor)
 end
 
-local function GetHoveredColor(axis)
-    return GizmoVisualizer.HoveredColor[axis] or {0.9, 0.9, 0.9, 0.8}
+function GizmoVisualizer:ResetToDefault()
+    self.GizmoScale = GIZMO_VISUALIZER_CONFIG.GizmoScale
+    self.Scale = DeepCopy(GIZMO_VISUALIZER_CONFIG.Scale)
+    self.ScaleMultiplier = DeepCopy(GIZMO_VISUALIZER_CONFIG.ScaleMultiplier)
+    self.DefaultColor = DeepCopy(GIZMO_VISUALIZER_CONFIG.DefaultColor)
+    self.HighlightColor = DeepCopy(GIZMO_VISUALIZER_CONFIG.HighlightColor)
+    self.HoveredColor = DeepCopy(GIZMO_VISUALIZER_CONFIG.HoveredColor)
+    self.AxisLineColor = DeepCopy(GIZMO_VISUALIZER_CONFIG.HoveredColor)
 end
 
-local function GetDefaultColor(axis)
-    return GizmoVisualizer.DefaultColor[axis] or {0.6, 0.6, 0.6, 0.6}
+function GizmoVisualizer:GetHighlightColor(axis)
+    return self.HighlightColor[axis] or {0.9, 0.9, 0.9, 0.8}
+end
+
+function GizmoVisualizer:GetHoveredColor(axis)
+    return self.HoveredColor[axis] or {0.9, 0.9, 0.9, 0.8}
+end
+
+function GizmoVisualizer:GetDefaultColor(axis)
+    return self.DefaultColor[axis] or {0.6, 0.6, 0.6, 0.6}
 end
 
 --- @param axis any
@@ -80,20 +125,20 @@ local function SetGizmoAxisTextureColorParam(axis, guid, Value)
     return corRendrable
 end
 
-function GizmoVisualizer.ScaleGizmo(axis, guid, renderable)
+function GizmoVisualizer:ScaleGizmo(axis, renderable)
     if tonumber(axis) then
         axis = IndexAxisMap[axis]
     end
     local rend = renderable
-    local scale = GizmoVisualizer.Scale[AxisIndexMap[axis]] or 1.0
+    local scale = self.Scale[AxisIndexMap[axis]] or 1.0
     local toScale = ToVec3(scale)
-    toScale[AxisIndexMap[axis]] = toScale[AxisIndexMap[axis]] * (GizmoVisualizer.ScaleMultiplier[AxisIndexMap[axis]] or 1.0)
+    toScale[AxisIndexMap[axis]] = toScale[AxisIndexMap[axis]] * (self.ScaleMultiplier[AxisIndexMap[axis]] or 1.0)
     for _,r in ipairs(rend or {}) do
         r:SetWorldScale(toScale)
     end
 end
 
-function GizmoVisualizer.HideGizmoAxis(axis, guid)
+function GizmoVisualizer:HideGizmoAxis(axis, guid)
     if tonumber(axis) then
         axis = IndexAxisMap[axis]
     end
@@ -114,47 +159,47 @@ function GizmoVisualizer.HideGizmoAxis(axis, guid)
     end
 end
 
-function GizmoVisualizer.HideGizmo(guid)
+function GizmoVisualizer:HideGizmo(guid)
     for _,axis in pairs({"X","Y","Z"}) do
-        GizmoVisualizer.HideGizmoAxis(axis, guid)
+        self:HideGizmoAxis(axis, guid)
     end
 end
 
-function GizmoVisualizer.HighLightGizmoAxis(axis, guid)
+function GizmoVisualizer:HighLightGizmoAxis(axis, guid)
     if tonumber(axis) then
         axis = IndexAxisMap[axis]
     end
-    local rend = SetGizmoAxisTextureColorParam(axis, guid, GetHighlightColor(axis))
-    GizmoVisualizer.ScaleGizmo(axis, guid, rend)
+    local rend = SetGizmoAxisTextureColorParam(axis, guid, self:GetHighlightColor(axis))
+    self:ScaleGizmo(axis, rend)
 end
 
-function GizmoVisualizer.HoverGizmoAxis(axis, guid)
+function GizmoVisualizer:HoverGizmoAxis(axis, guid)
     if tonumber(axis) then
         axis = IndexAxisMap[axis]
     end
-    local rend = SetGizmoAxisTextureColorParam(axis, guid, GetHoveredColor(axis))
-    GizmoVisualizer.ScaleGizmo(axis, guid, rend)
+    local rend = SetGizmoAxisTextureColorParam(axis, guid, self:GetHoveredColor(axis))
+    self:ScaleGizmo(axis, rend)
 end
 
-function GizmoVisualizer.ResetGizmoAxis(axis, guid)
+function GizmoVisualizer:ResetGizmoAxis(axis, guid)
     if tonumber(axis) then
         axis = IndexAxisMap[axis]
     end
-    local rend = SetGizmoAxisTextureColorParam(axis, guid, GetDefaultColor(axis))
-    GizmoVisualizer.ScaleGizmo(axis, guid, rend)
+    local rend = SetGizmoAxisTextureColorParam(axis, guid, self:GetDefaultColor(axis))
+    self:ScaleGizmo(axis, rend)
 end
 
-function GizmoVisualizer.VisualizeRotatePointer(guid, axis)
-    local rotateScale = GizmoVisualizer.Scale[AxisIndexMap[axis]] or 1.0
+function GizmoVisualizer:VisualizeRotatePointer(guid, axis)
+    local rotateScale = self.Scale[AxisIndexMap[axis]] or 1.0
     local scale = ToVec3((0.6 * rotateScale) / 0.81)
 
     for _,ax in pairs({"X", "Y", "Z"}) do
         if ax ~= axis then
-            GizmoVisualizer.HideGizmoAxis(ax, guid)
+            self:HideGizmoAxis(ax, guid)
         end
     end
 
-    local rend = SetGizmoAxisTextureColorParam(axis, guid, GetHighlightColor(axis))
+    local rend = SetGizmoAxisTextureColorParam(axis, guid, self:GetHighlightColor(axis))
     for _,r in ipairs(rend or {}) do
         r:SetWorldScale(scale)
     end
@@ -163,9 +208,9 @@ end
 
 --- update internal scale based on camera distance
 --- @param guid GUIDSTRING
-function GizmoVisualizer.UpdateScale(guid)
+function GizmoVisualizer:UpdateScale(guid)
     if not EntityExists(guid) then return 1.0 end
-    local k = GizmoVisualizer.GizmoScale or 0.1
+    local k = self.GizmoScale or 0.1
     local position = Vec3.new({CGetPosition(guid)})
     if position == Vec3.new({0,0,0}) then return 1.0 end
     local cam = GetCamera()
@@ -174,12 +219,12 @@ function GizmoVisualizer.UpdateScale(guid)
     local dist = Ext.Math.Distance(position, camPos)
     local scale = dist * k
 
-    GizmoVisualizer.Scale = {scale, scale, scale}
+    self.Scale = {scale, scale, scale}
 
     return scale
 end
 
-function GizmoVisualizer.SetLineFxColor(guid, color)
+function GizmoVisualizer:SetLineFxColor(guid, color)
     if not color or #color ~= 4 then
         --Warning("SetLineFxColor: Invalid color provided")
         return
@@ -198,7 +243,7 @@ function GizmoVisualizer.SetLineFxColor(guid, color)
     --Debug("SetLineFxColor: Set color of "..tostring(guid).." to "..table.concat(color, ", "))
 end
 
-function GizmoVisualizer.SetLineLength(guid, length, width)
+function GizmoVisualizer:SetLineLength(guid, length, width)
     if not length or type(length) ~= "number" then
         Warning("SetLineLength: Invalid length provided")
         length = 0

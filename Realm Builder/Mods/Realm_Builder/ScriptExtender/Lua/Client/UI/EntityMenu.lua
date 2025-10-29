@@ -146,8 +146,7 @@ function SceneMenu:RenderSideBar()
 
         local icon = GetIconForTemplateId(propData and propData.TemplateId)
 
-        local imageGroup = node:AddGroup("Images" .. propData.Guid) --[[@as ExtuiGroup]]
-        local image = imageGroup:AddImageButton(propData.Guid, icon, IMAGESIZE.TINY) --[[@as ExtuiImageButton]]
+        local image = node:AddImageButton(propData.Guid, icon, IMAGESIZE.TINY) --[[@as ExtuiImageButton]]
 
         local selectable = node:AddSelectable(displayName) --[[@as ExtuiSelectable]]
         self:SetupLeaf(selectable, key, node)
@@ -172,6 +171,10 @@ function SceneMenu:RenderSideBar()
         SetAlphaByBool(selectable, propData.Visible)
 
         return selectable
+    end
+
+    treeList.OnRenamingInput = function(sel, key, newName)
+        --self.imageRefs[key].Visible = false
     end
 
     treeList.RenderTree = function (sel, key, node)
@@ -239,7 +242,6 @@ function SceneMenu:SetupLeaf(sel, key, node)
     local selectable = sel
 
     selectable.SameLine = true
-    selectable.SpanAllColumns = false
 
     local propData = EntityStore:GetStoredData(key) --[[@as EntityData]]
     selectable.OnRightClick = function()
@@ -261,7 +263,6 @@ function SceneMenu:SetupTree(sel, key, node)
     local selectable = sel
 
     selectable.SameLine = true
-    selectable.SpanAllColumns = false
 
     selectable.OnRightClick = function()
         self:SetupCollectionSelectablePopup()

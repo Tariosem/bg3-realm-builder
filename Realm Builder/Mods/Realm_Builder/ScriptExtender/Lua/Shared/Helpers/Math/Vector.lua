@@ -61,7 +61,7 @@ function Vector:Length() return Ext.Math.Length(self) end
 function Vector:Normalize() return Vector.new(Ext.Math.Normalize(self)) end
 function Vector:Rotate(axis, angle) return Vector.new(Ext.Math.Rotate(self, axis, angle), #self) end
 function Vector:Dot(b) return Ext.Math.Dot(self, b) end
-function Vector:Cross(b) return Vector.new(Cross(self, b)) end
+function Vector:Cross(b) return Vector.new(Ext.Math.Cross(self, b)) end
 function Vector:Inverse() return Vector.new(Ext.Math.Inverse(self)) end
 
 function Vector:Sanitize(defaultVec)

@@ -70,8 +70,8 @@ function Notification:ValidateConfig()
         self.AnimDirection = "Horizontal"
     end
 
-    self.Pivot[1] = Clamp(self.Pivot[1] or 0, 0, 1)
-    self.Pivot[2] = Clamp(self.Pivot[2] or 0, 0, 1)
+    self.Pivot[1] = Ext.Math.Clamp(self.Pivot[1] or 0, 0, 1)
+    self.Pivot[2] = Ext.Math.Clamp(self.Pivot[2] or 0, 0, 1)
 
     self.Duration = math.max(0, self.Duration or 3000)
     self.FadeInTime = math.max(0, self.FadeInTime or 1000)
@@ -138,7 +138,7 @@ function Notification:StartAnimation(dir, direction)
             self:StopAnimation()
             return
         end
-        alpha = Clamp(alpha, 0, 1)
+        alpha = Ext.Math.Clamp(alpha, 0, 1)
         self.panel:SetPos(newPos)
         self.panel:SetStyle("Alpha", alpha)
     end
@@ -166,8 +166,8 @@ function Notification:StartAnimation(dir, direction)
     local oldRelativePos = self.Pivot
     if dir == "FadeOut" and self.Moveable then
         self.Pivot = {
-            Clamp(self.panel.LastPosition[1] / screenWidth, 0, 1),
-            Clamp(self.panel.LastPosition[2] / screenHeight, 0, 1)
+            Ext.Math.Clamp(self.panel.LastPosition[1] / screenWidth, 0, 1),
+            Ext.Math.Clamp(self.panel.LastPosition[2] / screenHeight, 0, 1)
         }
     end
     if dir == "FadeOut" and self.ChangeDirectionWhenFadeOut then
@@ -293,8 +293,8 @@ function Notification:CalcEndPosition(width, height, screenWidth, screenHeight)
 
     y = screenHeight * self.Pivot[2] - height / 2
 
-    x = Clamp(x, 0, screenWidth - width)
-    y = Clamp(y, 0, screenHeight - height)
+    x = Ext.Math.Clamp(x, 0, screenWidth - width)
+    y = Ext.Math.Clamp(y, 0, screenHeight - height)
     
 
     return x, y
@@ -357,7 +357,7 @@ function Notification:SetupFlick()
             local startPos = {panelX, panelY}
             local endPos = {endX, endY}
             local animationDistance = math.sqrt((endX - panelX)^2 + (endY - panelY)^2)
-            local duration = Clamp(animationDistance / velocity * 800, 300, 1200)
+            local duration = Ext.Math.Clamp(animationDistance / velocity * 800, 300, 1200)
 
             self.panel.NoMove = true
             self:StopAnimation()

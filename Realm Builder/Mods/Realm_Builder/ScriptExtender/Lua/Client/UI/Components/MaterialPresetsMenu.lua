@@ -177,7 +177,7 @@ function MaterialPresetsMenu:SetupWorkspace(parent, ccaModPack, notRenderImport)
 
     local refreshExport = self:RenderExportSettingPanel(exportCell, exportSettings)
 
-    local refreshImport
+    local refreshImport = function () end
     if not notRenderImport then
         local importWindow = exportCell:AddChildWindow("ImportCCAWindow")
         refreshImport = self:RenderImportSection(importWindow, exportSettings, function()
@@ -232,7 +232,7 @@ function MaterialPresetsMenu:SetupWorkspace(parent, ccaModPack, notRenderImport)
                 progressBar.Overlay = message or ""
 
                 if progress == 100 then
-                    if refreshImport then refreshImport() end
+                    refreshImport()
                     parent.Disabled = false -- re-enable UI after export
                 end
             elseif progress < 0 then
@@ -471,7 +471,7 @@ function MaterialPresetsMenu:RenderFolderPanel(presetTab, presetHeaders, exportS
                     -- not in this workspace, create new preset in this folder
                     guid = Uuid_v4()
                     local newPreset = {
-                        DisplayName = drop.UserData.DisplayName or "New Preset",
+                        DisplayName = drop.UserData.DisplayName or "Unnamed Preset",
                         UIColor = DeepCopy(drop.UserData.UIColor or { 1, 1, 1, 1 }),
                         Parameters = DeepCopy(drop.UserData.Parameters or {}),
                     }
@@ -494,11 +494,11 @@ function MaterialPresetsMenu:RenderFolderPanel(presetTab, presetHeaders, exportS
         local createFolderBtn = newFolderCell:AddButton("+ New Folder##CreateMaterialPresetFolderBtn")
 
         createFolderBtn.OnClick = function()
-            local folderName = "New_Folder"
+            local folderName = "merged"
             local suffix = 1
             while exportSettings.Folders[folderName] do
                 suffix = suffix + 1
-                folderName = "New_Folder" .. tostring(suffix)
+                folderName = "merged" .. tostring(suffix)
             end
             exportSettings.Folders[folderName] = {}
             exportSettings.FolderDefinitions[folderName] = {}
@@ -1145,8 +1145,7 @@ function MaterialPresetsMenu:__exportToMod(modPack, progressCallback)
     -- capture the export coroutine so callbacks can check/resume the correct coroutine
     local exportThread = coroutine.running()
     progressCallback = progressCallback or function(progress, message)
-        Debug("MaterialPresetsMenu: ExportToMod Progress: " ..
-            tostring(progress) .. "% " .. (message and (" - " .. message) or ""))
+        Debug("MaterialPresetsMenu: ExportToMod Progress: " .. tostring(progress) .. "% " .. (message and (" - " .. message) or ""))
     end
 
     local displayModName = modPack.ModName or "Unnamed Mod"
@@ -1315,6 +1314,33 @@ function MaterialPresetsMenu:__exportToMod(modPack, progressCallback)
         ccaDefNode[presetType] = LSXHelpers.BuildCCAPresetsRegionNode(presetType)
     end
 
+    -- cheap way to identify dragonborn skin types
+    local dragonbornPrefixes = {
+        "acc_",
+        "sk_",
+        "sc_"
+    }
+
+    local function checkIfDragonbornSkinType(paramName)
+        for _,prefix in pairs(dragonbornPrefixes) do
+            if StartWith(paramName, prefix) then
+                return true
+            end
+        end
+        return false
+    end
+
+    local function checkParamsIsDragonbornSkinType(params)
+        for paramType,par in pairs(params) do
+            for paramName,_ in pairs(par) do
+                if checkIfDragonbornSkinType(paramName) then
+                    return true
+                end
+            end
+        end
+        return false
+    end
+
     for uuid, preset in pairs(matPresets) do
         local presetType = matPresetDefs[uuid]
         local ccaPresetNode = ccaDefNode[presetType]
@@ -1324,9 +1350,16 @@ function MaterialPresetsMenu:__exportToMod(modPack, progressCallback)
 
         local handle = table.remove(stringToHandles[preset.DisplayName]) -- use one handle per preset
 
-        local presetNode = LSXHelpers.BuildCCAPresetNode(handle, internalName, preset.UIColor, uuid, ccaPresetUuid,
-            presetType)
+        local presetNode = LSXHelpers.BuildCCAPresetNode(handle, internalName, preset.UIColor, uuid, ccaPresetUuid, presetType)
         ccaPresetNode:AppendChild(presetNode)
+        
+        if presetType == "CharacterCreationSkinColors" then
+            local isDragonbornSkinType = checkParamsIsDragonbornSkinType(preset.Parameters)
+            if isDragonbornSkinType then
+                local dragonbornAttr = LSXHelpers.AttrNode("SkinType", "FixedString", "Dragonborn")
+                presetNode:AppendChild(dragonbornAttr)
+            end
+        end
 
         advance("Building CCA presets definition...")
     end

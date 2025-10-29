@@ -173,6 +173,13 @@ function SplitBySpace(input)
     return result
 end
 
+function StartWith(str, prefix)
+    if type(str) ~= "string" or type(prefix) ~= "string" then
+        return false
+    end
+    return string.sub(str, 1, #prefix) == prefix
+end
+
 function CountMap(map)
     local count = 0
     for _, _ in pairs(map) do

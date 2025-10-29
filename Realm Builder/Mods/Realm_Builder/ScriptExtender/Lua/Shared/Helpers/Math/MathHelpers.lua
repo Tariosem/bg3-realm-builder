@@ -1,10 +1,5 @@
 -- I hate linear algebra
 
-Cross = Ext.Math.Cross --[[@as fun(a:number[], b:number[]):number[] ]]
-Dot = Ext.Math.Dot
-QuatDot = Ext.Math.QuatDot
-Clamp = Ext.Math.Clamp
-
 --- @param position Vec3
 --- @param rotationQuat quat
 --- @param scale Vec3
