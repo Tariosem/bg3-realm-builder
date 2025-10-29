@@ -14,7 +14,7 @@ function OsirisHelpers.Propify(guids)
     end
 end
 
-function OsirisHelpers.DrawLine(startPos, endPos, lineThickness)
+function OsirisHelpers.DrawLine(startPos, endPos, width)
     if #startPos ~= 3 or #endPos ~= 3 then
         return
     end
@@ -36,7 +36,7 @@ function OsirisHelpers.DrawLine(startPos, endPos, lineThickness)
             Guid = fxHandle,
             Transforms = {
                 [fxHandle] = {
-                    Scale = {1 * (lineThickness or 1) , 1 * (lineThickness or 1), toScale},
+                    Scale = {1 * (width or 1) , 1 * (width or 1), toScale},
                 }
             }
         })

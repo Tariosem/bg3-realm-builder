@@ -296,20 +296,29 @@ NetChannel.Visualize:SetRequestHandler(function(data, userID)
     local entityHandles = {}
     if data.Type == "Point" then
         local pos = data.Position
+
+
         local pointEntity = Osi.CreateAt(RB_PROP_AXIS_FX, pos[1], pos[2], pos[3], 0, 0, "") --[[@as string]]
         table.insert(entityHandles, pointEntity)
         if data.Rotation then
             RotateTo(pointEntity, table.unpack(data.Rotation))
         end
+
+        -- prevent jump scare
+        Osi.SetVisible(pointEntity, 0)
+        Timer:Ticks(10, function (timerID)
+            Osi.SetVisible(pointEntity, 1)
+        end)
+
     elseif data.Type == "Line" then
         local startPos = data.Position
         local endPos = data.EndPosition
-        local handle = OsirisHelpers.DrawLine(startPos, endPos, data.LineThickness)
+        local handle = OsirisHelpers.DrawLine(startPos, endPos, data.Width)
         table.insert(entityHandles, handle)
     elseif data.Type == "Box" then
-        entityHandles = OsirisHelpers.DrawBox(data.Min, data.Max, data.LineThickness)
+        entityHandles = OsirisHelpers.DrawBox(data.Min, data.Max, data.Width)
     elseif data.Type == "OBB" then
-        entityHandles = OsirisHelpers.DrawOrientedBox(data.Position, data.HalfSizes, data.Rotation, data.LineThickness)
+        entityHandles = OsirisHelpers.DrawOrientedBox(data.Position, data.HalfSizes, data.Rotation, data.Width)
     elseif data.Type == "Clear" then
         local existing = spawnedVisualizations[userID]
         for _,e in pairs(existing) do
@@ -390,17 +399,16 @@ NetChannel.ManageGizmo:SetRequestHandler(function(data, userID)
     end
 
     if not Enums.TransformEditorMode[data.GizmoType] then
-        Warning("ManageGizmo: Invalid GizmoType: " .. tostring(data.GizmoType))
         return { Guid = nil }
     end
 
     data.Position = data.Position or {0,0,0}
     if #data.Position ~= 3 then
-        Warning("ManageGizmo: Invalid Position,", data.Position)
         data.Position = {0,0,0}
     end
 
     local guid = Osi.CreateAt(GIZMO_ITEM[data.GizmoType], data.Position[1], data.Position[2], data.Position[3], 0, 0, "") --[[@as string]]
+    Osi.SetVisible(guid, 0)
 
     gizmoUserStack[tostring(userID)] = gizmoUserStack[tostring(userID)] or {}
     table.insert(gizmoUserStack[tostring(userID)], guid)

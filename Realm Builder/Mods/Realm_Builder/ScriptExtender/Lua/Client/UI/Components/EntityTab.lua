@@ -655,7 +655,6 @@ function EntityTab:Focus()
         end
         FocusWindow(self.panel)
     else
-        self.panel.SetSelected = true
         Timer:After(100, function()
             if self.isWindow then
                 return

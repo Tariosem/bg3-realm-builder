@@ -269,10 +269,7 @@ function TreeList:ApplyTreeTableStyle(tbl)
 end
 
 function TreeList:RenderList()
-    if self.oldTree then
-        self:ClearList()
-    end
-
+    self:ClearList()
     -- validate renderOrder
     local ok, err = pcall(self.RenderOrder, "a", "b")
     if not ok then
@@ -445,7 +442,7 @@ function TreeList:SetUpLeaf(selectable, key)
     end
 
     local userOnDragStart = selectable.OnDragStart
-    selectable.OnDragStart = function()
+    selectable.OnDragStart = function(sel)
         if not self.MultiSelect and not self.GroupSelect then
             self:ClearSelection()
         end
@@ -459,7 +456,7 @@ function TreeList:SetUpLeaf(selectable, key)
         end
         self:OnDragStart(key)
         if userOnDragStart then
-            userOnDragStart()
+            userOnDragStart(sel)
         end
     end
 
@@ -489,6 +486,7 @@ function TreeList:SetUpLeaf(selectable, key)
         end
 
         delayTimer = Timer:Ticks(doubleClickThreshold, function()
+            delayTimer = nil
             if self.MultiSelect then
                 self:ToggleSelected(key)
             elseif self.GroupSelect then
@@ -527,7 +525,6 @@ function TreeList:SetUpLeaf(selectable, key)
             if userOnClick then
                 userOnClick(sel)
             end
-            delayTimer = nil
         end)
     end
 
@@ -548,13 +545,13 @@ function TreeList:SetUpTree(tree, key)
 
     local userOnDragStart = tree.OnDragStart
 
-    tree.OnDragStart = function()
+    tree.OnDragStart = function(sel)
         local previewTable = tree.DragPreview:AddTable("##DragPreview", 1)
         self:ApplyTreeTableStyle(previewTable)
         local row = previewTable:AddRow()
         self:RenderTree(key, row:AddCell())
         if userOnDragStart then
-            userOnDragStart()
+            userOnDragStart(sel)
         end
     end
 
@@ -597,7 +594,6 @@ function TreeList:SetUpTree(tree, key)
 
     tree.OnClick = function(sel)
         sel.Selected = false
-
         if delayTimer then
             Timer:Cancel(delayTimer)
             delayTimer = nil
@@ -622,6 +618,7 @@ function TreeList:SetUpTree(tree, key)
             if self.GroupSelect then
                 self:ClearSelection()
                 recurSel(key)
+                self:OnSelect(self.selectedItems)
             else
                 toggleFunc()
             end
@@ -630,8 +627,6 @@ function TreeList:SetUpTree(tree, key)
             if userOnClick then
                 userOnClick(sel)
             end
-
-            self:OnSelect(self.selectedItems)
             delayTimer = nil
         end)
     end
@@ -669,7 +664,6 @@ function TreeList:OnRenamingInput(key, newName) end
 
 function TreeList:SetupRenameInput(key, userLabel)
     if self.IsRenaming then return end
-    self:OnRenamingInput(key, nil) -- notify rename start
     local isLeaf = self.leafRefs[key] ~= nil
     local selec = isLeaf and self.leafRefs[key] or self.treeRefs[key]
     if not selec then return end

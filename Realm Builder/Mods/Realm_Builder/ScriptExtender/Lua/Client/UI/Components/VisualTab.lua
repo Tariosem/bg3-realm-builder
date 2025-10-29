@@ -1642,10 +1642,7 @@ function VisualTab:Collapsed()
     self.updateFuncs = {}
 
     for key, matTab in pairs(self.Materials) do
-        matTab.ResetFuncs = {}
-        matTab.UpdateFuncs = {}
-        matTab.ParamNodeRefs = {}
-        matTab.ParamTypeNodeRefs = {}
+        matTab:ClearRefs()
     end
 
     if self.saveInputKeySub then

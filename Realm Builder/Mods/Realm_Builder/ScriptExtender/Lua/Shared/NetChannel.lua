@@ -45,7 +45,8 @@ NetChannel.SpawnPreview = Ext.Net.CreateChannel(ModuleUUID, "SpawnPreview")
 --- @field Min Vec3|nil
 --- @field Max Vec3|nil
 --- @field Duration number|nil in ms
---- @field LineThickness number|nil
+--- @field Width number|nil for lines
+--- @field Scale number|nil
 
 --- @class VisualizeChannel : NetChannel
 --- @field RequestToServer fun(channel:self , data: VisualizeData, callback: fun(response: GUIDSTRING[]))

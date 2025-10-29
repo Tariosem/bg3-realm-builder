@@ -165,16 +165,10 @@ function SceneMenu:RenderSideBar()
             SetAlphaByBool(image, propData.Visible)
             SetAlphaByBool(sel.leafRefs[key], propData.Visible)
         end
-
-
         SetAlphaByBool(image, propData.Visible)
         SetAlphaByBool(selectable, propData.Visible)
 
         return selectable
-    end
-
-    treeList.OnRenamingInput = function(sel, key, newName)
-        --self.imageRefs[key].Visible = false
     end
 
     treeList.RenderTree = function (sel, key, node)
@@ -249,14 +243,12 @@ function SceneMenu:SetupLeaf(sel, key, node)
             table.insert(self.selectedGuids, propData.Guid)
         end
         self:SetupSelectablePopup()
+
+        _DS(selectable)
     end
-
-
     selectable.OnClick = function()
         self:FocusTab(key)
     end
-
-    self.propTreeList.leafRefs[key] = selectable
 end
 
 function SceneMenu:SetupTree(sel, key, node)

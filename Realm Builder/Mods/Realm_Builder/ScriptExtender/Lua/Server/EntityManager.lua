@@ -95,7 +95,9 @@ function EntityManager:SetEntity(guid, entInfo)
         else
             Osi.SetVisible(guid, 0)
         end
-        self.TaggedEntities[guid].Visible = entInfo.Visible
+        if self.TaggedEntities[guid] then
+            self.TaggedEntities[guid].Visible = entInfo.Visible
+        end
     end
 
     if type(entInfo.Movable) == "boolean" then
@@ -104,7 +106,9 @@ function EntityManager:SetEntity(guid, entInfo)
         else
             Osi.SetMovable(guid, 0)
         end
-        self.TaggedEntities[guid].Movable = entInfo.Movable
+        if self.TaggedEntities[guid] then
+            self.TaggedEntities[guid].Movable = entInfo.Movable
+        end
     end
 
     if entInfo.Persistent and type(entInfo.Persistent) == "boolean" then
@@ -117,7 +121,9 @@ function EntityManager:SetEntity(guid, entInfo)
         else
             Osi.SetCanInteract(guid, 0)
         end
-        self.TaggedEntities[guid].CanInteract = entInfo.CanInteract
+        if self.TaggedEntities[guid] then
+            self.TaggedEntities[guid].CanInteract = entInfo.CanInteract
+        end
     end
 end
 

@@ -35,6 +35,7 @@ function Gizmo:__init(editor)
     self.Visualizer = GizmoVisualizer.new()
     self.Subscriptions = {}
     self.Timers = {}
+    self.SlowDown = false
 
     self.Step = 1.0
 end
@@ -180,7 +181,7 @@ function Gizmo:SetupListeners()
         local axes = { X = true, Y = true, Z = true }
         if self.SelectedAxis and self.SelectedAxis[axisToLock] and CountMap(self.SelectedAxis) == 1 then
             -- do nothing
-        elseif (e.Modifiers & Ext.Enums.SDLKeyModifier.LShift) or (e.Modifiers & Ext.Enums.SDLKeyModifier.RShift) then
+        elseif e.Modifiers == "LShift" or e.Modifiers == "RShift" then
             axes[axisToLock] = nil
         else
             axes = { [axisToLock] = true }
@@ -325,6 +326,19 @@ function Gizmo:CreateItem()
         if not next(self.Timers) then
             self:SetupListeners()
         end
+
+        local tryCnt = 0
+        Timer:EveryFrame(function(timerID)
+            if tryCnt > 300 then return UNSUBSCRIBE_SYMBOL end
+            if not VisualHelpers.GetEntityVisual(self.Guid) then tryCnt = tryCnt + 1 return end
+
+            NetChannel.SetAttributes:SendToServer({
+                Guid = self.Guid,
+                Attributes = {
+                    Visible = true,
+                }
+            })
+        end)
     end)
 end
 
@@ -407,6 +421,7 @@ function Gizmo:GetHit(ray)
         NetChannel.Visualize:RequestToServer({
             Type = "Point",
             Position = hit.Position,
+            Scale = self.Visualizer.Scale[1],
             Duration = 1000
         }, function(response)
         end)
@@ -565,6 +580,7 @@ function Gizmo:SetupDragging()
                 NetChannel.Visualize:RequestToServer({
                     Type = "Point",
                     Position = pickerPos,
+                    Scale = ((0.6 * self.Visualizer.Scale[1]) / 0.81),
                     Rotation = quat,
                     Duration = -1,
                 }, function(response)

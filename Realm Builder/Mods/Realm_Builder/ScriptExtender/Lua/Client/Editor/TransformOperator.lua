@@ -150,7 +150,7 @@ function TransformOperator:Visualize()
             Type = "Line",
             Position = ray:At(-100),
             EndPosition = ray:At(100),
-            LineThickness = 0.2,
+            Width = self.Visualizer.Scale[1] * 0.3,
             Duration = -1,
         }, function (response)
             for _,viz in pairs(response) do

@@ -100,11 +100,36 @@ function MaterialTab:Render(parent)
     self.ParamNodeRefs = {}
     self.UpdateFuncs = {}
     self.ResetFuncs = {}
+    self.ParamGroupRefs = {}
     for paramType,propNames in ipairs(params) do
         local propType = indexToDisplay[paramType]
         if #propNames < 1 then goto continue end
 
         local typeNode = group:AddTree(propType .. "##" .. self.MaterialName)
+
+        local searchBox = typeNode:AddInputText("##" .. self.MaterialName .. propType)
+        searchBox.Hint = "Search " .. propType .. "..."
+        searchBox.OnChange = Debounce(50 ,function (sel)
+            if sel.Text == "" then
+                for _, node in pairs(self.ParamGroupRefs) do
+                    node.Visible = true
+                end
+                return
+            end
+
+            local searchTerm = sel.Text:lower()
+            for _,propertyName in ipairs(propNames) do
+                local propNode = self.ParamGroupRefs[propertyName]
+                if propNode then
+                    if searchTerm == "" or propertyName:lower():find(searchTerm) then
+                        propNode.Visible = true
+                    else
+                        propNode.Visible = false
+                    end
+                end
+            end
+        end)
+
         typeNode:SetOpen(true)
         self.ParamTypeNodeRefs[paramType] = typeNode
         for _,propertyName in ipairs(propNames) do
@@ -112,6 +137,7 @@ function MaterialTab:Render(parent)
             local initLable = self.cachedExpandedState[propertyName] and "[-] " or "[+] "
             local propNode = allGroup:AddSelectable(initLable .. propertyName .. "##" .. self.MaterialName) --[[@as ExtuiSelectable ]]
             self.ParamNodeRefs[propertyName] = propNode
+            self.ParamGroupRefs[propertyName] = allGroup
             local paramgroup = allGroup:AddGroup("PropertyGroup##" .. self.MaterialName .. propertyName .. tostring(math.random()))
             paramgroup.Visible = self.cachedExpandedState[propertyName] == true
 
@@ -187,6 +213,14 @@ function MaterialTab:Render(parent)
     end
     
     return parentNode, group
+end
+
+function MaterialTab:ClearRefs()
+    self.ParamNodeRefs = {}
+    self.ParamTypeNodeRefs = {}
+    self.UpdateFuncs = {}
+    self.ResetFuncs = {}
+    self.ParamGroupRefs = {}
 end
 
 --- @param node ExtuiTreeParent

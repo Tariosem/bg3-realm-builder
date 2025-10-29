@@ -108,7 +108,9 @@ function EntityStore:SetupServerListeners()
             end
         end
 
-        RBMenu.entityMenu:UpdateList()
+        if RBMenu.entityMenu then
+            RBMenu.entityMenu:UpdateList()
+        end
     end)
 
     NetChannel.BindProps:SetHandler(function(data)

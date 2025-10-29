@@ -36,22 +36,26 @@ local GIZMO_VISUALIZER_CONFIG = {
         1.0,
     },
     DefaultColor = {
-        X = HexToRGBA("FFCC6666"),
-        Y = HexToRGBA("FF66CC66"),
-        Z = HexToRGBA("FF6699CC"),
+        X = HexToRGBA("FFDC4444"),
+        Y = HexToRGBA("FF58C458"), 
+        Z = HexToRGBA("FF4A7DFF"),
     },
     HighlightColor = {
-        X = HexToRGBA("FFFFCCCC"),
-        Y = HexToRGBA("FFCCFFCC"),
-        Z = HexToRGBA("FFCCCCFF"),
+        X = HexToRGBA("FFFFB3B3"),
+        Y = HexToRGBA("FFB7FFB7"),
+        Z = HexToRGBA("FFB6C8FF"),
     },
     HoveredColor = {
-        X = HexToRGBA("FFFF3333"),
-        Y = HexToRGBA("FF33FF33"),
-        Z = HexToRGBA("FF3333FF"),
+        X = HexToRGBA("FFFF7777"),
+        Y = HexToRGBA("FF77FF77"),
+        Z = HexToRGBA("FF779BFF"),
     },
+    AxisLineColor = {
+        X = HexToRGBA("FFFF0000"),
+        Y = HexToRGBA("FF00FF00"),
+        Z = HexToRGBA("FF0033FF"),
+    }
 }
-GIZMO_VISUALIZER_CONFIG.AxisLineColor = DeepCopy(GIZMO_VISUALIZER_CONFIG.HoveredColor)
 
 function GizmoVisualizer:__init()
     self.GizmoScale = 0.1
@@ -60,7 +64,7 @@ function GizmoVisualizer:__init()
     self.DefaultColor = DeepCopy(GIZMO_VISUALIZER_CONFIG.DefaultColor)
     self.HighlightColor = DeepCopy(GIZMO_VISUALIZER_CONFIG.HighlightColor)
     self.HoveredColor = DeepCopy(GIZMO_VISUALIZER_CONFIG.HoveredColor)
-    self.AxisLineColor = DeepCopy(GIZMO_VISUALIZER_CONFIG.HoveredColor)
+    self.AxisLineColor = DeepCopy(GIZMO_VISUALIZER_CONFIG.AxisLineColor)
 end
 
 function GizmoVisualizer:ResetToDefault()
@@ -70,7 +74,7 @@ function GizmoVisualizer:ResetToDefault()
     self.DefaultColor = DeepCopy(GIZMO_VISUALIZER_CONFIG.DefaultColor)
     self.HighlightColor = DeepCopy(GIZMO_VISUALIZER_CONFIG.HighlightColor)
     self.HoveredColor = DeepCopy(GIZMO_VISUALIZER_CONFIG.HoveredColor)
-    self.AxisLineColor = DeepCopy(GIZMO_VISUALIZER_CONFIG.HoveredColor)
+    self.AxisLineColor = DeepCopy(GIZMO_VISUALIZER_CONFIG.AxisLineColor)
 end
 
 function GizmoVisualizer:GetHighlightColor(axis)
@@ -102,7 +106,6 @@ local function SetGizmoAxisTextureColorParam(axis, guid, Value)
         --Warning("GetGizmoAxisTextureColorParam: Invalid visual for gizmo with GUID: " .. tostring(guid))
         return nil
     end
-    visual.VisualFlags = Ext.Enums.VisualFlags.DisableLOD | visual.VisualFlags
 
     local objDescs = visual.ObjectDescs
 
@@ -199,6 +202,9 @@ function GizmoVisualizer:VisualizeRotatePointer(guid, axis)
         end
     end
 
+    local visual = VisualHelpers.GetEntityVisual(guid)
+    if not visual then return end
+
     local rend = SetGizmoAxisTextureColorParam(axis, guid, self:GetHighlightColor(axis))
     for _,r in ipairs(rend or {}) do
         r:SetWorldScale(scale)
@@ -224,7 +230,7 @@ function GizmoVisualizer:UpdateScale(guid)
     return scale
 end
 
-function GizmoVisualizer:SetLineFxColor(guid, color)
+function GizmoVisualizer:SetLineFxColor(guid, color, width)
     if not color or #color ~= 4 then
         --Warning("SetLineFxColor: Invalid color provided")
         return
@@ -233,11 +239,21 @@ function GizmoVisualizer:SetLineFxColor(guid, color)
     local entity = Ext.Entity.Get(guid)
     if not entity then return end
 
+    if width and type(width) ~= "number" then
+        width = self.Scale[1] * 0.3
+    end
+    if not width then
+        width = self.Scale[1] * 0.3
+    end
+
     local visual = VisualHelpers.GetEntityVisual(entity)
     if not visual then return end
 
     for _,obj in pairs(visual.ObjectDescs) do
         local renderable = obj.Renderable
+        local oriScale = renderable.WorldTransform.Scale
+        local toSet = { width or oriScale[1], width or oriScale[2], oriScale[3] }
+        renderable:SetWorldScale(toSet)
         renderable.ActiveMaterial.Material:SetVector4("Color", color)
     end
     --Debug("SetLineFxColor: Set color of "..tostring(guid).." to "..table.concat(color, ", "))
@@ -249,7 +265,10 @@ function GizmoVisualizer:SetLineLength(guid, length, width)
         length = 0
     end
     if width and type(width) ~= "number" then
-        width = 0.3
+        width = self.Scale[1] * 0.3
+    end
+    if not width then
+        width = self.Scale[1] * 0.3
     end
 
     local entity = Ext.Entity.Get(guid)

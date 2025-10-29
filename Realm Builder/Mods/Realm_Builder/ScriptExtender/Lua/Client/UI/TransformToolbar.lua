@@ -400,14 +400,14 @@ function TransformToolbar:RenderTopBar()
         end
     end
 
-    local operatorInput = leftCell:AddInputText("Operator Input")
+    local operatorInput = leftCell:AddInputText("Numeric Input")
     operatorInput.ReadOnly = true
     operatorInput.Disabled = true
     operatorInput.SameLine = true
     operatorInput.IDContext = "TransformOperatorInput"
-    operatorInput.Hint = GetLoca("Input any number key when dragging gizmo to start transform operator")
+    operatorInput.Hint = GetLoca("Input any number key when dragging gizmo to start")
     local inputTooltip = operatorInput:Tooltip()
-    inputTooltip:AddSeparatorText("Transform Operator Input"):SetStyle("SeparatorTextAlign", 0.5, 0)
+    inputTooltip:AddSeparatorText("Numeric Input"):SetStyle("SeparatorTextAlign", 0.5, 0)
     inputTooltip:AddText("You can input commands like 'GX1', just like in blender.")
     inputTooltip:AddBulletText("G/R/S: ") inputTooltip:AddText("Switch to Move/Rotate/Scale mode")
     inputTooltip:AddBulletText("X/Y/Z: ") inputTooltip:AddText("Constrain to X/Y/Z axis")
@@ -423,7 +423,7 @@ function TransformToolbar:RenderTopBar()
 
     self.OperatorInput = operatorInput
 
-    local spaceCombo = centerCell:AddCombo("Space")
+    local spaceCombo = centerCell:AddCombo("Orientation")
     spaceCombo.ItemWidth = 300 * SCALE_FACTOR
     local indexToMode = {
         "World",
@@ -533,7 +533,7 @@ function TransformToolbar:SetupOperator(mode, space, axis)
             self.isInputing = false
             self.Operator = nil
             self.OperatorInput.Text = ""
-            self.OperatorInput.Hint = GetLoca("Input any number key when dragging gizmo to start transform operator")
+            self.OperatorInput.Hint = GetLoca("Input any number key when dragging gizmo to start")
             TransformEditor:ShowAndEnableGizmo()
             TransformEditor.Disabled = false
             return UNSUBSCRIBE_SYMBOL
