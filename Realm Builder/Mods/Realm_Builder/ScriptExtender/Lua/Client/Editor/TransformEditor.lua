@@ -261,6 +261,7 @@ function TransformEditor:RegisterEvents()
         NetChannel.ManageGizmo:RequestToServer({ Clear = true }, function (response)
             self.Gizmo.Guid = nil
         end)
+        self.Gizmo:DeleteItem()
     end))
 
     local function GetRottt(space, guid)

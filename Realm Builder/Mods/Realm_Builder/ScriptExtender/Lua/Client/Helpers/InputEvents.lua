@@ -35,11 +35,14 @@ function SubscribeKeyInput(key, callback)
         end
     end)
 
-    return { Unsubscribe = unsub, ID = id}
+    local sub = { Unsubscribe = unsub, ID = id} --[[@as RBSubscription]]
+
+    return sub
 end
 
 ---@param key EclLuaMouseButtonEvent?
 ---@param callback fun(e:EclLuaMouseButtonEvent): any
+---@return RBSubscription
 function SubscribeMouseInput(key, callback)
     key = key or {}
     local SubscribeStartTime = Ext.Timer.MonotonicTime()

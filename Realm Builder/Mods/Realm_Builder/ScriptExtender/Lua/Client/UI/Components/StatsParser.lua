@@ -404,7 +404,7 @@ function StatsParser:ParseDesc(desc, descRef, descParams, depth, isTooltip)
         parent:SetColor("Border", HexToRGBA("FFC69800"))
         local wrappedTokens = WrapTextTokens(tokens, wrapPos or 60)
 
-        RenderTokenTexts(parent, wrappedTokens, isTooltip, depth)
+        RenderTokenTexts(parent, wrappedTokens)
     end
 
     return render

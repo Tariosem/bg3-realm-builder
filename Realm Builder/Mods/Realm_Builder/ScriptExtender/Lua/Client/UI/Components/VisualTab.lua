@@ -316,6 +316,12 @@ function VisualTab:RenderUtilsCell()
         self:Refresh()
     end
 
+    if not self.parent then
+        ApplyInfoButtonStyle(detachButton)
+        detachButton.Label = GetLoca("Refresh")
+        detachButton.OnClick = detachButton.OnRightClick
+    end
+
     local tryLoadButton = loadCell:AddButton(GetLoca("Load File"))
     local tryLoadTooltipText = tryLoadButton:Tooltip():AddText("Try to load preset from file. Right click to overwrite existing preset.")
     local tryLoadTimer = nil
@@ -346,7 +352,13 @@ function VisualTab:RenderUtilsCell()
 
     if self.isWindow then
         self.panel.Closeable = true
-        self.panel.OnClose = detachButton.OnClick
+        self.panel.OnClose = function()
+            if self.parent then
+                detachButton.OnClick()
+            else
+                self:Collapsed()
+            end
+        end
     end
 end
 
@@ -1632,6 +1644,8 @@ function VisualTab:Collapsed()
     for key, matTab in pairs(self.Materials) do
         matTab.ResetFuncs = {}
         matTab.UpdateFuncs = {}
+        matTab.ParamNodeRefs = {}
+        matTab.ParamTypeNodeRefs = {}
     end
 
     if self.saveInputKeySub then
@@ -1668,7 +1682,7 @@ function VisualTab:Collapsed()
 end
 
 function VisualTab:Refresh(retryCnt)
-    if self.isWindow then
+    if self.isWindow and self.panel then
         self.lastPosition = self.panel.LastPosition
         self.lastSize = self.panel.LastSize
     end
@@ -1687,11 +1701,6 @@ end
 function VisualTab:Destroy()
     if not self.isValid then
         return
-    end
-
-    if self.replaceSub then
-        Ext.Events.NetMessage:Unsubscribe(self.replaceSub)
-        self.replaceSub = nil
     end
 
     if self.panel then

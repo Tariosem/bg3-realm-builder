@@ -1,6 +1,7 @@
 --- pure spaghetti code ahead, beware ---
 
 --- @class IconBrowser
+--- @field CreateCachedSort fun(self:IconBrowser, field:string)
 IconBrowser = _Class("IconBrowser")
 
 --- @class IconsBrowser
@@ -58,21 +59,9 @@ function IconBrowser:Render()
     self.panel:SetColor("WindowBg", self.browserBackgroundColor)
     self.panel:SetColor("ChildBg", self.browserBackgroundColor)
 
-    -----------------------------------------------
-    --------------- Top Menu Bar Start ------------
-    -----------------------------------------------
-
-    --#region Top Menu Bar
-
     self.topMenuBar = self.panel:AddMainMenu()
     self.editMenu = self.topMenuBar:AddMenu("File")
     self.uiParamMenu = self.topMenuBar:AddMenu("UI")
-
-    --#endregion Top Menu Bar
-
-    -----------------------------------------------
-    --------------- Top Menu Bar End --------------
-    -----------------------------------------------
     
     self:RenderFileMenu()
     self:RenderUiConfigMenu()
@@ -780,11 +769,22 @@ function IconBrowser:RenderIcon(entry, cell)
 end
 
 function IconBrowser:IconSetup(iconImage, entry)
+    local userOnHoverEnter = iconImage.OnHoverEnter
+    local userOnHoverLeave = iconImage.OnHoverLeave
+
     iconImage.OnHoverEnter = function()
         self.hoveredEntry = entry.Uuid
+
+        if type(userOnHoverEnter) == "function" then
+            userOnHoverEnter(iconImage)
+        end
     end
     iconImage.OnHoverLeave = function()
         self.hoveredEntry = nil
+
+        if type(userOnHoverLeave) == "function" then
+            userOnHoverLeave(iconImage)
+        end
     end
     iconImage:SetColor("Button", ToVec4(0))
 

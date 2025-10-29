@@ -427,7 +427,6 @@ end
 --- @param ray Ray
 --- @return Vec3|number|nil
 function Gizmo:GetDelta(ray)
-    local lerpFactor = 0.1
     local hit = self:GetHit(ray)
     if not hit or not hit.Position then return nil end
     local startHit = self.StartHit

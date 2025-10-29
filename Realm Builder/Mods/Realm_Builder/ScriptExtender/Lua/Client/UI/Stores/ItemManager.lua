@@ -54,7 +54,7 @@ function ItemManager:CheckHostValidEquipmentVisual(guid)
     end
     local cnt = 0
     for uuid, _ in pairs(data) do
-        table.insert(self.Data[uuid].Tags, dynamicTag)
+        self:AddTagToData(uuid, dynamicTag)
         cnt = cnt + 1
         self.__cacheTempTags = self.__cacheTempTags or {}
         self.__cacheTempTags[uuid] = self.__cacheTempTags[uuid] or {}

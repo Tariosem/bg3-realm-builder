@@ -20,20 +20,49 @@ function IsUuid(str)
     return str:match("^%x%x%x%x%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%x%x%x%x%x%x%x%x$") ~= nil
 end
 
+---@param major string|number
+---@param minor string|number
+---@param revision string|number
+---@param build string|number
+---@return string
 function ComputeVersion64(major, minor, revision, build)
     major = tonumber(major) or 0
     minor = tonumber(minor) or 0
     revision = tonumber(revision) or 0
     build = tonumber(build) or 0
 
-    local version = major * 2^48 + minor * 2^32 + revision * 2^16 + build
+    local version = major << 48 | minor << 32 | revision << 16 | build
     return string.format("%d", math.floor(tonumber(version) or 0))
 end
 
+---@param version64 string|number
+---@return number major
+---@return number minor
+---@return number revision
+---@return number build
+function ParseVersion64(version64)
+    local versionNum = tonumber(version64) or 0
+    local major = (versionNum >> 48) & 0xFFFF
+    local minor = (versionNum >> 32) & 0xFFFF
+    local revision = (versionNum >> 16) & 0xFFFF
+    local build = versionNum & 0xFFFF
+    return major, minor, revision, build
+end
+
+---@param major string|number
+---@param minor string|number
+---@param revision string|number
+---@param build string|number
+---@return string
 function BuildVersionString(major, minor, revision, build)
     return string.format("%d.%d.%d.%d", major, minor, revision, build)
 end
 
+---@param versionStr string
+---@return number major
+---@return number minor
+---@return number revision
+---@return number build
 function ParseVersionString(versionStr)
     local major, minor, revision, build = versionStr:match("^(%d+)%.(%d+)%.(%d+)%.(%d+)$")
     return tonumber(major) or 0, tonumber(minor) or 0, tonumber(revision) or 0, tonumber(build) or 0

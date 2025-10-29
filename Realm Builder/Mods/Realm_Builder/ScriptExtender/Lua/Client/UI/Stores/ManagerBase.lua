@@ -10,7 +10,6 @@
 --- @field RemoveTagFromData fun(self, uuid:string, tag:string)
 --- @field ChangeDataGroup fun(self, uuid:string, group:string)
 --- @field ChangeDataNote fun(self, uuid:string, note:string)
---- @field CheckHostValidEquipmentVisual fun(self, guid:string)
 --- @field Clear fun(self)
 --- @field new fun(self):ManagerBase
 --- @field populated boolean
@@ -34,15 +33,26 @@ function ManagerBase:ChangeDataGroup(uuid, group)
     if not self.Data[uuid] then
         return
     end
-    self.Data[uuid].Group = group
-end
 
-function ManagerBase:ClearGroup(group)
-    if not group or group == "" then return end
-    for uuid, entry in pairs(self.Data) do
-        if entry.Group == group then
-            entry.Group = ""
+    local originalGroup = self.Data[uuid].Group
+
+    self.Data[uuid].Group = group
+
+    if self.groupCount then
+        self.groupCount[originalGroup] = (self.groupCount[originalGroup] or 1) - 1
+        self.groupCount[group] = (self.groupCount[group] or 0) + 1
+    end
+    if self.groupMap then
+        if originalGroup and self.groupMap[originalGroup] then
+            for i, id in ipairs(self.groupMap[originalGroup]) do
+                if id == uuid then
+                    table.remove(self.groupMap[originalGroup], i)
+                    break
+                end
+            end
         end
+        self.groupMap[group] = self.groupMap[group] or {}
+        table.insert(self.groupMap[group], uuid)
     end
 end
 
@@ -63,6 +73,9 @@ end
 function ManagerBase:CountGroupsAndTags(guid)
     if self.CheckHostValidEquipmentVisual then
         self:CheckHostValidEquipmentVisual(guid)
+    end
+    if self.groupCount and self.tagCount and self.groupMap and self.tagMap then
+        return self.groupCount, self.tagCount, self.groupMap, self.tagMap
     end
     local groupCount = {}
     local tagCount = {}
@@ -90,6 +103,11 @@ function ManagerBase:CountGroupsAndTags(guid)
         self.tagTree:SetLeafValue(tag, cnt)
     end
 
+    self.groupCount = groupCount
+    self.tagCount = tagCount
+    self.groupMap = groupMap
+    self.tagMap = tagMap
+
     return groupCount, tagCount, groupMap, tagMap
 end
 
@@ -113,6 +131,15 @@ function ManagerBase:AddTagToData(uuid, tag)
         table.insert(self.Data[uuid].Tags, tag)
     else
     end
+
+    if self.tagCount then
+        self.tagCount[tag] = (self.tagCount[tag] or 0) + 1
+        self.tagTree:SetLeafValue(tag, self.tagCount[tag])
+    end
+    if self.tagMap then
+        self.tagMap[tag] = self.tagMap[tag] or {}
+        table.insert(self.tagMap[tag], uuid)
+    end
 end
 
 function ManagerBase:RemoveTagFromData(uuid, tag)
@@ -133,16 +160,16 @@ function ManagerBase:RemoveTagFromData(uuid, tag)
             return
         end
     end
-end
 
-function ManagerBase:ClearTag(tag)
-    for uuid, entry in pairs(self.Data) do
-        if entry.Tags then
-            for i, t in ipairs(entry.Tags) do
-                if t == tag then
-                    table.remove(entry.Tags, i)
-                    break
-                end
+    if self.tagCount and self.tagCount[tag] then
+        self.tagCount[tag] = math.max((self.tagCount[tag] or 1) - 1, 0)
+        self.tagTree:SetLeafValue(tag, self.tagCount[tag])
+    end
+    if self.tagMap and self.tagMap[tag] then
+        for i, id in ipairs(self.tagMap[tag]) do
+            if id == uuid then
+                table.remove(self.tagMap[tag], i)
+                break
             end
         end
     end

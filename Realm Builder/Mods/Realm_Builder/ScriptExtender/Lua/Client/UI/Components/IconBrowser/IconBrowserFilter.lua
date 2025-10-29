@@ -66,8 +66,16 @@ end
 
 -- Abomination
 function IconBrowser:AddTagsFilter()
+    if self.tagsFilterOpenButton then self:RenderTagsFilter() return end
+    self.tagsFilterOpenButton = self.tagsFilterOpenButton or self.topMenuBar:AddMenu("Tags Filter >")
+
+    self.tagsFilterOpenButton.OnHoverEnter = function()
+        self:RenderTagsFilter()
+    end
+end
+
+function IconBrowser:RenderTagsFilter()
     local allGroups, allTags, groupMap, tagsMap = self.dataManager:CountGroupsAndTags(self.selectedGuid)
-    --- @type TreeTable
     local tagTree = self.dataManager.tagTree
     self.tagsMap = tagsMap
     self.groupMap = groupMap
@@ -128,7 +136,7 @@ function IconBrowser:AddTagsFilter()
     end
 
     self.tagsFilterElements = {}
-    self.tagsFilterOpenButton = self.tagsFilterOpenButton and self.topMenuBar:AddMenu("Tags Filter >")
+    
     if not self.tagsFilterOpenButton then
         self.tagsFilterOpenButton = self.topMenuBar:AddMenu("Tags Filter >")
     end
@@ -728,7 +736,7 @@ function IconBrowser:Search()
     end
 
     --Info("Search results count:", #self.searchResult)
-    --Debug("Search completed in " .. tostring(Ext.Timer.MonotonicTime() - now) .. " ms.")
+    Debug("Search completed in " .. tostring(Ext.Timer.MonotonicTime() - now) .. " ms.")
     --Debug("Found " .. CountMap(self.searchResult) .. " matching entries.")
     self:RenderIcons()
 end

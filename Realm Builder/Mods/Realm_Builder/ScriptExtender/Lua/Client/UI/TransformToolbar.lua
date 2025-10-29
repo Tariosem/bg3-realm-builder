@@ -103,7 +103,14 @@ function TransformToolbar:RegisterKeyInputEvents()
     ttMod:RegisterEvent("OpenVisualTab", function (e)
         if e.Event ~= "KeyDown" then return end
         local pick = GetPickingGuid()
-        if not pick or pick == "" then return end
+        if not pick or pick == "" then 
+            local host = CGetHostCharacter()
+            if GetClientVisualDummy(host) then
+                local visualTab = VisualTab.new(host, GetName(host), nil, nil)
+                visualTab:Render()
+            end
+            return
+        end
         if CIsCharacter(pick) then
             local visualTab = VisualTab.new(pick, GetName(pick), nil, nil)
             visualTab:Render()

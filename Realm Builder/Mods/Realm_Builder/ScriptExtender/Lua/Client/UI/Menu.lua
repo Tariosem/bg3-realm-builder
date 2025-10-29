@@ -77,14 +77,17 @@ function Menu:Render()
 
     Timer:Ticks(7, function()
         self.itemBrowser = ItemIconBrowser.new(RB_ItemManager, "Item - Browser")
+        self.itemBrowser:CreateCachedSort("DisplayName")
     end)
 
     Timer:Ticks(8, function()
         self.effectBrowser = EffectIconBrowser.new(RB_MultiEffectManager, "Effect - Browser")
+        self.effectBrowser:CreateCachedSort("DisplayName")
     end)
 
     Timer:Ticks(9, function()
         self.characterBrowser = CharacterBrowser.new(RB_CharacterManager, "Character - Browser")
+        self.characterBrowser:CreateCachedSort("DisplayName")
         --self.characterBrowser:Render()
     end)
 

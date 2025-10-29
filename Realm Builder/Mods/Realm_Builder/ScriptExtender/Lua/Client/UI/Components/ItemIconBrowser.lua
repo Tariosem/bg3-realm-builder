@@ -42,6 +42,7 @@ function ItemIconBrowser:RenderIcon(entry, cell)
     end
 
     local popup = cell:AddPopup("IconPopup")
+    local lazyRenders = {}
     local spawnPopup = nil
     local attributePopup = nil
 
@@ -104,37 +105,44 @@ function ItemIconBrowser:RenderIcon(entry, cell)
         self:SetupTemplatePreview(entry)
     end
 
-    local iconTooltip = iconImage:Tooltip()
-    local tooltipName = entry[self.iconTooltipName] or ""
-    if tooltipName == "" then
-        tooltipName = entry.TemplateName or "Unknown"
-        tooltipName = tooltipName
-    end
-
-    if self.iconToName then
-        local imageTooltip = iconTooltip:AddImage(entry.Icon, { 64 * SCALE_FACTOR, 64 * SCALE_FACTOR })
-        imageTooltip.IDContext = entry.Uuid .. "TooltipImage"
-    else
-        iconTooltip:AddText(tooltipName).TextWrapPos = self.browserWidth
-    end
-
-    local addSepaDescs = function(desc)
-        if desc and desc ~= "" then
-            local descText = iconTooltip:AddText(desc)
-            descText.TextWrapPos = self.browserWidth
-            descText.Font = "Tiny"
-            descText:SetColor("Text", HexToRGBA("FF939393"))
+    local renderedTooltip = false
+    iconImage.OnHoverEnter = function()
+        if renderedTooltip then return end
+        local iconTooltip = iconImage:Tooltip()
+        local tooltipName = entry[self.iconTooltipName] or ""
+        if tooltipName == "" then
+            tooltipName = entry.TemplateName or "Unknown"
+            tooltipName = tooltipName
         end
+
+        if self.iconToName then
+            local imageTooltip = iconTooltip:AddImage(entry.Icon, { 64 * SCALE_FACTOR, 64 * SCALE_FACTOR })
+            imageTooltip.IDContext = entry.Uuid .. "TooltipImage"
+        else
+            iconTooltip:AddText(tooltipName).TextWrapPos = self.browserWidth
+        end
+
+        local addSepaDescs = function(desc)
+            if desc and desc ~= "" then
+                local descText = iconTooltip:AddText(desc)
+                descText.TextWrapPos = self.browserWidth
+                descText.Font = "Tiny"
+                descText:SetColor("Text", HexToRGBA("FF939393"))
+            end
+        end
+
+        addSepaDescs(entry.Description, GetLoca("Description"))
+        addSepaDescs(entry.ShortDescription, GetLoca("Short Description"))
+        renderedTooltip = true
     end
+
 
     iconImage.OnClick = function()
         self:RenderInfoPopup(popup, entry)
         popup:Open()
     end
-        
-    addSepaDescs(entry.Description, GetLoca("Description"))
-    addSepaDescs(entry.ShortDescription, GetLoca("Short Description"))
 
+    
     if entry.DefaultBoosts or entry.Passives or entry.Boosts or entry.BoostsOnEquipMainHand or entry.BoostsOnEquipOffHand then
         self:RenderAttrPopup(iconImage, cell, entry, popup)
     end
