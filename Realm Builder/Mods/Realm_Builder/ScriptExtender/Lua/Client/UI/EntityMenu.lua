@@ -146,7 +146,8 @@ function SceneMenu:RenderSideBar()
 
         local icon = GetIconForTemplateId(propData and propData.TemplateId)
 
-        local image = node:AddImageButton(propData.Guid, icon, IMAGESIZE.TINY) --[[@as ExtuiImageButton]]
+        local imageGroup = node:AddGroup(propData.Guid .. "SomeGroup") --[[@as ExtuiGroup]]
+        local image = imageGroup:AddImageButton(propData.Guid, icon, IMAGESIZE.TINY) --[[@as ExtuiImageButton]]
 
         local selectable = node:AddSelectable(displayName) --[[@as ExtuiSelectable]]
         self:SetupLeaf(selectable, key, node)
@@ -244,7 +245,7 @@ function SceneMenu:SetupLeaf(sel, key, node)
         end
         self:SetupSelectablePopup()
 
-        _DS(selectable)
+        _D(selectable.OnClick)
     end
     selectable.OnClick = function()
         self:FocusTab(key)

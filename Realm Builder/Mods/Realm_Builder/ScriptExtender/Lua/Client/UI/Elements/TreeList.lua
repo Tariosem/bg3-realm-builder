@@ -269,7 +269,6 @@ function TreeList:ApplyTreeTableStyle(tbl)
 end
 
 function TreeList:RenderList()
-    self:ClearList()
     -- validate renderOrder
     local ok, err = pcall(self.RenderOrder, "a", "b")
     if not ok then
@@ -369,7 +368,7 @@ function TreeList:RenderList()
 end
 
 function TreeList:ClearList()
-    self:ClearSelection()
+    --self:ClearSelection()
     self.leafRefs = {}
     self.treeRefs = {}
     self.indexRefs = {}
@@ -398,11 +397,10 @@ function TreeList:RenderTree(key, node)
 end
 
 ---@param key any
----@param selected boolean|nil
-function TreeList:ToggleSelected(key, selected)
+function TreeList:ToggleSelected(key)
     local ref = self.leafRefs[key]
     if ref then
-        ref.Selected = selected ~= nil and selected or not ref.Selected
+        ref.Selected = not ref.Selected
         if ref.Selected then
             self.selectedItems[key] = true
         else
@@ -411,7 +409,19 @@ function TreeList:ToggleSelected(key, selected)
     end
 end
 
-function TreeList:ClearSelection()
+function TreeList:SetSelected(key, selected)
+    local ref = self.leafRefs[key]
+    if ref then
+        ref.Selected = selected
+        if selected then
+            self.selectedItems[key] = true
+        else
+            self.selectedItems[key] = nil
+        end
+    end
+end
+
+function TreeList:ClearSelection(notCallback)
     for k, v in pairs(self.selectedItems) do
         self:ToggleSelected(k, false)
     end
@@ -419,7 +429,9 @@ function TreeList:ClearSelection()
         ele.Selected = false
     end
     self.selectedItems = {}
-    self:OnSelect(self.selectedItems)
+    if not notCallback then
+        self:OnSelect(self.selectedItems)
+    end
 end
 
 ---@param selectable ExtuiSelectable
@@ -477,6 +489,7 @@ function TreeList:SetUpLeaf(selectable, key)
     local delayTimer = nil
     local doubleClickThreshold = 12 -- ticks
     
+    --- @param sel ExtuiSelectable
     selectable.OnClick = function(sel)
         if delayTimer then
             Timer:Cancel(delayTimer)
@@ -485,46 +498,47 @@ function TreeList:SetUpLeaf(selectable, key)
             return
         end
 
-        delayTimer = Timer:Ticks(doubleClickThreshold, function()
-            delayTimer = nil
-            if self.MultiSelect then
-                self:ToggleSelected(key)
-            elseif self.GroupSelect then
-                if self.lastSelectedKey and self.indexRefs and self.leafRefs[self.lastSelectedKey] then
-                    local lastSelectedKey = self.lastSelectedKey
-                    local startIdx = self.indexRefs[lastSelectedKey]
-                    local endIdx = self.indexRefs[key]
+        if self.MultiSelect then
+            self:ToggleSelected(key)
+        elseif self.GroupSelect then
+            if self.lastSelectedKey and self.indexRefs and self.leafRefs[self.lastSelectedKey] then
+                local lastSelectedKey = self.lastSelectedKey
+                local startIdx = self.indexRefs[lastSelectedKey]
+                local endIdx = self.indexRefs[key]
 
-                    if startIdx and endIdx then
-                        if startIdx > endIdx then
-                            startIdx, endIdx = endIdx, startIdx
-                        end
+                if startIdx and endIdx then
+                    if startIdx > endIdx then
+                        startIdx, endIdx = endIdx, startIdx
+                    end
 
-                        for i = startIdx, endIdx do
-                            local indexkey = self.indexRefsReverse[i]
-                            self:ToggleSelected(indexkey, true)
-                        end
-                    else
-                        Warning("Failed to determine range for group select")
-                        self:ToggleSelected(key)
+                    for i = startIdx, endIdx do
+                        local indexkey = self.indexRefsReverse[i]
+                        self:ToggleSelected(indexkey)
                     end
                 else
+                    Warning("Failed to determine range for group select")
                     self:ToggleSelected(key)
                 end
             else
-                local selected = self.selectedItems[key]
-                for k, v in pairs(self.selectedItems) do
-                    self:ToggleSelected(k, false)
-                end
-                self:ToggleSelected(key, not selected)
+                self:ToggleSelected(key)
             end
+        else
+            Debug("Single Select")
+            local wasSelected = self.selectedItems[key] ~= nil
+            self:ClearSelection(true)
+            self:SetSelected(key, not wasSelected)
+        end
 
-            self.lastSelectedKey = key
-            self:OnSelect(self.selectedItems)
+        self.lastSelectedKey = key
+        self:OnSelect(self.selectedItems)
 
-            if userOnClick then
-                userOnClick(sel)
-            end
+        if userOnClick then
+            userOnClick(sel)
+        end
+
+        delayTimer = Timer:Ticks(doubleClickThreshold, function()
+            if not delayTimer then return end
+            delayTimer = nil
         end)
     end
 
@@ -601,32 +615,34 @@ function TreeList:SetUpTree(tree, key)
             return
         end
 
-        delayTimer = Timer:Ticks(doubleClickThreshold, function()
-            local function recurSel(pparent)
-                local parentNode = self.tree:Find(pparent)
-                if parentNode then
-                    for ikey, cont in pairs(parentNode) do
-                        if self.leafRefs[ikey] then
-                            self:ToggleSelected(ikey)
-                        else
-                            recurSel(ikey)
-                        end
+        local function recurSel(pparent)
+            local parentNode = self.tree:Find(pparent)
+            if parentNode then
+                for ikey, cont in pairs(parentNode) do
+                    if self.leafRefs[ikey] then
+                        self:ToggleSelected(ikey)
+                    else
+                        recurSel(ikey)
                     end
                 end
             end
+        end
 
-            if self.GroupSelect then
-                self:ClearSelection()
-                recurSel(key)
-                self:OnSelect(self.selectedItems)
-            else
-                toggleFunc()
-            end
+        if self.GroupSelect then
+            self:ClearSelection()
+            recurSel(key)
+            self:OnSelect(self.selectedItems)
+        else
+            toggleFunc()
+        end
 
 
-            if userOnClick then
-                userOnClick(sel)
-            end
+        if userOnClick then
+            userOnClick(sel)
+        end
+
+        delayTimer = Timer:Ticks(doubleClickThreshold, function()
+            if not delayTimer then return end
             delayTimer = nil
         end)
     end
