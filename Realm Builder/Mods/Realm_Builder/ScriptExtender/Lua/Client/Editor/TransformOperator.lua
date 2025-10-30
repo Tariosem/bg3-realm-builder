@@ -189,7 +189,7 @@ function TransformOperator:ChangeVisualization()
         }
         transforms[viz] = newTransform
     end
-    Commands.SetTransformCommand(visualizations, transforms, true)
+    Commands.SetTransform(visualizations, transforms, true)
 end
 
 function TransformOperator:SetAxis(axis, shiftDown)
@@ -304,7 +304,7 @@ function TransformOperator:Apply()
             transforms[guid] = transform
         end
     end
-    Commands.SetTransformCommand(self.Targets, transforms, true)
+    Commands.SetTransform(self.Targets, transforms, true)
 end
 
 function TransformOperator:ApplyTranslate(guid, num)
@@ -367,16 +367,16 @@ function TransformOperator:Confirm()
     
     HistoryManager:PushCommand({
         Undo = function()
-            Commands.SetTransformCommand(currenrTargets, self.StartTransforms, true)
+            Commands.SetTransform(currenrTargets, self.StartTransforms, true)
         end,
         Redo = function()
-            Commands.SetTransformCommand(currenrTargets, currentTransforms, true)
+            Commands.SetTransform(currenrTargets, currentTransforms, true)
         end
     })
     NetChannel.Delete:SendToServer({ Guid = self.Visualizations }, function(response) end)
 end
 
 function TransformOperator:Cancel()
-    Commands.SetTransformCommand(self.Targets, self.StartTransforms, true)
+    Commands.SetTransform(self.Targets, self.StartTransforms, true)
     NetChannel.Delete:SendToServer({ Guid = self.Visualizations }, function(response) end)
 end

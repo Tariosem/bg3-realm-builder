@@ -46,14 +46,14 @@ local GIZMO_VISUALIZER_CONFIG = {
         Z = HexToRGBA("FFB6C8FF"),
     },
     HoveredColor = {
-        X = HexToRGBA("FFFF7777"),
-        Y = HexToRGBA("FF77FF77"),
-        Z = HexToRGBA("FF779BFF"),
+        X = HexToRGBA("FFFF0000"),
+        Y = HexToRGBA("FF00FF00"),
+        Z = HexToRGBA("FF0000FF"),
     },
     AxisLineColor = {
         X = HexToRGBA("FFFF0000"),
         Y = HexToRGBA("FF00FF00"),
-        Z = HexToRGBA("FF0033FF"),
+        Z = HexToRGBA("FF0000FF"),
     }
 }
 

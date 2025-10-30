@@ -91,7 +91,7 @@ function TransformToolbar:RegisterKeyInputEvents()
         local targets = NormalizeGuidList(TransformEditor.Target)
         local pos, rot = GetPickingHitPosAndRot()
 
-        Commands.SetTransformCommand(targets, {Translate = pos, RotationQuat = rot})
+        Commands.SetTransform(targets, {Translate = pos, RotationQuat = rot})
     end)
 
     ttMod:RegisterEvent("Duplicate", function (e)
@@ -129,7 +129,7 @@ function TransformToolbar:RegisterKeyInputEvents()
             return
         end
         local targets = NormalizeGuidList(TransformEditor.Target)
-        Commands.BindCommand(targets, parent)
+        Commands.Bind(targets, parent)
     end)
 
     buMod:RegisterEvent("Unbind", function (e)
@@ -138,7 +138,7 @@ function TransformToolbar:RegisterKeyInputEvents()
 
         local targets = NormalizeGuidList(TransformEditor.Target)
 
-        Commands.UnbindCommand(targets)
+        Commands.Unbind(targets)
     end)
 
     buMod:RegisterEvent("Snap", function (e)
@@ -390,7 +390,7 @@ function TransformToolbar:RenderTopBar()
 
     local closeButton = rightCell:AddButton("X")
     closeButton.OnClick = function()
-       panel.Open = false
+        self:Toggle()
     end
 
     local openKeybindConfig = leftCell:AddButton("Configs")
@@ -593,7 +593,7 @@ function TransformToolbar:CreateBindPopup(guid)
         nearByCombo.OnChange = function (sel, selectedGuid, displayName)
             if not selectedGuid or selectedGuid == "" then return end
             if selectedGuid == curParent then return end
-            Commands.BindCommand({guid}, selectedGuid)
+            Commands.Bind({guid}, selectedGuid)
             image:Destroy()
             image = left:AddImage(GetIcon(selectedGuid), IMAGESIZE.SMALL )
             image.SameLine = true
@@ -612,7 +612,7 @@ function TransformToolbar:CreateBindPopup(guid)
 
         local unbindButton = panel:AddButton("Unbind")
         unbindButton.OnClick = function()
-            Commands.UnbindCommand({guid})
+            Commands.Unbind({guid})
             nearByCombo.SelectedIndex = -1
             image:Destroy()
             image = left:AddImage(GetIcon(), IMAGESIZE.SMALL)
@@ -691,4 +691,10 @@ function TransformToolbar:Toggle()
     if not self.TopToolBar then return end
 
     self.TopToolBar.Open = not self.TopToolBar.Open
+    local open = self.TopToolBar.Open
+    if not open then
+        TransformEditor:HideAndDisableGizmo()
+    else
+        TransformEditor:ShowAndEnableGizmo()
+    end
 end

@@ -254,10 +254,14 @@ function EntityTab:RenderMonitorTab()
         end
     end)
 
-    local positionMonitor = monitorTab:AddDrag(GetLoca("Position"))
+    local positionMonitor = monitorTab:AddInputScalar(GetLoca("Position"))
     positionMonitor.Components = 3
-    positionMonitor.Disabled = true
 
+    positionMonitor.OnChange = function(sel)
+        local newPos = {sel.Value[1], sel.Value[2], sel.Value[3]}
+
+        Commands.SetTransform(self.guid, { Translate = newPos })
+    end
     self.positionTimer = Timer:Every(1000, function()
         if not self.isValid then
             if self.positionTimer then
@@ -286,9 +290,20 @@ function EntityTab:RenderMonitorTab()
         end
     end)
 
-    local rotationMonitor = monitorTab:AddDrag(GetLoca("Rotation"))
-    rotationMonitor.Disabled = true
+    local rotationMonitor = monitorTab:AddInputScalar(GetLoca("Rotation"))
     rotationMonitor.Components = 3
+
+    rotationMonitor.OnChange = function(sel)
+        for i,v in pairs(sel.Value) do
+            v = Ext.Math.Clamp(v, -360, 360)
+            sel.Value[i] = v
+        end
+       local eulers = { math.rad(sel.Value[1] or 0), math.rad(sel.Value[2] or 0), math.rad(sel.Value[3] or 0) }
+
+        local quat = Ext.Math.QuatFromEuler(eulers)
+
+        Commands.SetTransform(self.guid, { RotationQuat = quat })
+    end
 
     self.rotationTimer = Timer:Every(1000, function()
         if not self.isValid then
@@ -313,21 +328,22 @@ function EntityTab:RenderMonitorTab()
             RADs[i] = math.deg(RADs[i])
         end
 
-        local pitch, yaw, roll = RADs[1], RADs[2], RADs[3]
-        if not pitch or not yaw or not roll then
+        local rx, ry, rz = RADs[1], RADs[2], RADs[3]
+        if not ry or not rx or not rz then
             rotationMonitor.Value = self.LastQuatRotation or {0, 0, 0, 0}
             return
         end
 
-        local pitchT = FormatDecimal(pitch, 2)
-        local yawT = FormatDecimal(yaw, 2)
-        local rollT = FormatDecimal(roll, 2)
-        if pitchT and yawT and rollT then
-            rotationMonitor.Value = {pitchT, yawT, rollT, 0}
-            self.LastQuatRotation = {pitch, yaw, roll, 0}
+        local xf = FormatDecimal(rx, 2)
+        local yf = FormatDecimal(ry, 2)
+        local zf = FormatDecimal(rz, 2)
+        if xf and yf and zf then
+            rotationMonitor.Value = {xf, yf, zf, 0}
+            self.LastQuatRotation = {xf, yf, zf, 0}
         else
-            rotationMonitor.Value = {0, 0, 0, 0}
+            rotationMonitor.Value = self.LastQuatRotation or {0, 0, 0, 0}
         end
+
     end)
 
     self.monitorTimers = { self.positionTimer, self.rotationTimer, self.levelTimer }

@@ -50,7 +50,7 @@ end
 function SceneMenu:Render()
 
     if self.isAttach and self.parent then
-        self.panel = self.parent:AddTabItem("Props")
+        self.panel = self.parent:AddTabItem(GetLoca("Scene"))
         self.isWindow = false
     else
         self.panel = RegisterWindow("generic", "", "Props Menu", self)
@@ -107,6 +107,7 @@ function SceneMenu:RenderSideBar()
     local panel = self.mainPanel.SideBar
     local tree = EntityStore.Tree
 
+    local editor = TransformEditor
     local treeList = TreeList.new(panel, "PropsTree", tree, "Guid") --[[@as TreeList]]
 
     local rightClickPopup = panel:AddPopup("PropRightClickPopup") --[[@as ExtuiPopup]]
@@ -122,8 +123,8 @@ function SceneMenu:RenderSideBar()
     end
 
     treeList.OnSelect = function(sel, selected)
-        --- @diagnostic disable-next-line: param-type-mismatch
-        TransformEditor:Select(selected)
+        local copy = DeepCopy(selected)
+        editor:Select(copy)
         local arr = {}
         for guid, _ in pairs(selected) do
             table.insert(arr, guid)
@@ -146,10 +147,9 @@ function SceneMenu:RenderSideBar()
 
         local icon = GetIconForTemplateId(propData and propData.TemplateId)
 
-        local imageGroup = node:AddGroup(propData.Guid .. "SomeGroup") --[[@as ExtuiGroup]]
-        local image = imageGroup:AddImageButton(propData.Guid, icon, IMAGESIZE.TINY) --[[@as ExtuiImageButton]]
+        local image = node:AddImageButton(propData.Guid, icon, {36, 36}) --[[@as ExtuiImageButton]]
 
-        local selectable = node:AddSelectable(displayName) --[[@as ExtuiSelectable]]
+        local selectable = node:AddSelectable(displayName .. "##" .. key) --[[@as ExtuiSelectable]]
         self:SetupLeaf(selectable, key, node)
     
         self.imageRefs[key] = image
@@ -164,10 +164,21 @@ function SceneMenu:RenderSideBar()
             })
             propData.Visible = not propData.Visible
             SetAlphaByBool(image, propData.Visible)
-            SetAlphaByBool(sel.leafRefs[key], propData.Visible)
+            SetAlphaByBool(selectable, propData.Visible)
         end
         SetAlphaByBool(image, propData.Visible)
         SetAlphaByBool(selectable, propData.Visible)
+
+        local function updateImageAlpha()
+            propData = EntityStore:GetStoredData(key)
+            if not propData then return end
+            SetAlphaByBool(image, propData.Visible)
+            SetAlphaByBool(selectable, propData.Visible)
+        end
+
+        image.UserData = {
+            UpdateAlpha = updateImageAlpha
+        }
 
         return selectable
     end
@@ -209,14 +220,15 @@ function SceneMenu:RenderSideBar()
         return string.lower(aName) < string.lower(bName)
     end
 
-    treeList.OnRenameInput = function(sel, key, newName)
+    treeList.OnRenameInput = function(sel, key, newName, selectable)
         local isEntity = EntityStore:GetStoredData(key)
         local oriName = isEntity and (isEntity.DisplayName or key) or key
         if oriName == newName then return end
 
         if isEntity then
             local originalDisplayName = isEntity.DisplayName
-            EntityStore:RegisterDisplayName(newName, key, originalDisplayName)
+            local actualName = EntityStore:RegisterDisplayName(newName, key, originalDisplayName)
+            selectable.Label = actualName
             if self.entityTabs[key] then
                 local tab = self.entityTabs[key]
                 if tab.isVisible then
@@ -244,8 +256,6 @@ function SceneMenu:SetupLeaf(sel, key, node)
             table.insert(self.selectedGuids, propData.Guid)
         end
         self:SetupSelectablePopup()
-
-        _D(selectable.OnClick)
     end
     selectable.OnClick = function()
         self:FocusTab(key)
@@ -315,79 +325,75 @@ function SceneMenu:SetupSelectablePopup(popup)
     local row = ttable:AddRow() --[[@as ExtuiTableRow]]
 
     local deleteButton = AddSelectableButton(row:AddCell(), GetLoca("Delete"), function()
-        if self.selectedGuids and #self.selectedGuids > 0 then
-            local deleteMes = ""
-            local guids = {}
-            for _, guid in ipairs(self.selectedGuids) do
-                table.insert(guids, guid)
-            end
-            if #guids == 0 then
-                return
-            end
-            if #guids == 1 then
-                deleteMes = string.format(GetLoca("Are you sure you want to delete '%s'?"), EntityStore[guids[1]].DisplayName or guids[1])
-            else
-                deleteMes = string.format(GetLoca("Are you sure you want to delete these %d props?"), #guids)
-            end
-            ConfirmPopup:DangerConfirm(
-                deleteMes,
-                function()
-                    NetChannel.Delete:SendToServer({ Guid = guids })
-                end
-            )
+        if not(self.selectedGuids and #self.selectedGuids > 0) then return end
+        
+        local deleteMes = ""
+        local guids = NormalizeGuidList(self.selectedGuids)
+        if #guids == 1 then
+            deleteMes = string.format(GetLoca("Are you sure you want to delete '%s'?"), EntityStore[guids[1]].DisplayName or guids[1])
+        else
+            deleteMes = string.format(GetLoca("Are you sure you want to delete these %d props?"), #guids)
         end
+        ConfirmPopup:DangerConfirm(
+            deleteMes,
+            function()
+                NetChannel.Delete:SendToServer({ Guid = guids })
+            end
+        )
     end)
     ApplyDangerSelectableStyle(deleteButton)
 
     local hideButton = AddSelectableButton(row:AddCell(), GetLoca("Hide/Show"), function()
-        if self.selectedGuids and #self.selectedGuids > 0 then
-            for _, guid in ipairs(self.selectedGuids) do
-                local prop = EntityStore:GetStoredData(guid)
-                if prop then
-                    local data = {
-                        Guid = prop.Guid,
-                        Attributes = {
-                            Visible = not prop.Visible
-                        }
-                    }
-                    NetChannel.SetAttributes:SendToServer(data)
-                    prop.Visible = not prop.Visible
-                end
-            end
-            self:UpdateList()
+        if not(self.selectedGuids and #self.selectedGuids > 0) then return end
+
+        for _, guid in ipairs(self.selectedGuids) do
+            local prop = EntityStore:GetStoredData(guid)
+            if not prop then goto continue end
+
+            local data = {
+                Guid = prop.Guid,
+                Attributes = {
+                    Visible = not prop.Visible
+                }
+            }
+            NetChannel.SetAttributes:SendToServer(data)
+            prop.Visible = not prop.Visible
+            ::continue::
         end
+        self:UpdateList()
     end)
 
     local groupButton = AddSelectableButton(row:AddCell(), GetLoca("Group"), function()
-        if self.selectedGuids and #self.selectedGuids > 0 then
-            local baseName = GetLoca("New Collection")
-            local name = baseName
-            local cnt = 1
-            while tree:Find(name) do
-                cnt = cnt + 1
-                name = baseName .. " ( " .. cnt .. " )"
-            end
-            local newTree = tree:ForceAddTree(name, tree:FindLCA(self.selectedGuids))
-            for _, guid in ipairs(self.selectedGuids) do
-                tree:Reparent(guid, name)
-            end
-            self.propTreeList:ClearSelection()
-            self.selectedGuids = {}
-            self:UpdateList()
+        if not(self.selectedGuids and #self.selectedGuids > 0) then return end
+        local baseName = GetLoca("New Collection")
+        local name = baseName
+        local cnt = 1
+        while tree:Find(name) do
+            cnt = cnt + 1
+            name = baseName .. " ( " .. cnt .. " )"
         end
+        local newTree = tree:ForceAddTree(name, tree:FindLCA(self.selectedGuids))
+        for _, guid in ipairs(self.selectedGuids) do
+            tree:Reparent(guid, name)
+        end
+        self.propTreeList:ClearSelection()
+        self.selectedGuids = {}
+        self:UpdateList()
+    
     end)
 
     local makeLsxBtn = AddSelectableButton(row:AddCell(), GetLoca("Export LSX"), function()
-        if self.selectedGuids and #self.selectedGuids > 0 then
-            for _, guid in ipairs(self.selectedGuids) do
-                local node = LSXHelpers.BuildItem(guid, "Default")
-                if not node then 
-                    Error("Failed to build LSX for guid: " .. guid)
-                    return
-                end
-                Debug(node:Stringify())
+        if not(self.selectedGuids and #self.selectedGuids > 0) then return end
+
+        for _, guid in ipairs(self.selectedGuids) do
+            local node = LSXHelpers.BuildItem(guid)
+            if not node then 
+                Error("Failed to build LSX for guid: " .. guid)
+                return
             end
+            Debug(node:Stringify())
         end
+    
     end)
 
 end
@@ -484,6 +490,13 @@ end
 
 function SceneMenu:UpdateList()
     self.propTreeList:RenderList()
+end
+
+function SceneMenu:UpdateSelectableAlpha(guid)
+    if self.imageRefs and self.imageRefs[guid] then
+        local image = self.imageRefs[guid]
+        image.UserData.UpdateAlpha()
+    end
 end
 
 function SceneMenu:Add(parent)

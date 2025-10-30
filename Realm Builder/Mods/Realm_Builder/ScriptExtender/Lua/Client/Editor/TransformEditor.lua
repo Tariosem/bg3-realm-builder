@@ -246,14 +246,14 @@ function TransformEditor:RegisterEvents()
         if self.IsDragging then return end
         if e.Event ~= "KeyDown" then return end
 
-        if e.Modifiers and e.Modifiers == "LAlt" then
-            local resetTransform = {}
-            if e.Key == teMod:GetKeyByEvent("RotateMode").Key then resetTransform.RotationQuat = {0,0,0,1} end
-            if e.Key == teMod:GetKeyByEvent("TranslateMode").Key then resetTransform.Translate = {CGetPosition(CGetHostCharacter())} end
-            if e.Key == teMod:GetKeyByEvent("ScaleMode").Key then resetTransform.Scale = {1,1,1} end
+        if not(e.Modifiers and e.Modifiers == "LAlt") then return end
 
-            Commands.SetTransformCommand(self.Target, resetTransform)
-        end
+        local resetTransform = {}
+        if e.Key == teMod:GetKeyByEvent("RotateMode").Key then resetTransform.RotationQuat = {0,0,0,1} end
+        if e.Key == teMod:GetKeyByEvent("TranslateMode").Key then resetTransform.Translate = {CGetPosition(CGetHostCharacter())} end
+        if e.Key == teMod:GetKeyByEvent("ScaleMode").Key then resetTransform.Scale = {1,1,1} end
+
+        Commands.SetTransform(self.Target, resetTransform)
     end)
 
     restrain(teMod:RegisterEvent("DeleteAllGizmos", function (e)
@@ -365,11 +365,12 @@ function TransformEditor:RegisterEvents()
             end
         end
 
-        -- visualize more then 1 axis will need more root templates
-        -- which just complicate things a lot
-        -- and it's not very useful anyway
-        -- not because I'm lazy
-        if CountMap(gizmo.SelectedAxis) ~= 1 then return end 
+        if CountMap(gizmo.SelectedAxis) ~= 1 then 
+            for _,v in pairs(self.LineVisualizations or {}) do
+                gizmo.Visualizer:SetLineLength(v, 0)
+            end
+            return
+        end
 
         local color = nil
         local selectedAxis = nil
@@ -446,7 +447,7 @@ function TransformEditor:RegisterEvents()
 
             transforms[guid] = newTransform
         end
-        Commands.SetTransformCommand(self.Target, transforms, true)
+        Commands.SetTransform(self.Target, transforms, true)
     end
 
     self.Gizmo.OnDragScale = function(gizmo, delta)
@@ -502,7 +503,7 @@ function TransformEditor:RegisterEvents()
             newTransform.Scale = newScale
             transforms[guid] = newTransform
         end
-        Commands.SetTransformCommand(self.Target, transforms, true)
+        Commands.SetTransform(self.Target, transforms, true)
     end
 
     self.Gizmo.OnDragRotate = function(gizmo, delta)
@@ -540,7 +541,7 @@ function TransformEditor:RegisterEvents()
             transforms[guid] = newTransform
             ::continue::
         end
-        Commands.SetTransformCommand(self.Target, transforms, true)
+        Commands.SetTransform(self.Target, transforms, true)
     end
     
 
@@ -569,10 +570,10 @@ function TransformEditor:RegisterEvents()
         if next(redoTransforms) then
             HistoryManager:PushCommand({
                 Undo = function()
-                    Commands.SetTransformCommand(changed, undoTransforms, true)
+                    Commands.SetTransform(changed, undoTransforms, true)
                 end,
                 Redo = function()
-                    Commands.SetTransformCommand(changed, redoTransforms, true)
+                    Commands.SetTransform(changed, redoTransforms, true)
                 end
             })
         end
@@ -588,11 +589,13 @@ function TransformEditor:HideAndDisableGizmo()
     if self.Gizmo then
         self.Gizmo:Disable()
     end
+    self.Disabled = true
 end
 
 function TransformEditor:ShowAndEnableGizmo()
     if self.Gizmo then
         self.Gizmo:Enable()
     end
+    self.Disabled = false
 end
 

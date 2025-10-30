@@ -158,10 +158,10 @@ NetChannel.SetTransform:SetHandler(function(data, userID)
         if not transform then goto continue end
 
         if transform.Translate and #transform.Translate == 3 then
-            TeleportTo(guid, table.unpack(transform.Translate))
+            TeleportTo(guid, transform.Translate[1], transform.Translate[2], transform.Translate[3])
         end
         if transform.RotationQuat and #transform.RotationQuat == 4 then
-            RotateTo(guid, table.unpack(transform.RotationQuat))
+            RotateTo(guid, transform.RotationQuat[1], transform.RotationQuat[2], transform.RotationQuat[3], transform.RotationQuat[4])
         end
         if transform.Scale and #transform.Scale == 3 then
             NetChannel.SetVisualTransform:Broadcast({Guid = guid, Transforms = {[guid] = {Scale = transform.Scale}}})

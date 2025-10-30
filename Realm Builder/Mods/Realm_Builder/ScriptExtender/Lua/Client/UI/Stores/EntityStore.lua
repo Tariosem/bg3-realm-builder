@@ -105,11 +105,9 @@ function EntityStore:SetupServerListeners()
                 for k, v in pairs(data.Attributes) do
                     EntityDatas[guid][k] = v
                 end
-            end
-        end
 
-        if RBMenu.entityMenu then
-            RBMenu.entityMenu:UpdateList()
+                RBMenu.entityMenu:UpdateSelectableAlpha(guid)
+            end
         end
     end)
 

@@ -35,7 +35,7 @@ local function ExportUnseenStrings()
         table.insert(toSave, str)
     end
 
-    local string, handleToString, stringToHandle = LSXHelpers.GenerateLocalization(toSave, 1)
+    local string, stringToHandle = LSXHelpers.GenerateLocalization(toSave, 1)
 
     local path = "Realm_Builder/Mods/Realm_Builder/Localization/UnseenStrings.lsx"
     local stringToHandlePath = "Realm_Builder/Mods/Realm_Builder/Localization/UnseenStrings_StringToHandle.json"

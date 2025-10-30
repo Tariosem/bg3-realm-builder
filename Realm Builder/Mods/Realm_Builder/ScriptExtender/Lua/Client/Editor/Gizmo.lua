@@ -338,6 +338,7 @@ function Gizmo:CreateItem()
                     Visible = true,
                 }
             })
+            return UNSUBSCRIBE_SYMBOL
         end)
     end)
 end
@@ -436,6 +437,7 @@ function Gizmo:GetHit(ray)
     return hit
 end
 
+--- Ext.Math.Angle doesn't seem to return signed angles
 local function CalcRotationChange(startDir, dir, axis, origin)
     local dot = startDir:Dot(dir)
     dot = Ext.Math.Clamp(dot, -1, 1)

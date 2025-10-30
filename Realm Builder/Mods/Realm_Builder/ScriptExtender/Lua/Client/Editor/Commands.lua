@@ -66,7 +66,7 @@ Commands = Commands or {}
 --- @param guids GUIDSTRING|GUIDSTRING[]
 --- @param transform {Translate: Vec3|nil, RotationQuat: Vec4|nil, Scale: Vec3|nil}|table<GUIDSTRING, {Translate: Vec3|nil, RotationQuat: Vec4|nil, Scale: Vec3|nil}>
 --- @param notRecordHistory boolean|nil
-function Commands.SetTransformCommand(guids, transform, notRecordHistory)
+function Commands.SetTransform(guids, transform, notRecordHistory)
     guids = NormalizeGuidList(guids)
     local groups = EntityHelpers.FilterUuidsByType(guids)
     local originTransform = {}
@@ -100,7 +100,7 @@ function Commands.SetTransformCommand(guids, transform, notRecordHistory)
     end
 end
 
-function Commands.BindCommand(targets, parent)
+function Commands.Bind(targets, parent)
     NetChannel.Bind:SendToServer({ Type = "Bind", Parent = parent, Guid = targets })
 
     HistoryManager:PushCommand({
@@ -114,7 +114,7 @@ function Commands.BindCommand(targets, parent)
 
 end
 
-function Commands.UnbindCommand(targets)
+function Commands.Unbind(targets)
     local oriParents = {}
     for _,guid in ipairs(targets) do
         local parent = EntityStore:GetBindParent(guid)
@@ -159,7 +159,7 @@ function Commands.SnapCommand(targets, onlyRotation, onlyPosition)
         end
     end
 
-    Commands.SetTransformCommand(targets, targetPos)
+    Commands.SetTransform(targets, targetPos)
 end
 
 ---@param template string

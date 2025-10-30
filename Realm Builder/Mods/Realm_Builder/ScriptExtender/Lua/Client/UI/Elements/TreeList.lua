@@ -1,6 +1,13 @@
 --- @class TreeList : Class
 --- @field parent ExtuiTreeParent
 --- @field panel ExtuiWindowBase|ExtuiWindow
+--- @field selectedItems table<any, boolean>
+--- @field treeRefs table<any, ExtuiSelectable>
+--- @field leafRefs table<any, ExtuiSelectable>
+--- @field nodeRefs table<any, ExtuiTableCell>
+--- @field indexRefs table<any, number>
+--- @field indexRefsReverse table<number, any>
+--- @field rootTable ExtuiTable
 --- @field tree TreeTable
 --- @field isVisible boolean
 --- @field label string
@@ -300,7 +307,14 @@ function TreeList:RenderList()
     self.nodeRefs = {}
     self.indexRefs = {}
     self.indexRefsReverse = {}
-    self.nodeRefs[TreeTable.GetRootKey()] = row
+    setmetatable(self.nodeRefs, {
+        __index = function(t, k)
+            if k == TreeTable.GetRootKey() then
+                return row
+            end
+            return rawget(t, k)
+        end
+    })
     local leafCnt = 1
 
     local function collectChilds(key)
@@ -433,7 +447,7 @@ function TreeList:ClearSelection(notCallback)
         self:OnSelect(self.selectedItems)
     end
 end
-
+local emptyFunc = function() end
 ---@param selectable ExtuiSelectable
 ---@param key any
 function TreeList:SetUpLeaf(selectable, key)
@@ -453,7 +467,7 @@ function TreeList:SetUpLeaf(selectable, key)
         selectable.Selected = false
     end
 
-    local userOnDragStart = selectable.OnDragStart
+    local userOnDragStart = selectable.OnDragStart or emptyFunc
     selectable.OnDragStart = function(sel)
         if not self.MultiSelect and not self.GroupSelect then
             self:ClearSelection()
@@ -467,27 +481,27 @@ function TreeList:SetUpLeaf(selectable, key)
             self:RenderLeaf(ikey, row:AddCell())
         end
         self:OnDragStart(key)
-        if userOnDragStart then
-            userOnDragStart(sel)
-        end
+        userOnDragStart(sel)
     end
 
-    local userOnDragDrop = selectable.OnDragDrop
+    local userOnDragDrop = selectable.OnDragDrop or emptyFunc
     selectable.OnDragDrop = function(sel, drop)
         local dropped = drop.UserData or {}
         if dropped.Key then
             self:OnDragDrop(dropped.Key, key)
         end
-        if userOnDragDrop then
-            userOnDragDrop(sel, drop)
-        end
+        userOnDragDrop(sel, drop)
     end
 
-    local userOnClick = selectable.OnClick
+    local userOnClick = selectable.OnClick or emptyFunc
     local userLabel = selectable.Label
 
+    local setNewLabel = function()
+        userLabel = selectable.Label
+    end
+
     local delayTimer = nil
-    local doubleClickThreshold = 12 -- ticks
+    local doubleClickThreshold = 400 -- ms
     
     --- @param sel ExtuiSelectable
     selectable.OnClick = function(sel)
@@ -532,16 +546,15 @@ function TreeList:SetUpLeaf(selectable, key)
         self.lastSelectedKey = key
         self:OnSelect(self.selectedItems)
 
-        if userOnClick then
-            userOnClick(sel)
-        end
+        userOnClick(sel)
 
-        delayTimer = Timer:Ticks(doubleClickThreshold, function()
+        delayTimer = Timer:After(doubleClickThreshold, function()
             if not delayTimer then return end
             delayTimer = nil
         end)
     end
 
+    selectable.UserData.SetLabel = setNewLabel
 end
 
 ---@param tree ExtuiSelectable
@@ -557,29 +570,24 @@ function TreeList:SetUpTree(tree, key)
 
     local parent = self.tree:GetParentKey(key)
 
-    local userOnDragStart = tree.OnDragStart
+    local userOnDragStart = tree.OnDragStart or emptyFunc
 
     tree.OnDragStart = function(sel)
         local previewTable = tree.DragPreview:AddTable("##DragPreview", 1)
         self:ApplyTreeTableStyle(previewTable)
         local row = previewTable:AddRow()
         self:RenderTree(key, row:AddCell())
-        if userOnDragStart then
-            userOnDragStart(sel)
-        end
+        userOnDragStart(sel)
     end
 
-    local userDragDrop = tree.OnDragDrop
+    local userDragDrop = tree.OnDragDrop or emptyFunc
     tree.OnDragDrop = function(sel, drop)
         local dropped = drop.UserData or {}
 
         if dropped.Key then
             self:OnDragDrop(dropped.Key, key)
         end
-
-        if userDragDrop then
-            userDragDrop(sel, drop)
-        end
+        userDragDrop(sel, drop)
     end
 
     local userLabel = tree.Label
@@ -589,6 +597,11 @@ function TreeList:SetUpTree(tree, key)
         else
             tree.Label = "[-] " .. userLabel
         end
+    end
+
+    local updateLabel = function()
+        userLabel = tree.Label:gsub("^%[%+%]%s+", ""):gsub("^%[%-%]%s+", "")
+        toggleLabel()
     end
 
     local toggleFunc = function()
@@ -601,10 +614,10 @@ function TreeList:SetUpTree(tree, key)
         toggleLabel()
     end
 
-    local userOnClick = tree.OnClick
+    local userOnClick = tree.OnClick or emptyFunc
 
     local delayTimer = nil
-    local doubleClickThreshold = 12 -- ticks
+    local doubleClickThreshold = 400 -- ms
 
     tree.OnClick = function(sel)
         sel.Selected = false
@@ -636,12 +649,9 @@ function TreeList:SetUpTree(tree, key)
             toggleFunc()
         end
 
+        userOnClick(sel)
 
-        if userOnClick then
-            userOnClick(sel)
-        end
-
-        delayTimer = Timer:Ticks(doubleClickThreshold, function()
+        delayTimer = Timer:After(doubleClickThreshold, function()
             if not delayTimer then return end
             delayTimer = nil
         end)
@@ -650,6 +660,7 @@ function TreeList:SetUpTree(tree, key)
     toggleLabel()
 
     tree.UserData.UpdateLabel = toggleLabel
+    tree.UserData.SetLabel = updateLabel
 
     setmetatable(tree.UserData, {
         __index = function(t, k)
@@ -685,19 +696,17 @@ function TreeList:SetupRenameInput(key, userLabel)
     if not selec then return end
 
     self.IsRenaming = true
-    selec:Destroy()
-
-    local refTable = isLeaf and self.leafRefs or self.treeRefs
-    refTable[key] = nil
+    selec.Visible = false
 
     local node = self.nodeRefs[key].UserData
 
+    userLabel = userLabel:gsub("##.*", "") -- remove id suffix
     local input = node:AddInputText("", userLabel) --[[@type ExtuiInputText?]]
     input.IDContext = "TreeList" .. self.label .. "RenameInput"
     input.SameLine = true
 
     local function rerender()
-        self:RenderList()
+        selec.Visible = true
         self.IsRenaming = false
     end
 
@@ -706,9 +715,10 @@ function TreeList:SetupRenameInput(key, userLabel)
         local newName = input.Text
         input:Destroy()
         input = nil
-        self:OnRenameInput(key, newName)
         rerender()
         self.IsRenaming = false
+        self:OnRenameInput(key, newName, selec)
+        self:RenderList()
     end
 
     Timer:After(1000, function (timerID)
