@@ -111,12 +111,11 @@ end
 ---@param parent ExtuiTreeParent
 ---@param ccaModPack CCMod_Pack?
 function MaterialPresetsMenu:SetupWorkspace(parent, ccaModPack, notRenderImport)
-    --local infoTab = parent:AddTable("MaterialPresetsWorkspaceTable", 2)
-    local infoTab = AddCollapsingTable(parent, nil, nil, { SideBarWidth = 400 })
-    --local mainRow = infoTab:AddRow()
+    local infoTab = AddCollapsingTable(parent, nil, nil, { SideBarWidth = 400 * SCALE_FACTOR })
 
-    local infoLeft = infoTab.SideBar--mainRow:AddCell()
-    local infoRight = infoTab.MainArea--mainRow:AddCell()
+    local infoLeft = infoTab.SideBar
+    local infoRight = infoTab.MainArea
+    infoTab.Table.Borders = true
 
     infoTab.BordersInnerV = true
 
@@ -318,8 +317,8 @@ end
 local function setRowColor(row, color)
     --row:SetColor("TableRowBg", color)
     --row:SetColor("TableRowBgAlt", color)
-    row:SetColor("TableRowBg", AdjustColor(color, -0.1, -0.4, -0.4))
-    row:SetColor("TableRowBgAlt", AdjustColor(color, -0.1, -0.4, -0.4))
+    row:SetColor("TableRowBg", AdjustColor(color, -0.2, -0.2, -0.4))
+    row:SetColor("TableRowBgAlt", AdjustColor(color, -0.2, -0.2, -0.4))
     row:SetColor("TableHeaderBg", AdjustColor(color, -0.2, nil, -0.5))
 end
 
@@ -343,149 +342,17 @@ function MaterialPresetsMenu:RenderFolderPanel(presetTab, presetHeaders, exportS
         table.sort(sorted)
         local refreshFolderList = {}
         for _, folderName in pairs(sorted) do
-            local folderObj = exportSettings.Folders[folderName]
-            local folderRow = presetTab:AddRow()
-            table.insert(presetRows, folderRow)
-            local folderCell = folderRow:AddCell()
-            local folderColorBox = folderCell:AddColorEdit("##FolderColorBox_" .. folderName) --[[@as ExtuiColorEdit]]
-            local folderDef = exportSettings.FolderDefinitions[folderName]
-            local folderHeader = folderCell:AddSelectable(makeFolderDisplay(openedFolders[folderName], folderName,
-                folderDef.ExportType)) --[[@as ExtuiSelectable]]
-            presetHeaders[folderName] = folderColorBox
-
-            folderColorBox:SetStyle("FrameBorderSize", 2)
-            if folderDef.ExportType then
-                clearWarningBorder(presetHeaders[folderName])
-                setRowColor(folderRow, exportColor)
-            else
-                setWarningBorder(presetHeaders[folderName])
-                setRowColor(folderRow, disabledColor)
-            end
-
-            folderColorBox.NoInputs = true
-            folderColorBox.CanDrag = true
-            folderColorBox.DragDropType = MATERIALPRESET_DRAGDROP_TYPE
-            folderColorBox.Color = folderDef.UIColor or { 0.5, 0.5, 0.5, 1 }
-            folderColorBox.OnChange = function()
-                folderDef.UIColor = folderColorBox.Color
-                setRowColor(folderRow, folderDef.UIColor)
-            end
-
-            if folderDef.UIColor then
-                setRowColor(folderRow, folderDef.UIColor)
-            end
-
-            folderColorBox.OnDragStart = function()
-                folderColorBox.UserData = {
-                    UIColor = folderColorBox.Color,
-                }
-                local pb = folderColorBox.DragPreview:AddColorEdit("##FolderColorBoxDragPreview_" .. folderName)
-                pb.NoInputs = true
-                pb.Color = folderColorBox.Color
-            end
-
-            folderHeader.SameLine = true
-
-            local folderManagePopup = folderCell:AddPopup("MaterialPresetFolderManagePopup_" .. folderName)
-            local folderTable = AddIndent(folderCell):AddTable("FolderTable_" .. folderName, 3)
-            folderTable.Visible = openedFolders[folderName] or false
-            folderTable.UserData = {}
-            folderTable.UserData.Header = folderHeader
-
-            folderHeader.OnClick = function()
-                folderHeader.Selected = false
-                folderTable.Visible = not folderTable.Visible
-                openedFolders[folderName] = folderTable.Visible
-                folderHeader.Label = makeFolderDisplay(folderTable.Visible, folderName, folderDef.ExportType)
-            end
-
-            folderHeader.OnRightClick = function()
-                folderManagePopup:Open()
-            end
-
-            local function refreshFolder() end
-            folderHeader.UserData = {
-                Opened = openedFolders,
-                Delete = function()
-                    local toDelete = {}
-                    for guid, _ in pairs(folderObj) do
-                        table.insert(toDelete, guid)
+            local folderRow
+            folderRow = self:RenderFolderRow(presetTab, folderName, openedFolders, presetHeaders, exportSettings, refreshFolderList, function ()
+                for i, row in pairs(presetRows) do
+                    if row == folderRow then
+                        row:Destroy()
+                        table.remove(presetRows, i)
+                        break
                     end
-                    for _, guid in pairs(toDelete) do
-                        exportSettings.MaterialPresets[guid] = nil
-                    end
-                    exportSettings.Folders[folderName] = nil
-                    exportSettings.FolderDefinitions[folderName] = nil
-                    refreshFolderList[folderName] = nil
-                    folderCell:Destroy()
-                    for i, row in pairs(presetRows) do
-                        if row == folderRow then
-                            row:Destroy()
-                            table.remove(presetRows, i)
-                            break
-                        end
-                    end
-                end,
-                Update = function(newName)
-                    newName = newName or folderName
-                    refreshFolderList[newName] = refreshFolderList[folderName]
-                    presetHeaders[newName] = presetHeaders[folderName]
-                    folderName = newName
-                    folderHeader.Label = makeFolderDisplay(openedFolders[folderName], folderName, folderDef.ExportType)
-                    if folderDef.ExportType then
-                        --setRowColor(folderRow, exportColor)
-                        clearWarningBorder(presetHeaders[newName])
-                    end
-                end,
-            }
-
-            folderHeader.DragDropType = MATERIALPRESET_DRAGDROP_TYPE
-            folderHeader.OnDragDrop = function(sel, drop)
-                if drop.UserData and drop.UserData.Parameters then
-                    local guid = drop.UserData.Uuid
-                    if folderObj[guid] then
-                        -- already in this folder
-                        return
-                    end
-
-                    -- in this workspace, move to this folder
-                    if drop.UserData.Uuid and exportSettings.MaterialPresets[drop.UserData.Uuid] then
-                        -- remove from old folder
-                        local oldFolder = nil
-                        for fName, fObj in pairs(exportSettings.Folders) do
-                            if fObj[drop.UserData.Uuid] then
-                                oldFolder = fName
-                                break
-                            end
-                        end
-                        exportSettings.Folders[oldFolder][drop.UserData.Uuid] = nil
-                        exportSettings.Folders[folderName][drop.UserData.Uuid] = "end"
-                        if refreshFolderList[oldFolder] then
-                            refreshFolderList[oldFolder]()
-                        end
-
-                        refreshFolder()
-                        return
-                    end
-
-                    -- not in this workspace, create new preset in this folder
-                    guid = Uuid_v4()
-                    local newPreset = {
-                        DisplayName = drop.UserData.DisplayName or "Unnamed Preset",
-                        UIColor = DeepCopy(drop.UserData.UIColor or { 1, 1, 1, 1 }),
-                        Parameters = DeepCopy(drop.UserData.Parameters or {}),
-                    }
-
-                    exportSettings.MaterialPresets[guid] = newPreset
-                    folderObj[guid] = "end"
-                    refreshFolder()
                 end
-            end
-            folderColorBox.OnDragDrop = folderHeader.OnDragDrop
-
-            self:RenderFolderManagePopup(folderManagePopup, folderName, folderHeader, exportSettings)
-            refreshFolder = self:RenderFolder(folderTable, folderObj, exportSettings.MaterialPresets, folderName)
-            refreshFolderList[folderName] = refreshFolder
+            end)
+            table.insert(presetRows, folderRow)
         end
 
         local newFolderRow = presetTab:AddRow()
@@ -508,6 +375,145 @@ function MaterialPresetsMenu:RenderFolderPanel(presetTab, presetHeaders, exportS
     end
 
     return rerender
+end
+
+function MaterialPresetsMenu:RenderFolderRow(presetTab, folderName, openedFolders, presetHeaders, exportSettings, refreshFolderList, onDelete)
+    local folderObj = exportSettings.Folders[folderName]
+    local folderRow = presetTab:AddRow()
+    local folderCell = folderRow:AddCell()
+    local folderColorBox = folderCell:AddColorEdit("##FolderColorBox_" .. folderName) --[[@as ExtuiColorEdit]]
+    local folderDef = exportSettings.FolderDefinitions[folderName]
+    local folderHeader = folderCell:AddSelectable(makeFolderDisplay(openedFolders[folderName], folderName,
+        folderDef.ExportType)) --[[@as ExtuiSelectable]]
+    presetHeaders[folderName] = folderColorBox
+
+    folderColorBox:SetStyle("FrameBorderSize", 2)
+    if folderDef.ExportType then
+        clearWarningBorder(presetHeaders[folderName])
+        setRowColor(folderRow, exportColor)
+    else
+        setWarningBorder(presetHeaders[folderName])
+        setRowColor(folderRow, disabledColor)
+    end
+
+    folderColorBox.NoInputs = true
+    folderColorBox.CanDrag = true
+    folderColorBox.DragDropType = MATERIALPRESET_DRAGDROP_TYPE
+    folderColorBox.Color = folderDef.UIColor or { 0.5, 0.5, 0.5, 1 }
+    folderColorBox.OnChange = function()
+        folderDef.UIColor = folderColorBox.Color
+        setRowColor(folderRow, folderDef.UIColor)
+    end
+
+    if folderDef.UIColor then
+        setRowColor(folderRow, folderDef.UIColor)
+    end
+
+    folderColorBox.OnDragStart = function()
+        folderColorBox.UserData = {
+            UIColor = folderColorBox.Color,
+        }
+        local pb = folderColorBox.DragPreview:AddColorEdit("##FolderColorBoxDragPreview_" .. folderName)
+        pb.NoInputs = true
+        pb.Color = folderColorBox.Color
+    end
+
+    folderHeader.SameLine = true
+
+    local folderManagePopup = folderCell:AddPopup("MaterialPresetFolderManagePopup_" .. folderName)
+    local folderTable = AddIndent(folderCell):AddTable("FolderTable_" .. folderName, 3)
+    folderTable.Visible = openedFolders[folderName] or false
+    folderTable.UserData = {}
+    folderTable.UserData.Header = folderHeader
+
+    folderHeader.OnClick = function()
+        folderHeader.Selected = false
+        folderTable.Visible = not folderTable.Visible
+        openedFolders[folderName] = folderTable.Visible
+        folderHeader.Label = makeFolderDisplay(folderTable.Visible, folderName, folderDef.ExportType)
+    end
+
+    folderHeader.OnRightClick = function()
+        folderManagePopup:Open()
+    end
+
+    local function refreshFolder() end
+    folderHeader.UserData = {
+        Opened = openedFolders,
+        Delete = function()
+            local toDelete = {}
+            for guid, _ in pairs(folderObj) do
+                table.insert(toDelete, guid)
+            end
+            for _, guid in pairs(toDelete) do
+                exportSettings.MaterialPresets[guid] = nil
+            end
+            exportSettings.Folders[folderName] = nil
+            exportSettings.FolderDefinitions[folderName] = nil
+            refreshFolderList[folderName] = nil
+            folderCell:Destroy()
+            onDelete()
+        end,
+        Update = function(newName)
+            newName = newName or folderName
+            refreshFolderList[newName] = refreshFolderList[folderName]
+            presetHeaders[newName] = presetHeaders[folderName]
+            folderName = newName
+            folderHeader.Label = makeFolderDisplay(openedFolders[folderName], folderName, folderDef.ExportType)
+            if folderDef.ExportType then
+                --setRowColor(folderRow, exportColor)
+                clearWarningBorder(presetHeaders[newName])
+            end
+        end,
+    }
+
+    folderHeader.DragDropType = MATERIALPRESET_DRAGDROP_TYPE
+    folderHeader.OnDragDrop = function(sel, drop)
+        if drop.UserData and drop.UserData.Parameters then
+            local guid = drop.UserData.Uuid
+            if folderObj[guid] then
+                -- already in this folder
+                return
+            end
+
+            -- in this workspace, move to this folder
+            if drop.UserData.Uuid and exportSettings.MaterialPresets[drop.UserData.Uuid] then
+                -- remove from old folder
+                local oldFolder = nil
+                for fName, fObj in pairs(exportSettings.Folders) do
+                    if fObj[drop.UserData.Uuid] then
+                        oldFolder = fName
+                        break
+                    end
+                end
+                exportSettings.Folders[oldFolder][drop.UserData.Uuid] = nil
+                exportSettings.Folders[folderName][drop.UserData.Uuid] = "end"
+                if refreshFolderList[oldFolder] then
+                    refreshFolderList[oldFolder]()
+                end
+
+                refreshFolder()
+                return
+            end
+
+            -- not in this workspace, create new preset in this folder
+            guid = Uuid_v4()
+            local newPreset = {
+                DisplayName = drop.UserData.DisplayName or "Unnamed Preset",
+                UIColor = DeepCopy(drop.UserData.UIColor or { 1, 1, 1, 1 }),
+                Parameters = DeepCopy(drop.UserData.Parameters or {}),
+            }
+
+            exportSettings.MaterialPresets[guid] = newPreset
+            folderObj[guid] = "end"
+            refreshFolder()
+        end
+    end
+    folderColorBox.OnDragDrop = folderHeader.OnDragDrop
+
+    self:RenderFolderManagePopup(folderManagePopup, folderName, folderHeader, exportSettings)
+    refreshFolder = self:RenderFolder(folderTable, folderObj, exportSettings.MaterialPresets, folderName)
+    refreshFolderList[folderName] = refreshFolder
 end
 
 ---@param parent ExtuiTreeParent
@@ -625,6 +631,119 @@ function MaterialPresetsMenu:RenderImportSection(parent, exportSettings, onImpor
     local openedTrees = {}
     local refreshCached
 
+    local function import(modName, version)
+        local ccaModPack = self:ImportFromFile(modName, version)
+        if not ccaModPack then
+            self.cachedMods[modName][version] = nil
+            self:SaveModCacheRef()
+
+            refreshCached()
+            Warning("Failed to import CCA mod pack for mod " .. modName .. " version " .. version)
+            return
+        end
+
+        exportSettings.ModName = ccaModPack.ModName or ""
+        exportSettings.Author = ccaModPack.Author or ""
+        exportSettings.Description = ccaModPack.Description or ""
+        exportSettings.Version = ccaModPack.Version or { 1, 0, 0, 0 }
+        exportSettings.MaterialPresets = DeepCopy(ccaModPack.MaterialPresets or {})
+        exportSettings.ModuleUUID = ccaModPack.ModuleUUID
+        exportSettings.Folders = DeepCopy(ccaModPack.Folders or {})
+        exportSettings.FolderDefinitions = DeepCopy(ccaModPack.FolderDefinitions or {})
+
+
+        Debug("MaterialPresetsMenu: Imported CCA mod pack for mod " .. modName .. " version " .. version)
+        onImportComplete()
+    end
+
+    local setupVersionPopups
+    local function renderVersionTable(group, modName, versions)
+        local sortedVersions = {}
+
+        for version, _ in pairs(versions) do
+            table.insert(sortedVersions, version)
+        end
+
+        table.sort(sortedVersions, function(a, b)
+            local aMajor, aMinor, aPatch, aBuild = a:match("(%d+)%.(%d+)%.(%d+)%.(%d+)")
+            local bMajor, bMinor, bPatch, bBuild = b:match("(%d+)%.(%d+)%.(%d+)%.(%d+)")
+
+            local av64 = ComputeVersion64(aMajor, aMinor, aPatch, aBuild)
+            local bv64 = ComputeVersion64(bMajor, bMinor, bPatch, bBuild)
+            return av64 > bv64
+        end)
+
+        local versionTable = group:AddTable("ImportCCAModVersionTable_" .. modName, 1)
+        versionTable.BordersInnerH = true
+        local row = versionTable:AddRow()
+        for _, version in ipairs(sortedVersions) do
+            local cell = row:AddCell()
+
+            local versionSel = cell:AddSelectable("Version " .. version .. "##ImportCCAModVersion_" .. modName .. "_" .. version)
+            
+            local versionPopup = nil
+            versionSel.OnClick = function()
+                versionSel.Selected = false
+                if not versionPopup then
+                    versionPopup = setupVersionPopups(cell, modName, version)
+                end
+                versionPopup:Open()
+            end
+            versionSel.OnRightClick = function()
+                versionSel.Selected = false
+                if not versionPopup then
+                    versionPopup = setupVersionPopups(cell, modName, version)
+                end
+                versionPopup:Open()
+            end
+        end
+    end
+
+    function setupVersionPopups(cell, modName, version)
+        local versionPopup = cell:AddPopup("ImportCCAModVersionPopup_" .. modName .. "_" .. version)
+        local selectTable = versionPopup:AddTable("ImportCCAModVersionSelectTable_" .. modName .. "_" .. version, 1)
+        selectTable.BordersInnerH = true
+        local selectRow = selectTable:AddRow()
+
+        local importBtnCell = selectRow:AddCell()
+        local importBtn = AddSelectableButton(importBtnCell, "Import##ImportCCAModVersionBtn_" .. modName .. "_" .. version, import)
+        importBtn:Tooltip():SetStyle("WindowBorderSize", 2)
+        importBtn:Tooltip():SetColor("Border", HexToRGBA("FFFF0000"))
+        importBtn:Tooltip():AddText("CAUTION:"):SetColor("Text", HexToRGBA("FFFF0000"))
+        importBtn:Tooltip():AddText("This will overwrite your current workspace settings!"):SetColor("Text", HexToRGBA("FFFFFFFF"))
+
+        local deleteBtnCell = selectRow:AddCell()
+        local deleteBtn = AddSelectableButton(deleteBtnCell, "Delete##DeleteCCAModVersionBtn_" .. modName .. "_" .. version, function ()
+            if not self.cachedMods[modName] then return end
+            self.cachedMods[modName][version] = nil
+            self:SaveModCacheRef()
+            refreshCached()
+        end)
+        ApplyDangerSelectableStyle(deleteBtn)
+
+        local openInAnotherEditorBtnCell = selectRow:AddCell()
+        local openInAnotherEditorBtn = AddSelectableButton(openInAnotherEditorBtnCell, "Open in Another Editor##OpenInCCACCMVersionBtn_" .. modName .. "_" .. version, function ()
+            local ccaModPack = self:ImportFromFile(modName, version)
+            if not ccaModPack then
+                self.cachedMods[modName][version] = nil
+                self:SaveModCacheRef()
+                refreshCached()
+                Warning("Failed to import CCA mod pack for mod " .. modName .. " version " .. version)
+                return
+            end
+            ccaModPack = DeepCopy(ccaModPack)
+            local versionStr = ccaModPack and BuildVersionString(ccaModPack.Version[1], ccaModPack.Version[2], ccaModPack.Version[3], ccaModPack.Version[4]) or version
+            local newWindow = RegisterWindow("generic", ccaModPack.ModName .. " - " .. versionStr, "Character Creation Material Editor", nil, nil, { 1200 * SCALE_FACTOR, 900 * SCALE_FACTOR })
+            newWindow.Closeable = true
+            newWindow.OnClose = function()
+                DeleteWindow(newWindow)
+            end
+            self:SetupWorkspace(newWindow, ccaModPack, true)
+        end)
+
+        return versionPopup
+    end
+
     function refreshCached()
         DestroyAllChilds(parent)
 
@@ -661,104 +780,9 @@ function MaterialPresetsMenu:RenderImportSection(parent, exportSettings, onImpor
                 modNameSel.Highlight = group.Visible
             end
 
-            local sortedVersions = {}
-
-            for version, _ in pairs(versions) do
-                table.insert(sortedVersions, version)
-            end
-
-            table.sort(sortedVersions, function(a, b)
-                local aMajor, aMinor, aPatch, aBuild = a:match("(%d+)%.(%d+)%.(%d+)%.(%d+)")
-                local bMajor, bMinor, bPatch, bBuild = b:match("(%d+)%.(%d+)%.(%d+)%.(%d+)")
-
-                local av64 = ComputeVersion64(aMajor, aMinor, aPatch, aBuild)
-                local bv64 = ComputeVersion64(bMajor, bMinor, bPatch, bBuild)
-                return av64 > bv64
-            end)
-
-            local versionTable = group:AddTable("ImportCCAModVersionTable_" .. modName, 1)
-            versionTable.BordersInnerH = true
-            local row = versionTable:AddRow()
-            for _, version in ipairs(sortedVersions) do
-                local cell = row:AddCell()
-
-                local versionPopup = cell:AddPopup("ImportCCAModVersionPopup_" .. modName .. "_" .. version)
-
-                local versionSel = cell:AddSelectable("Version " .. version .. "##ImportCCAModVersion_" .. modName .. "_" .. version)
-
-                local function import()
-                    local ccaModPack = self:ImportFromFile(modName, version)
-                    if not ccaModPack then
-                        self.cachedMods[modName][version] = nil
-                        self:SaveModCacheRef()
-
-                        refreshCached()
-                        Warning("Failed to import CCA mod pack for mod " .. modName .. " version " .. version)
-                        return
-                    end
-
-                    exportSettings.ModName = ccaModPack.ModName or ""
-                    exportSettings.Author = ccaModPack.Author or ""
-                    exportSettings.Description = ccaModPack.Description or ""
-                    exportSettings.Version = ccaModPack.Version or { 1, 0, 0, 0 }
-                    exportSettings.MaterialPresets = DeepCopy(ccaModPack.MaterialPresets or {})
-                    exportSettings.ModuleUUID = ccaModPack.ModuleUUID
-                    exportSettings.Folders = DeepCopy(ccaModPack.Folders or {})
-                    exportSettings.FolderDefinitions = DeepCopy(ccaModPack.FolderDefinitions or {})
-
-
-                    Debug("MaterialPresetsMenu: Imported CCA mod pack for mod " .. modName .. " version " .. version)
-
-                    onImportComplete()
-                end
-
-                versionSel.OnClick = function()
-                    versionSel.Selected = false
-                    versionPopup:Open()
-                end
-                versionSel.OnRightClick = function()
-                    versionPopup:Open()
-                end
-
-                local selectTable = versionPopup:AddTable("ImportCCAModVersionSelectTable_" .. modName .. "_" .. version, 1)
-                selectTable.BordersInnerH = true
-                local selectRow = selectTable:AddRow()
-
-                local importBtnCell = selectRow:AddCell()
-                local importBtn = AddSelectableButton(importBtnCell, "Import##ImportCCAModVersionBtn_" .. modName .. "_" .. version, import)
-                importBtn:Tooltip():SetStyle("WindowBorderSize", 2)
-                importBtn:Tooltip():SetColor("Border", HexToRGBA("FFFF0000"))
-                importBtn:Tooltip():AddText("CAUTION:"):SetColor("Text", HexToRGBA("FFFF0000"))
-                importBtn:Tooltip():AddText("This will overwrite your current workspace settings!"):SetColor("Text", HexToRGBA("FFFFFFFF"))
-
-                local deleteBtnCell = selectRow:AddCell()
-                local deleteBtn = AddSelectableButton(deleteBtnCell, "Delete##DeleteCCAModVersionBtn_" .. modName .. "_" .. version, function ()
-                    if not self.cachedMods[modName] then return end
-                    self.cachedMods[modName][version] = nil
-                    self:SaveModCacheRef()
-                    refreshCached()
-                end)
-                ApplyDangerSelectableStyle(deleteBtn)
-
-                local openInAnotherEditorBtnCell = selectRow:AddCell()
-                local openInAnotherEditorBtn = AddSelectableButton(openInAnotherEditorBtnCell, "Open in Another Editor##OpenInCCACCMVersionBtn_" .. modName .. "_" .. version, function ()
-                    local ccaModPack = self:ImportFromFile(modName, version)
-                    if not ccaModPack then
-                        self.cachedMods[modName][version] = nil
-                        self:SaveModCacheRef()
-                        refreshCached()
-                        Warning("Failed to import CCA mod pack for mod " .. modName .. " version " .. version)
-                        return
-                    end
-
-                    local versionStr = ccaModPack and BuildVersionString(ccaModPack.Version[1], ccaModPack.Version[2], ccaModPack.Version[3], ccaModPack.Version[4]) or version
-                    local newWindow = RegisterWindow("generic", ccaModPack.ModName .. " - " .. versionStr, "Character Creation Material Editor")
-                    newWindow.Closeable = true
-                    newWindow.OnClose = function()
-                        DeleteWindow(newWindow)
-                    end
-                    self:SetupWorkspace(newWindow, ccaModPack, true)
-                end)
+            modNameSel.OnHoverEnter = function()
+                renderVersionTable(group, modName, versions)
+                modNameSel.OnHoverEnter = nil
             end
         end
     end

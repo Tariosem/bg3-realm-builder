@@ -1,4 +1,4 @@
---- @class TreeList : Class
+--- @class TreeList
 --- @field parent ExtuiTreeParent
 --- @field panel ExtuiWindowBase|ExtuiWindow
 --- @field selectedItems table<any, boolean>
@@ -48,7 +48,7 @@ function TreeList:__init(parent, label, tree)
 
     self.treeRefs = {} -- save tree selectables
     self.leafRefs = {} -- save leaf selectables for items
-    self.nodeRefs = {} -- save all cells for nodes
+    self.nodeRefs = {} -- save all cells for nodes, userdata is the indent container
     self.collapsedTree = {}
 
     self:SetupKeyListeners()

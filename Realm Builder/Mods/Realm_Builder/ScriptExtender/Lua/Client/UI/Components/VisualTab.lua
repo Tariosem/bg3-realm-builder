@@ -279,10 +279,15 @@ function VisualTab:RenderPresetsCell()
                 func({}, true)
             end
 
-            --if CIsCharacter(self.guid) then return end
+            local isChara = CIsCharacter(self.guid)
 
             for key, matTab in pairs(self.Materials) do
                 matTab.Editor:ClearParameters()
+
+                if not isChara then
+                    matTab.Editor:ResetAll()
+                end
+
                 matTab:UpdateUIState()
             end
 
@@ -290,6 +295,13 @@ function VisualTab:RenderPresetsCell()
                 Guid = self.guid,
                 Field = "GameObjectVisual",
             })
+
+            if not CIsCharacter(self.guid) then
+                for key, func in pairs(self.resetFuncs) do
+                    func()
+                end
+            end
+
         end)
     end
 
@@ -722,6 +734,7 @@ function VisualTab:RenderLightEntity(node, component, compIndex)
                 saveLightEntityProperty(key, propName, slider.Value[1])
             end
             local valueResetButton = valueNode:AddButton(GetLoca("Reset"))
+            valueResetButton.SameLine = true
             valueResetButton.IDContext = key .. "Reset"
 
             slider.OnRightClick = function()
@@ -767,16 +780,17 @@ function VisualTab:RenderLightEntity(node, component, compIndex)
             end 
             local initValue = {property[1], property[2], property[3]}
             local currentValue = property
-
+            local colorEdit = valueNode:AddColorEdit("Color", {currentValue[1], currentValue[2], currentValue[3]})
+            local valueResetButton = valueNode:AddButton(GetLoca("Reset"))
+            valueResetButton.SameLine = true
             local sliderX = AddSliderWithStep(valueNode, "X", currentValue[1], -100, 100, 0.1)
             valueNode:AddText("X").SameLine = true
             local sliderY = AddSliderWithStep(valueNode, "Y", currentValue[2], -100, 100, 0.1)
             valueNode:AddText("Y").SameLine = true
             local sliderZ = AddSliderWithStep(valueNode, "Z", currentValue[3], -100, 100, 0.1)
             valueNode:AddText("Z").SameLine = true
-            local valueResetButton = valueNode:AddButton(GetLoca("Reset"))
 
-            local colorEdit = valueNode:AddColorEdit("Color", {currentValue[1], currentValue[2], currentValue[3]})
+
             local function sliderOnChange()
                 local liveLight = GetLiveLightEntity()
                 if not liveLight then return end

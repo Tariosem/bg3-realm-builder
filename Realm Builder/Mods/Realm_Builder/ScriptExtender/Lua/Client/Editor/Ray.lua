@@ -24,15 +24,15 @@ function Ray:__tostring()
     return string.format("Ray(Origin: %s, Direction: %s)", tostring(self.Origin), tostring(self.Direction))
 end
 
---- @param Other Ray
+--- @param other Ray
 --- @param noLimit boolean? 
 --- @return Vec3 C1 -- Closest point on this ray
 --- @return Vec3 C2 -- Closest point on Other ray
 --- @return number Distance -- Distance between C1 and C2
-function Ray:ClosestTTo(Other, noLimit)
+function Ray:ClosestTTo(other, noLimit)
     local d1 = self.Direction
-    local d2 = Other.Direction
-    local r = self.Origin - Other.Origin
+    local d2 = other.Direction
+    local r = self.Origin - other.Origin
 
     local a = Ext.Math.Dot(d1, d1)
     local e = Ext.Math.Dot(d2, d2)
@@ -43,11 +43,11 @@ function Ray:ClosestTTo(Other, noLimit)
     if math.abs(denom) < EPSILON then
         local base_point = self.Origin
 
-        local t2 = Ext.Math.Dot(d2, base_point - Other.Origin) / e
+        local t2 = Ext.Math.Dot(d2, base_point - other.Origin) / e
         t2 = math.max(t2, 0)
         
         local c1 = base_point
-        local c2 = Other:At(t2)
+        local c2 = other:At(t2)
         local distance = (c1 - c2):Length()
         
         return c1, c2, distance
@@ -64,7 +64,7 @@ function Ray:ClosestTTo(Other, noLimit)
     end
     
     local c1 = self:At(s)
-    local c2 = Other:At(t)
+    local c2 = other:At(t)
     local distance = (c1 - c2):Length()
 
     return c1, c2, distance

@@ -7,12 +7,31 @@
 --- @field TooltipRef {Name: string, Type: string}|nil -- Stat object reference
 --- @field Tooltip fun(tooltip: ExtuiTooltip)|nil -- a function that adds tooltip content
 
+local punctuations = {
+    [","] = true,
+    ["."] = true,
+    [";"] = true,
+    [":"] = true,
+    ["!"] = true,
+    ["?"] = true,
+}
+
 function RenderTokenTexts(parent, tokens, firstAlwaysSameLine)
     local elements = {}
 
     local oneCharEndurance = true
     for i, token in ipairs(tokens) do
         local text = token.Text or ""
+
+        --- dirty fix for punctuation at start of text
+        if not token.SameLine and #text > 1 and punctuations[text:sub(1,1)] then
+            local firstChar = text:sub(1,1)
+            local textRest = text:sub(2)
+            local labelPunc = parent:AddText(firstChar)
+            labelPunc.SameLine = true
+            text = textRest
+        end
+        
         local icon = nil
         local statsName = nil
         local statsType = nil

@@ -340,14 +340,28 @@ function TransformEditor:RegisterEvents()
                         Rotation = newPointTransform.RotationQuat,
                         Duration = -1,
                     }, function (response)
+                        local tryCnt = 0
+
                         for _,viz in ipairs(response or {}) do
-                            local tryCnt = 0
-                            Timer:EveryFrame(function (timerID)
-                                if tryCnt > 300 then
-                                    Warning("GizmoVisualizer: Failed to get visual for point gizmo")
-                                    return UNSUBSCRIBE_SYMBOL
+                            table.insert(self.PointVisualizations, viz)
+                        end
+                        Timer:EveryFrame(function (timerID)
+                            if tryCnt > 300 or not self.IsDragging then
+                                for _,viz in pairs(response or {}) do
+                                    gizmo.Visualizer:HideGizmo(viz)
                                 end
-                                if not VisualHelpers.GetEntityVisual(viz) then tryCnt = tryCnt + 1 return end
+                                return UNSUBSCRIBE_SYMBOL
+                            end
+                            local allReady = true
+                            for _,viz in ipairs(response or {}) do
+                                if not VisualHelpers.GetEntityVisual(viz) then
+                                    allReady = false
+                                    break
+                                end
+                            end
+                            if not allReady then tryCnt = tryCnt + 1 return end
+
+                            for _,viz in ipairs(response or {}) do
                                 for _,axis in pairs({"X","Y","Z"}) do
                                     if gizmo.SelectedAxis and gizmo.SelectedAxis[axis] then
                                         gizmo.Visualizer:HighLightGizmoAxis(axis, viz)
@@ -355,11 +369,10 @@ function TransformEditor:RegisterEvents()
                                         gizmo.Visualizer:HideGizmoAxis(axis, viz)
                                     end
                                 end
-                                return UNSUBSCRIBE_SYMBOL
-                            end)
+                            end
 
-                            table.insert(self.PointVisualizations, viz)
-                        end
+                            return UNSUBSCRIBE_SYMBOL
+                        end)
                     end)
                 end
             end
@@ -394,7 +407,9 @@ function TransformEditor:RegisterEvents()
                     RotationQuat = DirectionToQuat(ray.Direction * -1),
                 }
                 NetChannel.SetTransform:RequestToServer({ Guid = lineGuid, Transforms = {[lineGuid] = newLineTransform} }, function (response)
-                    Timer:Ticks(10, function (timerID)
+                    -- prevent flickering
+                    Timer:Ticks(5, function (timerID)
+                        if not self.IsDragging then return end
                         gizmo.Visualizer:SetLineLength(lineGuid, 20)
                     end)
                 end)
@@ -409,10 +424,7 @@ function TransformEditor:RegisterEvents()
                     for _,viz in ipairs(response or {}) do
                         local tryCnt = 0
                         Timer:EveryFrame(function (timerID)
-                            if tryCnt > 300 then
-                                Warning("GizmoVisualizer: Failed to get visual for line gizmo")
-                                return UNSUBSCRIBE_SYMBOL
-                            end
+                            if tryCnt > 300 or not self.IsDragging then return UNSUBSCRIBE_SYMBOL end
                             if not VisualHelpers.GetEntityVisual(viz) then tryCnt = tryCnt + 1 return end
                             gizmo.Visualizer:SetLineFxColor(viz, color)
                             return UNSUBSCRIBE_SYMBOL

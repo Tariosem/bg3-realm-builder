@@ -203,7 +203,7 @@ end)
 NetChannel.Replicate:SetHandler(function (data, userID)
 
     for _, guid in ipairs(NormalizeGuidList(data.Guid)) do
-        local entity = Ext.Entity.Get(guid)
+        local entity = Ext.Entity.Get(guid) --[[@as EntityHandle]]
         entity:Replicate(data.Field)
     end
     
