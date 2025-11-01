@@ -348,6 +348,10 @@ function ItemIconBrowser:RenderAttrPopup(iconImage, cell, entry, popup)
     end
 
     iconImage.OnClick = function()
+        if self.iconToName then
+            iconImage.Selected = false
+        end
+
         if popupRendered and attributePopup then
             attributePopup:Open()
             return

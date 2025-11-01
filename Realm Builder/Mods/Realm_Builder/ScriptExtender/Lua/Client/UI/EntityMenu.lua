@@ -125,8 +125,6 @@ function SceneMenu:RenderSideBar()
     end
 
     treeList.OnSelect = function(sel, selected)
-        local copy = DeepCopy(selected)
-        editor:Select(copy)
         local arr = {}
         for guid, _ in pairs(selected) do
             table.insert(arr, guid)
@@ -254,8 +252,8 @@ function SceneMenu:SetupLeaf(sel, key, node)
 
     local propData = EntityStore:GetStoredData(key) --[[@as EntityData]]
     selectable.OnRightClick = function()
-        if not TableContains(self.selectedGuids, propData.Guid) then
-            table.insert(self.selectedGuids, propData.Guid)
+        if not TableContains(self.selectedGuids, propData.Guid) and #self.selectedGuids < 2 then
+            self.selectedGuids = { propData.Guid }
         end
         self:SetupSelectablePopup()
     end
@@ -326,6 +324,17 @@ function SceneMenu:SetupSelectablePopup(popup)
     ttable.BordersInnerH = true
 
     local row = ttable:AddRow() --[[@as ExtuiTableRow]]
+
+    local selectInTransformEditor = AddSelectableButton(row:AddCell(), GetLoca("Select"), function()
+        if not(self.selectedGuids and #self.selectedGuids > 0) then return end
+
+        local map = {}
+        for _, guid in ipairs(self.selectedGuids) do
+            map[guid] = true
+        end
+        
+        TransformEditor:Select(map)
+    end)
 
     local deleteButton = AddSelectableButton(row:AddCell(), GetLoca("Delete"), function()
         if not(self.selectedGuids and #self.selectedGuids > 0) then return end

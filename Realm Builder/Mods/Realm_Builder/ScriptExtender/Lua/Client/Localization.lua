@@ -10,8 +10,12 @@ end
 
 
 local StringToHandle = {}
-
 local unseenStrings = {}
+
+local vanillaLocalization = Ext.Require("Client/VanillaLocalization.lua")
+for str, handle in pairs(vanillaLocalization) do
+    StringToHandle[str] = handle
+end
 
 function GetLoca(text)
     if StringToHandle[text] then

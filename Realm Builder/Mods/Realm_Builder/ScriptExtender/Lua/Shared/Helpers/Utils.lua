@@ -94,6 +94,12 @@ function IsArray(t)
     return true
 end
 
+function TableMerge(dest, src)
+    for k, v in pairs(src) do
+        dest[k] = v
+    end
+end
+
 
 function TableContains(tbl, value)
     if type(tbl) ~= "table" then

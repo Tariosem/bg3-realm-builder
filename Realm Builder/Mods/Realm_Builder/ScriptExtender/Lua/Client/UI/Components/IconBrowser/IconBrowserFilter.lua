@@ -71,12 +71,14 @@ function IconBrowser:AddTagsFilter()
 
     self.tagsFilterOpenButton.OnHoverEnter = function()
         self:RenderTagsFilter()
+        self.tagsFilterOpenButton.OnHoverEnter()
     end
 end
 
 function IconBrowser:RenderTagsFilter()
     local allGroups, allTags, groupMap, tagsMap = self.dataManager:CountGroupsAndTags(self.selectedGuid)
     local tagTree = self.dataManager.tagTree
+
     self.tagsMap = tagsMap
     self.groupMap = groupMap
     self:ClearNonExistTagsAndGroups()
@@ -146,9 +148,9 @@ function IconBrowser:RenderTagsFilter()
     local keepOpen = self.tagsFilter.Open
     self.tagsFilterOpenButton.OnHoverEnter = function()
         self.tagsFilter.Open = true
-        Timer:Ticks(10, function (timerID)
+        Timer:Ticks(30, function (timerID)
             local panelPos = self.panel.LastPosition
-            local filterWidth = self.tagsFilter.LastSize and self.tagsFilter.LastSize[1] or 0
+            local filterWidth = self.tagsFilter.LastSize and self.tagsFilter.LastSize[1] or 500 * SCALE_FACTOR
             local pos = {panelPos[1] - filterWidth, panelPos[2]}
             self.tagsFilter:SetPos(pos)
         end)
@@ -169,7 +171,7 @@ function IconBrowser:RenderTagsFilter()
         self.tagsFilter.Open = false
     end
 
-    self.tagsPopup = self.tagsFilter--self.tagsFilterContainer:AddPopup("TagsPopup")
+    self.tagsPopup = self.tagsFilter
     local topTable, leftCe, rightCe = self.tagsFilterTopTable, nil, nil
     if not topTable then
         topTable, leftCe, rightCe = AddTwoColTable(self.tagsPopup, "TagsTopTable")

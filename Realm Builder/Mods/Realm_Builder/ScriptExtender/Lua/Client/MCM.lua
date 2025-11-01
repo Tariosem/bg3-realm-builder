@@ -19,57 +19,41 @@ MCM.EventButton.RegisterCallback("event_button_toggle_main_widnow", function()
     toggleMainWindow()
 end)
 
-MCM.Keybinding.SetCallback("key_toggle_items_browser", function()
+local function ToggleBrowser(targetKey)
     if not RBMenu then
         return
     end
 
-    local effectsBrowser, itemsBrowser = RBMenu.effectBrowser, RBMenu.itemBrowser
-    if itemsBrowser then
-        if itemsBrowser.panel and itemsBrowser.panel.Open then
-            itemsBrowser.panel.Open = false
-            if itemsBrowser.panel.OnClose then
-                itemsBrowser.panel:OnClose()
-            end
-        elseif not itemsBrowser.panel then
-            itemsBrowser:Render()
-        else
-            itemsBrowser:Focus()
+    local allBrowsers = {
+        effect = RBMenu.effectBrowser,
+        item = RBMenu.itemBrowser,
+        character = RBMenu.characterBrowser,
+    }
+
+    local targetBrowser = allBrowsers[targetKey]
+    if not targetBrowser then
+        return
+    end
+
+    for key, browser in pairs(allBrowsers) do
+        if key ~= targetKey and browser and browser.panel and browser.panel.Open then
+            browser:Close()
         end
     end
 
-    if effectsBrowser and effectsBrowser.panel and effectsBrowser.panel.Open then
-        effectsBrowser.panel.Open = false
-        if effectsBrowser.panel.OnClose then
-            effectsBrowser.panel:OnClose()
-        end
-    end
+    targetBrowser:Toggle()
+end
+
+MCM.Keybinding.SetCallback("key_toggle_item_browser", function()
+    ToggleBrowser("item")
 end)
 
-MCM.Keybinding.SetCallback("key_toggle_effects_browser", function()
-    if not RBMenu then
-        return
-    end
+MCM.Keybinding.SetCallback("key_toggle_effect_browser", function()
+    ToggleBrowser("effect")
+end)
 
-    local effectsBrowser, itemsBrowser = RBMenu.effectBrowser, RBMenu.itemBrowser
-    if effectsBrowser then
-        if effectsBrowser.panel and effectsBrowser.panel.Open then
-            effectsBrowser.panel.Open = false
-            if effectsBrowser.panel.OnClose then
-                effectsBrowser.panel:OnClose()
-            end
-        elseif not effectsBrowser.panel then
-            effectsBrowser:Render()
-        else
-            effectsBrowser:Focus()
-        end
-    end
-    if itemsBrowser and itemsBrowser.panel and itemsBrowser.panel.Open then
-        itemsBrowser.panel.Open = false
-        if itemsBrowser.panel.OnClose then
-            itemsBrowser.panel:OnClose()
-        end
-    end
+MCM.Keybinding.SetCallback("key_toggle_character_browser", function()
+    ToggleBrowser("character")
 end)
 
 MCM.Keybinding.SetCallback("key_toggle_transform_toolbar", function()

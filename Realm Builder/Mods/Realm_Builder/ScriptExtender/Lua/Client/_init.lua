@@ -112,17 +112,70 @@ function GetDataFromName(name)
     return GetDataFromUuid(uuid)
 end
 
+local function PopulateAllTemplates()
+    if RB_ItemManager.populated then return -1 end
+    local itemCnt = 0
+    local characterCnt = 0
+
+    local allWeaponStats = Ext.Stats.GetStats("Weapon")
+    for _, statsId in pairs(allWeaponStats) do
+        local statsObj = Ext.Stats.Get(statsId)
+        if statsObj.RootTemplate == "" or RB_ItemManager.Data[statsObj.RootTemplate] then goto continue end
+
+        if statsObj and statsObj.RootTemplate and not RB_ItemManager.Data[statsObj.RootTemplate] then
+            RB_ItemManager.Data[statsObj.RootTemplate] = RB_ItemManager:PopulateWeapon(statsObj, statsId)
+            itemCnt = itemCnt + 1
+        end
+
+        ::continue::
+    end
+
+    local allArmorStats = Ext.Stats.GetStats("Armor")
+    for _, statsId in pairs(allArmorStats) do
+        local statsObj = Ext.Stats.Get(statsId)
+        if statsObj.RootTemplate == "" or RB_ItemManager.Data[statsObj.RootTemplate] then goto continue end
+
+        if statsObj and statsObj.RootTemplate and not RB_ItemManager.Data[statsObj.RootTemplate] then
+            RB_ItemManager.Data[statsObj.RootTemplate] = RB_ItemManager:PopulateArmor(statsObj, statsId)
+            itemCnt = itemCnt + 1
+        end
+        ::continue::
+    end
+
+
+    local raw = Ext.ClientTemplate.GetAllRootTemplates()
+    for uuid, object in pairs(raw) do
+        if object.TemplateType == "item" and not RB_ItemManager.Data[uuid] then
+            RB_ItemManager.Data[object.Id] = RB_ItemManager:PopulateItem(object)
+            RB_ItemManager.UuidToTemplateName[object.Id] = object.Name
+            RB_ItemManager.TemplateNameToUuid[object.Name] = object.Id
+            itemCnt = itemCnt + 1
+        elseif object.TemplateType == "character" then
+            --- @diagnostic disable-next-line
+            RB_CharacterManager:PopulateCharacter(object)
+            characterCnt = characterCnt + 1
+        end
+    end
+
+    RB_CharacterManager.populated = true
+    RB_ItemManager.populated = true
+    RB_ItemManager.modCache = {}
+    return itemCnt, characterCnt
+end
+
 
 local function Realm_Builder_Population()
     local now = Ext.Timer:MonotonicTime()
-    local itemsCnt = RB_ItemManager:PopulateAllTemplates()
+    local itemCnt, characterCnt = PopulateAllTemplates()
     local itemsFinished = Ext.Timer:MonotonicTime()
-    local effectsCnt = RB_MultiEffectManager:PopulateAllEffects()
+    local effectCnt = RB_MultiEffectManager:PopulateAllEffects()
     local effectsFinished = Ext.Timer:MonotonicTime()
-    if itemsCnt ~= -1 and effectsCnt ~= -1 then
-        RPrintPurple("[Realm Builder] Populating Items took " .. (itemsFinished - now) .. " ms for " .. itemsCnt .. " items")
-        RPrintPurple("[Realm Builder] Populating Effects took " .. (effectsFinished - itemsFinished) .. " ms for " .. effectsCnt .. " effects")
+    if itemCnt ~= -1 and effectCnt ~= -1 then
+        RPrintPurple("[Realm Builder] Populating Templates took " .. (itemsFinished - now) .. " ms for " .. itemCnt .. " items and " .. characterCnt .. " characters")
+        RPrintPurple("[Realm Builder] Populating Effects took " .. (effectsFinished - itemsFinished) .. " ms for " .. effectCnt .. " effects")
     end
+
+
 end
 
 RegisterOnSessionLoaded(Realm_Builder_Population, 0)

@@ -672,60 +672,74 @@ function Gizmo:StepDelta(delta)
     return delta
 end
 
-function Gizmo:LerpDelta(delta)
-    local lerpFactor = 0.1
-    if self.Mode == "Translate" then
-        if self.SlowDown and not self._delta then
-            self._delta = delta
-        elseif self.SlowDown and self._delta then
-            delta = (delta - self._delta) * lerpFactor + self._delta
-        elseif self._delta and not self.SlowDown then
-            self:RegetStartHit()
-            delta = (delta - self._delta) * lerpFactor + self._delta
-            self._accuDelta = (self._accuDelta or Vec3.new { 0, 0, 0 }) + delta
-            self._delta = nil
+local lerpFactor = 0.1
+local handlers = {
+    Translate = function(o, delta)
+        if o.SlowDown and not o._delta then
+            o._delta = delta
+        elseif o.SlowDown and o._delta then
+            delta = (delta - o._delta) * lerpFactor + o._delta
+        elseif o._delta and not o.SlowDown then
+            o:RegetStartHit()
+            delta = (delta - o._delta) * lerpFactor + o._delta
+            o._accuDelta = (o._accuDelta or Vec3.new { 0, 0, 0 }) + delta
+            o._delta = nil
             return
         end
 
-        if self._accuDelta then
-            delta = self._accuDelta + delta
+        if o._accuDelta then
+            delta = o._accuDelta + delta
         end
-    elseif self.Mode == "Rotate" then
+        return delta
+    end,
+
+    Rotate = function(o, delta)
         local deltaAngle = delta.Angle
-        if self.SlowDown and not self._delta then
-            self._delta = deltaAngle
-        elseif self.SlowDown and self._delta then
-            deltaAngle = (deltaAngle - self._delta) * lerpFactor + self._delta
-        elseif self._delta and not self.SlowDown then
-            self:RegetStartHit()
-            deltaAngle = (deltaAngle - self._delta) * lerpFactor + self._delta
-            self._accuDelta = (self._accuDelta or 0) + deltaAngle
-            self._delta = nil
+        if o.SlowDown and not o._delta then
+            o._delta = deltaAngle
+        elseif o.SlowDown and o._delta then
+            deltaAngle = (deltaAngle - o._delta) * lerpFactor + o._delta
+        elseif o._delta and not o.SlowDown then
+            o:RegetStartHit()
+            deltaAngle = (deltaAngle - o._delta) * lerpFactor + o._delta
+            o._accuDelta = (o._accuDelta or 0) + deltaAngle
+            o._delta = nil
             return
         end
 
         delta.Angle = deltaAngle
-        if self._accuDelta then
-            delta = { Angle = self._accuDelta + deltaAngle, Axis = delta.Axis }
+        if o._accuDelta then
+            return { Angle = o._accuDelta + deltaAngle, Axis = delta.Axis }
         end
-    elseif self.Mode == "Scale" then
-        if self.SlowDown and not self._delta then
-            self._delta = delta
-        elseif self.SlowDown and self._delta then
-            delta = (delta - self._delta) * lerpFactor + self._delta
-        elseif self._delta and not self.SlowDown then
-            self:RegetStartHit()
-            delta = (delta - self._delta) * 0.1 + self._delta
-            self._accuDelta = (self._accuDelta or Vec3.new { 1, 1, 1 }) * delta
-            self._delta = nil
+        return delta
+    end,
+
+    Scale = function(o, delta)
+        if o.SlowDown and not o._delta then
+            o._delta = delta
+        elseif o.SlowDown and o._delta then
+            delta = (delta - o._delta) * lerpFactor + o._delta
+        elseif o._delta and not o.SlowDown then
+            o:RegetStartHit()
+            delta = (delta - o._delta) * 0.1 + o._delta
+            o._accuDelta = (o._accuDelta or Vec3.new { 1, 1, 1 }) * delta
+            o._delta = nil
             return
         end
 
-        if self._accuDelta then
-            delta = self._accuDelta * delta
+        if o._accuDelta then
+            delta = o._accuDelta * delta
         end
-    end
+        return delta
+    end,
+}
 
+function Gizmo:LerpDelta(delta)
+
+    local handler = handlers[self.Mode]
+    if handler then
+        return handler(self, delta)
+    end
     return delta
 end
 

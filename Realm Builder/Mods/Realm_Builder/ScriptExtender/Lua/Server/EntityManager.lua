@@ -38,7 +38,10 @@ function EntityManager:CreateAt(templateId, x, y, z, rx, ry, rz, w)
         end
     end
 
-    local newProp = Osi.CreateAt(templateId, x, y, z, 0, 0, "") --[[@as string]]
+    local templateObj = Ext.Template.GetTemplate(TakeTailTemplate(templateId))
+    local tempoFlag = templateObj.TemplateType == "character" and 1 or 0
+
+    local newProp = Osi.CreateAt(templateId, x, y, z, tempoFlag, 0, "") --[[@as string]]
 
     if not newProp then
         Error("Failed to create prop with TemplateId: " .. tostring(templateId))
@@ -194,6 +197,7 @@ function EntityManager:DeleteEntity(guid, doBroadcast)
 
     Osi.ClearTag(guid, RB_PROP_TAG)
     Osi.RequestDelete(guid)
+    Osi.RequestDeleteTemporary(guid)
     self.TaggedEntities[guid] = nil
     --Info("Prop deleted with guid: " .. tostring(guid))
 

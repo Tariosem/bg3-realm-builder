@@ -88,7 +88,7 @@ function Menu:Render()
     Timer:Ticks(9, function()
         self.characterBrowser = CharacterBrowser.new(RB_CharacterManager, "Character - Browser")
         self.characterBrowser:CreateCachedSort("DisplayName")
-        --self.characterBrowser:Render()
+        self.characterBrowser:Render()
     end)
 
     Timer:Ticks(9, function()
@@ -107,8 +107,7 @@ function Menu:Render()
             childWin.OnRightClick = tabDetachFunc
             isWindow = false
 
-            
-
+        
             DestroyAllChilds(childWin)
             DestroyAllChilds(window)
             render(childWin)

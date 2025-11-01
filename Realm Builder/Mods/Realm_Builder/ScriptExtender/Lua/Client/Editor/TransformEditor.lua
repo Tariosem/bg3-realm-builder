@@ -51,7 +51,7 @@ function TransformEditor:Select(selection, notRecordHistory)
 
     self.Target = {}
     for guid,_ in pairs(selection) do
-        if not EntityExists(guid) or self.Blacklist[guid] then goto continue end
+        if self.Blacklist[guid] then goto continue end
         table.insert(self.Target, guid)
         ::continue::
     end
@@ -131,23 +131,6 @@ function TransformEditor:SetSpace(space)
     else
         Warning("TransformEditor:SetSpace: Invalid space '"..tostring(space))
     end
-end
-
-function TransformEditor:ValidateSelection()
-    if not self.Target or #self.Target == 0 then return false end
-    local valid = false
-    for i=#self.Target,1,-1 do
-        local guid = self.Target[i]
-        if not EntityExists(guid) then
-            table.remove(self.Target, i)
-        else
-            valid = true
-        end
-    end
-    if not valid then
-        self:Clear()
-    end
-    return valid
 end
 
 function TransformEditor:Clear()
@@ -297,7 +280,9 @@ function TransformEditor:RegisterEvents()
         for i=#self.PointVisualizations, 1, -1 do
             local guid = self.PointVisualizations[i]
             if not EntityExists(guid) then
-                Debug("TransformEditor: Removing invalid point visualization ", guid)
+                NetChannel.Delete:RequestToServer({ Guid = guid }, function (response)
+                    -- make sure it's dead
+                end)
                 table.remove(self.PointVisualizations, i)
             end
         end
@@ -305,7 +290,9 @@ function TransformEditor:RegisterEvents()
         for i=#self.LineVisualizations, 1, -1 do
             local guid = self.LineVisualizations[i]
             if not EntityExists(guid) then
-                Debug("TransformEditor: Removing invalid line visualization ", guid)
+                NetChannel.Delete:RequestToServer({ Guid = guid }, function (response)
+                    
+                end)
                 table.remove(self.LineVisualizations, i)
             end
         end

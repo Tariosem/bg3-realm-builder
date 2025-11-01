@@ -64,6 +64,10 @@ function EffectIconBrowser:RenderIcon(entry, cell)
     
     iconImage.OnClick = function()
         popup:Open()
+
+        if self.iconToName then
+            iconImage.Selected = false
+        end
     end
 
     iconImage.OnRightClick = function()

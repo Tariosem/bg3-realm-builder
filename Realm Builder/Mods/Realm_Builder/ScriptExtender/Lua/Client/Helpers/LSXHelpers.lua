@@ -47,7 +47,7 @@ function LSXHelpers.BuildLayerListNode(levelName)
     local layerNode = LSXNode.new("node", { id = "LayerList" })
 
     layerNode:AppendChild(LSXHelpers.ChildrenNode())
-        :AppendChild(LSXNode.new("node", { id = "Layer" }))
+        :AppendChild(LSXNode.new("node", { id = "Layers" }))
         :AppendChild(LSXHelpers.ChildrenNode())
         :AppendChild(LSXNode.new("node", { id = "Object", key = "MapKey" }))
         :AppendChild(LSXHelpers.AttrNode("MapKey", "FixedString", levelName))
@@ -76,6 +76,10 @@ function LSXHelpers.BuildTemplate(guid, templateType)
         end
     end
 
+    local isItem = templateType == "item"
+    local isCharacter = templateType == "character"
+    local isScenery = templateType == "scenery"
+
     if not propData then
         propData = {
             TemplateId = "",
@@ -90,9 +94,10 @@ function LSXHelpers.BuildTemplate(guid, templateType)
         LSXHelpers.AttrNode("Name", "LSString", propData.DisplayName or TrimTail(propData.TemplateId, 37)),
         LSXHelpers.AttrNode("LevelName", "FixedString", curLevel),
         LSXHelpers.AttrNode("Type", "FixedString", templateType),
+        LSXHelpers.AttrNode("PartentTemplateId", "FixedString", TakeTailTemplate(propData.TemplateId or "")),
         LSXHelpers.AttrNode("TemplateName", "FixedString", TakeTailTemplate(propData.TemplateId)),
-        LSXHelpers.AttrNode("GravityType", "uint8",
-            entity.GravityDisabled and 1 or entity.GravityDisabledUntilMoved and 2 or 0),
+        isItem and LSXHelpers.AttrNode("GravityType", "uint8",
+            entity.GravityDisabled and 1 or entity.GravityDisabledUntilMoved and 2 or 0) or nil,
         -- 0 = Enabled, 1 = Disabled, 2 = Disabled until moved
     }
 
@@ -215,7 +220,7 @@ end
 
 local function createPresetParamAttrNodes(parameterName, value)
     local attrs = {}
-    local valueType = LSXHelpers.DetermineLSXValueType(value)
+    local valueType = LSXHelpers.LSXValueType(value)
     local saveValue = #value == 1 and value[1] or value
     if not valueType then
         Warning("CustomMaterialProxy: Could not determine LSX value type for preset parameter '" ..
@@ -301,7 +306,7 @@ function LSXHelpers.BuildMaterialPresetResourceNode(parameters, uuid, internalNa
     return root
 end
 
-function LSXHelpers.DetermineLSXValueType(value)
+function LSXHelpers.LSXValueType(value)
     if type(value) == "boolean" then
         return LSXValueType.bool
     elseif type(value) == "number" then
@@ -326,7 +331,7 @@ end
 local function createParameterAttrNodes(paramObj, overrideValue)
     local attrs = {}
     for k, v in pairs(paramObj) do
-        local valueType = LSXHelpers.DetermineLSXValueType(v)
+        local valueType = LSXHelpers.LSXValueType(v)
         if not valueType then
             Warning("CustomMaterialProxy: Could not determine LSX value type for parameter '" ..
                 tostring(paramObj.ParameterName) .. "'. Skipping.")
@@ -461,7 +466,7 @@ end
 ---@param uuid GUIDSTRING
 ---@param presetType "CharacterCreationEyeColors"|"CharacterCreationHairColors"|"CharacterCreationSkinColors"
 ---@return LSXNode
-function LSXHelpers.BuildCCAPresetNode(displayName, internalName, uiColor, matPUuid, uuid, presetType)
+function LSXHelpers.BuildCCColorNode(displayName, internalName, uiColor, matPUuid, uuid, presetType)
     if presetType:sub(-1) == "s" then
         presetType = presetType:sub(1, -2)
     end
@@ -489,7 +494,7 @@ end
 
 ---@param presetsType "CharacterCreationEyeColors"|"CharacterCreationHairColors"|"CharacterCreationSkinColors"
 ---@return LSXNode -- saveNode
-function LSXHelpers.BuildCCAPresetsRegionNode(presetsType)
+function LSXHelpers.BuildCCColorRegionNode(presetsType)
     local saveNode = LSXHelpers.new()
 
     local regionNode = saveNode:AppendChild(LSXNode.new("region", { id = presetsType }))

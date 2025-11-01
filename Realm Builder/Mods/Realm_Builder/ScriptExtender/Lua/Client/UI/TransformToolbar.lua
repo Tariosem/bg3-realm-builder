@@ -257,10 +257,25 @@ function TransformToolbar:SetupBoxSelect()
             end
 
             local visual = VisualHelpers.GetEntityVisual(entity)
-            if not visual then goto continue end
-
-            local aabb = visual.WorldBound
-            if not aabb then goto continue end
+            local aabb = nil
+            local function makeAabb(pos)
+                local min = pos - Vec3.new(0.5, 0.5, 0.5)
+                local max = pos + Vec3.new(0.5, 0.5, 0.5)
+                return { Min = min, Max = max }
+            end
+            if not visual then
+                if not CGetPosition(guid) then goto continue end
+                local pos = Vec3.new{CGetPosition(guid)}
+                aabb = makeAabb(pos)
+            else
+                aabb = visual.WorldBound
+            end
+            
+            if not aabb then
+                if not CGetPosition(guid) then goto continue end
+                local pos = Vec3.new{CGetPosition(guid)}
+                aabb = makeAabb(pos)
+            end
 
             local vertices = collectAABBCorners(aabb)
             local inside = false

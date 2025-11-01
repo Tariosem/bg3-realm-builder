@@ -139,6 +139,20 @@ local function RenderStatsObjectTitle(statsObj, parent, type, isTooltip)
     end
 
     local image = iconCell:AddImage(icon, ToVec2(64 * SCALE_FACTOR))
+
+    image.OnHoverEnter = function()
+        local tooltip = image:Tooltip()
+        local rawInfoTab = tooltip:AddTable("Raw Info", 2)
+        local rawInfoRow = rawInfoTab:AddRow()
+        for k, v in pairs(statsObj) do
+            local keyCell = rawInfoRow:AddCell()
+            keyCell:AddText(tostring(k))
+            local valCell = rawInfoRow:AddCell()
+            valCell:AddText(tostring(v))
+        end
+        image.OnHoverEnter = nil
+    end
+
     local rightContent = AddIndent(parent, 2 * SCALE_FACTOR)
     descRender(rightContent)
     parent:SetStyle("WindowBorderSize", 2)

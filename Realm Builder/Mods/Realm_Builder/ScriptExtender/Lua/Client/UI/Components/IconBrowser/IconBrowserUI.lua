@@ -1,6 +1,11 @@
 --- pure spaghetti code ahead, beware ---
 
 --- @class IconBrowser
+--- @field panel ExtuiWindow
+--- @field browser ExtuiChildWindow
+--- @field browserOptions ExtuiTable
+--- @field dataManager ManagerBase
+--- @field iconsImage table<string, ExtuiImageButton|ExtuiStyledRenderable>
 --- @field CreateCachedSort fun(self:IconBrowser, field:string)
 IconBrowser = _Class("IconBrowser")
 
@@ -20,7 +25,7 @@ function IconBrowser:__init(dataManager, DisplayName)
     self.iconButtonBgColor = CONFIG.ItemBrowser.ButtonBgColor or nil
     self.iconToName = false
 
-    self.matchAllTags = true
+    self.matchAllTags = false
     self.nameAscend = true
 
     self.tempDisableSearch = false
@@ -46,6 +51,10 @@ function IconBrowser:__init(dataManager, DisplayName)
 
     self.updateTagsFn = {}
     self.isValid = true
+
+    if self.SubclassInit then
+        self:SubclassInit()
+    end
 
     self:LoadChanges()
 end
@@ -292,6 +301,10 @@ function IconBrowser:RenderUiConfigMenu()
         if not self.iconToName then
             for _, imageIcon in pairs(self.iconsImage) do
                 imageIcon.Background = self.iconButtonBgColor
+            end
+        else
+            for _, buttonIcon in pairs(self.iconsImage) do
+                buttonIcon:SetColor("Button", self.iconButtonBgColor)
             end
         end
     end
@@ -786,22 +799,9 @@ function IconBrowser:IconSetup(iconImage, entry)
             userOnHoverLeave(iconImage)
         end
     end
-    iconImage:SetColor("Button", ToVec4(0))
+    iconImage:SetColor("Button", self.iconButtonBgColor or { 0, 0, 0, 0.6 })
 
     iconImage.IDContext = "IconImage_" .. entry.Uuid
-
-    local userIconOnClick = iconImage.OnClick
-
-    iconImage.OnClick = function()
-        if self.iconToName then
-            iconImage.Selected = false
-        end
-
-        if userIconOnClick then
-            userIconOnClick()
-        end
-    end
-
 end
 
 function IconBrowser:RenderCustomizationTab(popup, entry)
@@ -980,5 +980,27 @@ end
 function IconBrowser:Focus()
     if self.panel then
         FocusWindow(self.panel)
+    end
+end
+
+function IconBrowser:Close()
+    if self.panel and self.panel.Open then
+        self.panel.Open = false
+        if self.panel.OnClose then
+            self.panel:OnClose()
+        end
+    end
+end
+
+function IconBrowser:Toggle()
+    if not self.panel then
+        self:Render()
+        return
+    end
+
+    self.panel.Open = not self.panel.Open
+    if self.panel.Open then
+    else
+        self.panel:OnClose()
     end
 end

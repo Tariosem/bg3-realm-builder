@@ -23,6 +23,10 @@ function ManagerBase:__init()
     self.tagIcons = {}
     self.tagTree = TreeTable.new()
 
+    if self.HardCodeHierachy then
+        self:HardCodeHierachy()
+    end
+
     self.populated = false
 end
 
@@ -114,6 +118,7 @@ end
 function ManagerBase:AddTagToData(uuid, tag)
     if self.tagTree and self.tagTree:Find(tag) and not self.tagTree:IsLeaf(tag) then
         ConfirmPopup:Popup(string.format(GetLoca("The name '%s' is already used as a category. Please choose a different name for the tag."), tag))
+        Debug(string.format("[ManagerBase] Cannot add tag '%s' to UUID '%s' because it is a category in the tag hierarchy.", tag, uuid))
         return
     end
 

@@ -540,7 +540,6 @@ function TreeList:SetUpLeaf(selectable, key)
                 self:ToggleSelected(key)
             end
         else
-            Debug("Single Select")
             local wasSelected = self.selectedItems[key] ~= nil
             self:ClearSelection(true)
             self:SetSelected(key, not wasSelected)

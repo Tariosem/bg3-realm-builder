@@ -1,6 +1,17 @@
 --- @class CharacterBrowser : IconBrowser
 CharacterBrowser = _Class("CharacterBrowser", IconBrowser)
 
+function CharacterBrowser:SubclassInit()
+    local config = self:GetConfig()
+
+    self.iconToName = true
+    self.iconPR = config.IconPerRow or 2
+    self.iconPC = config.IconPerColumn or 25
+    self.iconWidth = config.IconWidth or 450
+
+    self.iconButtonBgColor = config.ButtonBgColor or HexToRGBA("FF565656")
+end
+
 function CharacterBrowser:GetConfig()
     return CONFIG.CharacterBrowser or {}
 end
@@ -56,11 +67,21 @@ function CharacterBrowser:RenderIcon(entry, cell)
         end
         iconImage.Image.Size = {self.iconWidth, self.iconWidth}
     else
-        local button = cell:AddSelectable(entry[self.iconTooltipName] .. "##" ..entry.Uuid)
+        local disName = entry[self.iconTooltipName]
+        if not disName or disName == "" then
+            disName = "Unknown"
+        end
+        local button = cell:AddButton(disName .. "##" ..entry.Uuid)
+        button:SetColor("Button", self.iconButtonBgColor or HexToRGBA("FF000000"))
         iconImage = button
     end
 
-    iconImage.OnClick = function()
+    local st = rPopup:AddTable("SpawnTable", 1)
+    st.BordersInnerH = true
+    local spwanRow = st:AddRow()
+
+    spwanRow:AddCell():AddSelectable("Spawn##" .. entry.Uuid).OnClick = function(sel)
+        sel.Selected = false
         local target = self.selectedGuid or CGetHostCharacter()
         local pos = {CGetPosition(target)}
         local rot = {CGetRotation(target)}
@@ -68,8 +89,19 @@ function CharacterBrowser:RenderIcon(entry, cell)
         Commands.SpawnCommand(entry.TemplateId, pos, rot)
     end
 
+    iconImage.OnClick = function()
+        rPopup:Open()
+    end
+
+    iconImage.CanDrag = true
+    iconImage.DragDropType = "RB_CharacterTemplate"
+
+    iconImage.OnDragStart = function(sel)
+        sel.DragPreview:AddText(entry[self.iconTooltipName] or "Unknown")
+    end
+
     iconImage.OnDragEnd = function()
-        Timer:Ticks(15, function (timerID)
+        Timer:Ticks(20, function (timerID)
             local spawnPos, spawnRot = GetPickingHitPosAndRot()
             if not spawnPos or not spawnRot then return end
             Commands.SpawnCommand(entry.TemplateId, spawnPos, spawnRot)

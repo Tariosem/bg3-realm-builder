@@ -38,7 +38,6 @@ NetChannel.Spawn:SetRequestHandler(function(data, userID)
     local newGuid = EntityManager:CreateAt(template, position[1], position[2], position[3], rotation[1], rotation[2], rotation[3], rotation[4])
 
     if not newGuid then
-        Warning("Spawn: Failed to create entity at position.")
         return {Guid = nil, TemplateId = template}
     end
 
@@ -84,6 +83,7 @@ NetChannel.Delete:SetHandler(function(data, userID)
             EntityManager:DeleteEntity(guid)
         else
             Osi.RequestDelete(guid)
+            Osi.RequestDeleteTemporary(guid)
         end
     end
 
@@ -298,7 +298,7 @@ NetChannel.Visualize:SetRequestHandler(function(data, userID)
         local pos = data.Position
 
 
-        local pointEntity = Osi.CreateAt(RB_PROP_AXIS_FX, pos[1], pos[2], pos[3], 0, 0, "") --[[@as string]]
+        local pointEntity = Osi.CreateAt(RB_PROP_AXIS_FX, pos[1], pos[2], pos[3], 1, 0, "") --[[@as string]]
         table.insert(entityHandles, pointEntity)
         if data.Rotation then
             RotateTo(pointEntity, table.unpack(data.Rotation))
@@ -407,7 +407,7 @@ NetChannel.ManageGizmo:SetRequestHandler(function(data, userID)
         data.Position = {0,0,0}
     end
 
-    local guid = Osi.CreateAt(GIZMO_ITEM[data.GizmoType], data.Position[1], data.Position[2], data.Position[3], 0, 0, "") --[[@as string]]
+    local guid = Osi.CreateAt(GIZMO_ITEM[data.GizmoType], data.Position[1], data.Position[2], data.Position[3], 1, 0, "") --[[@as string]]
     Osi.SetVisible(guid, 0)
 
     gizmoUserStack[tostring(userID)] = gizmoUserStack[tostring(userID)] or {}

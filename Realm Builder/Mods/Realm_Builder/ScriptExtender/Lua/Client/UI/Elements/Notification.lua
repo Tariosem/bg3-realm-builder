@@ -115,7 +115,7 @@ function Notification:BuildContent()
 
     self.titleText = panel:AddSeparatorText(self.Title)
     self.titleText:SetStyle("SeparatorTextAlign", 0.5)
-    
+
     self.MessageRenderFunc(panel)
     
     if self.AutoResize == false then
@@ -333,7 +333,7 @@ function Notification:SetupFlick()
             return
         end
 
-        local dt = (currentTime - lastInputTime) / 1000
+        local dt = deltaTime/ 1000
         lastInputTime = currentTime
         
         local dx = panelX - lastCursorPos[1]
@@ -346,11 +346,12 @@ function Notification:SetupFlick()
 
         local panelW, panelH = table.unpack(self.panel.LastSize)
         local dist = math.sqrt(dx * dx + dy * dy)
-        --Debug(string.format("Velocity: %.1f, Dist: %.1f", velocity, dist))
 
         if velocity > self.FlickVelocityThreshold and dist > 10 and dist < panelW then
             local directionX = dx / dist
             local directionY = dy / dist
+
+            local animVelocity = math.min(velocity, self.FlickVelocityThreshold)
 
             local throwDistance = math.min(velocity * 0.5, 2000)
             local endX = panelX + directionX * throwDistance
@@ -358,7 +359,7 @@ function Notification:SetupFlick()
             local startPos = {panelX, panelY}
             local endPos = {endX, endY}
             local animationDistance = math.sqrt((endX - panelX)^2 + (endY - panelY)^2)
-            local duration = Ext.Math.Clamp(animationDistance / velocity * 800, 300, 1200)
+            local duration = Ext.Math.Clamp((animationDistance / animVelocity) * 1000, 200, 800)
 
             self.panel.NoMove = true
             self:StopAnimation()

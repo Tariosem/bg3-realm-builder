@@ -94,8 +94,6 @@ function ItemManager:HardCodeHierachy()
         },
     })
 
-
-
     for itemSlot, _ in pairs(Ext.Enums.ItemSlot) do
         if itemSlot ~= "None" and itemSlot ~= "Count" and tonumber(itemSlot) == nil then
             local node = self.tagTree:AddLeaf(itemSlot, 0, "Equipment")
@@ -477,67 +475,4 @@ function ItemManager:PopulateArmor(statsObj, statsId)
 
     --- @type RB_Armor
     return baseEntry
-end
-
-function ItemManager:PopulateAllTemplates()
-    if self.populated then return -1 end
-    local cnt = 0
-
-    local allWeaponStats = Ext.Stats.GetStats("Weapon")
-    for _, statsId in pairs(allWeaponStats) do
-        local statsObj = Ext.Stats.Get(statsId)
-        if statsObj.RootTemplate == "" or self.Data[statsObj.RootTemplate] then goto continue end
-
-        if statsObj and statsObj.RootTemplate and not self.Data[statsObj.RootTemplate] then
-            self.Data[statsObj.RootTemplate] = self:PopulateWeapon(statsObj, statsId)
-            cnt = cnt + 1
-        end
-
-        ::continue::
-    end
-
-    local allArmorStats = Ext.Stats.GetStats("Armor")
-    for _, statsId in pairs(allArmorStats) do
-        local statsObj = Ext.Stats.Get(statsId)
-        if statsObj.RootTemplate == "" or self.Data[statsObj.RootTemplate] then goto continue end
-
-        if statsObj and statsObj.RootTemplate and not self.Data[statsObj.RootTemplate] then
-            self.Data[statsObj.RootTemplate] = self:PopulateArmor(statsObj, statsId)
-            cnt = cnt + 1
-        end
-        ::continue::
-    end
-
-    local raw = Ext.ClientTemplate.GetAllRootTemplates()
-    for uuid, object in pairs(raw) do
-        if object.TemplateType == "item" and not self.Data[uuid] then
-            self.Data[object.Id] = self:PopulateItem(object)
-            self.UuidToTemplateName[object.Id] = object.Name
-            self.TemplateNameToUuid[object.Name] = object.Id
-            cnt = cnt + 1
-            ::continue::
-        elseif object.TemplateType == "character" then
-            --- @diagnostic disable-next-line
-            RB_CharacterManager:PopulateCharacter(object) 
-        end
-    end
-
-    --[[for _, statsId in pairs(Ext.Stats.GetStats("Armor")) do
-        local statsObj = Ext.Stats.Get(statsId)
-        if not self.Data[statsObj.RootTemplate] then goto continue end
-
-        if statsObj.Slot ~= "" then
-            self.Data[statsObj.RootTemplate].Tags[#self.Data[statsObj.RootTemplate].Tags+1] = statsObj.Slot
-        end
-        if statsObj.Shield == "Yes" then
-            self.Data[statsObj.RootTemplate].Tags[#self.Data[statsObj.RootTemplate].Tags+1] = "Shield"
-        end
-
-        ::continue::
-    end]]
-
-
-    self.populated = true
-    self.modCache = {}
-    return cnt
 end

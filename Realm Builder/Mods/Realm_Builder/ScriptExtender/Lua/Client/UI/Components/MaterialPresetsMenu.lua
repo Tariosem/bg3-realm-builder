@@ -1139,6 +1139,11 @@ function MaterialPresetsMenu:ImportFromFile(modName, version)
 
     local cacheFile = Ext.Json.Parse(jsonStr) --- @type CCMod_Pack
 
+    if not cacheFile or not cacheFile.MaterialPresets then
+        Warning("ImportFromFile: Invalid CCA mod cache file at " .. filePath)
+        return nil
+    end
+
     self.cachedMods[modName] = self.cachedMods[modName] or {}
     self.cachedMods[modName][versionStr] = cacheFile
 
@@ -1158,7 +1163,6 @@ function MaterialPresetsMenu:ExportToMod(modPack, progressCallback)
     end
 end
 
---- CAUTION: This function yields periodically and must be called inside a coroutine
 ---@param modPack CCMod_Pack
 ---@param progressCallback fun(progress:number, message:string?)
 function MaterialPresetsMenu:__exportToMod(modPack, progressCallback)
@@ -1194,8 +1198,8 @@ function MaterialPresetsMenu:__exportToMod(modPack, progressCallback)
         1 +         -- localization.xml
         presetCnt + -- building material preset resource nodes
         folderCnt + -- saving material preset banks
-        presetCnt + -- building character creation color definitions
-        3 +         -- saveing character creation color definitions
+        presetCnt + -- building character creation color
+        3 +         -- saveing character creation color
         1 +         -- save mod cache file
         1           -- save mod cache ref file
 
@@ -1221,7 +1225,7 @@ function MaterialPresetsMenu:__exportToMod(modPack, progressCallback)
             if thread and coroutine.status(thread) == "suspended" then
                 local sucr, err = coroutine.resume(thread)
                 if not sucr then
-                    throwError("ExportToMod: Error resuming coroutine after yield: " .. tostring(err))
+                    throwError("ExportToMod: Error resuming coroutine: " .. tostring(err))
                     Ext.Debug.DumpStack()
                 end
             else
@@ -1335,7 +1339,7 @@ function MaterialPresetsMenu:__exportToMod(modPack, progressCallback)
     }
 
     for presetType, _ in pairs(ccaDefNode) do
-        ccaDefNode[presetType] = LSXHelpers.BuildCCAPresetsRegionNode(presetType)
+        ccaDefNode[presetType] = LSXHelpers.BuildCCColorRegionNode(presetType)
     end
 
     -- cheap way to identify dragonborn skin types
@@ -1374,7 +1378,7 @@ function MaterialPresetsMenu:__exportToMod(modPack, progressCallback)
 
         local handle = table.remove(stringToHandles[preset.DisplayName]) -- use one handle per preset
 
-        local presetNode = LSXHelpers.BuildCCAPresetNode(handle, internalName, preset.UIColor, uuid, ccaPresetUuid, presetType)
+        local presetNode = LSXHelpers.BuildCCColorNode(handle, internalName, preset.UIColor, uuid, ccaPresetUuid, presetType)
         ccaPresetNode:AppendChild(presetNode)
         
         if presetType == "CharacterCreationSkinColors" then

@@ -140,6 +140,7 @@ function NearbyCombo:SetupComboEvents()
         UpdateNearbyMap({CGetPosition(CGetHostCharacter())}, self.Radius)
         self:UpdateOptions()
         self:RenderIcons()
+        self.popup:Open()
     end
 
     self.combo.OnRightClick = function (cmb)

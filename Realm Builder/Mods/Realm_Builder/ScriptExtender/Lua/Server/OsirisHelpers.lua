@@ -23,7 +23,7 @@ function OsirisHelpers.DrawLine(startPos, endPos, width)
 
     local toScale = length / 10
 
-    local fxHandle = Osi.CreateAt(RB_BEAM_ITEM_FX, 0, 0, 0, 0, 0, "") --[[@as string]]
+    local fxHandle = Osi.CreateAt(RB_BEAM_ITEM_FX, 0, 0, 0, 1, 0, "") --[[@as string]]
 
     Osi.SetVisible(fxHandle, 0)
     Timer:Ticks(10, function (timerID)
@@ -177,7 +177,7 @@ function PreviewTemplate(templateId, x, y, z, p, yaw, r, w, visualPreset)
         templateName = templateId
     end
 
-    local preview = Osi.CreateAt(templateId, x, y, z, 0, 0, "") --[[@as string]]
+    local preview = Osi.CreateAt(templateId, x, y, z, 1, 0, "") --[[@as string]]
 
     if not preview then
         Error("Failed to create preview for template: " .. tostring(templateId))
