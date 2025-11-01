@@ -345,14 +345,14 @@ function IsBone(name)
     return BoneName[name]
 end
 
-function ParseBoneList(str, dontFindMatch)
-    if not str or type(str) ~= "string" or str == "" then
+function ParseBoneList(bonestr, dontFindMatch)
+    if not bonestr or type(bonestr) ~= "string" or bonestr == "" then
         return ""
     end
     
     local results = {}
 
-    for bone in str:gmatch("([^,]+)") do
+    for bone in bonestr:gmatch("([^,]+)") do
         local trimmedBone = bone:match("^%s*(.-)%s*$")
         if trimmedBone ~= "" and not dontFindMatch then
             local bestMatch = FindBestMatchBone(trimmedBone)

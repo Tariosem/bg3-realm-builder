@@ -3,7 +3,6 @@ RequireFiles("Client/UI/Elements/", {
     "ConfirmPopup",
     "Notification",
     "CollapsingTable",
-    "RadioButtonGroup",
     "NearbyCombo",
     "TreeList",
 })

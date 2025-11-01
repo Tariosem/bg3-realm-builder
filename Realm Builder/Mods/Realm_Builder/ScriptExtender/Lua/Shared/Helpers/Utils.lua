@@ -8,16 +8,16 @@ function Uuid_v4()
     return uuid
 end
 
----@param str string?
+---@param object string?
 ---@return boolean
-function IsUuid(str)
-    if not str then return false end
+function IsUuid(object)
+    if not object then return false end
 
-    if type(str) ~= "string" then return false end
+    if type(object) ~= "string" then return false end
 
-    if str == GUID_NULL then return false end
+    if object == GUID_NULL then return false end
 
-    return str:match("^%x%x%x%x%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%x%x%x%x%x%x%x%x$") ~= nil
+    return object:match("^%x%x%x%x%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%x%x%x%x%x%x%x%x$") ~= nil
 end
 
 ---@param major string|number
@@ -116,15 +116,15 @@ function TableContains(tbl, value)
     return false
 end
 
-function SplitBySemicolon(str, trimWhitespace)
-    if type(str) ~= "string" then
+function SplitBySemicolon(input, trimWhitespace)
+    if type(input) ~= "string" then
         return {}
     end
     
     trimWhitespace = trimWhitespace ~= false
     local tokens = {}
     
-    for token in str:gmatch("[^;]+") do
+    for token in input:gmatch("[^;]+") do
         if trimWhitespace then
             token = token:match("^%s*(.-)%s*$")
         end
@@ -137,15 +137,15 @@ function SplitBySemicolon(str, trimWhitespace)
     return tokens
 end
 
-function SplitByComma(str, trimWhitespace)
-    if type(str) ~= "string" then
+function SplitByComma(input, trimWhitespace)
+    if type(input) ~= "string" then
         return {}
     end
     
     trimWhitespace = trimWhitespace ~= false
     local tokens = {}
     
-    for token in str:gmatch("[^,]+") do
+    for token in input:gmatch("[^,]+") do
         if trimWhitespace then
             token = token:match("^%s*(.-)%s*$")
         end
@@ -173,11 +173,11 @@ function SplitBySpace(input)
     return result
 end
 
-function StartWith(str, prefix)
-    if type(str) ~= "string" or type(prefix) ~= "string" then
+function StartWith(obj, prefix)
+    if type(obj) ~= "string" or type(prefix) ~= "string" then
         return false
     end
-    return string.sub(str, 1, #prefix) == prefix
+    return string.sub(obj, 1, #prefix) == prefix
 end
 
 function CountMap(map)
@@ -282,13 +282,13 @@ function LightCToArray(arr)
     return result
 end
 
-function DeepCopy(original)
-    if type(original) ~= 'table' then
-        return original
+function DeepCopy(o)
+    if type(o) ~= 'table' then
+        return o
     end
 
     local copy = {}
-    for key, value in pairs(original) do
+    for key, value in pairs(o) do
         copy[key] = DeepCopy(value)
     end
 
@@ -327,32 +327,32 @@ function RequireFiles(folderPath, files)
     end
 end
 
-function TrimTail(str, count)
-    return string.sub(str, 1, #str - count)
+function TrimTail(obj, count)
+    return string.sub(obj, 1, #obj - count)
 end
 
-function TakeTail(str, count)
-    return string.sub(str, -count)
+function TakeTail(obj, count)
+    return string.sub(obj, -count)
 end
 
 function GetLastPath(path)
     return path:match("([^/]+)$") or path
 end
 
-function ToLowerAlphaOnly(str)
-    return string.lower(str):gsub("[^a-z]", "")
+function ToLowerAlphaOnly(obj)
+    return string.lower(obj):gsub("[^a-z]", "")
 end
 
-function Contains(str, substr, caseSensitive)
+function Contains(obj, substr, caseSensitive)
     local isCaseSensitive = caseSensitive or false
-    if type(str) ~= "string" or type(substr) ~= "string" then
+    if type(obj) ~= "string" or type(substr) ~= "string" then
         return false
     end
     if not isCaseSensitive then
-        str = str:lower()
+        obj = obj:lower()
         substr = substr:lower()
     end
-    return string.find(str, substr) ~= nil
+    return string.find(obj, substr) ~= nil
 end
 
 function MapToSortedArrayByFunc(inputMap, comparator)
@@ -542,14 +542,14 @@ function Filter(keywords, items, fields, options, candidates)
     return candidates
 end
 
-function IsCamera(str)
-    if not str or type(str) ~= "string" then return false end
-    return str == CameraSymbol or string.sub(str, 1, #CameraSymbol) == CameraSymbol
+function IsCamera(object)
+    if not object or type(object) ~= "string" then return false end
+    return object == CameraSymbol or string.sub(object, 1, #CameraSymbol) == CameraSymbol
 end
 
-function GetCamaraUserID(str)
-    if IsCamera(str) then
-        return tonumber(string.sub(str, #CameraSymbol + 1))
+function GetCamaraUserID(obj)
+    if IsCamera(obj) then
+        return tonumber(string.sub(obj, #CameraSymbol + 1))
     end
     return nil
 end

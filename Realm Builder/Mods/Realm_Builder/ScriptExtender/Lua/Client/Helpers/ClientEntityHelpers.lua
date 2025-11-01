@@ -93,7 +93,7 @@ function GetName(guid)
     if not templateId or templateId == "" then
         return "Unknown"
     end
-    local template = Ext.ClientTemplate.GetTemplate(TakeTailTemplate(templateId))
+    local template = Ext.Template.GetTemplate(TakeTailTemplate(templateId))
     if not template then
         return "Unknown"
     end
@@ -136,7 +136,7 @@ end
 
 function GetDisplayNameForTemplateId(uuid)
     uuid = TakeTailTemplate(uuid)
-    local template = Ext.ClientTemplate.GetTemplate(uuid)
+    local template = Ext.Template.GetTemplate(uuid)
     local transalatedString = template.DisplayName.Handle.Handle
     local translated = Ext.Loca.GetTranslatedString(transalatedString)
     if not translated or translated == "" or translated == transalatedString or translated == "Object" then
@@ -148,7 +148,7 @@ end
 function GetTemplateNameForGuid(guid)
     local templateId = GetTemplateId(guid)
     if not templateId or templateId == "" then return nil end
-    local template = Ext.ClientTemplate.GetTemplate(TakeTailTemplate(templateId))
+    local template = Ext.Template.GetTemplate(TakeTailTemplate(templateId))
     if not template then
         --Error("GetTemplateNameForGuid: No template found for guid: " .. guid)
         return nil

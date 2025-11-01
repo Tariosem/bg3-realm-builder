@@ -115,18 +115,18 @@ end
 
 local function parse(...)
     local args = {...}
-    local str = ""
+    local parsedStr = ""
     for i, v in ipairs(args) do
         if i > 1 then
-            str = str .. " "
+            parsedStr = parsedStr .. " "
         end
         if type(v) == "table" or Ext.Types.GetObjectType(v) == "userdata" or Ext.Types.GetObjectType(v) == "lightuserdata" then
-            str = str .. "\n" .. Ext.Json.Stringify(v, {Beautify = true})
+            parsedStr = parsedStr .. "\n" .. Ext.Json.Stringify(v, {Beautify = true})
         else
-            str = str .. tostring(v)
+            parsedStr = parsedStr .. tostring(v)
         end
     end
-    return str
+    return parsedStr
 end
 
 function Critical(...)

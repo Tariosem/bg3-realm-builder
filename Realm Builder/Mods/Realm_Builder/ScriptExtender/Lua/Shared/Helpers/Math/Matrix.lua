@@ -63,25 +63,24 @@ function Matrix.__tostring(a)
     if rows == math.floor(rows) then
         rows = rows
     else
-        --Debug("Mat:__tostring: Non-square matrix, output like array")
         return "{" .. table.concat(a, ", ") .. "}"
     end
 
-    local str = "Mat(\n"
+    local matStr = "Mat(\n"
     for i = 1, rows do
         for j = 1, rows do
             local idx = (i - 1) * rows + j
-            str = str .. string.format("% .4f", a[idx])
+            matStr = matStr .. string.format("% .4f", a[idx])
             if j < rows then
-                str = str .. ", "
+                matStr = matStr .. ", "
             end
         end
         if i < rows then
-            str = str .. "\n"
+            matStr = matStr .. "\n"
         end
     end
-    str = str .. ")"
-    return str
+    matStr = matStr .. ")"
+    return matStr
 end
    
 ---@param tbl number[]

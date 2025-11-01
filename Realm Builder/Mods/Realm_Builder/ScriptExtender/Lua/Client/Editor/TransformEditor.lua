@@ -47,10 +47,7 @@ function TransformEditor:Select(selection, notRecordHistory)
         selection = { [selection] = {} }
     end
     if not self.Gizmo or not self.Gizmo.Guid then self.Target = nil end
-    if checkIFSame(self.Target, selection) then
-        Debug("TransformEditor: Selection unchanged, ignoring.")
-        return
-    end
+    if checkIFSame(self.Target, selection) then return end
 
     self.Target = {}
     for guid,_ in pairs(selection) do

@@ -19,18 +19,18 @@ function StatsParser:ParseString(boostStr)
         return results
     end
 
-    local function split(str)
+    local function split(toSplit)
         local segments = {}
         local current = ""
         local depth = 0
         local i = 1
 
-        if str:find(";") then
-            return SplitBySemicolon(str, true)
+        if toSplit:find(";") then
+            return SplitBySemicolon(toSplit, true)
         end
 
-        while i <= #str do
-            local char = str:sub(i, i)
+        while i <= #toSplit do
+            local char = toSplit:sub(i, i)
             if char == "(" then
                 depth = depth + 1
                 current = current .. char

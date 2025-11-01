@@ -101,7 +101,7 @@ end
 --- @field __attrOrder string[]|nil
 --- @field __stringify fun(self: LSXNode, stringifyOpts: LSXStringifyOptions): string
 --- @field Stringify fun(self: LSXNode, stringifyOpts?: LSXStringifyOptions): string
---- @field Unserialize fun(str: string): LSXNode?
+--- @field Unserialize fun(xmlString: string): LSXNode?
 --- @field SetInnerText fun(self: LSXNode, text: string): LSXNode -- returns self
 --- @field SetName fun(self: LSXNode, name: string): LSXNode -- returns self
 --- @field SetAttribute fun(self: LSXNode, key: string, value: any): LSXNode -- returns self
@@ -114,8 +114,8 @@ end
 --- @field GetChildren fun(self: LSXNode): LSXNode[]
 --- @field CountChildren fun(self: LSXNode): number
 --- @field SortChildren fun(self: LSXNode, comparator: fun(a: LSXNode, b: LSXNode):boolean)
---- @field RemoveChild fun(self: LSXNode, index: number)
---- @field RemoveChildren fun(self: LSXNode, predicate: fun(child: LSXNode):boolean)
+--- @field RemoveChild fun(self: LSXNode, index: number): LSXNode? -- returns removed child
+--- @field RemoveChildren fun(self: LSXNode, predicate: fun(child: LSXNode):boolean): LSXNode[] -- returns removed children
 --- @field Clear fun(self: LSXNode)
 --- @field ClearChildren fun(self: LSXNode)
 --- @field AddComment fun(self: LSXNode, comment: string): LSXNode return self
@@ -209,7 +209,7 @@ function LSXNode:__stringify(stringifyOpts)
         table.insert(lines, '<?xml version="1.0" encoding="utf-8"?>')
     end
 
-    -- iterative DFS using stack. Each frame: { node = <LSXTableNode>, state = 'enter'|'exit', depth = number }
+    -- iterative DFS using stack. Each frame: { node = <LSXNode>, state = 'enter'|'exit', depth = number }
     -- avoid recursion by defaults
     local function buildAttrStr(node)
         local attrs = {}
@@ -321,18 +321,18 @@ local function parseAttributes(attrStr)
     return attrs, order
 end
 
-function LSXNode.Unserialize(str)
-    str = str:gsub("<%?xml.-%?>", "") -- remove XML declaration
-    str = str:gsub("\r", "") -- normalize newlines
+function LSXNode.Unserialize(xmlString)
+    xmlString = xmlString:gsub("<%?xml.-%?>", "") -- remove XML declaration
+    xmlString = xmlString:gsub("\r", "") -- normalize newlines
 
     local stack = {}
     local root = nil
     local i = 1
-    local len = #str
+    local len = #xmlString
 
     while i <= len do
-        local commentStart, commentEnd, commentText = str:find("<!--(.-)-->", i)
-        local tagStart, tagEnd, tagText = str:find("<([^>]+)>", i)
+        local commentStart, commentEnd, commentText = xmlString:find("<!--(.-)-->", i)
+        local tagStart, tagEnd, tagText = xmlString:find("<([^>]+)>", i)
 
         -- no more tags
         if not tagStart then break end
@@ -342,7 +342,7 @@ function LSXNode.Unserialize(str)
             local comments = {}
             while commentStart and commentStart < tagStart do
                 table.insert(comments, commentText:gsub("^%s+", ""):gsub("%s+$", ""))
-                commentStart, commentEnd, commentText = str:find("<!--(.-)-->", commentEnd + 1)
+                commentStart, commentEnd, commentText = xmlString:find("<!--(.-)-->", commentEnd + 1)
             end
             if #stack > 0 then
                 local top = stack[#stack]
@@ -354,7 +354,7 @@ function LSXNode.Unserialize(str)
         end
 
         -- capture inner text between tags
-        local text = str:sub(i, tagStart - 1)
+        local text = xmlString:sub(i, tagStart - 1)
         text = text:gsub("^[%s\n\t]+", ""):gsub("[%s\n\t]+$", "")
         if #text > 0 and #stack > 0 then
             local top = stack[#stack]
@@ -581,18 +581,23 @@ function LSXNode:RemoveChild(index)
         table.remove(self.__children, index)
         child.__parent = nil
     end
+
+    return child
 end
 
 function LSXNode:RemoveChildren(predicate)
     if not self.__children then
-        return
+        return {}
     end
+    
+    local removed = {}
     for i = #self.__children, 1, -1 do
         if predicate(self.__children[i]) then
             self.__children[i].__parent = nil
-            table.remove(self.__children, i)
+            table.insert(removed, table.remove(self.__children, i))
         end
     end
+    return removed
 end
 
 --- @param comparator fun(a: LSXNode, b: LSXNode):boolean

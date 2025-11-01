@@ -212,6 +212,7 @@ function Gizmo:SetupListeners()
 
     self.Subscriptions["SlowDown"] = SubscribeKeyInput({ Key = "LSHIFT" }, function(e)
         if e.Repeat then return end
+        if not self.IsDragging then return end
         if e.Event == "KeyDown" then
             self.SlowDown = true
         else
@@ -703,6 +704,7 @@ function Gizmo:LerpDelta(delta)
             return
         end
 
+        delta.Angle = deltaAngle
         if self._accuDelta then
             delta = { Angle = self._accuDelta + deltaAngle, Axis = delta.Axis }
         end

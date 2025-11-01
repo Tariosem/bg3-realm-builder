@@ -386,7 +386,7 @@ function SceneMenu:SetupSelectablePopup(popup)
         if not(self.selectedGuids and #self.selectedGuids > 0) then return end
 
         for _, guid in ipairs(self.selectedGuids) do
-            local node = LSXHelpers.BuildItem(guid)
+            local node = LSXHelpers.BuildTemplate(guid)
             if not node then 
                 Error("Failed to build LSX for guid: " .. guid)
                 return

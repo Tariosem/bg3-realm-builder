@@ -390,8 +390,8 @@ function VisualTab:RenderAttachmentsSection()
         self.attachmentsHeader = self.panel:AddCollapsingHeader(GetLoca("Attachments"))
     end
 
-    if CIsCharacter(self.guid) and entity.CharacterCreationAppearance then
-        local cca = entity.CharacterCreationAppearance --[[@as CharacterCreationAppearance]]
+    if CIsCharacter(self.guid) and (entity.CharacterCreationAppearance or entity.AppearanceOverride) then
+        local cca = entity.CharacterCreationAppearance or entity.AppearanceOverride.Visual or {}
         local ccaPresetgroup = self.attachmentsHeader:AddTree(GetLoca("Character Creation Material Presets"))
 
         local allColors = {

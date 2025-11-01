@@ -569,10 +569,10 @@ function TransformToolbar:CreateBindPopup(guid)
         end
         dismissBtn.SameLine = true
 
-        local table = panel:AddTable("BindPopup", 2)
-        table.ColumnDefs[1] = { WidthFixed = true }
-        table.ColumnDefs[2] = { WidthStretch = true }
-        local row1 = table:AddRow()
+        local tab = panel:AddTable("BindPopup", 2)
+        tab.ColumnDefs[1] = { WidthFixed = true }
+        tab.ColumnDefs[2] = { WidthStretch = true }
+        local row1 = tab:AddRow()
         local left = row1:AddCell()
 
         left:AddText("Bind To:")
@@ -647,32 +647,32 @@ function TransformToolbar:CreateBindPopup(guid)
 
         local lookAtCheck = addBindCheckbox(panel, "Keep Looking At", info, "KeepLookingAt", checkCheck, checkCheck)
         local followCheck = addBindCheckbox(panel, "Follow Parent", info, "FollowParent", checkCheck, checkCheck)
-
-        local listener = ClientSubscribe(NetChannel.BindProps, function (data)
+        
+        local listener
+        listener = EntityStore:SubscribeToBindChanges(guid, function (data)
             local ok, err = pcall(function() return lookAtCheck.Checked, followCheck.Checked end)
-            if not ok then return UNSUBSCRIBE_SYMBOL end
-            for _,d in ipairs(data.BindInfos) do
-                if d.Guid == guid then
-                    info = d
-                    lookAtCheck.Checked = d.KeepLookingAt == true or false
-                    followCheck.Checked = d.FollowParent == true or false
-                    nearByCombo:SetSelected(d.BindParent)
-                    if d.BindParent then
-                        image:Destroy()
-                        image = left:AddImage(GetIcon(d.BindParent), IMAGESIZE.SMALL )
-                        image.SameLine = true
-                    else
-                        image:Destroy()
-                        image = left:AddImage(GetIcon(), IMAGESIZE.SMALL )
-                        image.SameLine = true
-                    end
-                    break
-                end
+            if not ok then if listener then listener:Unsubscribe() listener = nil end return end
+            local d = data
+            info = d
+            lookAtCheck.Checked = d.KeepLookingAt == true or false
+            followCheck.Checked = d.FollowParent == true or false
+            nearByCombo:SetSelected(d.BindParent)
+            if d.BindParent then
+                image:Destroy()
+                image = left:AddImage(GetIcon(d.BindParent), IMAGESIZE.SMALL )
+                image.SameLine = true
+            else
+                image:Destroy()
+                image = left:AddImage(GetIcon(), IMAGESIZE.SMALL )
+                image.SameLine = true
             end
         end)
 
         notif.OnDismiss = function()
-            listener:Unsubscribe()
+            if listener then
+                listener:Unsubscribe()
+                listener = nil
+            end
         end
     end
 

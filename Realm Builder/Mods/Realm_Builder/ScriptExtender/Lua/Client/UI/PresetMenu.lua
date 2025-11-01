@@ -11,7 +11,6 @@ PRESETMENU_HEIGHT = 1200 * SCALE_FACTOR
 --- @field Highlight boolean|nil
 --- @field HighlightColor Vec4|nil
 
-
 --- @class PresetMenu
 --- @field presets table<string, PropPresetData>
 PresetMenu = _Class("PresetMenu")

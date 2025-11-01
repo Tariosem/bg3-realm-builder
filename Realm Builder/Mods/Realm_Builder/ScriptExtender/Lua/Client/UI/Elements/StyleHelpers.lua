@@ -20,6 +20,7 @@ end
 --- @param isInteger? boolean
 --- @return ExtuiSliderInt|ExtuiSliderScalar
 function AddSliderWithStep(parent, IDContext, defaultValue, min, max, step, isInteger)
+    local sliderProxy = {}
     if not IDContext then
         IDContext = Uuid_v4()
     end
@@ -27,23 +28,25 @@ function AddSliderWithStep(parent, IDContext, defaultValue, min, max, step, isIn
     local slider = nil
     local decreButton = nil
     local increButton = nil
+    local sliderPopup = parent:AddPopup(IDContext .. "_SliderPopup")
     step = step or 0.1
     if isInteger then
-        stepInput = parent:AddInputInt("", math.floor(step))
+        stepInput = sliderPopup:AddInputInt("Step", math.floor(step))
         decreButton = AddSliderStepButton(parent, "<", -step, nil, "<")
         slider = SafeAddSliderInt(parent, "", defaultValue or 0, min or 0, max or 100)
         increButton = AddSliderStepButton(parent, ">", step, nil, ">")
     else
-        stepInput = parent:AddInputScalar("", step)
+        stepInput = sliderPopup:AddInputScalar("Step", step)
         decreButton = AddSliderStepButton(parent, "<", -step, nil, "<")
         slider = parent:AddSlider("", defaultValue or 0, min or 0, max or 100) --[[@as ExtuiSliderScalar]]
         increButton = AddSliderStepButton(parent, ">", step, nil, ">")
     end
-    stepInput.Visible = false
+    stepInput.ItemWidth = 120 * SCALE_FACTOR
     local resetButton = parent:AddButton("Reset")
     decreButton.UserData.Slider = slider
     increButton.UserData.Slider = slider
 
+    local allEles = {decreButton, slider, increButton, resetButton}
     stepInput.IDContext = IDContext .. "_StepInput"
     increButton.IDContext = IDContext .. "_IncreButton"
     slider.IDContext = IDContext .. "_Slider"
@@ -72,6 +75,10 @@ function AddSliderWithStep(parent, IDContext, defaultValue, min, max, step, isIn
         slider.UserData.Step = step
     end
 
+    slider.OnRightClick = function(s)
+        sliderPopup:Open()
+    end
+
     resetButton.SameLine = true
     resetButton.IDContext = IDContext .. "_ResetButton"
     resetButton.OnClick = function()
@@ -81,7 +88,26 @@ function AddSliderWithStep(parent, IDContext, defaultValue, min, max, step, isIn
         end
     end
 
-    return slider
+    setmetatable(sliderProxy, {
+        __index = function(_, k)
+            if k == "Visible" then
+                return slider.Visible
+            else
+                return slider[k]
+            end
+        end,
+        __newindex = function(_, k, v)
+            if k == "Visible" then
+                for _, ele in ipairs(allEles) do
+                    ele.Visible = v
+                end
+            else
+                slider[k] = v
+            end
+        end
+    })
+
+    return sliderProxy
 end
 
 --- @param parent ExtuiTreeParent

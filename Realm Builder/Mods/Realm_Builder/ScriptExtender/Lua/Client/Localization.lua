@@ -31,8 +31,8 @@ end
 
 local function ExportUnseenStrings()
     local toSave = {}
-    for str in pairs(unseenStrings) do
-        table.insert(toSave, str)
+    for name in pairs(unseenStrings) do
+        table.insert(toSave, name)
     end
 
     local string, stringToHandle = LSXHelpers.GenerateLocalization(toSave, 1)

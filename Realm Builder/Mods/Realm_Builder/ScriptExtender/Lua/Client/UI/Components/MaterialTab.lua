@@ -38,7 +38,8 @@ function MaterialTab:Render(parent)
     parent = parent or self.Parent
     local uuid = Uuid_v4()
     local parentNode = parent:AddSelectable("[-] " .. sourceFileName .. "##" .. self.MaterialName .. uuid) --[[@as ExtuiSelectable ]]
-    local group = parent:AddGroup("MaterialEditorGroup##" .. self.MaterialName, parentNode) -- Tree is weird with drag-and-drop, so use a Selectable + Group to simulate a collapsible tree node
+    local group = parent:AddGroup("MaterialEditorGroup##" .. self.MaterialName) -- Tree is weird with drag-and-drop, so use a Selectable + Group to simulate a collapsible tree node
+    local groupIndent = AddIndent(group, 10)
     group.Visible = true
 
     local managePopup = group:AddPopup("Manage##" .. self.MaterialName)
@@ -100,18 +101,20 @@ function MaterialTab:Render(parent)
     self.ParamNodeRefs = {}
     self.UpdateFuncs = {}
     self.ResetFuncs = {}
-    self.ParamGroupRefs = {}
+    self.ParamTableRefs = {}
     for paramType,propNames in ipairs(params) do
         local propType = indexToDisplay[paramType]
         if #propNames < 1 then goto continue end
 
-        local typeNode = group:AddTree(propType .. "##" .. self.MaterialName)
+        local typeNode = groupIndent:AddSelectable(propType .. "##" .. self.MaterialName)
 
-        local searchBox = typeNode:AddInputText("##" .. self.MaterialName .. propType)
+        local typeGroup = groupIndent:AddGroup("TypeGroup##" .. self.MaterialName .. propType)
+        local searchBox = typeGroup:AddInputText("##" .. self.MaterialName .. propType)
+        local paramsGroup = typeGroup:AddGroup("AllPropertiesGroup##" .. self.MaterialName .. tostring(math.random()))
         searchBox.Hint = "Search " .. propType .. "..."
         searchBox.OnChange = Debounce(50 ,function (sel)
             if sel.Text == "" then
-                for _, node in pairs(self.ParamGroupRefs) do
+                for _, node in pairs(self.ParamTableRefs) do
                     node.Visible = true
                 end
                 return
@@ -119,7 +122,7 @@ function MaterialTab:Render(parent)
 
             local searchTerm = sel.Text:lower()
             for _,propertyName in ipairs(propNames) do
-                local propNode = self.ParamGroupRefs[propertyName]
+                local propNode = self.ParamTableRefs[propertyName]
                 if propNode then
                     if searchTerm == "" or propertyName:lower():find(searchTerm) then
                         propNode.Visible = true
@@ -130,24 +133,63 @@ function MaterialTab:Render(parent)
             end
         end)
 
-        typeNode:SetOpen(true)
+        local allParamNodes = {}
+
+        typeNode.OnClick = function (sel)
+            typeNode.Selected = false
+            typeGroup.Visible = not typeGroup.Visible
+            typeNode.Label = (typeGroup.Visible and "[-] " or "[+] ") .. propType .. "##" .. self.MaterialName
+        end
+
+        typeNode.OnRightClick = function (sel)
+            for _, propNode in pairs(allParamNodes) do
+                propNode.OnHoverEnter()
+                propNode.OnClick(propNode)
+            end
+        end
+        
         self.ParamTypeNodeRefs[paramType] = typeNode
+        local indent = AddIndent(paramsGroup, 10)
+
+        local paramTable = indent:AddTable("ParameterTable##" .. self.MaterialName .. propType, 1)
+        local row = paramTable:AddRow()
+        paramTable.BordersInnerH = true
+        paramTable.RowBg = true
         for _,propertyName in ipairs(propNames) do
-            local allGroup = typeNode:AddGroup("AllPropertiesGroup##" .. self.MaterialName .. propertyName .. tostring(math.random()))
+            if type(self.cachedExpandedState[propertyName]) ~= "boolean" then
+                self.cachedExpandedState[propertyName] = true
+            end
+            local tab = row:AddCell():AddTable("PropertyTable##" .. self.MaterialName .. propertyName, 3)
+            tab.ColumnDefs[1] = { WidthFixed = true }
+            tab.ColumnDefs[2] = { WidthStretch = true }
+            tab.ColumnDefs[3] = { WidthFixed = true }
+            local row = tab:AddRow()
             local initLable = self.cachedExpandedState[propertyName] and "[-] " or "[+] "
-            local propNode = allGroup:AddSelectable(initLable .. propertyName .. "##" .. self.MaterialName) --[[@as ExtuiSelectable ]]
+            local propNode = row:AddCell():AddSelectable(initLable .. propertyName .. "##" .. self.MaterialName) --[[@as ExtuiSelectable ]]
             self.ParamNodeRefs[propertyName] = propNode
-            self.ParamGroupRefs[propertyName] = allGroup
-            local paramgroup = allGroup:AddGroup("PropertyGroup##" .. self.MaterialName .. propertyName .. tostring(math.random()))
+            self.ParamTableRefs[propertyName] = tab
+            row:AddCell() -- Spacer
+            local paramgroup = row:AddCell():AddGroup("PropertyGroup##" .. self.MaterialName .. propertyName .. tostring(math.random()))
+            paramgroup.SameLine = true
             paramgroup.Visible = self.cachedExpandedState[propertyName] == true
+            local sliders, colorPicker
+
+            local paramValue = self:GetParameter(propertyName)
+            sliders, colorPicker = self:RenderProperty(paramgroup, propertyName, paramValue)
 
             propNode.OnHoverEnter = function ()
-                local paramValue = self:GetParameter(propertyName)
-
-                self:RenderProperty(paramgroup, propertyName, paramValue)
+                
                 propNode.OnHoverEnter = function ()
                     propNode.Highlight = self:HasChanged(propertyName) and true or false
-                    typeNode.Framed = self:HasChangeInType(paramType)
+                    typeNode.Highlight = self:HasChangeInType(paramType)
+                end
+            end
+
+            propNode.OnRightClick = function ()
+                if colorPicker and sliders then
+                    for _, slider in pairs(sliders) do
+                        slider.Visible = not slider.Visible
+                    end
                 end
             end
 
@@ -207,6 +249,8 @@ function MaterialTab:Render(parent)
                     end
                 end
             end
+
+            allParamNodes[propertyName] = propNode
         end
 
         ::continue::
@@ -220,7 +264,7 @@ function MaterialTab:ClearRefs()
     self.ParamTypeNodeRefs = {}
     self.UpdateFuncs = {}
     self.ResetFuncs = {}
-    self.ParamGroupRefs = {}
+    self.ParamTableRefs = {}
 end
 
 --- @param node ExtuiTreeParent
@@ -234,7 +278,8 @@ function MaterialTab:RenderProperty(node, propertyName, propertyValue)
     end
 
     if #propertyValue >= 3 then
-        colorPicker = node:AddColorEdit(propertyName .. "##" .. self.MaterialName)
+
+        colorPicker = node:AddColorEdit("##" .. self.MaterialName .. propertyName)
         colorPicker.Color = ToVec4(propertyValue)
         colorPicker.AlphaBar = (#propertyValue == 4)
         colorPicker.NoAlpha = (#propertyValue == 3)
@@ -268,6 +313,9 @@ function MaterialTab:RenderProperty(node, propertyName, propertyValue)
         end
         local slider = AddSliderWithStep(node, propertyName .. "##" .. self.MaterialName .. i, propertyValue[i], range.min, range.max, range.step, propertyName:find("Index") ~= nil)
 
+        if colorPicker then
+            slider.Visible = false
+        end
         slider.OnChange = function (sel)
             local newValue = { sliders[1].Value[1], sliders[2] and sliders[2].Value[1] or 0, sliders[3] and sliders[3].Value[1] or 0, sliders[4] and sliders[4].Value[1] or 0 } --[[@as number[] ]]
 
@@ -354,7 +402,7 @@ function MaterialTab:UpdateUIState()
     end
 
     for paramType, typeNode in pairs(self.ParamTypeNodeRefs) do
-        typeNode.Framed = self:HasChangeInType(paramType)
+        typeNode.Highlight = self:HasChangeInType(paramType)
     end
 end
 

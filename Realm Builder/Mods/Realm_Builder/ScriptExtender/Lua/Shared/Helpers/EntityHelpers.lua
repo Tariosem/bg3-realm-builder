@@ -7,19 +7,19 @@ function EntityHelpers.EqualTransforms(a, b)
     if not a.Scale or not b.Scale then return false end
 
     local eps = EPSILON
-    for i=1,3 do
+    for i = 1, 3 do
         if math.abs(a.Translate[i] - b.Translate[i]) > eps then
             return false
         end
     end
 
-    for i=1,4 do
+    for i = 1, 4 do
         if math.abs(a.RotationQuat[i] - b.RotationQuat[i]) > eps then
             return false
         end
     end
 
-    for i=1,3 do
+    for i = 1, 3 do
         if math.abs(a.Scale[i] - b.Scale[i]) > eps then
             return false
         end
@@ -30,15 +30,15 @@ end
 
 function EntityHelpers.SaveTransform(guid)
     local toSave = {
-        Translate = Vec3.new({CGetPosition(guid)}),
-        RotationQuat = Quat.new({CGetRotation(guid)}),
+        Translate = Vec3.new({ CGetPosition(guid) }),
+        RotationQuat = Quat.new({ CGetRotation(guid) }),
         Scale = Vec3.new(CGetScale(guid))
     }
     if not toSave.Translate or #toSave.Translate ~= 3 then
-        toSave.Translate = {CGetPosition(CGetHostCharacter())}
+        toSave.Translate = { CGetPosition(CGetHostCharacter()) }
     end
     if not toSave.RotationQuat or #toSave.RotationQuat ~= 4 then
-        toSave.RotationQuat = {0,0,0,1}
+        toSave.RotationQuat = { 0, 0, 0, 1 }
     end
     return toSave
 end
@@ -83,7 +83,7 @@ end
 function NormalizeGuidList(guids)
     local returnData = {}
     if type(guids) == "string" then
-        return {guids}
+        return { guids }
     elseif type(guids) == "table" then
         returnData = DeepCopy(guids)
     else
@@ -128,6 +128,8 @@ local DummyComponentList = {
     ["ecl::dummy::VFXEntitiesComponent"] = true,
 }
 
+---@param entity EntityHandle
+---@return boolean
 function IsDummy(entity)
     if not entity then
         return false
@@ -142,15 +144,48 @@ function IsDummy(entity)
     return false
 end
 
----@param uuid any
+---@param object any
 ---@return boolean
-function CIsCharacter(uuid)
-    local entity = UuidToHandle(uuid)
-    if not entity then
-        return false
+function CIsCharacter(object)
+    local objectType = type(object)
+    if objectType == "userdata" then
+        local mt = getmetatable(object)
+        local userdataType = Ext.Types.GetObjectType(object)
+        if mt == "EntityProxy" and object.IsCharacter ~= nil then
+            return true
+        elseif userdataType == "esv::CharacterComponent"
+            or userdataType == "ecl::CharacterComponent"
+            or userdataType == "esv::Character"
+            or userdataType == "ecl::Character" then
+            return true
+        end
+    elseif objectType == "string" or objectType == "number" then
+        local entity = Ext.Entity.Get(object)
+        return entity ~= nil and entity.IsCharacter ~= nil
     end
+    return false
+end
 
-    return entity.IsCharacter ~= nil and true or false
+---@param object any
+---@return boolean
+function CIsItem(object)
+    local objectType = type(object)
+    if objectType == "userdata" then
+        local mt = getmetatable(object)
+        local userdataType = Ext.Types.GetObjectType(object)
+        if mt == "EntityProxy" and object.IsItem ~= nil then
+            return true
+        elseif userdataType == "esv::ItemComponent"
+            or userdataType == "ecl::ItemComponent"
+            or userdataType == "esv::Item"
+            or userdataType == "ecl::Item" then
+            return true
+        end
+    elseif objectType == "string" or objectType == "number" then
+        local entity = Ext.Entity.Get(object)
+        return entity ~= nil and entity.IsItem ~= nil
+    end
+    return false
 end
 
 function GetLevel(guid)
@@ -230,7 +265,6 @@ function GetEntityScale(handle)
     return sx, sy, sz
 end
 
-
 ---@param handle EntityHandle
 ---@param rot any
 ---@return boolean
@@ -243,7 +277,7 @@ function SetEntityRotation(handle, rot)
     if not transform.RotationQuat or #transform.RotationQuat < 4 then
         return false
     end
-    entity.Transform.Transform.RotationQuat = {rot[1], rot[2], rot[3], rot[4]}
+    entity.Transform.Transform.RotationQuat = { rot[1], rot[2], rot[3], rot[4] }
     return true
 end
 
@@ -531,19 +565,21 @@ function GetDistance(uuid1, uuid2)
         --Error("GetDistance: Invalid position data for UUIDs: " .. tostring(uuid1) .. " and " .. tostring(uuid2))
         return nil
     end
-    return Ext.Math.Distance({x1, y1, z1}, {x2, y2, z2})
+    return Ext.Math.Distance({ x1, y1, z1 }, { x2, y2, z2 })
 end
 
 function IsInInventory(holder, guid)
     local holderEntity = UuidToHandle(holder)
     local itemEntity = UuidToHandle(guid)
     if itemEntity ~= nil and holderEntity ~= nil then
-        local parentInventory = itemEntity.InventoryMember and itemEntity.InventoryMember.Inventory.InventoryIsOwned.Owner
+        local parentInventory = itemEntity.InventoryMember and
+            itemEntity.InventoryMember.Inventory.InventoryIsOwned.Owner
         while parentInventory do
             if parentInventory == holderEntity then
                 return true
             else
-                parentInventory = parentInventory.InventoryMember and parentInventory.InventoryMember.Inventory.InventoryIsOwned.Owner
+                parentInventory = parentInventory.InventoryMember and
+                    parentInventory.InventoryMember.Inventory.InventoryIsOwned.Owner
             end
         end
     end
@@ -568,7 +604,7 @@ function GetNearbyCharactersAndItems(pos, radius)
         local guid = HandleToUuid(entity)
         if IsGizmo(guid) then goto continue end
         if not guid then goto continue end
-        local distance = Ext.Math.Distance(pos, {CGetPosition(guid)})
+        local distance = Ext.Math.Distance(pos, { CGetPosition(guid) })
         if distance and distance <= radius then
             table.insert(nearbyEntities, {
                 Entity = entity,
@@ -684,7 +720,7 @@ end
 --- @return Vec3
 function GetCameraForward(cameraHandle, userID)
     if Ext.IsServer() then
-        return ServerCameraForward[userID] or Vec3.new({0,0,1})
+        return ServerCameraForward[userID] or Vec3.new({ 0, 0, 1 })
     end
 
     if not cameraHandle then
@@ -692,13 +728,13 @@ function GetCameraForward(cameraHandle, userID)
     end
     if not cameraHandle or not cameraHandle.Camera then
         Error("GetCameraForward: Invalid camera entity or missing Camera component")
-        return Vec3.new({0,0,1})
+        return Vec3.new({ 0, 0, 1 })
     end
 
     local controller = cameraHandle.Camera.Controller
     local invView = Matrix.new(controller.Camera.InvViewMatrix)
     local forward4 = invView * Vec4.new(GLOBAL_COORDINATE.Z) --[[@as Vec4]]
-    local forward = Vec3.new({forward4.x, forward4.y, forward4.z}):Normalize()
+    local forward = Vec3.new({ forward4.x, forward4.y, forward4.z }):Normalize()
     return forward --[[@as Vec3]]
 end
 
@@ -729,7 +765,6 @@ function GetPartyMemberPosition(uuid)
     end
 
     return GetEntityPosition(UuidToHandle(uuid))
-
 end
 
 function SetDummyPosition(uuid, pos)

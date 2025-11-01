@@ -111,6 +111,8 @@ function EntityStore:SetupServerListeners()
         end
     end)
 
+    local subs = {}
+    self.BindSubscriptions = subs
     NetChannel.BindProps:SetHandler(function(data)
         for _, info in ipairs(data.BindInfos) do
             local guid = info.Guid
@@ -121,6 +123,11 @@ function EntityStore:SetupServerListeners()
             BindDatas[guid].BindParent = parent
             BindDatas[guid].KeepLookingAt = info.KeepLookingAt
             BindDatas[guid].FollowParent = info.FollowParent
+
+            if subs[guid] then
+                subs[guid](BindDatas[guid])
+            end
+
             ::continue::
         end
 
@@ -138,6 +145,26 @@ function EntityStore:SetupServerListeners()
     end)
 end
 
+---@param guid GUIDSTRING
+---@param callback fun(data:BindInfo)
+---@return RBSubscription?
+function EntityStore:SubscribeToBindChanges(guid, callback)
+    if not guid or guid == "" then
+        Error("SubscribeToBindChanges called with invalid guid")
+        return nil
+    end
+
+    local subs = self.BindSubscriptions
+    subs[guid] = callback
+
+    local sub = {}
+    local unsub = function()
+        subs[guid] = nil
+    end
+
+
+    return { Unsubscribe = unsub, ID = sub }
+end
 ---@param guid string
 ---@param data EntityData|ServerEntityData
 function EntityStore:AddEntity(guid, data)
@@ -146,7 +173,12 @@ function EntityStore:AddEntity(guid, data)
     self:RegisterDisplayName(GetDisplayNameForTemplateId(data.TemplateId), guid)
         
     if not self.Tree:Find(guid) then
-        self.Tree:AddLeaf(guid, "end")
+        if data.Path and #data.Path > 0 then
+            self.Tree:AddPath(data.Path)
+            self.Tree:AddLeaf(guid, "end", data.Path[#data.Path])
+        else
+            self.Tree:AddLeaf(guid, "end")
+        end
     end
 
     if not EntityDatas[guid].Tags then

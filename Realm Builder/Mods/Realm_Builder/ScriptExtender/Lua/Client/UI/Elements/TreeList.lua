@@ -447,6 +447,7 @@ function TreeList:ClearSelection(notCallback)
         self:OnSelect(self.selectedItems)
     end
 end
+
 local emptyFunc = function() end
 ---@param selectable ExtuiSelectable
 ---@param key any
@@ -505,6 +506,7 @@ function TreeList:SetUpLeaf(selectable, key)
     
     --- @param sel ExtuiSelectable
     selectable.OnClick = function(sel)
+        sel.Selected = not sel.Selected
         if delayTimer then
             Timer:Cancel(delayTimer)
             delayTimer = nil
