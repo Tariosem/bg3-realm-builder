@@ -456,12 +456,8 @@ local GradientModes = {
 --- @field LineGradient boolean
 --- @field LineCycles number
 
---- @class RadiantSegment
---- @field Text string
---- @field Color table RGBA
-
 --- @class RadiantResult
---- @field Segments RadiantSegment[]
+--- @field Segments RB_TextToken
 --- @field RawText string
 --- @field Options RadianceOpts
 

@@ -29,6 +29,7 @@ function AddSliderWithStep(parent, IDContext, defaultValue, min, max, step, isIn
     local decreButton = nil
     local increButton = nil
     local sliderPopup = parent:AddPopup(IDContext .. "_SliderPopup")
+    sliderPopup.AlwaysAutoResize = false
     step = step or 0.1
     if isInteger then
         stepInput = sliderPopup:AddInputInt("Step", math.floor(step))
@@ -41,7 +42,6 @@ function AddSliderWithStep(parent, IDContext, defaultValue, min, max, step, isIn
         slider = parent:AddSlider("", defaultValue or 0, min or 0, max or 100) --[[@as ExtuiSliderScalar]]
         increButton = AddSliderStepButton(parent, ">", step, nil, ">")
     end
-    stepInput.ItemWidth = 120 * SCALE_FACTOR
     local resetButton = parent:AddButton("Reset")
     decreButton.UserData.Slider = slider
     increButton.UserData.Slider = slider
@@ -65,10 +65,6 @@ function AddSliderWithStep(parent, IDContext, defaultValue, min, max, step, isIn
     increButton.SameLine = true
     slider.SameLine = true
     --stepInput.SameLine = true
-
-    stepInput.ItemWidth = 50 * SCALE_FACTOR
-
-    stepInput:Tooltip():AddText(GetLoca("Step"))
 
     stepInput.OnChange = function()
         local step = stepInput.Value[1]
@@ -100,6 +96,10 @@ function AddSliderWithStep(parent, IDContext, defaultValue, min, max, step, isIn
             if k == "Visible" then
                 for _, ele in ipairs(allEles) do
                     ele.Visible = v
+                end
+            elseif k == "SameLine" then
+                for _, ele in ipairs(allEles) do
+                    ele.SameLine = v
                 end
             else
                 slider[k] = v
@@ -205,6 +205,9 @@ function ApplyDefaultSeparatorStyle(s)
     s:SetColor("Separator", { 0.6, 0.6, 0.6, 1 })
 end
 
+--- @param tokens RB_TextToken[]
+--- @param wrapPos number?
+--- @return RB_TextToken[]
 function WrapTextTokens(tokens, wrapPos)
     local wrapped = {}
     local currentLen = 0

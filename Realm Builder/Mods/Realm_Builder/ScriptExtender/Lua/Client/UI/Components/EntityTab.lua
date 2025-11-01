@@ -294,15 +294,15 @@ function EntityTab:RenderMonitorTab()
     rotationMonitor.Components = 3
 
     rotationMonitor.OnChange = function(sel)
-        for i,v in pairs(sel.Value) do
-            v = Ext.Math.Clamp(v, -360, 360)
-            sel.Value[i] = v
+        local delta = {sel.Value[1], sel.Value[2], sel.Value[3]}
+        for i=1,3 do
+            if self.LastRotation then
+                delta[i] = math.rad(delta[i] - self.LastRotation[i])
+            end
         end
-       local eulers = { math.rad(sel.Value[1] or 0), math.rad(sel.Value[2] or 0), math.rad(sel.Value[3] or 0) }
-
-        local quat = Ext.Math.QuatFromEuler(eulers)
-
-        Commands.SetTransform(self.guid, { RotationQuat = quat })
+        local deltaQuat = Ext.Math.QuatFromEuler(delta)
+        local finalQuat = Ext.Math.QuatMul(self.LastQuatRotation, deltaQuat)
+        Commands.SetTransform(self.guid, { RotationQuat = finalQuat })
     end
 
     self.rotationTimer = Timer:Every(1000, function()
@@ -314,13 +314,16 @@ function EntityTab:RenderMonitorTab()
             return
         end
         if not EntityExists(self.guid) then
-            rotationMonitor.Value = self.LastQuatRotation or {0, 0, 0, 0}
+            rotationMonitor.Value = self.LastRotation or {0, 0, 0, 0}
+            return
+        end
+        if IsFocused(rotationMonitor) then
             return
         end
 
         local quat = {GetQuatRotation(self.guid)}
         if not quat or #quat ~= 4 then
-            rotationMonitor.Value = self.LastQuatRotation or {0, 0, 0, 0}
+            rotationMonitor.Value = self.LastRotation or {0, 0, 0, 0}
             return
         end
         local RADs = QuatToEuler(quat)
@@ -330,7 +333,7 @@ function EntityTab:RenderMonitorTab()
 
         local rx, ry, rz = RADs[1], RADs[2], RADs[3]
         if not ry or not rx or not rz then
-            rotationMonitor.Value = self.LastQuatRotation or {0, 0, 0, 0}
+            rotationMonitor.Value = self.LastRotation or {0, 0, 0, 0}
             return
         end
 
@@ -339,9 +342,10 @@ function EntityTab:RenderMonitorTab()
         local zf = FormatDecimal(rz, 2)
         if xf and yf and zf then
             rotationMonitor.Value = {xf, yf, zf, 0}
-            self.LastQuatRotation = {xf, yf, zf, 0}
+            self.LastRotation = {xf, yf, zf, 0}
+            self.LastQuatRotation = {quat[1], quat[2], quat[3], quat[4]}
         else
-            rotationMonitor.Value = self.LastQuatRotation or {0, 0, 0, 0}
+            rotationMonitor.Value = self.LastRotation or {0, 0, 0, 0}
         end
 
     end)

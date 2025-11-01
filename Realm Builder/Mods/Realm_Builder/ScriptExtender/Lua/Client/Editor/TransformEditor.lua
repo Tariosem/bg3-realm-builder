@@ -230,7 +230,7 @@ function TransformEditor:RegisterEvents()
         if #props == 0 then return end
 
         ConfirmPopup:DangerConfirm(
-            string.format("Are you sure you want to delete the selected %d prop(s)?", #guids),
+            string.format("Are you sure you want to delete the selected %d prop(s)?", #props),
             function()
                 self:Clear()
                 NetChannel.Delete:SendToServer({ Guid = props })

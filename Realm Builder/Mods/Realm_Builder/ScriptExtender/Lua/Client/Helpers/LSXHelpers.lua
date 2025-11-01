@@ -44,12 +44,15 @@ function LSXHelpers.BuildTemplatesRegionNode()
 end
 
 function LSXHelpers.BuildLayerListNode(levelName)
-    return LSXNode.new("node", { id = "LayerList" })
-        :AppendChild(LSXHelpers.ChildrenNode())
+    local layerNode = LSXNode.new("node", { id = "LayerList" })
+
+    layerNode:AppendChild(LSXHelpers.ChildrenNode())
         :AppendChild(LSXNode.new("node", { id = "Layer" }))
         :AppendChild(LSXHelpers.ChildrenNode())
         :AppendChild(LSXNode.new("node", { id = "Object", key = "MapKey" }))
         :AppendChild(LSXHelpers.AttrNode("MapKey", "FixedString", levelName))
+
+    return layerNode
 end
 
 --- build a game object LSX node for an entity GUID
@@ -89,13 +92,13 @@ function LSXHelpers.BuildTemplate(guid, templateType)
         LSXHelpers.AttrNode("Type", "FixedString", templateType),
         LSXHelpers.AttrNode("TemplateName", "FixedString", TakeTailTemplate(propData.TemplateId)),
         LSXHelpers.AttrNode("GravityType", "uint8",
-            entity.GravityDisabled and 1 or entity.GravityDisabledUntilMoved and 2 or 0), 
-            -- 0 = Enabled, 1 = Disabled, 2 = Disabled until moved
+            entity.GravityDisabled and 1 or entity.GravityDisabledUntilMoved and 2 or 0),
+        -- 0 = Enabled, 1 = Disabled, 2 = Disabled until moved
     }
 
     gameObjectNode:AppendChildren(basicAttrs)
 
-    local secondChidren = gameObjectNode:AppendChild(LSXNode.new("Children"))
+    local secondChidren = gameObjectNode:AppendChild(LSXHelpers.ChildrenNode())
     local transformNode = secondChidren:AppendChild(LSXNode.new("node", { id = "Transform" }))
 
     local pos = { CGetPosition(guid) }

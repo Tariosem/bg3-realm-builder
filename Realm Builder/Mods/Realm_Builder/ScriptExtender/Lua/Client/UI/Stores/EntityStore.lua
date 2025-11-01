@@ -9,7 +9,8 @@ local entityNameBlacklist = {
 }
 
 EntityStore = {
-    Tree = TreeTable.new()
+    Tree = TreeTable.new(),
+    BindSubscriptions = {}
 }
 
 --- @class EntityData
@@ -111,8 +112,7 @@ function EntityStore:SetupServerListeners()
         end
     end)
 
-    local subs = {}
-    self.BindSubscriptions = subs
+    local subs = self.BindSubscriptions
     NetChannel.BindProps:SetHandler(function(data)
         for _, info in ipairs(data.BindInfos) do
             local guid = info.Guid
@@ -307,8 +307,6 @@ function EntityStore:RegisterDisplayName(displayName, guid, discardName)
         Warning("[Realm Builder] RegisterDisplayName called without guid for name: " .. returnName)
         return
     end
-
-    Debug(GuidToDisplayName)
 
     return returnName
 end

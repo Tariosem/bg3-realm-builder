@@ -112,6 +112,8 @@ function SceneMenu:RenderSideBar()
 
     local rightClickPopup = panel:AddPopup("PropRightClickPopup") --[[@as ExtuiPopup]]
     self:SetupSelectablePopup(rightClickPopup)
+    local collectionRightClickPopup = panel:AddPopup("CollectionRightClickPopup") --[[@as ExtuiPopup]]
+    self:SetupCollectionSelectablePopup(collectionRightClickPopup)
     self.imageRefs = {}
 
     treeList.OnDetach = function()
@@ -268,6 +270,7 @@ function SceneMenu:SetupTree(sel, key, node)
     selectable.SameLine = true
 
     selectable.OnRightClick = function()
+        self.selectedTree = key
         self:SetupCollectionSelectablePopup()
     end
 end
@@ -399,7 +402,67 @@ function SceneMenu:SetupSelectablePopup(popup)
 end
 
 function SceneMenu:SetupCollectionSelectablePopup(popup)
-    -- TBD
+    if not popup and not self.CollectionPopup then
+        Warning("SceneMenu:SetupCollectionSelectablePopup: Invalid popup")
+        return
+    end
+    if self.CollectionPopup then self.CollectionPopup:Open() return end
+
+    self.CollectionPopup = popup or self.CollectionPopup
+    local tree = EntityStore.Tree
+
+    local ttable = self.CollectionPopup:AddTable("CollectionRightClickPopupTable", 1) --[[@as ExtuiTable]]
+    ttable.BordersInnerH = true
+
+    local row = ttable:AddRow() --[[@as ExtuiTableRow]]
+
+    local deleteButton = AddSelectableButton(row:AddCell(), GetLoca("Delete Collection"), function()
+        -- Deleting a collection only deletes the grouping, not the entities within
+        local targetKey = self.selectedTree
+        if not targetKey or tree:IsLeaf(targetKey) then return end
+
+        tree:RemoveButKeepChildren(targetKey)
+
+        self.propTreeList:ClearSelection()
+        self.selectedGuids = {}
+        self:UpdateList()
+    end)
+    ApplyDangerSelectableStyle(deleteButton)
+
+    local exportBtn = AddSelectableButton(row:AddCell(), GetLoca("Export Collection LSX"), function()
+        local targetKey = self.selectedTree
+        if not targetKey or tree:IsLeaf(targetKey) then return end
+
+        local root = tree:Find(targetKey)
+        local templateRegion = LSXHelpers.BuildTemplatesRegionNode()
+        local guids = {}
+
+        local stack = {}
+        table.insert(stack, root)
+        while #stack > 0 do
+            local current = table.remove(stack)
+            for childKey,v in pairs(current) do
+                if tree:IsLeaf(childKey) then
+                    table.insert(guids, childKey)
+                else
+                    local childNode = tree:Find(childKey)
+                    if childNode then
+                        table.insert(stack, childNode)
+                    end
+                end
+            end
+        end
+        for _, guid in ipairs(guids) do
+            local node = LSXHelpers.BuildTemplate(guid)
+            if node then
+                templateRegion:AppendChild(node)
+            else
+                Warning("Failed to build LSX for guid: " .. guid)
+            end
+        end
+
+        Debug(templateRegion:Stringify({ AutoFindRoot = true }))
+    end)
 end
 
 function SceneMenu:RenderMainArea()

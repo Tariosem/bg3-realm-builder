@@ -2,8 +2,9 @@
 --- @field Text string
 --- @field Color vec4|nil
 --- @field Font string|nil
---- @field Style table<string, any>|nil
+--- @field Style table<GuiStyleVar, vec2|number>?
 --- @field Icon string|nil
+--- @field SameLine boolean|nil
 --- @field TooltipRef {Name: string, Type: string}|nil -- Stat object reference
 --- @field Tooltip fun(tooltip: ExtuiTooltip)|nil -- a function that adds tooltip content
 
@@ -63,7 +64,8 @@ function RenderTokenTexts(parent, tokens, firstAlwaysSameLine)
         end
         if token.Style then
             for styleVar, styleVal in pairs(token.Style) do
-                label:SetStyle(styleVar, styleVal)
+                styleVal = type(styleVal) == "number" and styleVal or ToVec2(styleVal)
+                label:SetStyle(styleVar, styleVal[1], styleVal[2])
             end
         end
         if token.Tooltip then

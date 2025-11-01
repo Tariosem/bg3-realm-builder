@@ -709,7 +709,7 @@ function IconBrowser:Search()
     --- @type RB_FilterOptions
     local filterOpts = {
         CaseSensitive = false,
-        Fuzzy = self.fuzzySearch,
+        --Fuzzy = self.fuzzySearch,
     }
 
     if noteText and noteText ~= "" then
@@ -736,7 +736,7 @@ function IconBrowser:Search()
     end
 
     --Info("Search results count:", #self.searchResult)
-    Debug("Search completed in " .. tostring(Ext.Timer.MonotonicTime() - now) .. " ms.")
+    --Debug("Search completed in " .. tostring(Ext.Timer.MonotonicTime() - now) .. " ms.")
     --Debug("Found " .. CountMap(self.searchResult) .. " matching entries.")
     self:RenderIcons()
 end

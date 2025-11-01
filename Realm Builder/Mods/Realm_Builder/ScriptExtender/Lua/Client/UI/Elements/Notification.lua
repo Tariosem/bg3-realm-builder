@@ -113,9 +113,10 @@ function Notification:BuildContent()
     panel:SetStyle("WindowRounding", 8 * scale)
     panel:SetStyle("WindowBorderSize", 1 * scale)
 
-    panel:AddSeparatorText(self.Title):SetStyle("SeparatorTextAlign", 0.5)
+    self.titleText = panel:AddSeparatorText(self.Title)
+    self.titleText:SetStyle("SeparatorTextAlign", 0.5)
     
-    self.MessageRenderFunc(self.panel)
+    self.MessageRenderFunc(panel)
     
     if self.AutoResize == false then
         width = self.Width or width
@@ -392,4 +393,30 @@ function Notification:Show(title, messageRenderFunc)
     self.MessageRenderFunc = messageRenderFunc or function(panel) panel:AddText("No Content") end
     self:BuildContent()
     return self
+end
+
+--- @param level RB_DEBUG_LEVELS
+--- @param message string
+function ErrorNotify(level, message)
+    if not DebugRadiant[level] then return end
+    local notification = Notification.new("RB_Notification_" .. tostring(math.random(1,1000000)))
+    notification.Pivot = {0.9, 0.8}
+    notification.AnimDirection = "Vertical"
+    notification.FlickToDismiss = true
+    notification.Duration = 8000
+    notification:Show(level, function(panel)
+        panel:SetColor("WindowBg", AdjustColor(HexToRGBA(DEBUG_COLOR[level]), -0.5, -0.5, -0.2))
+        panel:SetColor("Border", HexToRGBA(DEBUG_COLOR[level]))
+        notification.titleText:SetColor("Text", HexToRGBA(DEBUG_COLOR[level]))
+        notification.titleText:SetColor("Separator", AdjustColor(HexToRGBA(DEBUG_COLOR[level]), -0.2, -0.3))
+        local tokens = DebugRadiant[level](message)
+        tokens = WrapTextTokens(tokens)
+        for _, token in ipairs(tokens) do
+            token.Style = {
+                ItemSpacing = {0, 0}
+            }
+        end
+        RenderTokenTexts(panel:AddTable("", 1):AddRow():AddCell(), tokens)
+    end)
+    return notification
 end

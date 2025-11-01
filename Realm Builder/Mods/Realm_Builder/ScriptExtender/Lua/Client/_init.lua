@@ -64,11 +64,8 @@ if GLOBAL_DEBUG_WINDOW then
     surprise.Duration = 5000
 
     debugButton.OnClick = function()
-        surprise:Show("Debug Info", function (panel)
-            local memoryUsage = Ext.Utils.GetMemoryUsage()
-            local memStr = string.format("Memory Usage: %.2f MB", memoryUsage / 1024 / 1024)
-            panel:AddText(memStr)
-        end)
+        ErrorNotify("Debug", "Memory Usage: " .. tostring(Ext.Utils.GetMemoryUsage()/1024/1024) .. " MB")
+        ErrorNotify("Error", "This is a test error notification.")
     end
 
     local visualizeMouseRay = GLOBAL_DEBUG_WINDOW:AddButton("Visualize Mouse Ray")

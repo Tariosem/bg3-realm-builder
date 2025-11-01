@@ -527,7 +527,8 @@ function TreeList:SetUpLeaf(selectable, key)
                         startIdx, endIdx = endIdx, startIdx
                     end
 
-                    for i = startIdx, endIdx do
+                    self:SetSelected(lastSelectedKey, true)
+                    for i = startIdx + 1, endIdx do
                         local indexkey = self.indexRefsReverse[i]
                         self:ToggleSelected(indexkey)
                     end
@@ -619,7 +620,7 @@ function TreeList:SetUpTree(tree, key)
     local userOnClick = tree.OnClick or emptyFunc
 
     local delayTimer = nil
-    local doubleClickThreshold = 400 -- ms
+    local doubleClickThreshold = 300 -- ms
 
     tree.OnClick = function(sel)
         sel.Selected = false

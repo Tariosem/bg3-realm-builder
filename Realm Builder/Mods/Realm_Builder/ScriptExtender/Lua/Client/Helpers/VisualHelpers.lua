@@ -202,7 +202,7 @@ function VisualHelpers.ApplyVisualParams(guid, modifiedParams, retryCnt)
 
     local handlers = {
         Scale = function(value, entity)
-            local renderable = VisualHelpers.GetRenderable(entity, value.DescIndex)
+            local renderable = VisualHelpers.GetRenderable(entity, value.DescIndex, value.AttachIndex)
             if renderable then
                 renderable.WorldTransform.Scale = value.Value
             end
@@ -261,20 +261,32 @@ end
 
 --- @param entity EntityHandle
 --- @param descIndex number
+--- @param attachIndex number|nil
 --- @return RenderableObject|nil
-function VisualHelpers.GetRenderable(entity, descIndex)
+function VisualHelpers.GetRenderable(entity, descIndex, attachIndex)
     local visual = VisualHelpers.GetEntityVisual(entity)
     if not visual then return nil end
 
-    if visual.ObjectDescs and visual.ObjectDescs[descIndex] then
-        local desc = visual.ObjectDescs[descIndex]
-        return desc and desc.Renderable
+    if attachIndex then
+        if visual.Attachments and visual.Attachments[attachIndex] and visual.Attachments[attachIndex].Visual.ObjectDescs then
+            local attach = visual.Attachments[attachIndex].Visual
+            if attach.ObjectDescs and attach.ObjectDescs[descIndex] then
+                local desc = attach.ObjectDescs[descIndex]
+                return desc and desc.Renderable
+            end
+        end
+    else
+        if visual.ObjectDescs and visual.ObjectDescs[descIndex] then
+            local desc = visual.ObjectDescs[descIndex]
+            return desc and desc.Renderable
+        end
     end
+
     return nil
 end
 
-function VisualHelpers.GetMaterial(entity, descIndex)
-    local renderable = VisualHelpers.GetRenderable(entity, descIndex)
+function VisualHelpers.GetMaterial(entity, descIndex, attachIndex)
+    local renderable = VisualHelpers.GetRenderable(entity, descIndex, attachIndex)
     return renderable and renderable.ActiveMaterial and renderable.ActiveMaterial.Material
 end
 

@@ -470,7 +470,7 @@ local function ValidateFilterOptions(opts)
     }
 end
 
--- God it's brutal out here
+--- God it's brutal out here
 --- @param keywords string|table
 --- @param items table
 --- @param fields table

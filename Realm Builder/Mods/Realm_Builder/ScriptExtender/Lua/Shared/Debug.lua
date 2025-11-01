@@ -2,6 +2,8 @@ RB_DEBUG_LEVEL = 4
 
 RB_ENABLE_LOGGER = false
 
+--- @alias RB_DEBUG_LEVELS "Critical"|"Error"|"Warning"|"Info"|"Debug"|"Trace"
+
 RB_DEBUG_LEVELS = {
     Critical = 0,
     Error = 1,
@@ -9,6 +11,12 @@ RB_DEBUG_LEVELS = {
     Info = 3,
     Debug = 4,
     Trace = 5,
+    [1] = "Critical",
+    [2] = "Error",
+    [3] = "Warning",
+    [4] = "Info",
+    [5] = "Debug",
+    [6] = "Trace",
 }
 
 local debugLevels = {
@@ -20,7 +28,7 @@ local debugLevels = {
     "Trace"
 }
 
-local debugColor = {
+DEBUG_COLOR = {
     Title = "#BAA9FF",
     S = "#B2FF6F",
     C = "#6395FF",
@@ -192,6 +200,25 @@ end
 function RPrint(text, startColor, endColor, mode, options)
     _P(RadiantToANSI(Radiant(text, startColor, endColor, mode, options)))
 end
+
+--- @type table<RB_DEBUG_LEVELS, fun(text:string, opts:RadianceOpts?):RB_TextToken[]>
+DebugRadiant = {
+    Error = function(text, opts)
+        return Radiant(text, "#FF4500", "#FFB3A7", "perceptual", opts).Segments
+    end,
+    Warning = function(text, opts)
+        return Radiant(text, "#FFD700", "#FFFFDC", "perceptual", opts).Segments
+    end,
+    Info = function(text, opts)
+        return Radiant(text, "#00BFFF", "#DCFFFF", "perceptual", opts).Segments
+    end,
+    Debug = function(text, opts)
+        return Radiant(text, "#6254FD", "#D6B4FF", "perceptual", opts).Segments
+    end,
+    Trace = function(text, opts)
+        return Radiant(text, "#003300", "#007700", "perceptual", opts).Segments
+    end,
+}
 
 function RPrintPurple(text, opts)
     RPrint(text, "#6254FD", "#D6B4FF", "perceptual", opts)
