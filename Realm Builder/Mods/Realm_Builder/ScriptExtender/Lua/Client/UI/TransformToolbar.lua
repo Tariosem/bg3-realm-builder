@@ -651,7 +651,34 @@ function TransformToolbar:CreateBindPopup(guid)
 
         local lookAtCheck = addBindCheckbox(panel, "Keep Looking At", info, "KeepLookingAt", checkCheck, checkCheck)
         local followCheck = addBindCheckbox(panel, "Follow Parent", info, "FollowParent", checkCheck, checkCheck)
+
+        local markerSelector = panel:AddPopup("Select Marker")
+
+        local selectMarkerTable = markerSelector:AddTable("MarkerSelect", 1)
+        selectMarkerTable.BordersInnerH = true
+        local markerRow = selectMarkerTable:AddRow()
+
+        local makerMarker = function(mType)
+            Commands.AddMarker(guid, mType)
+        end
+        local allType = {
+            "SpotLight",
+            "PointLight",
+        }
+
+        for _,mType in ipairs(allType) do
+            local markerBtn = markerRow:AddCell():AddButton(mType)
+            markerBtn.OnClick = function()
+                makerMarker(mType)
+            end
+            markerBtn.SameLine = true
+        end
         
+        local addMarkerBtn = panel:AddButton("Add Marker")
+        addMarkerBtn.OnClick = function()
+            markerSelector:Open()
+        end
+
         local listener
         listener = EntityStore:SubscribeToBindChanges(guid, function (data)
             local ok, err = pcall(function() return lookAtCheck.Checked, followCheck.Checked end)

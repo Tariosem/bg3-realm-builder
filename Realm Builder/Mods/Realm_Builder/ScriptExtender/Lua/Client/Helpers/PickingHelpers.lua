@@ -1,3 +1,11 @@
+PickingHelpers = {
+    GuidRedirects = {},
+}
+
+function PickingHelpers:RegisterGuidRedirect(fromGuid, toGuid)
+    self.GuidRedirects[fromGuid] = toGuid
+end
+
 --- @return GUIDSTRING|nil
 function GetPickingGuid()
     local pickHandle = Ext.ClientUI.GetPickingHelper(1).Inner.Inner[1].GameObject
@@ -5,6 +13,9 @@ function GetPickingGuid()
     if pickHandle then
         local pickUuid = HandleToUuid(pickHandle)
         if pickUuid then
+            if PickingHelpers.GuidRedirects[pickUuid] then
+                pickUuid = PickingHelpers.GuidRedirects[pickUuid]
+            end
             return pickUuid
         end
     end
@@ -26,7 +37,10 @@ function GetPickingGuid()
             --Debug("Picked party member: " .. Ext.Entity.Get(guid).DisplayName.Name:Get())
         end
     end
-    
+
+    if PickingHelpers.GuidRedirects[returnGuid] then
+        returnGuid = PickingHelpers.GuidRedirects[returnGuid]
+    end
     return returnGuid
 end
 

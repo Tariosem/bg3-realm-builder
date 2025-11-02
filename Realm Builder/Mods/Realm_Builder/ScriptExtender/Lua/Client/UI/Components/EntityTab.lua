@@ -121,7 +121,7 @@ function EntityTab:RenderProfile()
                 self.panel.Label = self.displayName
             end
             EntityStore[self.guid].DisplayName = self.displayName
-            self:OnChange()
+            self:RequestUpdate()
             self:Refresh()
             if self.visualTab.isWindow then
                 self.visualTab:Refresh()
@@ -702,7 +702,8 @@ function EntityTab:Add(guid, templateId, parent, opts, iconTintColor)
     return EntityTab
 end
 
-function EntityTab:OnChange(changebrowser) end
+function EntityTab:OnChange() end
+function EntityTab:RequestUpdate() end
 
 function EntityTab:OnAttach() end
 function EntityTab:OnDetach() end

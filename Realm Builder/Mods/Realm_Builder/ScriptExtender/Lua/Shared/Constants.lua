@@ -13,6 +13,11 @@ GIZMO_ITEM = {
     Scale = "RB_Gizmo_Scale_723a815e-801a-4792-aa80-0fd65b599a24",
 }
 
+MARKER_ITEM = {
+    SpotLight = "RB_SpotLight_Marker_4cc17738-e9a9-4cda-a2a2-953220d535a9",
+    PointLight = "RB_PointLight_Marker_1bca30fb-aa71-48ad-afa4-33582bde984b",
+}
+
 GIZMO_TEXTURE = {
     X = "81d77dbe-4c56-cca9-229c-a625393c8d54", --RB_Gizmo_X_Red_
     Y = "edca009e-ca14-952d-a288-ac264b8b4af7", --RB_Gizmo_Y_Green_

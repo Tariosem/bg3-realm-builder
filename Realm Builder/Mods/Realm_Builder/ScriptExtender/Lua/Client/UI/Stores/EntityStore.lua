@@ -170,7 +170,7 @@ end
 function EntityStore:AddEntity(guid, data)
     EntityDatas[guid] = data
 
-    self:RegisterDisplayName(GetDisplayNameForTemplateId(data.TemplateId), guid)
+    self:RegisterDisplayName(data.DisplayName or GetDisplayNameForTemplateId(data.TemplateId), guid)
         
     if not self.Tree:Find(guid) then
         if data.Path and #data.Path > 0 then

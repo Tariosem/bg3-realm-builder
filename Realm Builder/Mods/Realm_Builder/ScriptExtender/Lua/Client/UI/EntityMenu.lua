@@ -126,6 +126,7 @@ function SceneMenu:RenderSideBar()
 
     treeList.OnSelect = function(sel, selected)
         local arr = {}
+        TransformEditor:Select(DeepCopy(selected))
         for guid, _ in pairs(selected) do
             table.insert(arr, guid)
         end
@@ -501,6 +502,10 @@ function SceneMenu:CreateEntityTab(ent, opts)
     end
 
     if entityTab then
+        entityTab.RequestUpdate = function()
+            self:UpdateList()
+        end
+
         entityTab.OnChange = function()
             if not entityTab.isValid then return end
 

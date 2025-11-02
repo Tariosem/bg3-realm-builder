@@ -277,7 +277,7 @@ function TransformEditor:RegisterEvents()
         self.PointVisualizations = self.PointVisualizations or {}
         self.LineVisualizations = self.LineVisualizations or {}
 
-        for i=#self.PointVisualizations, 1, -1 do
+        --[[for i=#self.PointVisualizations, 1, -1 do
             local guid = self.PointVisualizations[i]
             if not EntityExists(guid) then
                 NetChannel.Delete:RequestToServer({ Guid = guid }, function (response)
@@ -360,7 +360,7 @@ function TransformEditor:RegisterEvents()
                     end)
                 end
             end
-        end
+        end]]
 
         if CountMap(gizmo.SelectedAxis) ~= 1 then 
             for _,v in pairs(self.LineVisualizations or {}) do

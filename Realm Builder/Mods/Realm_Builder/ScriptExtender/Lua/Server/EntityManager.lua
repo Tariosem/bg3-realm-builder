@@ -114,7 +114,7 @@ function EntityManager:SetEntity(guid, entInfo)
         end
     end
 
-    if entInfo.Persistent and type(entInfo.Persistent) == "boolean" then
+    if type(entInfo.Persistent) == "boolean" then
         self.TaggedEntities[guid].Persistent = entInfo.Persistent
     end
 

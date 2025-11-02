@@ -230,3 +230,25 @@ function Commands.DeleteCommand(targets)
         end
     })
 end
+
+---@param target GUIDSTRING
+---@param markerType 'SpotLight'|'PointLight'
+function Commands.AddMarker(target, markerType)
+    local spwanPost = {
+        TemplateId = MARKER_ITEM[markerType],
+        Position = {CGetPosition(target)},
+        Rotation = {CGetRotation(target)},
+        EntInfo = {
+            DisplayName = "Spot Light Marker",
+        }
+    }
+
+    NetChannel.Spawn:RequestToServer(spwanPost, function (response)
+        local newGuid = response.Guid
+        if newGuid then
+            PickingHelpers:RegisterGuidRedirect(newGuid, target)
+
+           Commands.Bind(newGuid, target)
+        end
+    end)
+end
