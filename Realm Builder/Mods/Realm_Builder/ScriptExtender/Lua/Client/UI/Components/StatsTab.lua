@@ -94,13 +94,10 @@ function StatsTab:RenderEffects()
         return {}
     end
 
-    local effectTypesArray = MapToSortedArrayByKey(effectTypes)
-
     local tempArray = {}
-    for _, effectType in ipairs(effectTypesArray) do
-        table.insert(tempArray, effectType.Key)
+    for k,v in SortedPairs(effectTypes) do
+        table.insert(tempArray, k)
     end
-    effectTypesArray = tempArray
 
     self.effectTimelineWin = self.effectTimelineWin or self.effectsInfoTab:AddChildWindow("EffectsTimeline")
 
@@ -122,7 +119,7 @@ function StatsTab:RenderEffects()
     warningCell:AddText("Drag and drop effects from the browser")
     warningCell:AddText("For bone input, right-click to find the best matching bone.")
 
-    return effectTypesArray
+    return tempArray
 end
 
 function SpellTab:RenderEffects()

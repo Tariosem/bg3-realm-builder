@@ -106,9 +106,9 @@ end
 
 ---@param statsObj StatsObject
 ---@param parent ExtuiTreeParent
----@param type any
+---@param statType any
 ---@param isTooltip any
-local function RenderStatsObjectTitle(statsObj, parent, type, isTooltip)
+local function RenderStatsObjectTitle(statsObj, parent, statType, isTooltip)
     local descRender = StatsParser:ParseDesc(statsObj.Description or nil, nil, statsObj.DescriptionParams, nil, isTooltip)
 
     local displayName = GetLoca(statsObj.DisplayName or "Unknown", "Unknown")
@@ -123,7 +123,7 @@ local function RenderStatsObjectTitle(statsObj, parent, type, isTooltip)
     local title = nameCell:AddText(displayName)
     title:SetColor("Text", HIGHLIGHT_COLOR)
 
-    if type == "SpellData" then
+    if statType == "SpellData" then
         local spellLevel = statsObj.Level == 0 and "Cantrips" or GetLoca("Level ") .. tostring(statsObj.Level or "?")
         local spellSchool = statsObj.SpellSchool --[[ @type string ]]
         if spellSchool == "None" then
@@ -139,19 +139,6 @@ local function RenderStatsObjectTitle(statsObj, parent, type, isTooltip)
     end
 
     local image = iconCell:AddImage(icon, ToVec2(64 * SCALE_FACTOR))
-
-    image.OnHoverEnter = function()
-        local tooltip = image:Tooltip()
-        local rawInfoTab = tooltip:AddTable("Raw Info", 2)
-        local rawInfoRow = rawInfoTab:AddRow()
-        for k, v in pairs(statsObj) do
-            local keyCell = rawInfoRow:AddCell()
-            keyCell:AddText(tostring(k))
-            local valCell = rawInfoRow:AddCell()
-            valCell:AddText(tostring(v))
-        end
-        image.OnHoverEnter = nil
-    end
 
     local rightContent = AddIndent(parent, 2 * SCALE_FACTOR)
     descRender(rightContent)

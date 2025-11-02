@@ -15,36 +15,37 @@ function IconBrowser:CandidatesToMap(candidates)
 end
 
 function IconBrowser:ClearNonExistTagsAndGroups()
-    for tag,_ in pairs(self.selectedTags) do
+    for tag, _ in pairs(self.selectedTags) do
         if not self.tagsMap[tag] then
             self.selectedTags[tag] = nil
         end
     end
-    for tag,_ in pairs(self.excludeTags) do
+    for tag, _ in pairs(self.excludeTags) do
         if not self.tagsMap[tag] then
             self.excludeTags[tag] = nil
         end
     end
-    for group,_ in pairs(self.selectedGroups) do
+    for group, _ in pairs(self.selectedGroups) do
         if not self.groupMap[group] then
             self.selectedGroups[group] = nil
         end
     end
-    for group,_ in pairs(self.excludeGroups) do
+    for group, _ in pairs(self.excludeGroups) do
         if not self.groupMap[group] then
             self.excludeGroups[group] = nil
         end
     end
     if next(self.selectedTags) == nil and next(self.excludeTags) == nil and
-    next(self.selectedGroups) == nil and next(self.excludeGroups) == nil and self.isVisible then
+        next(self.selectedGroups) == nil and next(self.excludeGroups) == nil and self.isVisible then
         self:Search()
     end
 end
 
 function IconBrowser:CheckIfAnySearchCriteria()
     local searchText, noteText, fields = self:GetSearchCriteria()
-    local hasIncludeConditions = (searchText and searchText ~= "") or (noteText and noteText ~= "") or next(self.selectedTags) ~= nil or
-    next(self.selectedGroups) ~= nil
+    local hasIncludeConditions = (searchText and searchText ~= "") or (noteText and noteText ~= "") or
+        next(self.selectedTags) ~= nil or
+        next(self.selectedGroups) ~= nil
 
     local hasExcludeConditions = next(self.excludeTags) ~= nil or next(self.excludeGroups) ~= nil
 
@@ -66,7 +67,10 @@ end
 
 -- Abomination
 function IconBrowser:AddTagsFilter()
-    if self.tagsFilterOpenButton then self:RenderTagsFilter() return end
+    if self.tagsFilterOpenButton then
+        self:RenderTagsFilter()
+        return
+    end
     self.tagsFilterOpenButton = self.tagsFilterOpenButton or self.topMenuBar:AddMenu("Tags Filter >")
 
     self.tagsFilterOpenButton.OnHoverEnter = function()
@@ -83,13 +87,11 @@ function IconBrowser:RenderTagsFilter()
     self.groupMap = groupMap
     self:ClearNonExistTagsAndGroups()
     local sortWay = self.nameAscend and "asc" or "desc"
-
-    local sortedTags = MapToSortedArrayByKey(allTags, sortWay)
     local sortedParents = tagTree:SortTreesByDepth(nil, nil, true)
     local collectionCnt = {}
     self.tagRerendered = true
 
-    for _,ele in pairs(self.tagsFilterElements or {}) do
+    for _, ele in pairs(self.tagsFilterElements or {}) do
         ele:Destroy()
     end
 
@@ -138,7 +140,7 @@ function IconBrowser:RenderTagsFilter()
     end
 
     self.tagsFilterElements = {}
-    
+
     if not self.tagsFilterOpenButton then
         self.tagsFilterOpenButton = self.topMenuBar:AddMenu("Tags Filter >")
     end
@@ -148,10 +150,10 @@ function IconBrowser:RenderTagsFilter()
     local keepOpen = self.tagsFilter.Open
     self.tagsFilterOpenButton.OnHoverEnter = function()
         self.tagsFilter.Open = true
-        Timer:Ticks(30, function (timerID)
+        Timer:Ticks(30, function(timerID)
             local panelPos = self.panel.LastPosition
             local filterWidth = self.tagsFilter.LastSize and self.tagsFilter.LastSize[1] or 500 * SCALE_FACTOR
-            local pos = {panelPos[1] - filterWidth, panelPos[2]}
+            local pos = { panelPos[1] - filterWidth, panelPos[2] }
             self.tagsFilter:SetPos(pos)
         end)
     end
@@ -267,7 +269,7 @@ function IconBrowser:RenderTagsFilter()
 
         local function openPopup()
             changeNamePopup:Open()
-            
+
             parentMenu.UserData.Subcriptions.KeySub = SubscribeKeyInput({ Key = "RETURN" }, function()
                 if self.tagsParentElements[parent] == nil then return UNSUBSCRIBE_SYMBOL end
                 local liveParent = self.tagsParentElements[parent]
@@ -349,12 +351,10 @@ function IconBrowser:RenderTagsFilter()
                     self.tempDisableSearch = false
                     self:Search()
                 end
-
             elseif e.Event == "KeyUp" then
                 liveParent.OnClick = nil
                 liveParent.OnRightClick = openPopup
             end
-    
         end)
 
         ::continue::
@@ -372,9 +372,13 @@ function IconBrowser:RenderTagsFilter()
         end
     end
 
-
-    for _, pair in pairs(sortedTags) do
-        local currentTag, currentCnt = pair.Key, pair.Value
+    for currentTag, currentCnt in SortedPairs(allTags, function(a, b)
+        if sortWay == "asc" then
+            return a < b
+        else
+            return a > b
+        end
+    end) do
         local tagArea = preassignedParent[currentTag] or self.tagsPopup
         table.insert(tagRenderOrder, currentTag)
         local parent = tagToParent[currentTag]
@@ -386,7 +390,8 @@ function IconBrowser:RenderTagsFilter()
         local tagIcon = nil
         if hasIcon then
             --- @type ExtuiImageButton
-            tagIcon = tagArea:AddImageButton(currentTag .. "IconButton",self.dataManager.tagIcons[currentTag], ToVec2(38 * SCALE_FACTOR))
+            tagIcon = tagArea:AddImageButton(currentTag .. "IconButton", self.dataManager.tagIcons[currentTag],
+                ToVec2(38 * SCALE_FACTOR))
             table.insert(self.tagsFilterElements, tagIcon)
         end
 
@@ -437,12 +442,11 @@ function IconBrowser:RenderTagsFilter()
         if self.excludeTags[currentTag] then
             SetAlphaByBool(selection, false)
             if tagIcon then
-                tagIcon.Tint = {1, 1, 1, 0.5}
+                tagIcon.Tint = { 1, 1, 1, 0.5 }
                 tagIcon.Disabled = true
             end
         end
         if self.selectedTags[currentTag] then
-
             selection.Selected = true
         end
 
@@ -460,14 +464,14 @@ function IconBrowser:RenderTagsFilter()
             self.excludeTags[currentTag] = true
             SetAlphaByBool(selection, false)
             if tagIcon then
-                tagIcon.Tint = {1, 1, 1, 0.5}
+                tagIcon.Tint = { 1, 1, 1, 0.5 }
             end
         end
 
         local includeHandler = function()
             self.selectedTags[currentTag] = true
             if tagIcon then
-                tagIcon.Tint = {1, 1, 1, 1}
+                tagIcon.Tint = { 1, 1, 1, 1 }
             end
             selection.Selected = true
         end
@@ -476,7 +480,7 @@ function IconBrowser:RenderTagsFilter()
             self.excludeTags[currentTag] = nil
             SetAlphaByBool(selection, true)
             if tagIcon then
-                tagIcon.Tint = {1, 1, 1, 1}
+                tagIcon.Tint = { 1, 1, 1, 1 }
             end
         end
 
@@ -486,7 +490,7 @@ function IconBrowser:RenderTagsFilter()
             selection.Selected = false
         end
 
-        selection.OnClick =  function()
+        selection.OnClick = function()
             selection.Selected = false
             if self.selectedTags[currentTag] then
                 unincludeHandler()
@@ -533,7 +537,7 @@ function IconBrowser:RenderTagsFilter()
 
     topTable.UserData.UndoIncludeAllButton.OnClick = function(btn)
         self.tempDisableSearch = true
-        for tag,_ in pairs(self.selectedTags) do
+        for tag, _ in pairs(self.selectedTags) do
             if uninclFuncs[tag] then
                 uninclFuncs[tag]()
             end
@@ -545,7 +549,7 @@ function IconBrowser:RenderTagsFilter()
 
     topTable.UserData.UndoExcludeAllButton.OnClick = function(btn)
         self.tempDisableSearch = true
-        for tag,_ in pairs(self.excludeTags) do
+        for tag, _ in pairs(self.excludeTags) do
             if unexclFuncs[tag] then
                 unexclFuncs[tag]()
             end
@@ -554,7 +558,6 @@ function IconBrowser:RenderTagsFilter()
         self:Search()
         btn.Selected = false
     end
-
 end
 
 function IconBrowser:AddGroupFilter()
@@ -563,23 +566,28 @@ function IconBrowser:AddGroupFilter()
     self.groupMap = groupMap
     self:ClearNonExistTagsAndGroups()
     local sortWay = self.nameAscend and "asc" or "desc"
-    local sortedGroups = MapToSortedArrayByKey(allGroups, sortWay)
 
-    for _,ele in ipairs(self.groupFilterElements or {}) do
+    for _, ele in ipairs(self.groupFilterElements or {}) do
         ele:Destroy()
     end
 
-    self.groupFilter = self.groupFilter or self.topMenuBar:AddMenu("Groups filter >")--self.groupFilterContainer:AddButton(GetLoca("Groups filter >"))
-    self.groupPopup = self.groupFilter--self.groupFilterContainer:AddPopup("GroupsPopup")
+    self.groupFilter = self.groupFilter or
+    self.topMenuBar:AddMenu("Groups filter >")                                        --self.groupFilterContainer:AddButton(GetLoca("Groups filter >"))
+    self.groupPopup = self.groupFilter                                                --self.groupFilterContainer:AddPopup("GroupsPopup")
 
-    
+
     self.groupFilterElements = {}
     if allGroups and next(allGroups) == nil then
         table.insert(self.groupFilterElements, self.groupPopup:AddText(GetLoca("Groups not found.")))
     end
 
-    for _, pair in ipairs(sortedGroups) do
-        local group, cnt = pair.Key, pair.Value
+    for group, cnt in SortedPairs(allGroups, function(a, b)
+        if sortWay == "asc" then
+            return a < b
+        else
+            return a > b
+        end
+    end) do
         local selection = self.groupPopup:AddSelectable(group .. " (" .. cnt .. ")")
         if self.excludeGroups[group] then
             selection.SelectableDisabled = true
@@ -643,14 +651,14 @@ function IconBrowser:Search()
     local searchText, noteText, fields = self:GetSearchCriteria()
     local browserData = self.searchData
     local candidates = {}
-    for uuid,_ in pairs(browserData) do
+    for uuid, _ in pairs(browserData) do
         candidates[uuid] = true
     end
 
     --Debug("Initial candidates count: " .. CountMap(candidates))
     --Debug("Excluding tags:", self.excludeTags)
     if next(self.excludeTags) ~= nil then
-        for tag,_ in pairs(self.excludeTags) do
+        for tag, _ in pairs(self.excludeTags) do
             local uuids = self.tagsMap[tag] or {}
             for _, uuid in ipairs(uuids) do
                 candidates[uuid] = nil
@@ -675,7 +683,10 @@ function IconBrowser:Search()
             for tag in pairs(tagSet) do
                 local found = false
                 for _, t in ipairs(entry.Tags) do
-                    if t == tag then found = true break end
+                    if t == tag then
+                        found = true
+                        break
+                    end
                 end
                 if not found then return false end
             end

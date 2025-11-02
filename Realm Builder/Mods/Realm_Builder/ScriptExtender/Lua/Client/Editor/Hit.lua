@@ -8,7 +8,7 @@ Hit = _Class("Hit")
 
 function Hit:__init(position, normal, distance, target)
     self.Position = position and Vec3.new(position) or nil
-    self.Normal   = normal   and Vec3.new(normal)   or nil
+    self.Normal   = normal and Vec3.new(normal) or nil
     self.Distance = distance or math.huge
     self.Target   = target
 end
@@ -31,7 +31,6 @@ function Hit:IsCloserThan(other)
     if not other then return true end
     return self.Distance < (other and other.Distance or math.huge)
 end
-
 
 ---@param other Hit
 ---@return Vec3 ?

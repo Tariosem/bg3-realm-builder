@@ -6,7 +6,7 @@ local effPath = "Realm_Builder/CustomEffects/"
 local presetRefPath = "Realm_Builder/Presets/References.json"
 local presetPath = "Realm_Builder/Presets/"
 local localGenPath = "Realm_Builder/Localization/"
-local keybindPath = "Realm_Builder/Keybinds.json"
+local keybindPath = "Realm_Builder/Keybind.json"
 
 local ccaPath = "Realm_Builder/CC_Mods/"
 local ccaModCachePath = "Realm_Builder/CC_Mod_Cache/"
@@ -61,7 +61,7 @@ function GetLocalizationPath()
     return localGenPath .. ".json"
 end
 
-function GetKeybindsPath()
+function RealmPaths.GetKeybindPath()
     return keybindPath
 end
 

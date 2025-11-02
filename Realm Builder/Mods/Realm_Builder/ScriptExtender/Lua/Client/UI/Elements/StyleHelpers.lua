@@ -98,8 +98,18 @@ function AddSliderWithStep(parent, IDContext, defaultValue, min, max, step, isIn
                     ele.Visible = v
                 end
             elseif k == "SameLine" then
-                for _, ele in ipairs(allEles) do
-                    ele.SameLine = v
+                if v == true then
+                    for _, ele in ipairs(allEles) do
+                        ele.SameLine = v
+                    end
+                else
+                    for i, ele in ipairs(allEles) do
+                        if i == 1 then
+                            ele.SameLine = false
+                        else
+                            ele.SameLine = true
+                        end
+                    end
                 end
             else
                 slider[k] = v

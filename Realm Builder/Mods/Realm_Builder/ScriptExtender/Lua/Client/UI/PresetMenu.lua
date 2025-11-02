@@ -671,28 +671,36 @@ function PresetMenu:RenderPresetInfo(name)
     self.descKeyInputSub = descInputKeyLisener
 
     if presetData.ModList ~= nil and next(presetData.ModList) ~= nil then
-        local sorted = MapToSortedArrayByFunc(presetData.ModList, function (a, b)
-            if type(a.Value) == "string" then
-                return a.Value < b.Value    
-            end
-            return a.Value.Name < b.Value.Name
-        end)
         local modInfoWarningButton = modInfoCell:AddButton(GetLoca("Mod Info"))
         modInfoWarningButton.SameLine = true
         ApplyConfirmButtonStyle(modInfoWarningButton)
         
+        local modlist = presetData.ModList
         modInfoWarningButton:Tooltip():AddText(GetLoca("This preset depends on the following mods:"))
         modInfoWarningButton:Tooltip():AddText(GetLoca("(May not be 100% accurate)")).Font = "Tiny"
-        for _, value in ipairs(sorted or {}) do
-            local modId = value.Key
-            local modName = value.Value.Name
-            local modAuthor = value.Value.Author
+        for modId, modInfo in SortedPairs(modlist, function (a, b)
+            local aV = modlist[a]
+            local bV = modlist[b]
+            local aName = aV.Name and aV.Name ~= "" and aV.Name or a
+            local bName = bV.Name and bV.Name ~= "" and bV.Name or b
+            if aName == bName then
+                if aV.Author and bV.Author and (aV.Author ~= bV.Author) then
+                    return aV.Author < bV.Author
+                else
+                    return a < b
+                end
+            else
+                return aName < bName
+            end
+        end) do
+            local modName = modInfo.Name
+            local modAuthor = modInfo.Author
             local presentInfo = modName and modName ~= "" and modName or modId
             local tooltip = modInfoWarningButton:Tooltip()
-            local modInfo = tooltip:AddBulletText(presentInfo)
+            local modInfoText = tooltip:AddBulletText(presentInfo)
             local modText = tooltip:AddText("by")
             local authorText = tooltip:AddText(modAuthor)
-            modInfo.Font = "Large"
+            modInfoText.Font = "Large"
             modText.SameLine = true
             authorText.SameLine = true
             if not Ext.Mod.IsModLoaded(modId) then

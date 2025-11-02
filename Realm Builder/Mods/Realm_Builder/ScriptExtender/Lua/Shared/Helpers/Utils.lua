@@ -100,7 +100,6 @@ function TableMerge(dest, src)
     end
 end
 
-
 function TableContains(tbl, value)
     if type(tbl) ~= "table" then
         tbl = LightCToArray(tbl)
@@ -126,20 +125,20 @@ function SplitBySemicolon(input, trimWhitespace)
     if type(input) ~= "string" then
         return {}
     end
-    
+
     trimWhitespace = trimWhitespace ~= false
     local tokens = {}
-    
+
     for token in input:gmatch("[^;]+") do
         if trimWhitespace then
             token = token:match("^%s*(.-)%s*$")
         end
-        
+
         if token ~= "" then
             table.insert(tokens, token)
         end
     end
-    
+
     return tokens
 end
 
@@ -147,20 +146,20 @@ function SplitByComma(input, trimWhitespace)
     if type(input) ~= "string" then
         return {}
     end
-    
+
     trimWhitespace = trimWhitespace ~= false
     local tokens = {}
-    
+
     for token in input:gmatch("[^,]+") do
         if trimWhitespace then
             token = token:match("^%s*(.-)%s*$")
         end
-        
+
         if token ~= "" then
             table.insert(tokens, token)
         end
     end
-    
+
     return tokens
 end
 
@@ -217,7 +216,7 @@ end
 ---@param ... any
 ---@return number[]
 function ToVec4(...)
-    local numbers = DeepCopy({...})
+    local numbers = DeepCopy({ ... })
     if #numbers == 1 and type(numbers[1]) == "table" then
         numbers = numbers[1]
     end
@@ -230,13 +229,13 @@ function ToVec4(...)
         numbers[i] = numbers[1]
     end
 
-    return {numbers[1], numbers[2], numbers[3], numbers[4]}
+    return { numbers[1], numbers[2], numbers[3], numbers[4] }
 end
 
 --- @param ... any
 --- @return number[]
 function ToVec4Int(...)
-    local numbers = DeepCopy({...})
+    local numbers = DeepCopy({ ... })
     for i = 1, #numbers do
         if type(numbers[i]) ~= "number" then
             numbers[i] = tonumber(numbers[i]) or 0
@@ -246,12 +245,11 @@ function ToVec4Int(...)
     for i = #numbers + 1, 4 do
         numbers[i] = numbers[1]
     end
-    return {numbers[1], numbers[2], numbers[3], numbers[4]}
-
+    return { numbers[1], numbers[2], numbers[3], numbers[4] }
 end
 
 function ToVec2(...)
-    local numbers = DeepCopy({...})
+    local numbers = DeepCopy({ ... })
     for i = 1, #numbers do
         if type(numbers[i]) ~= "number" then
             numbers[i] = tonumber(numbers[i]) or 0
@@ -260,11 +258,11 @@ function ToVec2(...)
     for i = #numbers + 1, 2 do
         numbers[i] = numbers[1]
     end
-    return {numbers[1], numbers[2]}
+    return { numbers[1], numbers[2] }
 end
 
 function ToVec3(...)
-    local numbers = DeepCopy({...})
+    local numbers = DeepCopy({ ... })
     for i = 1, #numbers do
         if type(numbers[i]) ~= "number" then
             numbers[i] = tonumber(numbers[i]) or 0
@@ -273,7 +271,7 @@ function ToVec3(...)
     for i = #numbers + 1, 3 do
         numbers[i] = numbers[1]
     end
-    return {numbers[1], numbers[2], numbers[3]}
+    return { numbers[1], numbers[2], numbers[3] }
 end
 
 function LightCToArray(arr)
@@ -324,7 +322,7 @@ function RequireFiles(folderPath, files)
             _P("RequireFiles: file names must be strings")
         end
 
-        local path = folderPath .. filename .. ".lua" 
+        local path = folderPath .. filename .. ".lua"
 
         local ok, res = pcall(Ext.Require, path)
         if not ok then
@@ -361,6 +359,10 @@ function Contains(obj, substr, caseSensitive)
     return string.find(obj, substr) ~= nil
 end
 
+--- @generic K, V
+--- @param inputMap table<K, V>
+--- @param comparator fun(a: {Key:K,Value:V}, b: {Key:K,Value:V}): boolean
+--- @return table<{Key:K,Value:V}>
 function MapToSortedArrayByFunc(inputMap, comparator)
     local result = {}
     for k, v in pairs(inputMap) do
@@ -372,9 +374,10 @@ function MapToSortedArrayByFunc(inputMap, comparator)
     return result
 end
 
---- @param inputMap table
---- @param order any
---- @return table<number, {Key:any, Value:any}>
+--- @generic K, V
+--- @param inputMap table<K, V>
+--- @param order "asc"|"desc"
+--- @return table<{Key:K,Value:V}>
 function MapToSortedArrayByKey(inputMap, order)
     local result = {}
     for k, v in pairs(inputMap) do
@@ -390,6 +393,34 @@ function MapToSortedArrayByKey(inputMap, order)
     end)
 
     return result
+end
+
+--- @generic K, V
+--- @param tbl table<K, V>
+--- @param func? fun(a:K, b:K):boolean
+--- @return fun(): (K, V)
+function SortedPairs(tbl, func)
+    local keys = {}
+    for k in pairs(tbl) do
+        table.insert(keys, k)
+    end
+
+    table.sort(keys, function(a, b)
+        if func then
+            return func(a, b) and true or false
+        else
+            return a < b
+        end
+    end)
+
+    local i = 0
+    return function()
+        i = i + 1
+        local key = keys[i]
+        if key then
+            return key, tbl[key]
+        end
+    end
 end
 
 ---@param num number|string
@@ -421,7 +452,7 @@ function FormatThousand(num)
     int = int or tostring(toFormat)
     dec = dec or ""
     local formatted = int:reverse():gsub("(%d%d%d)", "%1,"):reverse()
-    if formatted:sub(1,1) == "," then
+    if formatted:sub(1, 1) == "," then
         formatted = formatted:sub(2)
     end
     return sign .. formatted .. (dec or "")
@@ -437,12 +468,12 @@ function Levenshtein(s, t, thereshold)
     if m == 0 then return n end
     if n == 0 then return m end
     local prevRow, curRow = {}, {}
-    for j=0,n do prevRow[j] = j end
-    for i=1,m do
+    for j = 0, n do prevRow[j] = j end
+    for i = 1, m do
         curRow[0] = i
-        for j=1,n do
-            local cost = (s:sub(i,i) == t:sub(j,j)) and 0 or 1
-            curRow[j] = math.min(prevRow[j]+1, curRow[j-1]+1, prevRow[j-1]+cost)
+        for j = 1, n do
+            local cost = (s:sub(i, i) == t:sub(j, j)) and 0 or 1
+            curRow[j] = math.min(prevRow[j] + 1, curRow[j - 1] + 1, prevRow[j - 1] + cost)
             if thereshold and curRow[j] > thereshold then return math.huge end
         end
         prevRow, curRow = curRow, prevRow
@@ -488,7 +519,7 @@ function Filter(keywords, items, fields, options, candidates)
         return candidates or {}
     end
     local now = Ext.Timer.MonotonicTime()
-    local words = type(keywords) == "string" and {keywords} or keywords --[[@as table]]
+    local words = type(keywords) == "string" and { keywords } or keywords --[[@as table]]
     local lower = not options.CaseSensitive
 
     if lower then
@@ -568,7 +599,7 @@ function Debounce(delay, func)
     local timerId = nil
 
     return function(...)
-        local args = {...}
+        local args = { ... }
         local now = Ext.Timer.MonotonicTime()
 
         if timerId then

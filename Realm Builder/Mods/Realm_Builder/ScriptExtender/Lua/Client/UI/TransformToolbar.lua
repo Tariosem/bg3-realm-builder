@@ -246,17 +246,7 @@ function TransformToolbar:SetupBoxSelect()
 
         local selected = {}
         for _,guid in ipairs(toCheck) do
-            local entity = UuidToHandle(guid)
-            if not entity then goto continue end
-
-            if entity.PartyMember then
-                local dummy = GetDummyByUuid(guid)
-                if dummy then
-                    entity = dummy
-                end
-            end
-
-            local visual = VisualHelpers.GetEntityVisual(entity)
+            local visual = VisualHelpers.GetEntityVisual(guid)
             local aabb = nil
             local function makeAabb(pos)
                 local min = pos - Vec3.new(0.5, 0.5, 0.5)
@@ -264,7 +254,6 @@ function TransformToolbar:SetupBoxSelect()
                 return { Min = min, Max = max }
             end
             if not visual then
-                if not CGetPosition(guid) then goto continue end
                 local pos = Vec3.new{CGetPosition(guid)}
                 aabb = makeAabb(pos)
             else
@@ -272,10 +261,10 @@ function TransformToolbar:SetupBoxSelect()
             end
             
             if not aabb then
-                if not CGetPosition(guid) then goto continue end
                 local pos = Vec3.new{CGetPosition(guid)}
                 aabb = makeAabb(pos)
             end
+
 
             local vertices = collectAABBCorners(aabb)
             local inside = false

@@ -156,7 +156,6 @@ function StyleMenu:RenderColorPickers()
     end
 
     local colorsMap = GetAllGuiColorNames()
-    --- @type table <number, {Key:GuiColor, Value:GuiColorCategory}>
     local colorsArray = MapToSortedArrayByFunc(colorsMap, function(a, b)
         local aIndex = colorOrderMap[a.Value] or (#colorOrder + 1)
         local bIndex = colorOrderMap[b.Value] or (#colorOrder + 1)
@@ -291,7 +290,6 @@ function StyleMenu:RenderStyleSliders()
     end
 
     local varsMap = GetAllGuiStyleVarNames()
-    --- @type table <number, {Key:GuiStyleVar, Value:GuiStyleVarCategory}>
     local varsArray = MapToSortedArrayByFunc(varsMap, function(a, b)
         local aIndex = styleVarOrderMap[a.Value] or (#styleVarOrder + 1)
         local bIndex = styleVarOrderMap[b.Value] or (#styleVarOrder + 1)

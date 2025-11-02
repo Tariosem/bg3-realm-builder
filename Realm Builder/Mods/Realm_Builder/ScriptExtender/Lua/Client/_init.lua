@@ -174,8 +174,6 @@ local function Realm_Builder_Population()
         RPrintPurple("[Realm Builder] Populating Templates took " .. (itemsFinished - now) .. " ms for " .. itemCnt .. " items and " .. characterCnt .. " characters")
         RPrintPurple("[Realm Builder] Populating Effects took " .. (effectsFinished - itemsFinished) .. " ms for " .. effectCnt .. " effects")
     end
-
-
 end
 
 RegisterOnSessionLoaded(Realm_Builder_Population, 0)

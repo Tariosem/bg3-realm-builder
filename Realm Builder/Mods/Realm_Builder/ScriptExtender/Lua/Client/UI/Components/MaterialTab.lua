@@ -106,11 +106,14 @@ function MaterialTab:Render(parent)
         local propType = indexToDisplay[paramType]
         if #propNames < 1 then goto continue end
 
-        local typeNode = groupIndent:AddSelectable(propType .. "##" .. self.MaterialName)
-
+        local initLabel = self.cachedExpandedState[paramType] == true and "[-] " or "[+] "
+        local typeNode = groupIndent:AddSelectable(initLabel .. propType .. "##" .. self.MaterialName) --[[@as ExtuiSelectable ]]
         local typeGroup = groupIndent:AddGroup("TypeGroup##" .. self.MaterialName .. propType)
         local searchBox = typeGroup:AddInputText("##" .. self.MaterialName .. propType)
         local paramsGroup = typeGroup:AddGroup("AllPropertiesGroup##" .. self.MaterialName .. tostring(math.random()))
+
+        typeGroup.Visible = self.cachedExpandedState[paramType] == true
+
         searchBox.Hint = "Search " .. propType .. "..."
         searchBox.OnChange = Debounce(50 ,function (sel)
             if sel.Text == "" then
@@ -144,7 +147,6 @@ function MaterialTab:Render(parent)
         typeNode.OnRightClick = function (sel)
             for _, propNode in pairs(allParamNodes) do
                 propNode.OnHoverEnter()
-                propNode.OnClick(propNode)
             end
         end
         
@@ -152,34 +154,28 @@ function MaterialTab:Render(parent)
         local indent = AddIndent(paramsGroup, 10)
 
         local paramTable = indent:AddTable("ParameterTable##" .. self.MaterialName .. propType, 1)
-        local row = paramTable:AddRow()
+        local paramRow = paramTable:AddRow()
         paramTable.BordersInnerH = true
         paramTable.RowBg = true
         for _,propertyName in ipairs(propNames) do
-            if type(self.cachedExpandedState[propertyName]) ~= "boolean" then
-                self.cachedExpandedState[propertyName] = true
-            end
-            local tab = row:AddCell():AddTable("PropertyTable##" .. self.MaterialName .. propertyName, 3)
+            local tab = paramRow:AddCell():AddTable("PropertyTable##" .. self.MaterialName .. propertyName, 3)
             tab.ColumnDefs[1] = { WidthFixed = true }
             tab.ColumnDefs[2] = { WidthStretch = true }
             tab.ColumnDefs[3] = { WidthFixed = true }
             local row = tab:AddRow()
-            local initLable = self.cachedExpandedState[propertyName] and "[-] " or "[+] "
-            local propNode = row:AddCell():AddSelectable(initLable .. propertyName .. "##" .. self.MaterialName) --[[@as ExtuiSelectable ]]
+            local propNode = row:AddCell():AddSelectable(propertyName .. "##" .. self.MaterialName) --[[@as ExtuiSelectable ]]
             self.ParamNodeRefs[propertyName] = propNode
             self.ParamTableRefs[propertyName] = tab
             row:AddCell() -- Spacer
             local paramgroup = row:AddCell():AddGroup("PropertyGroup##" .. self.MaterialName .. propertyName .. tostring(math.random()))
             paramgroup.SameLine = true
-            paramgroup.Visible = self.cachedExpandedState[propertyName] == true
             local sliders, colorPicker
 
             local paramValue = self:GetParameter(propertyName)
-            sliders, colorPicker = self:RenderProperty(paramgroup, propertyName, paramValue)
-
+            
             propNode.OnHoverEnter = function ()
-                
-                propNode.OnHoverEnter = function ()
+                sliders, colorPicker = self:RenderProperty(paramgroup, propertyName, paramValue)
+                propNode.OnHoverEnter = function()
                     propNode.Highlight = self:HasChanged(propertyName) and true or false
                     typeNode.Highlight = self:HasChangeInType(paramType)
                 end
@@ -199,9 +195,9 @@ function MaterialTab:Render(parent)
 
             propNode.OnClick = function (sel)
                 propNode.Selected = false
-                paramgroup.Visible = not paramgroup.Visible
-                propNode.Label = (paramgroup.Visible and "[-] " or "[+] ") .. propertyName .. "##" .. self.MaterialName
-                self.cachedExpandedState[propertyName] = paramgroup.Visible
+                self:SetParameter(propertyName, self:GetParameter(propertyName)) -- marked as changed
+                propNode.Highlight = self:HasChanged(propertyName) and true or false
+                typeNode.Highlight = self:HasChangeInType(paramType)
             end
 
             propNode.UserData = {

@@ -29,7 +29,6 @@ LOOP_SIGN = "cff964c0-eb22-e3a3-d112-130c0aa0c10f"
 
 --- vanilla resources
 WARNING_ICON = "PassiveFeature_Generic_Threat"
-
 LOCK_ICON = "Spell_Abjuration_ArcaneLock"
 
 RB_PROP_HIGHLIGHT_FX = "db2affb3-57a7-76f9-9315-d1783cdfc576"
@@ -83,14 +82,14 @@ DAMAGE_TYPES_COLOR = {
     Piercing = HexToRGBA("FFC8C8C8"),
     Slashing = HexToRGBA("FFC8C8C8"),
     Bludgeoning = HexToRGBA("FFC8C8C8"),
-    HitPoint = HexToRGBA("FF75FFF6"),
+    HitPoint = HexToRGBA("FF3DC3BA"),
 }
 
 HIGHLIGHT_COLOR = HexToRGBA("FFFED999")
 DEBUFF_COLOR = HexToRGBA("FFFF4C4C")
 BORDER_COLOR = HexToRGBA("FFFFA43C")
 
-SUBTITLE_COLOR = HexToRGBA("FF939393")
+SUBTITLE_COLOR = HexToRGBA("FFA57E00")
 
 for damageType,color in pairs(DAMAGE_TYPES_COLOR) do
     DAMAGE_TYPES_COLOR[damageType:lower()] = color

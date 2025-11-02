@@ -25,7 +25,7 @@ function IconBrowser:__init(dataManager, DisplayName)
     self.iconButtonBgColor = CONFIG.ItemBrowser.ButtonBgColor or nil
     self.iconToName = false
 
-    self.matchAllTags = false
+    self.matchAllTags = true
     self.nameAscend = true
 
     self.tempDisableSearch = false

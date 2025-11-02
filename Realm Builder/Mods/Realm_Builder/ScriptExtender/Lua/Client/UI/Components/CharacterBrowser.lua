@@ -9,7 +9,7 @@ function CharacterBrowser:SubclassInit()
     self.iconPC = config.IconPerColumn or 25
     self.iconWidth = config.IconWidth or 450
 
-    self.iconButtonBgColor = config.ButtonBgColor or HexToRGBA("FF565656")
+    self.iconButtonBgColor = config.ButtonBgColor or HexToRGBA("FF615238")
 end
 
 function CharacterBrowser:GetConfig()
@@ -72,7 +72,7 @@ function CharacterBrowser:RenderIcon(entry, cell)
             disName = "Unknown"
         end
         local button = cell:AddButton(disName .. "##" ..entry.Uuid)
-        button:SetColor("Button", self.iconButtonBgColor or HexToRGBA("FF000000"))
+        button:SetColor("Button", self.iconButtonBgColor or HexToRGBA("FF615238"))
         iconImage = button
     end
 

@@ -215,8 +215,17 @@ function SceneMenu:RenderSideBar()
     treeList.RenderOrder = function(aKey, bKey)
         if aKey == bKey then return false end
         if not aKey or not bKey then return false end
+        
         local aName = tree:IsLeaf(aKey) and (EntityStore:GetStoredData(aKey) and EntityStore:GetStoredData(aKey).DisplayName or aKey) or aKey
         local bName = tree:IsLeaf(bKey) and (EntityStore:GetStoredData(bKey) and EntityStore:GetStoredData(bKey).DisplayName or bKey) or bKey
+
+        --- always prefer trees over leaves
+        if not tree:IsLeaf(aKey) and tree:IsLeaf(bKey) then
+            return true
+        elseif tree:IsLeaf(aKey) and not tree:IsLeaf(bKey) then
+            return false
+        end
+
         return string.lower(aName) < string.lower(bName)
     end
 
