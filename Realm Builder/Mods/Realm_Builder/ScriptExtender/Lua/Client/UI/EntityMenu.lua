@@ -1,5 +1,7 @@
 --- @class SceneMenu
 --- @field entityTabs table<string, EntityTab>
+--- @field CollectionPopup ExtuiPopup
+--- @field EntityPopup ExtuiPopup
 SceneMenu = _Class("EntityMenu")
 
 function SceneMenu:__init(parent)
@@ -110,17 +112,17 @@ function SceneMenu:RenderSideBar()
     local editor = TransformEditor
     local treeList = TreeList.new(panel, "PropsTree", tree, "Guid") --[[@as TreeList]]
 
-    local rightClickPopup = panel:AddPopup("PropRightClickPopup") --[[@as ExtuiPopup]]
-    self:SetupSelectablePopup(rightClickPopup)
-    local collectionRightClickPopup = panel:AddPopup("CollectionRightClickPopup") --[[@as ExtuiPopup]]
-    self:SetupCollectionSelectablePopup(collectionRightClickPopup)
     self.imageRefs = {}
 
     treeList.OnDetach = function()
+        self.CollectionPopup = nil
+        self.EntityPopup = nil
         self.mainPanel.SetSideBarWidth(0)
     end
 
     treeList.OnAttach = function()
+        self.CollectionPopup = nil
+        self.EntityPopup = nil
         self.mainPanel.SetSideBarWidth(200 * SCALE_FACTOR)
     end
 
@@ -320,17 +322,13 @@ function SceneMenu:GroupLogic(from, target)
     self:UpdateList()
 end
 
-function SceneMenu:SetupSelectablePopup(popup)
-    if not popup and not self.EntityPopup then
-        Warning("SceneMenu:SetupSelectablePopup: Invalid popup")
-        return
-    end
+function SceneMenu:SetupSelectablePopup()
     if self.EntityPopup then self.EntityPopup:Open() return end
 
-    self.EntityPopup = popup or self.EntityPopup
+    self.EntityPopup = self.propTreeList.panel:AddPopup("PropRightClickPopup") --[[@as ExtuiPopup]]
     local tree = EntityStore.Tree
 
-    local ttable = popup:AddTable("PropRightClickPopupTable", 1) --[[@as ExtuiTable]]
+    local ttable = self.EntityPopup:AddTable("PropRightClickPopupTable", 1) --[[@as ExtuiTable]]
     ttable.BordersInnerH = true
 
     local row = ttable:AddRow() --[[@as ExtuiTableRow]]
@@ -418,22 +416,58 @@ function SceneMenu:SetupSelectablePopup(popup)
     
     end)
 
+    self.EntityPopup:Open()
 end
 
-function SceneMenu:SetupCollectionSelectablePopup(popup)
-    if not popup and not self.CollectionPopup then
-        Warning("SceneMenu:SetupCollectionSelectablePopup: Invalid popup")
-        return
-    end
+function SceneMenu:SetupCollectionSelectablePopup()
     if self.CollectionPopup then self.CollectionPopup:Open() return end
 
-    self.CollectionPopup = popup or self.CollectionPopup
+    self.CollectionPopup = self.propTreeList.panel:AddPopup("CollectionRightClickPopup") --[[@as ExtuiPopup]]
     local tree = EntityStore.Tree
 
     local ttable = self.CollectionPopup:AddTable("CollectionRightClickPopupTable", 1) --[[@as ExtuiTable]]
     ttable.BordersInnerH = true
 
     local row = ttable:AddRow() --[[@as ExtuiTableRow]]
+
+    local function collectChildGuids(node, guids)
+        for childKey,v in pairs(node) do
+            if tree:IsLeaf(childKey) then
+                table.insert(guids, childKey)
+            else
+                local childNode = tree:Find(childKey)
+                if childNode then
+                    collectChildGuids(childNode, guids)
+                end
+            end
+        end
+        return guids
+    end
+
+    local hideShowBtn = AddSelectableButton(row:AddCell(), GetLoca("Hide/Show Collection"), function()
+        local targetKey = self.selectedTree
+        if not targetKey or tree:IsLeaf(targetKey) then return end
+
+        local root = tree:Find(targetKey)
+        local guids = collectChildGuids(root, {})
+        for _, guid in ipairs(guids) do
+            local prop = EntityStore:GetStoredData(guid)
+            if not prop then goto continue end
+
+            local data = {
+                Guid = prop.Guid,
+                Attributes = {
+                    Visible = not prop.Visible
+                }
+            }
+            NetChannel.SetAttributes:SendToServer(data)
+            prop.Visible = not prop.Visible
+            ::continue::
+        end
+        self.propTreeList:ClearSelection()
+        self.selectedGuids = {}
+        self:UpdateList()
+    end)
 
     local deleteButton = AddSelectableButton(row:AddCell(), GetLoca("Delete Collection"), function()
         -- Deleting a collection only deletes the grouping, not the entities within
@@ -454,23 +488,7 @@ function SceneMenu:SetupCollectionSelectablePopup(popup)
 
         local root = tree:Find(targetKey)
         local templateRegion = LSXHelpers.BuildTemplatesRegionNode()
-        local guids = {}
-
-        local stack = {}
-        table.insert(stack, root)
-        while #stack > 0 do
-            local current = table.remove(stack)
-            for childKey,v in pairs(current) do
-                if tree:IsLeaf(childKey) then
-                    table.insert(guids, childKey)
-                else
-                    local childNode = tree:Find(childKey)
-                    if childNode then
-                        table.insert(stack, childNode)
-                    end
-                end
-            end
-        end
+        local guids = collectChildGuids(root, {})
         for _, guid in ipairs(guids) do
             local node = LSXHelpers.BuildTemplate(guid)
             if node then
@@ -482,6 +500,8 @@ function SceneMenu:SetupCollectionSelectablePopup(popup)
 
         Debug(templateRegion:Stringify({ AutoFindRoot = true }))
     end)
+
+    self.CollectionPopup:Open()
 end
 
 function SceneMenu:RenderMainArea()

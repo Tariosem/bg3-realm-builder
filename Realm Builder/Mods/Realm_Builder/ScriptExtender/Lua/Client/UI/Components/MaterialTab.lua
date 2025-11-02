@@ -155,7 +155,7 @@ function MaterialTab:Render(parent)
 
         local paramTable = indent:AddTable("ParameterTable##" .. self.MaterialName .. propType, 1)
         local paramRow = paramTable:AddRow()
-        paramTable.BordersInnerH = true
+        paramTable.BordersOuter = true
         paramTable.RowBg = true
         for _,propertyName in ipairs(propNames) do
             local tab = paramRow:AddCell():AddTable("PropertyTable##" .. self.MaterialName .. propertyName, 3)

@@ -13,7 +13,7 @@
 					<attribute id="Flag" type="uint8" value="0" />
 					<attribute id="GroupID" type="uint32" value="0" />
 					<attribute id="VisualTemplate" type="FixedString" value="4a4ed390-41d5-434a-b5b6-be1c66c6f9e1" />
-					<attribute id="PhysicsTemplate" type="FixedString" value="" />
+					<attribute id="PhysicsTemplate" type="FixedString" value="04178fff-4061-d559-da24-e8a5152c2321" />
 					<attribute id="CastShadow" type="bool" value="False" />
 					<attribute id="RecieveDecal" type="bool" value="False" />
 					<attribute id="Fadeable" type="bool" value="False" />
@@ -21,7 +21,7 @@
 					<attribute id="DisplayName" type="TranslatedString" handle="ha7a4c31c0ffe4f9285039705852da318g0a4" version="1" />
 					<attribute id="CoverAmount" type="uint8" value="0" />
 					<attribute id="CanShootThrough" type="bool" value="True" />
-					<attribute id="CanClickThrough" type="bool" value="True" />
+					<attribute id="CanClickThrough" type="bool" value="False" />
 					<attribute id="WadableSurfaceType" type="FixedString" value="SurfaceDeepWater" />
 					<attribute id="CanShineThrough" type="bool" value="True" />
 					<attribute id="Icon" type="FixedString" value="Item_Unknown" />
@@ -34,7 +34,7 @@
 					<attribute id="Archetype" type="FixedString" value="base" />
 					<attribute id="AiHint" type="guid" value="00000000-0000-0000-0000-000000000000" />
 					<children>
-						<node id="Tags" />
+						<node id="Tags"/>
 						<node id="Bounds">
 							<children>
 								<node id="Bound">

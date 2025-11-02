@@ -109,7 +109,11 @@ function VisualTab:GetCurrentPreset()
 end
 
 function VisualTab:Render(retryCnt)
-    if self.isVisible then return end
+    if self.isVisible then 
+        self.isAttach = false
+        self:Refresh()
+        return
+    end
 
     self.displayName = self.displayName or GetDisplayNameFromGuid(self.guid)
 

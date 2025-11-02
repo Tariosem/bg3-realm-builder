@@ -277,6 +277,16 @@ function TransformEditor:RegisterEvents()
         self.PointVisualizations = self.PointVisualizations or {}
         self.LineVisualizations = self.LineVisualizations or {}
 
+        for i=#self.LineVisualizations, 1, -1 do
+            local guid = self.LineVisualizations[i]
+            if not EntityExists(guid) then
+                NetChannel.Delete:RequestToServer({ Guid = guid }, function (response)
+                    
+                end)
+                table.remove(self.LineVisualizations, i)
+            end
+        end
+
         --[[for i=#self.PointVisualizations, 1, -1 do
             local guid = self.PointVisualizations[i]
             if not EntityExists(guid) then
@@ -287,15 +297,7 @@ function TransformEditor:RegisterEvents()
             end
         end
 
-        for i=#self.LineVisualizations, 1, -1 do
-            local guid = self.LineVisualizations[i]
-            if not EntityExists(guid) then
-                NetChannel.Delete:RequestToServer({ Guid = guid }, function (response)
-                    
-                end)
-                table.remove(self.LineVisualizations, i)
-            end
-        end
+
 
         for cnt,guid in pairs(NormalizeGuidList(self.Target) or {}) do
             local transform = self.StartTransforms[guid]
