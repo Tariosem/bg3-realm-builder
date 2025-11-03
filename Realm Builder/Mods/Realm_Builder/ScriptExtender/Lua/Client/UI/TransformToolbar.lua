@@ -57,9 +57,10 @@ function TransformToolbar:RegisterKeyInputEvents()
 
         if tonumber(KeybindHelpers.ParseInputToCharInput(e)) then
             local selectedAxis = TransformEditor.Gizmo and TransformEditor.Gizmo.SelectedAxis
+            local startTransformRef = TransformEditor.StartTransforms
             TransformEditor.Gizmo:CancelDragging()
 
-            self:SetupOperator(TransformEditor.Gizmo.Mode, self:GetCurrentSpace(), selectedAxis)
+            self:SetupOperator(TransformEditor.Gizmo.Mode, self:GetCurrentSpace(), selectedAxis, startTransformRef)
         end
     end)
 
@@ -503,7 +504,7 @@ function TransformToolbar:RenderOtherConfigOptions(panel)
     tips:SetColor("Text", HexToRGBA("FFFFAA00"))
 end
 
-function TransformToolbar:SetupOperator(mode, space, axis)
+function TransformToolbar:SetupOperator(mode, space, axis, startTransforms)
     if not TransformEditor.Target or #TransformEditor.Target == 0 or self.isInputing then return end
     TransformEditor.Disabled = true
     TransformEditor:HideAndDisableGizmo()
@@ -511,7 +512,7 @@ function TransformToolbar:SetupOperator(mode, space, axis)
     self.isInputing = true
     if not self.Operator then
         if mode == "Scale" then axis = {X = true, Y = true, Z = true} end
-        self.Operator = TransformOperator.new(targets, space, mode, axis)
+        self.Operator = TransformOperator.new(targets, space, mode, axis, startTransforms)
     end
     
     local inputSub = SubscribeKeyAndMouse(function (e)

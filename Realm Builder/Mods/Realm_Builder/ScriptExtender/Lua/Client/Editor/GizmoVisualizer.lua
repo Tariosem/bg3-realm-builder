@@ -46,9 +46,9 @@ local GIZMO_VISUALIZER_CONFIG = {
         Z = HexToRGBA("FFB6C8FF"),
     },
     HoveredColor = {
-        X = HexToRGBA("FFFF6060"),
-        Y = HexToRGBA("FF75FF75"),
-        Z = HexToRGBA("FF7878FF"),
+        X = HexToRGBA("FFFFA4A4"),
+        Y = HexToRGBA("FFBFFFBF"),
+        Z = HexToRGBA("FFBBBBFF"),
     },
     AxisLineColor = {
         X = HexToRGBA("FFFF0000"),
@@ -240,10 +240,10 @@ function GizmoVisualizer:SetLineFxColor(guid, color, width)
     if not entity then return end
 
     if width and type(width) ~= "number" then
-        width = self.Scale[1] * 0.3
+        width = self.Scale[1] * 0.15
     end
     if not width then
-        width = self.Scale[1] * 0.3
+        width = self.Scale[1] * 0.15
     end
 
     local visual = VisualHelpers.GetEntityVisual(entity)
@@ -265,10 +265,10 @@ function GizmoVisualizer:SetLineLength(guid, length, width)
         length = 0
     end
     if width and type(width) ~= "number" then
-        width = self.Scale[1] * 0.3
+        width = self.Scale[1] * 0.15
     end
     if not width then
-        width = self.Scale[1] * 0.3
+        width = self.Scale[1] * 0.15
     end
 
     local entity = Ext.Entity.Get(guid)

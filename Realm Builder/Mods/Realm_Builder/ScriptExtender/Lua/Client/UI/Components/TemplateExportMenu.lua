@@ -179,14 +179,8 @@ function TemplateExportMenu:RenderExportEntities(panel)
     local row = exportTable:AddRow()
 
     local typeCells = {}
-    for _, templateType in ipairs(allTemplateTypes) do
-        local cell = row:AddCell()
-        local templateSelectable = cell:AddTree(string.upper(templateType))
-        cell.UserData = templateSelectable
-        typeCells[templateType] = cell
-    end
 
-    for _, templateType in ipairs(allTemplateTypes) do
+    local function renderTemplateTypes(templateType)
         local cell = typeCells[templateType] --[[@type ExtuiTableCell ]]
 
         local typeTab = cell.UserData:AddTable(templateType .. " Entities", 1)
@@ -197,16 +191,41 @@ function TemplateExportMenu:RenderExportEntities(panel)
             self:RenderTemplateEntry(typeRow:AddCell(), entData)
         end
     end
+
+    for _, templateType in ipairs(allTemplateTypes) do
+        local cell = row:AddCell()
+        local templateSelectable = cell:AddTree(string.upper(templateType))
+        templateSelectable.OnExpand = function()
+            renderTemplateTypes(templateType)
+            templateSelectable.OnExpand = nil
+        end
+        cell.UserData = templateSelectable
+        typeCells[templateType] = cell
+    end
 end
 
 --- @param cell ExtuiTableCell
 --- @param entData EntityData
 function TemplateExportMenu:RenderTemplateEntry(cell, entData)
-    local icon = cell:AddImage(CheckIcon(entData.Icon), IMAGESIZE.SMALL)
+    local icon = cell:AddImageButton("##" .. entData.Guid .. "icon", CheckIcon(entData.Icon), IMAGESIZE.SMALL)
     local header = cell:AddTree(entData.DisplayName or "Unnamed")
+    local attrTable = header:AddTable("Attributes", 2)
     header.SameLine = true
 
-    local attrTable = header:AddTable("Attributes", 2)
+    icon.OnClick = function()
+        SetImguiDisabled(header, not header.Disabled)
+        SetAlphaByBool(icon, not header.Disabled)
+        header:SetOpen(not header.Disabled)
+        attrTable.Visible = not header.Disabled
+
+        if header.Disabled then
+            entData.ExcludeFromExport = true    
+        else
+            entData.ExcludeFromExport = false
+        end
+    end
+    icon:Tooltip():AddText("Click to exclude this entity from export.")
+
     attrTable.RowBg = true
     attrTable.SizingFixedSame = true
     attrTable.ColumnDefs[1] = { WidthFixed = true }
@@ -246,74 +265,81 @@ function TemplateExportMenu:RenderTemplateEntry(cell, entData)
         return aIndex < bIndex
     end)
 
-    for _, key in ipairs(allAttrs) do
-        if ignoreAttrs[key] then
-            goto continue
-        end
-        local value = entData[key]
-        local attrRow = attrTable:AddRow()
-        local keyCell = attrRow:AddCell()
-        local valueCell = attrRow:AddCell()
-
-        keyCell:AddText(key .. ":")
-
-        local vT = type(value)
-        if vT == "boolean" then
-            local cB = valueCell:AddCheckbox("##" .. key .. entData.Guid)
-            cB.Checked = value
-            cB.OnChange = function(cb)
-                entData[key] = cb.Checked
+    local function renderAttr()
+        for _, key in ipairs(allAttrs) do
+            if ignoreAttrs[key] then
+                goto continue
             end
-        elseif vT == "number" or vT == "string" then
-            local input = valueCell:AddInputText("##" .. key .. entData.Guid)
-            input.Text = tostring(value)
-            input.ReadOnly = readonlyAttrs[key] or false
-            input.OnChange = function(inp)
-                entData[key] = vT == "number" and (tonumber(inp.Text) or 0) or inp.Text
-            end
-        elseif vT == "table" then
-            local vCnt = #value
-            local input = valueCell:AddInputScalar("##" .. key .. entData.Guid)
-            input.Components = vCnt
-            input.Value = ToVec4(value)
-            input.ReadOnly = readonlyAttrs[key] or false
+            local value = entData[key]
+            local attrRow = attrTable:AddRow()
+            local keyCell = attrRow:AddCell()
+            local valueCell = attrRow:AddCell()
 
-            input.OnChange = function(inp)
-                local newValue = {}
-                local v = inp.Value
-                for i = 1, vCnt do
-                    newValue[i] = v[i]
+            keyCell:AddText(key .. ":")
+
+            local vT = type(value)
+            if vT == "boolean" then
+                local cB = valueCell:AddCheckbox("##" .. key .. entData.Guid)
+                cB.Checked = value
+                cB.OnChange = function(cb)
+                    entData[key] = cb.Checked
                 end
-                entData[key] = newValue
-            end
-        end
-        if key == "DisplayName" then
-            local useCustomNameCB = keyCell:AddCheckbox("##" .. entData.Guid .. "_useCustomName")
-            useCustomNameCB.SameLine = true
-            useCustomNameCB:Tooltip():AddText(
-                "Use custom display name for this entity when exported.\n If unchecked, the default name from the template will be used.")
-            useCustomNameCB.OnChange = function(cb)
-                if not cb.Checked then
-                    entData.UseCustomName = false
-                else
-                    entData.UseCustomName = true
+            elseif vT == "number" or vT == "string" then
+                local input = valueCell:AddInputText("##" .. key .. entData.Guid)
+                input.Text = tostring(value)
+                input.ReadOnly = readonlyAttrs[key] or false
+                input.OnChange = function(inp)
+                    entData[key] = vT == "number" and (tonumber(inp.Text) or 0) or inp.Text
+                end
+            elseif vT == "table" then
+                local vCnt = #value
+                local input = valueCell:AddInputScalar("##" .. key .. entData.Guid)
+                input.Components = vCnt
+                input.Value = ToVec4(value)
+                input.ReadOnly = readonlyAttrs[key] or false
+
+                input.OnChange = function(inp)
+                    local newValue = {}
+                    local v = inp.Value
+                    for i = 1, vCnt do
+                        newValue[i] = v[i]
+                    end
+                    entData[key] = newValue
                 end
             end
-        elseif key == "Gravity" then
-            local disableUntilMovedCB = valueCell:AddCheckbox("##" .. entData.Guid .. "_disableUntilMoved")
-            disableUntilMovedCB.SameLine = true
-            disableUntilMovedCB:Tooltip():AddText(
-                "Disable gravity until the entity is moved by the player.\n Useful for floating items that should fall when picked up.")
-            disableUntilMovedCB.OnChange = function(cb)
-                if not cb.Checked then
-                    entData.DisableGravityUntilMoved = false
-                else
-                    entData.DisableGravityUntilMoved = true
+            if key == "DisplayName" then
+                local useCustomNameCB = keyCell:AddCheckbox("##" .. entData.Guid .. "_useCustomName")
+                useCustomNameCB.SameLine = true
+                useCustomNameCB:Tooltip():AddText(
+                    "Use custom display name for this entity when exported.\n If unchecked, the default name from the template will be used.")
+                useCustomNameCB.OnChange = function(cb)
+                    if not cb.Checked then
+                        entData.UseCustomName = false
+                    else
+                        entData.UseCustomName = true
+                    end
+                end
+            elseif key == "Gravity" then
+                local disableUntilMovedCB = valueCell:AddCheckbox("##" .. entData.Guid .. "_disableUntilMoved")
+                disableUntilMovedCB.SameLine = true
+                disableUntilMovedCB:Tooltip():AddText(
+                    "Disable gravity until the entity is moved by the player.")
+                disableUntilMovedCB.OnChange = function(cb)
+                    if not cb.Checked then
+                        entData.DisableGravityUntilMoved = false
+                    else
+                        entData.DisableGravityUntilMoved = true
+                    end
                 end
             end
-        end
 
-        ::continue::
+            ::continue::
+        end
+    end
+
+    header.OnExpand = function()
+        renderAttr()
+        header.OnExpand = nil
     end
 end
 
@@ -333,11 +359,18 @@ end
 function TemplateExportMenu:__export(exportSettings, progressCallback)
     local thread = coroutine.running()
     local startTime = Ext.Timer.MonotonicTime()
-    local templateCnt = CountMap(self.ExportDatas)
+    local toExport = {}
+    for guid, entData in pairs(self.ExportDatas) do
+        if not entData.ExcludeFromExport then
+            toExport[guid] = entData
+        end
+    end
+    local exportCnt = CountMap(toExport)
+
     local actCnt =
         1 +         -- build meta.lsx
         1 +         -- build localizaion
-        templateCnt -- export templates
+        exportCnt -- export templates
 
     progressCallback = progressCallback or function(num, msg)
         Debug(string.format("Export Progress: %.2f%% - %s", num, msg))
@@ -411,7 +444,7 @@ function TemplateExportMenu:__export(exportSettings, progressCallback)
     local needNames = {}
     local nameToGuids = {}
     local guidToHandle = {}
-    for guid, entData in pairs(self.ExportDatas) do
+    for guid, entData in pairs(toExport) do
         if entData.UseCustomName then
             table.insert(needNames, entData.DisplayName)
             nameToGuids[entData.DisplayName] = nameToGuids[entData.DisplayName] or {}
@@ -442,7 +475,7 @@ function TemplateExportMenu:__export(exportSettings, progressCallback)
         local s = tostring(num)
         return string.format("%0" .. size .. "d", tonumber(s))
     end
-    for guid, entData in pairs(self.ExportDatas) do
+    for guid, entData in pairs(toExport) do
         local templateName = TrimTail(entData.TemplateId, 37)
         templateNameCnt[templateName] = (templateNameCnt[templateName] or 0) + 1
 

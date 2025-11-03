@@ -42,6 +42,7 @@ end
 
 --- emit a zero-delta drag event
 function Gizmo:EmptyDrag()
+    self._delta = nil
     self._accuDelta = nil
     if self.Mode == "Rotate" then
         self:OnDragRotate({ Angle = 0, Axis = Vec3.new { 0, 0, 0 } })
@@ -152,7 +153,8 @@ end
 function Gizmo:CancelDragging()
     self:StopWithoutCallbacks()
     self:EmptyDrag()
-    self:StopDragging()
+    self.IsDragging = false
+    self:OnDragEnd()
 end
 
 function Gizmo:SetupListeners()
@@ -396,9 +398,6 @@ function Gizmo:GetHit(ray)
         local axis = nil
         for a, _ in pairs(self.SelectedAxis) do axis = a end
         hit = self.Picker:HitPlanePerpToAxis(ray, axis)
-
-        local origin = self.Picker.Position
-
         if not hit then hit = Hit.new(self.Picker:ProjectPointOnPlanePerpToAxis(ray.Origin, axis), nil, 0, nil) end
     else
         if cnt == 1 then

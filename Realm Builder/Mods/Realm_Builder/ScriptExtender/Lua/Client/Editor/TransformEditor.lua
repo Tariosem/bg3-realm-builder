@@ -287,7 +287,7 @@ function TransformEditor:RegisterEvents()
             end
         end
 
-        --[[for i=#self.PointVisualizations, 1, -1 do
+        for i=#self.PointVisualizations, 1, -1 do
             local guid = self.PointVisualizations[i]
             if not EntityExists(guid) then
                 NetChannel.Delete:RequestToServer({ Guid = guid }, function (response)
@@ -296,8 +296,6 @@ function TransformEditor:RegisterEvents()
                 table.remove(self.PointVisualizations, i)
             end
         end
-
-
 
         for cnt,guid in pairs(NormalizeGuidList(self.Target) or {}) do
             local transform = self.StartTransforms[guid]
@@ -362,7 +360,7 @@ function TransformEditor:RegisterEvents()
                     end)
                 end
             end
-        end]]
+        end
 
         if CountMap(gizmo.SelectedAxis) ~= 1 then 
             for _,v in pairs(self.LineVisualizations or {}) do
@@ -407,16 +405,16 @@ function TransformEditor:RegisterEvents()
                     Width = gizmo.Visualizer.Scale[1] * 0.3,
                     Duration = -1,
                 }, function (response)
-                    for _,viz in ipairs(response or {}) do
-                        local tryCnt = 0
-                        Timer:EveryFrame(function (timerID)
-                            if tryCnt > 300 or not self.IsDragging then return UNSUBSCRIBE_SYMBOL end
-                            if not VisualHelpers.GetEntityVisual(viz) then tryCnt = tryCnt + 1 return end
-                            gizmo.Visualizer:SetLineFxColor(viz, color)
-                            return UNSUBSCRIBE_SYMBOL
-                        end)
-                        table.insert(self.LineVisualizations, viz)
-                    end
+                    local viz = response[1]
+                    local tryCnt = 0
+                    Timer:EveryFrame(function (timerID)
+                        if tryCnt > 300 or not self.IsDragging then Debug("TransformEditor: Line viz timeout") return UNSUBSCRIBE_SYMBOL end
+                        if not VisualHelpers.GetEntityVisual(viz) then tryCnt = tryCnt + 1 return end
+                        gizmo.Visualizer:SetLineFxColor(viz, color)
+                        gizmo.Visualizer:SetLineLength(viz, 20)
+                        return UNSUBSCRIBE_SYMBOL
+                    end)
+                    table.insert(self.LineVisualizations, viz)
                 end)
             end
         end

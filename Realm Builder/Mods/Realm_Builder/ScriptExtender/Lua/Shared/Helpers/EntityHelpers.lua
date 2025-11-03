@@ -28,6 +28,9 @@ function EntityHelpers.EqualTransforms(a, b)
     return true
 end
 
+
+--- @param guid any
+--- @return Transform
 function EntityHelpers.SaveTransform(guid)
     local toSave = {
         Translate = Vec3.new({ CGetPosition(guid) }),

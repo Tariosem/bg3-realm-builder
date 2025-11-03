@@ -87,10 +87,12 @@ function TransformOperator:GetAxesBySpace(guid, space)
     return self.AxesCache[guid][space]
 end
 
-function TransformOperator:__init(targets, space, mode, axis)
+function TransformOperator:__init(targets, space, mode, axis, startTransforms)
     self.Targets = NormalizeGuidList(targets)
-    self.Visualizer = GizmoVisualizer:new()
+    self.Visualizer = GizmoVisualizer.new()
+    self.Visualizer:UpdateScale(self.Targets[1])
     self.AxesCache = {}
+    self.StartTransforms = startTransforms or {}
     self:InitStartTransforms()
 
     self.Mode = mode or "Translate"
@@ -109,9 +111,9 @@ function TransformOperator:__init(targets, space, mode, axis)
 end
 
 function TransformOperator:InitStartTransforms()
-    self.StartTransforms = {}
+    self.StartTransforms = self.StartTransforms or {}
     for _,guid in pairs(self.Targets) do
-        if EntityExists(guid) then
+        if EntityExists(guid) and not self.StartTransforms[guid] then
             self.StartTransforms[guid] = {
                 Translate = {CGetPosition(guid)},
                 RotationQuat = {CGetRotation(guid)},
@@ -124,7 +126,7 @@ function TransformOperator:InitStartTransforms()
     }
     for _,guid in pairs(self.Targets) do
         local parent = EntityStore:GetBindParent(guid)
-        if parent and EntityExists(parent) then
+        if parent and EntityExists(parent) and not self.StartTransforms[parent] then
             self.StartTransforms[parent] = {
                 Translate = {CGetPosition(parent)},
                 RotationQuat = {CGetRotation(parent)},
@@ -153,19 +155,19 @@ function TransformOperator:Visualize()
             Width = self.Visualizer.Scale[1] * 0.3,
             Duration = -1,
         }, function (response)
-            for _,viz in pairs(response) do
-                local tryCnt = 0
-                Timer:EveryFrame(function()
-                    if tryCnt > 300 then
-                        Warning("GizmoVisualizer: Failed to get visual for line gizmo")
-                        return UNSUBSCRIBE_SYMBOL
-                    end
-                    if not VisualHelpers.GetEntityVisual(viz) then tryCnt = tryCnt + 1 return end
-                    self.Visualizer:SetLineFxColor(viz, color)
+            local viz = response[1]
+            local tryCnt = 0
+            Timer:EveryFrame(function()
+                if tryCnt > 300 then
+                    Warning("GizmoVisualizer: Failed to get visual for line gizmo")
                     return UNSUBSCRIBE_SYMBOL
-                end)
-                table.insert(self.Visualizations, viz)
-            end
+                end
+                if not VisualHelpers.GetEntityVisual(viz) then tryCnt = tryCnt + 1 return end
+                self.Visualizer:SetLineFxColor(viz, color)
+                self.Visualizer:SetLineLength(viz, 20)
+                return UNSUBSCRIBE_SYMBOL
+            end)
+            table.insert(self.Visualizations, viz)
         end)
     end
 end
@@ -179,6 +181,7 @@ function TransformOperator:ChangeVisualization()
         cnt = cnt - 1
         table.insert(visualizations, viz)
         self.Visualizer:SetLineFxColor(viz, self.Visualizer.AxisLineColor[next(self.Axis)] or {1,1,0,1})
+        self.Visualizer:SetLineLength(viz, 20)
         local axis = self:GetAxesBySpace(guid, self.Space)[next(self.Axis)]
         local ray = Ray.new(self.StartTransforms[guid].Translate, axis)
         local pos = ray:At(-100)
