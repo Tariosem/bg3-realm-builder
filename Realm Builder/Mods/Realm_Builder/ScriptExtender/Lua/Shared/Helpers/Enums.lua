@@ -255,12 +255,13 @@ end
 
 -- From https://github.com/AtilioA/BG3-MCM/blob/main/Mod%20Configuration%20Menu/Mods/BG3MCM/ScriptExtender/Lua/Shared/Helpers/Keybindings/KeyPresentationMapping.lua
 
---- @enum SimplifiedInputCode 
+
 Enums.SimplifiedInputCode = Enums.SDLScanCode
 Enums.SimplifiedInputCode.LMB = "LMB"
 Enums.SimplifiedInputCode.MMB = "MMB"
 Enums.SimplifiedInputCode.RMB = "RMB"
 
+--- @enum SimplifiedInputCode 
 Enums.InputCodeToPresentation = {
     -- Modifiers
     LALT           = "Left Alt",
@@ -408,9 +409,32 @@ Enums.InputCodeToPresentation = {
     KP_PERIOD      = "Keypad .",
     KP_EQUALS      = "Keypad =",
 
-    LMB            = "Left Mouse Button",
-    MMB            = "Middle Mouse Button",
-    RMB            = "Right Mouse Button",
+    LMB            = "Left Mouse",
+    MMB            = "Middle Mouse",
+    RMB            = "Right Mouse",
+}
+
+--- @enum SimplifiedModfier
+Enums.SimplifiedModfier = {
+    LCTRL = "CTRL",
+    RCTRL = "CTRL",
+    LSHIFT = "SHIFT",
+    RSHIFT = "SHIFT",
+    LALT = "ALT",
+    RALT = "ALT",
+    LGUI = "GUI",
+    RGUI = "GUI",
+    CTRL = "CTRL",
+    SHIFT = "SHIFT",
+    ALT = "ALT",
+    GUI = "GUI",
+}
+
+Enums.ModfierToPresentation = {
+    CTRL = "Ctrl",
+    SHIFT = "Shift",
+    ALT = "Alt",
+    GUI = "Win/Meta",
 }
 
 --- @enum TransformEditorSpace

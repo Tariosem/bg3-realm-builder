@@ -27,6 +27,14 @@ local ccaEyeColorPath = matPresetsPath .. "Eye Presets/[PAK]_%s/"
 local ccaHairColorPath = matPresetsPath .. "Hair Color Presets/[PAK]_%s/"
 local ccaSkinColorPath = matPresetsPath .. "Skin Presets/[PAK]_%s/"
 
+local mapModsPath = "Realm_Builder/Map_Mods/"
+local mapModMetaFile = mapModsPath .. "%s/Mods/%s/meta.lsx"
+local mapModLocalizationFile = mapModsPath .. "%s/Localization/%s/%s.xml"
+
+local mapTemplatePath = mapModsPath .. "%s/Mods/%s/Levels/%s/%s/%s.lsx"
+
+local mapModCachePath = "Realm_Builder/Map_Mod_Uuids.json"
+
 RealmPaths = {}
 
 function GetVisualPresetsPath(templateName)
@@ -128,4 +136,31 @@ end
 
 function RealmPaths.GetConfigPath()
     return configPath
+end
+
+function RealmPaths.GetMapModMetaPath(modName)
+    return string.format(mapModMetaFile, modName, modName)
+end
+
+function RealmPaths.GetMapModLocalizationPath(modName, lang)
+    return string.format(mapModLocalizationFile, modName, lang, modName)
+end
+
+local templateTypeToFolder = {
+    character = "Characters",
+    item = "Items",
+    scenery = "Scenery",
+}
+
+function RealmPaths.GetTemplatePath(modName, levelName, guid, templateType)
+    templateType = templateTypeToFolder[templateType]
+    if not templateType then
+        Error("Invalid template type: " .. tostring(templateType))
+        return nil
+    end
+    return string.format(mapTemplatePath, modName, modName, levelName, templateType, guid)
+end
+
+function RealmPaths.GetMapModCachePath()
+    return mapModCachePath
 end

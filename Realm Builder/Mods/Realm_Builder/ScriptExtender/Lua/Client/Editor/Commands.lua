@@ -50,6 +50,7 @@ local function SetItemTransform(guids, transforms)
     NetChannel.SetTransform:SendToServer({Guid=guids, Transforms = transforms})
 end
 
+
 local templateTypeHandler = {
     Character = SetVisualTransform,
     Item = SetItemTransform,

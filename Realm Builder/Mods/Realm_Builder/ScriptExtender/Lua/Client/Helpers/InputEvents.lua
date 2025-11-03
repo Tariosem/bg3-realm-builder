@@ -119,12 +119,10 @@ end
 --- @field Key  SimplifiedInputCode
 --- @field Pressed boolean
 --- @field Repeat boolean
---- @field Modifiers? SDLKeyModifier
+--- @field Modifiers? SimplifiedModfier[]
 --- @field Clicks? integer
 
-local toExclude = {
-    Caps = true,
-}
+
 
 local MouseToCode = {
     [1] = "LMB",
@@ -132,10 +130,14 @@ local MouseToCode = {
     [3] = "RMB",
 }
 
+local Enums = Enums
 local function excludeModfiers(modifs)
     for i = #modifs, 1, -1 do
-        if toExclude[modifs[i]] then
+        local simplified = Enums.SimplifiedModfier[tostring(modifs[i]):upper()]
+        if not Enums.ModfierToPresentation[simplified] then
             table.remove(modifs, i)
+        else
+            modifs[i] = simplified
         end
     end
 end
@@ -152,7 +154,7 @@ function SubscribeKeyAndMouse(callback)
         excludeModfiers(modifs)
         local event = {
             Event = e.Event,
-            Key = tostring(e.Key),
+            Key = tostring(e.Key):upper(),
             Pressed = e.Pressed,
             Modifiers = modifs,
             Repeat = e.Repeat,

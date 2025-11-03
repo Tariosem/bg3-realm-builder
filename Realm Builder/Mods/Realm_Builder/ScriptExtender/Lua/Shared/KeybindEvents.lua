@@ -1,9 +1,9 @@
---- @alias KeybindingIdentifier string format like "A|LCtrl|LShift"
+--- @alias KeybindingIdentifier string format like "A|CTRL|SHIFT"
 
 --- @class Keybinding
 --- @field Key SimplifiedInputCode
---- @field Modifiers SDLKeyModifier[]|nil
---- @field new fun(key:SimplifiedInputCode, modifiers:SDLKeyModifier[]|nil):Keybinding
+--- @field Modifiers SimplifiedModfier[]
+--- @field new fun(key:SimplifiedInputCode, modifiers:SimplifiedModfier[]|nil):Keybinding
 --- @field CreateIdentifier fun(self: Keybinding): KeybindingIdentifier
 --- @field FromIdentifier fun(identifier: KeybindingIdentifier): Keybinding
 
@@ -61,15 +61,16 @@ DEFAULT_KEYBINDS.TransformToolbar = {
     ["MultiSelect"] = { Key = "M"},
     ["Select"] = { Key = "MMB" },
     ["ClearSelection"] = { Key = "ESCAPE" },
-    ["Duplicate"] = { Key = "D", Modifiers = { "LShift" } },
+    ["Duplicate"] = { Key = "D", Modifiers = { "SHIFT" } },
+    ["SlowDown"] = { Key = "SHIFT" },
     ["BoxSelect"] = { Key = "B" },
     ["HideSelection"] = { Key = "H" },
-    ["ShowSelection"] = { Key = "H", Modifiers = { "LShift" } },
-    ["ApplyGravity"] = { Key = "G", Modifiers = { "LShift" } },
-    ["FreezeGravity"] = { Key = "F", Modifiers = { "LShift" } },
-    ["Undo"] = { Key = "Z", Modifiers = { "LCtrl" }},
-    ["Redo"] = { Key = "X", Modifiers = { "LCtrl" } },
-    ["OpenVisualTab"] = { Key = "TAB", Modifiers = { "LShift" } },
+    ["ShowSelection"] = { Key = "H", Modifiers = { "SHIFT" } },
+    ["ApplyGravity"] = { Key = "G", Modifiers = { "SHIFT" } },
+    ["FreezeGravity"] = { Key = "F", Modifiers = { "SHIFT" } },
+    ["Undo"] = { Key = "Z", Modifiers = { "CTRL" }},
+    ["Redo"] = { Key = "X", Modifiers = { "CTRL" } },
+    ["OpenVisualTab"] = { Key = "TAB", Modifiers = { "SHIFT" } },
 }
 
 DEFAULT_KEYBINDS.TransformEditor = {
@@ -78,14 +79,14 @@ DEFAULT_KEYBINDS.TransformEditor = {
     ["ScaleMode"] = { Key = "L" },
     ["FollowTarget"] = { Key = "KP_PERIOD" },
     ["DeleteSelection"] = { Key = "X" },
-    ["DeleteAllGizmos"] = { Key = "X", Modifiers = { "LShift" }}
+    ["DeleteAllGizmos"] = { Key = "X", Modifiers = { "SHIFT" }}
 }
 
 DEFAULT_KEYBINDS.BindUtility = {
-    ["BindPopup"] = { Key = "K", Modifiers = { "LShift" } },
-    ["BindTo"] = { Key = "B", Modifiers = { "LShift" } },
+    ["BindPopup"] = { Key = "K", Modifiers = { "SHIFT" } },
+    ["BindTo"] = { Key = "B", Modifiers = { "SHIFT" } },
     ["Unbind"] = { Key = "U" },
-    ["Snap"] = { Key = "S", Modifiers = { "LCtrl" } },
+    ["Snap"] = { Key = "S", Modifiers = { "CTRL" } },
 }
 
 KEYBIND_MODULE_RENDER_ORDER = {
@@ -178,13 +179,8 @@ end
 --- @param e SimplifiedInputEvent|EclLuaKeyInputEvent
 function KeybindHelpers.ParseInputToCharInput(e)
     local isShift = false
-    if type(e.Modifiers) ~= "table" then
-        local mask = e.Modifiers or 0
-        isShift = ((mask & Enums.SDLKeyModifier.LShift) ~= 0) or ((mask & Enums.SDLKeyModifier.RShift) ~= 0)
-    else
-        local mods = e.Modifiers or {}
-        isShift = (table.find(mods, "LShift") ~= nil) or (table.find(mods, "RShift") ~= nil)
-    end
+    local mask = LightCToArray(e.Modifiers) or {}
+    isShift = table.find(mask, "SHIFT") or table.find(mask, "RShift") or table.find(mask, "LShift")
 
     if isShift then
         return KeybindHelpers.ShiftKeyToChar[e.Key] or e.Key

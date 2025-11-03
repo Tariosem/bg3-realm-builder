@@ -402,20 +402,6 @@ function SceneMenu:SetupSelectablePopup()
     
     end)
 
-    local makeLsxBtn = AddSelectableButton(row:AddCell(), GetLoca("Export LSX"), function()
-        if not(self.selectedGuids and #self.selectedGuids > 0) then return end
-
-        for _, guid in ipairs(self.selectedGuids) do
-            local node = LSXHelpers.BuildTemplate(guid)
-            if not node then 
-                Error("Failed to build LSX for guid: " .. guid)
-                return
-            end
-            Debug(node:Stringify())
-        end
-    
-    end)
-
     self.EntityPopup:Open()
 end
 
@@ -486,19 +472,11 @@ function SceneMenu:SetupCollectionSelectablePopup()
         local targetKey = self.selectedTree
         if not targetKey or tree:IsLeaf(targetKey) then return end
 
-        local root = tree:Find(targetKey)
-        local templateRegion = LSXHelpers.BuildTemplatesRegionNode()
-        local guids = collectChildGuids(root, {})
-        for _, guid in ipairs(guids) do
-            local node = LSXHelpers.BuildTemplate(guid)
-            if node then
-                templateRegion:AppendChild(node)
-            else
-                Warning("Failed to build LSX for guid: " .. guid)
-            end
-        end
+        local childs = tree:Find(targetKey)
+        local guids = collectChildGuids(childs, {})
 
-        Debug(templateRegion:Stringify({ AutoFindRoot = true }))
+        local copy = EntityStore:GetExportCopy(guids)
+        TemplateExportMenu.new(copy)
     end)
 
     self.CollectionPopup:Open()

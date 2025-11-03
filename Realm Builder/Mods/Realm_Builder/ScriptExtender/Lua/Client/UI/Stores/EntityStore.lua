@@ -1,3 +1,4 @@
+--- @type table<string, EntityData>
 local EntityDatas = {}
 local BindDatas = {}
 local GuidToDisplayName = {}
@@ -17,6 +18,7 @@ EntityStore = {
 --- @field Guid string
 --- @field DisplayName string
 --- @field TemplateId string
+--- @field TemplateType 'item'|'character'|'scenery'
 --- @field Tags string[]
 --- @field Group string
 --- @field Note string
@@ -25,6 +27,8 @@ EntityStore = {
 --- @field Visible boolean
 --- @field Gravity boolean
 --- @field CanInteract boolean
+--- @field Movable boolean
+--- @field CanBeLooted boolean
 --- @field Persistent boolean
 --- @field LevelName string
 --- @field Path string[]?
@@ -53,7 +57,7 @@ EntityStore = {
 
 setmetatable(EntityStore, {
     __index = function(t, k)
-        return rawget(t, k) or EntityDatas[k]
+        return rawget(t, k) or EntityStore:GetStoredData(k)
     end,
     __newindex = function(t, k, v)
         if type(k) == "string" and type(v) ~= "function" then
@@ -63,6 +67,19 @@ setmetatable(EntityStore, {
         end
     end
 })
+
+local function templateType(guid)
+    local entity = Ext.Entity.Get(guid)
+    if CIsCharacter(guid) then
+        return "character"
+    elseif CIsItem(guid) then
+        return "item"
+    elseif entity and entity.Scenery then
+        return "scenery"
+    end
+
+    return "scenery"
+end
 
 function EntityStore:SetupServerListeners()
 
@@ -103,10 +120,6 @@ function EntityStore:SetupServerListeners()
     NetChannel.AttributeChanged:SetHandler(function(data)
         for _,guid in pairs(data.Guid) do
             if EntityDatas[guid] then
-                for k, v in pairs(data.Attributes) do
-                    EntityDatas[guid][k] = v
-                end
-
                 RBMenu.entityMenu:UpdateSelectableAlpha(guid)
             end
         end
@@ -166,7 +179,7 @@ function EntityStore:SubscribeToBindChanges(guid, callback)
     return { Unsubscribe = unsub, ID = sub }
 end
 ---@param guid string
----@param data EntityData|ServerEntityData
+---@param data EntityData
 function EntityStore:AddEntity(guid, data)
     EntityDatas[guid] = data
 
@@ -203,7 +216,31 @@ end
 --- @param guid string
 --- @return EntityData|nil
 function EntityStore:GetStoredData(guid)
-    return EntityDatas[guid]
+    if not EntityDatas[guid] then
+        return nil
+    end
+
+    local entity = Ext.Entity.Get(guid)
+    local data = EntityDatas[guid]
+    if entity then
+        data.CanInteract = entity.CanInteract and true or false
+        data.Visible = not entity.Invisibility
+        data.Gravity = not entity.GravityDisabled 
+        data.Movable = entity.CanMove and true or false
+        data.CanBeLooted = entity.CanBeLooted and true or false
+        
+
+        if CIsCharacter(guid) then
+            data.Gravity = nil
+            data.CanBeLooted = nil
+            data.Movable = nil
+        elseif entity.Scenery then
+            data.CanBeLooted = nil
+            data.Movable = nil
+        end
+    end
+
+    return data
 end
 
 function EntityStore:GetEntities(guids)
@@ -280,6 +317,11 @@ function EntityStore:SearchByNote(keyword)
     end)
 end
 
+
+---@param displayName string
+---@param guid GUIDSTRING
+---@param discardName string?
+---@return string|nil registered
 function EntityStore:RegisterDisplayName(displayName, guid, discardName)
     if not displayName or displayName == "" then
         return
@@ -358,6 +400,53 @@ end
 --- @return BindInfo|nil
 function EntityStore:GetBindInfo(guid)
     return BindDatas[guid] or {}
+end
+
+--- these attributes are not needed for export
+local uselessExportAttributes = {
+    "Path",
+    "Tags",
+    "Group",
+    "Note",
+    "IconTintColor",
+    "VisualPreset",
+    "Persistent",
+}
+
+--- @param entData EntityData
+function EntityStore:DeleteUselessExportAttributes(entData)
+    for _, attr in pairs(uselessExportAttributes) do
+        entData[attr] = nil
+    end
+end
+
+---@param guids GUIDSTRING[]
+---@return table<GUIDSTRING, EntityData>
+function EntityStore:GetExportCopy(guids)
+    local results = {}
+    for _, guid in pairs(guids) do
+        if EntityDatas[guid] then
+            local entity = Ext.Entity.Get(guid)
+            if not entity then goto continue end
+            local data = DeepCopy(self:GetStoredData(guid))
+            local template = Ext.Template.GetTemplate(TakeTailTemplate(data.TemplateId))
+            self:DeleteUselessExportAttributes(data)
+
+            data.Position = { CGetPosition(guid) }
+            data.Rotation = { CGetRotation(guid) }
+            data.Scale = { CGetScale(guid) }
+
+            data.Scale = math.min(data.Scale[1], data.Scale[2], data.Scale[3])
+            data.Icon = template.Icon
+            data.LevelName = entity.Level.LevelName
+
+            data.TemplateType = templateType(guid)
+            results[guid] = data
+
+            ::continue::
+        end
+    end
+    return results
 end
 
 EntityStore:SetupServerListeners()

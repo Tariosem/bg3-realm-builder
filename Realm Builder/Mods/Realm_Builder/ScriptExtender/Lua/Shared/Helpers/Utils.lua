@@ -31,8 +31,12 @@ function ComputeVersion64(major, minor, revision, build)
     revision = tonumber(revision) or 0
     build = tonumber(build) or 0
 
-    local version = major << 48 | minor << 32 | revision << 16 | build
-    return string.format("%d", math.floor(tonumber(version) or 0))
+    local version = (major & 0xFF) << 55
+        | (minor & 0xFF) << 47
+        | (revision & 0xFFFF) << 31
+        | (build & 0x7FFFFFFF)
+
+    return string.format("%d", version)
 end
 
 ---@param version64 string|number
@@ -42,10 +46,11 @@ end
 ---@return number build
 function ParseVersion64(version64)
     local versionNum = tonumber(version64) or 0
-    local major = (versionNum >> 48) & 0xFFFF
-    local minor = (versionNum >> 32) & 0xFFFF
-    local revision = (versionNum >> 16) & 0xFFFF
-    local build = versionNum & 0xFFFF
+    local major = (versionNum >> 55) & 0xFF
+    local minor = (versionNum >> 47) & 0xFF
+    local revision = (versionNum >> 31) & 0xFFFF
+    local build = versionNum & 0x7FFFFFFF
+
     return major, minor, revision, build
 end
 

@@ -94,6 +94,21 @@ function KeybindManager:Bind(module, eventName, key, modifiers)
         --Warning("Invalid key")
         return false
     end
+    modifiers = modifiers or {}
+
+    key = tostring(key):upper()
+    for i=#modifiers,1,-1 do
+        local mod = modifiers[i]
+        if not Enums.ModfierToPresentation[mod] then
+            Warning("Invalid modifier: " .. tostring(mod))
+            table.remove(modifiers, i)
+        end
+    end
+
+    if not Enums.InputCodeToPresentation[key] then
+        --Warning("Invalid key code: " .. tostring(key))
+        return false
+    end
 
     if not self.Events[module] or not self.Events[module][eventName] then
         --Warning("Event not registered: " .. module .. ":" .. eventName)

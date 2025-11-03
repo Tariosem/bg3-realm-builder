@@ -734,7 +734,9 @@ function VisualTab:RenderLightEntity(node, component, compIndex)
 
     local function GetLiveLightEntity()
         local entity = Ext.Entity.Get(self.guid)
-        if not entity.Effect then return nil end
+        if not entity or not entity.Effect or not entity.Effect.Timeline or not entity.Effect.Timeline.Components[compIndex] or not entity.Effect.Timeline.Components[compIndex].LightEntity then
+            return nil
+        end
         return entity.Effect.Timeline.Components[compIndex].LightEntity.Light
     end
 
@@ -925,7 +927,7 @@ function VisualTab:RenderLightComponent(node, component, compIndex)
             local overrideEntityCheck = colorNode:AddCheckbox(GetLoca("Override Entity Color"), lComp.OverrideLightTemplateColor)
             overrideEntityCheck.OnChange = function(checkbox)
                 local entity = Ext.Entity.Get(self.guid)
-                if not entity.Effect then return end
+                if not entity or not entity.Effect then return end
                 entity.Effect.Timeline.Components[compIndex].OverrideLightTemplateColor = checkbox.Checked
                 saveLightProperty(overrideKey, "OverrideLightTemplateColor", checkbox.Checked)
             end
@@ -933,7 +935,7 @@ function VisualTab:RenderLightComponent(node, component, compIndex)
 
             self.updateFuncs[overrideKey] = function()
                 local entity = Ext.Entity.Get(self.guid)
-                if not entity.Effect then return end
+                if not entity or not entity.Effect then return end
                 if overrideEntityCheck then
                     overrideEntityCheck.Checked = entity.Effect.Timeline.Components[compIndex].OverrideLightTemplateColor
                 end
@@ -944,7 +946,7 @@ function VisualTab:RenderLightComponent(node, component, compIndex)
             colorPicker.Color = currentColor
             colorPicker.OnChange = function(picker)
                 local entity = Ext.Entity.Get(self.guid)
-                if not entity.Effect then return end
+                if not entity or not entity.Effect then return end
                 local frames = entity.Effect.Timeline.Components[compIndex].Properties[propName].Frames
                 local colorValue = {picker.Color[1], picker.Color[2], picker.Color[3], picker.Color[4]}
                 VisualHelpers.ChangeFrames(frames, colorValue, true)
@@ -953,7 +955,7 @@ function VisualTab:RenderLightComponent(node, component, compIndex)
 
             colorResetButton.OnClick = function(sel, updateInit)
                 local entity = Ext.Entity.Get(self.guid)
-                if not entity.Effect then return end
+                if not entity or not entity.Effect then return end
                 local component = entity.Effect.Timeline.Components[compIndex]
                 local frames = component.Properties[propName].Frames
 
@@ -975,7 +977,7 @@ function VisualTab:RenderLightComponent(node, component, compIndex)
 
             self.updateFuncs[key] = function()
                 local entity = Ext.Entity.Get(self.guid)
-                if not entity.Effect then return end
+                if not entity or not entity.Effect then return end
                 local frames = entity.Effect.Timeline.Components[compIndex].Properties[propName].Frames
                 if frames and frames[1] and frames[1].Color and colorPicker then
                     local colorValue = frames[1].Color
@@ -1018,7 +1020,7 @@ function VisualTab:RenderLightComponent(node, component, compIndex)
 
                 sliderA.OnChange = function(slider)
                     local entity = Ext.Entity.Get(self.guid)
-                    if not entity.Effect then return end
+                    if not entity or not entity.Effect then return end
                     local keyFrames = entity.Effect.Timeline.Components[compIndex].Properties[propName].KeyFrames
                     for keyFrameIndex, keyFrame in ipairs(keyFrames) do
                         VisualHelpers.ChangeABCDFrames(keyFrame.Frames, sliderA.Value[1], sliderB.Value[1], sliderC.Value[1], sliderD.Value[1])
@@ -1034,7 +1036,7 @@ function VisualTab:RenderLightComponent(node, component, compIndex)
 
                 valueResetButton.OnClick = function(sel, updateInit)
                     local entity = Ext.Entity.Get(self.guid)
-                    if not entity.Effect then return end
+                    if not entity or not entity.Effect then return end
                     local keyFrames = entity.Effect.Timeline.Components[compIndex].Properties[propName].KeyFrames
                     if updateInit then
                         initValue = {keyFrames[1].Frames[1].A, keyFrames[1].Frames[1].B, keyFrames[1].Frames[1].C, keyFrames[1].Frames[1].D}
@@ -1053,7 +1055,7 @@ function VisualTab:RenderLightComponent(node, component, compIndex)
 
                 setTo0Button.OnClick = function()
                     local entity = Ext.Entity.Get(self.guid)
-                    if not entity.Effect then return end
+                    if not entity or not entity.Effect then return end
                     local keyFrames = entity.Effect.Timeline.Components[compIndex].Properties[propName].KeyFrames
                     for keyFrameIndex, keyFrame in ipairs(keyFrames) do
                         VisualHelpers.ChangeABCDFrames(keyFrame.Frames, 0, 0, 0, 0)
@@ -1069,7 +1071,7 @@ function VisualTab:RenderLightComponent(node, component, compIndex)
 
                 self.updateFuncs[key] = function()
                     local entity = Ext.Entity.Get(self.guid)
-                    if not entity.Effect then return end
+                    if not entity or not entity.Effect then return end
                     local keyFrames = entity.Effect.Timeline.Components[compIndex].Properties[propName].KeyFrames
                     if keyFrames and keyFrames[1] and keyFrames[1].Frames and keyFrames[1].Frames[1] and sliderA then
                         local frame = keyFrames[1].Frames[1]
@@ -1095,14 +1097,14 @@ function VisualTab:RenderLightComponent(node, component, compIndex)
                 local overrideCheck = valueNode:AddCheckbox(GetLoca(boolName), lComp[boolName] or false)
                 overrideCheck.OnChange = function(checkbox)
                     local entity = Ext.Entity.Get(self.guid)
-                    if not entity.Effect then return end
+                    if not entity or not entity.Effect then return end
                     entity.Effect.Timeline.Components[compIndex][boolName] = checkbox.Checked
                     saveLightProperty(overrideKey, boolName, checkbox.Checked)
                 end
 
                 self.updateFuncs[overrideKey] = function()
                     local entity = Ext.Entity.Get(self.guid)
-                    if not entity.Effect then return end
+                    if not entity or not entity.Effect then return end
                     if overrideCheck then
                         overrideCheck.Checked = entity.Effect.Timeline.Components[compIndex][boolName]
                     end
@@ -1110,7 +1112,7 @@ function VisualTab:RenderLightComponent(node, component, compIndex)
 
                 resetBoolFunc = function()
                     local entity = Ext.Entity.Get(self.guid)
-                    if not entity.Effect then return end
+                    if not entity or not entity.Effect then return end
                     local component = entity.Effect.Timeline.Components[compIndex]
                     component[boolName] = initBool
                     overrideCheck.Checked = initBool
@@ -1129,7 +1131,7 @@ function VisualTab:RenderLightComponent(node, component, compIndex)
             end
             valueSlider.OnChange = function(slider)
                 local entity = Ext.Entity.Get(self.guid)
-                if not entity.Effect then return end
+                if not entity or not entity.Effect then return end
                 local keyFrames = entity.Effect.Timeline.Components[compIndex].Properties[propName].KeyFrames
                 for keyFrameIndex, keyFrame in ipairs(keyFrames) do
                     VisualHelpers.ChangeFrames(keyFrame.Frames, slider.Value[1])
@@ -1139,7 +1141,7 @@ function VisualTab:RenderLightComponent(node, component, compIndex)
 
             valueResetButton.OnClick = function(sel, updateInit)
                 local entity = Ext.Entity.Get(self.guid)
-                if not entity.Effect then return end
+                if not entity or not entity.Effect then return end
                 local keyFrames = entity.Effect.Timeline.Components[compIndex].Properties[propName].KeyFrames
 
                 if updateInit then
@@ -1161,7 +1163,7 @@ function VisualTab:RenderLightComponent(node, component, compIndex)
 
             self.updateFuncs[key] = function()
                 local entity = Ext.Entity.Get(self.guid)
-                if not entity.Effect then return end
+                if not entity or not entity.Effect then return end
                 local keyFrames = entity.Effect.Timeline.Components[compIndex].Properties[propName].KeyFrames
                 if keyFrames and keyFrames[1] and keyFrames[1].Frames and keyFrames[1].Frames[1] and valueSlider then
                     local frame = keyFrames[1].Frames[1]
@@ -1211,7 +1213,7 @@ function VisualTab:RenderParticleSystemComponent(node, component, compIndex)
             slider.UserData.ResetButton.Visible = false
             slider.OnChange = function(slider)
                 local entity = Ext.Entity.Get(self.guid)
-                if not entity.Effect then return end
+                if not entity or not entity.Effect then return end
                 local liveComponent = entity.Effect.Timeline.Components[compIndex]
                 liveComponent[propName] = slider.Value[1]
                 saveParticleProperty(key, propName, slider.Value[1])
@@ -1219,7 +1221,7 @@ function VisualTab:RenderParticleSystemComponent(node, component, compIndex)
 
             valueResetButton.OnClick = function(sel, updateInit)
                 local entity = Ext.Entity.Get(self.guid)
-                if not entity.Effect then return end
+                if not entity or not entity.Effect then return end
                 local liveComponent = entity.Effect.Timeline.Components[compIndex]
 
                 if updateInit then
@@ -1235,7 +1237,7 @@ function VisualTab:RenderParticleSystemComponent(node, component, compIndex)
             self.resetFuncs[key] = valueResetButton.OnClick
             self.updateFuncs[key] = function()
                 local entity = Ext.Entity.Get(self.guid)
-                if not entity.Effect then return end
+                if not entity or not entity.Effect then return end
                 local liveComponent = entity.Effect.Timeline.Components[compIndex]
                 if liveComponent[propName] and slider then
                     slider.Value = {liveComponent[propName], liveComponent[propName], liveComponent[propName], liveComponent[propName]}
@@ -1257,7 +1259,7 @@ function VisualTab:RenderParticleSystemComponent(node, component, compIndex)
             colorEdit.Color = currentValue
             colorEdit.OnChange = function(picker)
                 local entity = Ext.Entity.Get(self.guid)
-                if not entity.Effect then return end
+                if not entity or not entity.Effect then return end
                 local liveComponent = entity.Effect.Timeline.Components[compIndex]
                 local colorValue = {picker.Color[1], picker.Color[2], picker.Color[3], picker.Color[4]}
                 liveComponent[propName] = colorValue
@@ -1266,7 +1268,7 @@ function VisualTab:RenderParticleSystemComponent(node, component, compIndex)
 
             valueResetButton.OnClick = function(sel, updateInit)
                 local entity = Ext.Entity.Get(self.guid)
-                if not entity.Effect then return end
+                if not entity or not entity.Effect then return end
                 local liveComponent = entity.Effect.Timeline.Components[compIndex]
 
                 if updateInit then
@@ -1282,7 +1284,7 @@ function VisualTab:RenderParticleSystemComponent(node, component, compIndex)
             self.resetFuncs[key] = valueResetButton.OnClick
             self.updateFuncs[key] = function()
                 local entity = Ext.Entity.Get(self.guid)
-                if not entity.Effect then return end
+                if not entity or not entity.Effect then return end
                 local liveComponent = entity.Effect.Timeline.Components[compIndex]
                 if liveComponent[propName] and colorEdit then
                     local col = liveComponent[propName]

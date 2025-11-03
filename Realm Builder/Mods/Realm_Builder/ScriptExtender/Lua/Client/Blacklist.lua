@@ -1,7 +1,6 @@
 local TRAP_NOTE = "Save before trap spawns to avoid instant damage"
 local WAYPOINT_NOTE = "Can't spawn"
 
-
 ITEM_BLACKLIST = {
     ["PUZ_UND_LavaBubble-30589104-ccc4-459f-8fa0-84ddb0424f6c"] = TRAP_NOTE,
     ["PUZ_GEN_Trap_Mine_A_Copper_A-20a48d55-8219-4f5c-ba92-565ef8a90e03"] = TRAP_NOTE,

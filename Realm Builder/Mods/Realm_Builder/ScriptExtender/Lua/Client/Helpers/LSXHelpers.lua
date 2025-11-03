@@ -49,77 +49,96 @@ function LSXHelpers.BuildLayerListNode(levelName)
     layerNode:AppendChild(LSXHelpers.ChildrenNode())
         :AppendChild(LSXNode.new("node", { id = "Layers" }))
         :AppendChild(LSXHelpers.ChildrenNode())
-        :AppendChild(LSXNode.new("node", { id = "Object", key = "MapKey" }))
+        :AppendChild(LSXNode.new("node", { id = "Object", key = "MapKey" })):SetAttrOrder({ "id", "key" })
         :AppendChild(LSXHelpers.AttrNode("MapKey", "FixedString", levelName))
 
     return layerNode
 end
 
---- build a game object LSX node for an entity GUID
+--- @param data EntityData
+--- @return LSXNode[]
+local function buildItemAttrs(data)
+    local attrs = {
+        LSXHelpers.AttrNode("CanBeMoved", "bool", data.Movable and true or false),
+        LSXHelpers.AttrNode("IsInteractionDisabled", "bool", data.CanInteract and false or true),
+        LSXHelpers.AttrNode("GravityType", "uint8", data.DisableGravityUntilMoved and 2 or data.Gravity and 0 or 1), -- 0 = Enabled, 1 = Disabled, 2 = Disabled until moved
+        LSXHelpers.AttrNode("CanBePickedUp", "bool", data.CanBeLooted and true or false),
+    }
+
+    return attrs
+end
+
+local function buildCharacterAttrs(entity)
+    local attrs = {
+        LSXHelpers.AttrNode("CanFight", "bool", false), -- default to false for now
+    }
+
+    return attrs
+end
+
+--- @type table<string, fun(entity:EntityData):LSXNode[]>
+local uinqueAttrs = {
+    item = buildItemAttrs,
+    character = buildCharacterAttrs,
+}
+
+--- build a game object LSX node for EntityData
 --- @param guid any
---- @param templateType? "item"|"character"|"scenery"
+--- @param internalName string
+--- @param displayNameHandle string?
+--- @param entData EntityData
 --- @return LSXNode?
-function LSXHelpers.BuildTemplate(guid, templateType)
-    local entity = Ext.Entity.Get(guid) --[[@as EntityHandle]]
-    local curLevel = entity.Level.LevelName
-    local propData = EntityStore:GetStoredData(guid)
+function LSXHelpers.BuildTemplate(guid, entData, internalName, displayNameHandle)
+    local curLevel = entData.LevelName
+    local templateType = entData.TemplateType
 
-    if not templateType then
-        if CIsItem(guid) then
-            templateType = "item"
-        elseif CIsCharacter(guid) then
-            templateType = "character"
-        elseif entity.Scenery then
-            templateType = "scenery"
-        else
-            templateType = "item"
-        end
-    end
+    if not templateType then return end
 
-    local isItem = templateType == "item"
-    local isCharacter = templateType == "character"
-    local isScenery = templateType == "scenery"
-
-    if not propData then
-        propData = {
-            TemplateId = "",
-            DisplayName = GetName(guid),
-        }
-    end
-
-    local gameObjectNode = LSXNode.new("node", { id = "GameObjects" })
+    local templateRegion = LSXHelpers.BuildTemplatesRegionNode()
+    local gameObjectNode = templateRegion:AppendChild(LSXNode.new("node", { id = "GameObjects" }))
 
     local basicAttrs = {
         LSXHelpers.AttrNode("MapKey", "FixedString", guid),
-        LSXHelpers.AttrNode("Name", "LSString", propData.DisplayName or TrimTail(propData.TemplateId, 37)),
+        LSXHelpers.AttrNode("Name", "LSString", internalName),
         LSXHelpers.AttrNode("LevelName", "FixedString", curLevel),
         LSXHelpers.AttrNode("Type", "FixedString", templateType),
-        LSXHelpers.AttrNode("PartentTemplateId", "FixedString", TakeTailTemplate(propData.TemplateId or "")),
-        LSXHelpers.AttrNode("TemplateName", "FixedString", TakeTailTemplate(propData.TemplateId)),
-        isItem and LSXHelpers.AttrNode("GravityType", "uint8",
-            entity.GravityDisabled and 1 or entity.GravityDisabledUntilMoved and 2 or 0) or nil,
-        -- 0 = Enabled, 1 = Disabled, 2 = Disabled until moved
+        LSXHelpers.AttrNode("ParentTemplateId", "FixedString", TakeTailTemplate(entData.TemplateId or "")),
+        LSXHelpers.AttrNode("TemplateName", "FixedString", TakeTailTemplate(entData.TemplateId)),
+        LSXHelpers.AttrNode("Flag", "uint8", entData.Flag or 1),
     }
+    if displayNameHandle then
+        table.insert(basicAttrs, LSXHelpers.AttrNode("DisplayName", "TranslatedString", displayNameHandle, 1))
+    end
+
+    if uinqueAttrs[templateType] then
+        local customAttrs = uinqueAttrs[templateType](entData) --[[@as LSXNode[] ]]
+        for _, attrNode in ipairs(customAttrs) do
+            table.insert(basicAttrs, attrNode)
+        end
+    end
 
     gameObjectNode:AppendChildren(basicAttrs)
 
     local secondChidren = gameObjectNode:AppendChild(LSXHelpers.ChildrenNode())
     local transformNode = secondChidren:AppendChild(LSXNode.new("node", { id = "Transform" }))
 
-    local pos = { CGetPosition(guid) }
-    local rot = { CGetRotation(guid) }
-    local scale = { CGetScale(guid) }
-    local smallestScale = math.min(scale[1], scale[2], scale[3])
+    local pos = entData.Position or { CGetPosition(guid) }
+    local rot = entData.Rotation or { CGetRotation(guid) }
+    local scale = entData.Scale or ({ CGetScale(guid) })[1]
 
     local transformAttrs = {
         LSXHelpers.AttrNode("Position", "fvec3", pos),
         LSXHelpers.AttrNode("RotationQuat", "fvec4", rot),
-        LSXHelpers.AttrNode("Scale", "float", smallestScale),
+        LSXHelpers.AttrNode("Scale", "float", scale),
     }
 
     transformNode:AppendChildren(transformAttrs)
 
     secondChidren:AppendChild(LSXHelpers.BuildLayerListNode(curLevel))
+
+    if templateType == "character" then
+        secondChidren:AppendChild(LSXNode.new("node", { id = "LocomotionParams" }))
+    end
 
     return gameObjectNode
 end

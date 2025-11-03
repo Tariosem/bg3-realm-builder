@@ -628,6 +628,7 @@ function GetCamera()
     for _, entity in ipairs(Entities) do
         if entity.Camera.Active and entity.Camera.AcceptsInput then
             returnCamera = entity
+            break
         elseif entity.Camera.Active then
             table.insert(allActiveCameras, entity)
         end

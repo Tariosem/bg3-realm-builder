@@ -103,7 +103,7 @@ NetChannel.GetTemplate:SetRequestHandler(function(data, userID)
 
     local template = Osi.GetTemplate(guid)
 
-    return {Success = true, Template = template}
+    return {Template = template}
 end)
 
 NetChannel.SpawnPreview:SetRequestHandler(function(data, userID)

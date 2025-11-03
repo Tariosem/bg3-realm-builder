@@ -92,14 +92,14 @@ end
 --- @field AvoidRecursion boolean (default: true)
 
 --- @class LSXNode
---- @field __name string
---- @field __attributes table<string, any>
---- @field __children LSXNode[]
---- @field __parent LSXNode|nil
---- @field __comments string[]
---- @field __innerText string|nil
---- @field __attrOrder string[]|nil
---- @field __stringify fun(self: LSXNode, stringifyOpts: LSXStringifyOptions): string
+--- @field private __name string
+--- @field private __attributes table<string, any>
+--- @field private __children LSXNode[]
+--- @field private __parent LSXNode|nil
+--- @field private __comments string[]
+--- @field private __innerText string|nil
+--- @field private __attrOrder string[]|nil
+--- @field private __stringify fun(self: LSXNode, stringifyOpts: LSXStringifyOptions): string
 --- @field Stringify fun(self: LSXNode, stringifyOpts?: LSXStringifyOptions): string
 --- @field Unserialize fun(xmlString: string): LSXNode?
 --- @field SetInnerText fun(self: LSXNode, text: string): LSXNode -- returns self

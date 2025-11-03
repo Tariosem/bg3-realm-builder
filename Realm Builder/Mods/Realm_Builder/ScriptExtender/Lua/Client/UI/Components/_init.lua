@@ -12,4 +12,5 @@ RequireFiles("Client/UI/Components/", {
     "CustomEffectTab",
     "StatsTab",
     "MaterialPresetsMenu",
+    "MapExportMenu",
 })

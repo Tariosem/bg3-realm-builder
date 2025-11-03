@@ -132,7 +132,7 @@ local function getPresentation(keybind)
     local parts = {}
     if keybind.Modifiers then
         for _, mod in pairs(keybind.Modifiers) do
-            table.insert(parts, Enums.InputCodeToPresentation[mod] or mod)
+            table.insert(parts, Enums.ModfierToPresentation[mod] or mod)
         end
     end
     table.insert(parts, Enums.InputCodeToPresentation[keybind.Key] or keybind.Key)
@@ -187,7 +187,7 @@ function KeybindMenu:RenderEvent(row, moduleName, eventName, module, registry)
 
     local keybindText = getPresentation(initKeybind)
 
-    local keyButton = keyCell:AddSelectable(keybindText) --[[@as ExtuiSelectable]]
+    local keyButton = keyCell:AddButton(keybindText) --[[@as ExtuiSelectable]]
 
     applyButtonStyle(keyButton)
 
@@ -199,7 +199,7 @@ function KeybindMenu:RenderEvent(row, moduleName, eventName, module, registry)
                 if conflictModule and conflictEvent then
                     keyButton.Label = "Conflict with " .. conflictModule .. " : " .. conflictEvent
                 else
-                    keyButton.Label = "Invalid Key !"
+                    keyButton.Label = "Invalid Keybind !"
                 end
                 keyButton:SetColor("Text", HexToRGBA("FFFF2424"))
                 Timer:After(5000, function()
@@ -212,7 +212,6 @@ function KeybindMenu:RenderEvent(row, moduleName, eventName, module, registry)
             keyButton.Label = getPresentation(newKeybind)
             keyButton.Disabled = false
         end)
-        keyButton.Selected = false
     end
 
     local resetButton = AddSelectableButton(resetCell, "Reset", function()

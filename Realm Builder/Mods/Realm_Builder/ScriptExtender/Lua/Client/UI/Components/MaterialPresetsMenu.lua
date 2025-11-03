@@ -61,17 +61,45 @@ local function colorPresetComparator(a, b, aName, bName)
     end
 end
 
-local function setWarningBorder(extui)
+function SetWarningBorder(extui)
     extui:SetColor("Text", HexToRGBA("FFFF0000"))
     extui:SetColor("Border", HexToRGBA("FFFF4444"))
 end
 
-local function clearWarningBorder(extui)
+function ClearWarningBorder(extui)
     extui:SetColor("Text", HexToRGBA("FFFFFFFF"))
     extui:SetColor("Border", HexToRGBA("FF888888"))
 end
 
-local function checkNameValidity(name)
+function ApplyWarningButtonStyle(button)
+    button:SetColor("Text", HexToRGBA("FFFF0000"))
+    button:SetColor("Border", HexToRGBA("FFFF4444"))
+    button:SetColor("Button", HexToRGBA("FF470000"))
+    button:SetColor("ButtonHovered", HexToRGBA("FF700000"))
+    button:SetColor("ButtonActive", HexToRGBA("FF900000"))
+end
+
+function ApplyOkButtonStyle(button)
+    button:SetColor("Text", HexToRGBA("FFFFFFFF"))
+    button:SetColor("Border", HexToRGBA("FF888888"))
+    button:SetColor("Button", HexToRGBA("FF004747"))
+    button:SetColor("ButtonHovered", HexToRGBA("FF007070"))
+    button:SetColor("ButtonActive", HexToRGBA("FF009090"))
+end
+
+function ApplyWarningTooltipStyle(tooltip)
+    tooltip:SetColor("Text", HexToRGBA("FFFF0000"))
+    tooltip:SetColor("Border", HexToRGBA("FFFF4444"))
+    tooltip:SetColor("WindowBg", HexToRGBA("FF220000"))
+end
+
+function ApplyOkTooltipStyle(tooltip)
+    tooltip:SetColor("Text", HexToRGBA("FFFFFFFF"))
+    tooltip:SetColor("Border", HexToRGBA("FF888888"))
+    tooltip:SetColor("WindowBg", HexToRGBA("FF222222"))
+end
+
+function CheckNameValidity(name)
     -- simple check: no special characters
     if name:match("[^%w_%s%-]") then
         return false
@@ -150,13 +178,13 @@ function MaterialPresetsMenu:SetupWorkspace(parent, ccaModPack, notRenderImport)
                 if presetHeaders[folderName] then
                     local header = presetHeaders[folderName]
                     GuiAnim.Vibrate(header)
-                    setWarningBorder(header)
+                    SetWarningBorder(header)
                     GuiAnim.PulseBorder(header, 2)
                 end
                 return false, "folder '" .. folderName .. "' has no export type defined"
             else
                 if presetHeaders[folderName] then
-                    clearWarningBorder(presetHeaders[folderName])
+                    ClearWarningBorder(presetHeaders[folderName])
                 end
             end
         end
@@ -269,25 +297,13 @@ function MaterialPresetsMenu:SetupWorkspace(parent, ccaModPack, notRenderImport)
         local exportable, reason = checkIfExportable()
         if not exportable then
             refreshExport()
-            exportTooltip:SetColor("Text", HexToRGBA("FFFF0000"))
-            exportTooltip:SetColor("Border", HexToRGBA("FFFF4444"))
-            exportTooltip:SetColor("WindowBg", HexToRGBA("FF220000"))
+            ApplyWarningTooltipStyle(exportTooltip)
             exportTT.Label = "Cannot export material presets: " .. reason
-            exportBtn:SetColor("Text", HexToRGBA("FFFF0000"))
-            exportBtn:SetColor("Border", HexToRGBA("FFFF4444"))
-            exportBtn:SetColor("Button", HexToRGBA("FF470000"))
-            exportBtn:SetColor("ButtonHovered", HexToRGBA("FF700000"))
-            exportBtn:SetColor("ButtonActive", HexToRGBA("FF900000"))
+            ApplyWarningButtonStyle(exportBtn)
         else
-            exportTooltip:SetColor("Text", HexToRGBA("FFFFFFFF"))
-            exportTooltip:SetColor("Border", HexToRGBA("FF888888"))
-            exportTooltip:SetColor("WindowBg", HexToRGBA("FF222222"))
+            ApplyOkTooltipStyle(exportTooltip)
             exportTT.Label = "Click: Export material presets to Realm_Builder/CC_Mods/\nRight Click: Save to CCA Cache for Importing Later"
-            exportBtn:SetColor("Text", HexToRGBA("FF00CCCC"))
-            exportBtn:SetColor("Border", HexToRGBA("FF2EB5B5"))
-            exportBtn:SetColor("Button", HexToRGBA("FF004747"))
-            exportBtn:SetColor("ButtonHovered", HexToRGBA("FF007070"))
-            exportBtn:SetColor("ButtonActive", HexToRGBA("FF009090"))
+            ApplyOkButtonStyle(exportBtn)
         end
     end
 
@@ -389,10 +405,10 @@ function MaterialPresetsMenu:RenderFolderRow(presetTab, folderName, openedFolder
 
     folderColorBox:SetStyle("FrameBorderSize", 2)
     if folderDef.ExportType then
-        clearWarningBorder(presetHeaders[folderName])
+        ClearWarningBorder(presetHeaders[folderName])
         setRowColor(folderRow, exportColor)
     else
-        setWarningBorder(presetHeaders[folderName])
+        SetWarningBorder(presetHeaders[folderName])
         setRowColor(folderRow, disabledColor)
     end
 
@@ -462,7 +478,7 @@ function MaterialPresetsMenu:RenderFolderRow(presetTab, folderName, openedFolder
             folderHeader.Label = makeFolderDisplay(openedFolders[folderName], folderName, folderDef.ExportType)
             if folderDef.ExportType then
                 --setRowColor(folderRow, exportColor)
-                clearWarningBorder(presetHeaders[newName])
+                ClearWarningBorder(presetHeaders[newName])
             end
         end,
     }
@@ -525,20 +541,20 @@ function MaterialPresetsMenu:RenderExportSettingPanel(parent, settings)
     modNameInput:SetStyle("FrameBorderSize", 2)
 
     modNameInput.OnChange = Debounce(50, function()
-        if checkNameValidity(modNameInput.Text) then
-            clearWarningBorder(modNameInput)
+        if CheckNameValidity(modNameInput.Text) then
+            ClearWarningBorder(modNameInput)
             settings.ModName = modNameInput.Text
         else
-            setWarningBorder(modNameInput)
+            SetWarningBorder(modNameInput)
             settings.ModName = ""
             GuiAnim.PulseBorder(modNameInput, 2)
         end
     end)
     modNameInput.Text = settings.ModName or ""
     if modNameInput.Text == "" then
-        setWarningBorder(modNameInput)
+        SetWarningBorder(modNameInput)
     else
-        clearWarningBorder(modNameInput)
+        ClearWarningBorder(modNameInput)
     end
     local authorNameText = parent:AddText("Author Name:")
     local authorNameInput = parent:AddInputText("##MaterialPresetAuthorName")
@@ -551,21 +567,21 @@ function MaterialPresetsMenu:RenderExportSettingPanel(parent, settings)
     authorNameInput.Hint = "Enter Author Name..."
     authorNameInput.OnChange = Debounce(50, function()
         local newName = authorNameInput.Text
-        if not checkNameValidity(newName) then
-            setWarningBorder(authorNameInput)
+        if not CheckNameValidity(newName) then
+            SetWarningBorder(authorNameInput)
             settings.Author = ""
             GuiAnim.PulseBorder(authorNameInput, 2)
         else
-            clearWarningBorder(authorNameInput)
+            ClearWarningBorder(authorNameInput)
             settings.Author = authorNameInput.Text
         end
     end)
     authorNameInput.Text = settings.Author or ""
 
     if authorNameInput.Text == "" then
-        setWarningBorder(authorNameInput)
+        SetWarningBorder(authorNameInput)
     else
-        clearWarningBorder(authorNameInput)
+        ClearWarningBorder(authorNameInput)
     end
 
     local descriptionText = parent:AddText("Description:")
@@ -586,15 +602,15 @@ function MaterialPresetsMenu:RenderExportSettingPanel(parent, settings)
         for _, var in pairs(versionInput.Value) do
             if not tonumber(var) or var < 0 then
                 valid = false
-                setWarningBorder(versionInput)
+                SetWarningBorder(versionInput)
                 GuiAnim.PulseBorder(versionInput, 2)
             end
         end
-        if valid then clearWarningBorder(versionInput) end
+        if valid then ClearWarningBorder(versionInput) end
         settings.Version = { versionInput.Value[1], versionInput.Value[2], versionInput.Value[3], versionInput.Value[4] }
     end
     versionInput.Value = { settings.Version[1], settings.Version[2], settings.Version[3], settings.Version[4] }
-    clearWarningBorder(versionInput)
+    ClearWarningBorder(versionInput)
 
     local function refresh()
         modNameInput.Text = settings.ModName or ""
@@ -848,14 +864,14 @@ function MaterialPresetsMenu:RenderFolderManagePopup(popup, folderName, folderSe
     renameInput:SetColor("Border", HexToRGBA("FF888888"))
     renameInput.OnChange = Debounce(50, function()
         local newName = renameInput.Text
-        if not checkNameValidity(newName) then
-            setWarningBorder(renameInput)
+        if not CheckNameValidity(newName) then
+            SetWarningBorder(renameInput)
             GuiAnim.PulseBorder(renameInput, 2)
             return
         end
 
         if exportSettings.Folders[newName] and newName ~= folderName then
-            setWarningBorder(renameInput)
+            SetWarningBorder(renameInput)
             GuiAnim.PulseBorder(renameInput, 2)
 
             warnText.Visible = true
@@ -867,7 +883,7 @@ function MaterialPresetsMenu:RenderFolderManagePopup(popup, folderName, folderSe
             return
         end
 
-        clearWarningBorder(renameInput)
+        ClearWarningBorder(renameInput)
     end)
 
     local function rename() end
@@ -878,11 +894,11 @@ function MaterialPresetsMenu:RenderFolderManagePopup(popup, folderName, folderSe
         local newName = renameInput.Text
         if newName == folderName then return end
 
-        if not checkNameValidity(newName) then return end
+        if not CheckNameValidity(newName) then return end
 
         newName = newName:gsub("%s", "_")
         if exportSettings.Folders[newName] then
-            setWarningBorder(renameInput)
+            SetWarningBorder(renameInput)
             GuiAnim.PulseBorder(renameInput, 2)
             warnText.Visible = true
             Timer:After(1000, function(timerID)
@@ -1018,7 +1034,7 @@ function MaterialPresetsMenu:RenderExportPresetRow(parentTab, obj, uuid, onDelet
             obj.DisplayName = nameInput.Text
         end
     end
-    clearWarningBorder(nameInput)
+    ClearWarningBorder(nameInput)
 
     colorBox.OnChange = function()
         obj.UIColor = colorBox.Color
