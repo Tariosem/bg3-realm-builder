@@ -39,6 +39,7 @@ local function parseNumberText(numberStr)
     local levelMapValueTooltip = nil
     if numberStr:sub(1, #"LevelMapValue") == "LevelMapValue" then
         local statName = numberStr:match("LevelMapValue%((.-)%)")
+        local rest = numberStr:sub(#("LevelMapValue(" .. statName .. ")") + 1)
         local lmvObj = nil --[[@as ResourceLevelMap?]]
         if levelMapUuidCache[statName] then
             lmvObj = Ext.StaticData.Get(levelMapUuidCache[statName], "LevelMap")
@@ -98,7 +99,7 @@ local function parseNumberText(numberStr)
 
             end
         end
-        numberStr = GetLoca("<Progress with level>")
+        numberStr = GetLoca("<Progress with level>") .. rest
     end
        
     if numberStr:sub(1, 3) == "max" then

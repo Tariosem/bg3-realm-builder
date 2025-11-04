@@ -1325,7 +1325,7 @@ function MaterialPresetsMenu:__exportToMod(modPack, progressCallback)
             matPresetDefs[presetGuid] = presetType
 
             local internalName = modInternalName .. cheapName[presetType] .. internalNames[preset]
-            local presetNode = LSXHelpers.BuildMaterialPresetResourceNode(preset.Parameters, presetGuid, internalName)
+            local presetNode = ResourceHelpers.BuildMaterialPresetResourceNode(preset.Parameters, presetGuid, internalName)
 
             bank:AppendChild(presetNode)
 

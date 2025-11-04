@@ -4,6 +4,6 @@ RequireFiles("Client/Helpers/", {
     "CameraHelpers",
     "VisualHelpers",
     "PickingHelpers",
-    "LSXHelpers",
+    "LSXHelpers/__init",
     "PaperDoll"
 })

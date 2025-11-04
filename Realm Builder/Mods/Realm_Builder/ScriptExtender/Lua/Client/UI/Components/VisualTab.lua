@@ -6,6 +6,7 @@ local visualTabCache = {}
 --- @class VisualTab
 --- @field Materials MaterialTab[]
 --- @field new fun(guid: GUIDSTRING, displayName: string|nil, parent: ExtuiTreeParent|nil, templateName: string|nil): VisualTab
+--- @field FetchByGuid fun(guid: GUIDSTRING): VisualTab|nil
 VisualTab = {}
 VisualTab.__index = VisualTab
 
@@ -1910,6 +1911,29 @@ function VisualTab:CheckVisual()
     end
 
     return true
+end
+
+--- merge all modified material params from all materials in this tab
+--- @return RB_ParameterSet
+function VisualTab:ExportModifiedMaterialParams()
+    local exportedParams = {} --[[@as RB_ParameterSet ]]
+    for key, mat in pairs(self.Materials) do
+        local params = mat:ExportChanges()
+
+        for typeRef, paramSet in pairs(params) do
+            if not exportedParams[typeRef] then
+                exportedParams[typeRef] = {}
+            end
+            for paramName, value in pairs(paramSet) do
+                if not exportedParams[typeRef][paramName] then
+                    exportedParams[typeRef][paramName] = value
+                end
+            end
+        end
+        
+    end
+
+    return exportedParams
 end
 
 function VisualTab:OnDetach() end

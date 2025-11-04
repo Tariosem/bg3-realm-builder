@@ -1,0 +1,357 @@
+local lsattrNode = LSXHelpers.AttrNode
+ResourceHelpers = {}
+
+local function createParameterAttrNodes(paramObj, overrideValue)
+    local attrs = {}
+    for k, v in pairs(paramObj) do
+        local valueType = LSXHelpers.LSValueType(v)
+        if not valueType then
+            Warning("CustomMaterialProxy: Could not determine LSX value type for parameter '" ..
+                tostring(paramObj.ParameterName) .. "'. Skipping.")
+            return nil
+        end
+
+        local value = v
+        if k == "Value" and overrideValue then
+            value = #overrideValue == 1 and overrideValue[1] or overrideValue
+        end
+
+        local attr = LSXNode.new("attribute", {
+            id = k,
+            type = valueType,
+            value = value
+        })
+        attr:SetAttrOrder({ "id", "type", "value" })
+
+        table.insert(attrs, attr)
+    end
+    return attrs
+end
+
+---@param matRes ResourceMaterialResource
+---@param parameters table<number, table<string, number[]>>
+---@return LSXNode|nil
+local function createParameterNodes(matRes, parameters)
+    local paramNodes = {} --[[@as LSXNode[] ]]
+    local paramList = {
+        matRes.ScalarParameters,
+        matRes.Vector2Parameters,
+        matRes.Vector3Parameters,
+        matRes.VectorParameters,
+        matRes.Texture2DParameters,
+        matRes.VirtualTextureParameters
+    }
+    local indexToNodeName = {
+        [1] = "ScalarParameters",
+        [2] = "Vector2Parameters",
+        [3] = "Vector3Parameters",
+        [4] = "VectorParameters",
+        [5] = "Texture2DParameters",
+        [6] = "VirtualTextureParameters"
+    }
+
+    for i, params in pairs(paramList) do
+        for _, param in pairs(params) do
+            local node = LSXNode.new("node", { id = indexToNodeName[i] })
+            local paramName = param.ParameterName
+            local value = nil
+            if i < 5 then
+                value = parameters[i][paramName] or param.Value
+                if type(value) == "number" then
+                    value = { value }
+                end
+            end
+            local attrs = createParameterAttrNodes(param, value)
+            if not attrs then
+                Warning("CustomMaterialProxy: Could not create LSX attribute nodes for parameter '" ..
+                    tostring(paramName) .. "'. Skipping parameter.")
+            else
+                node:AppendChildren(attrs)
+                node:SortChildren(function(a, b) return a:GetAttribute("id") < b:GetAttribute("id") end)
+                table.insert(paramNodes, node)
+            end
+        end
+    end
+
+    return paramNodes
+end
+
+
+---@param params RB_ParameterSet
+---@param matName GUIDSTRING
+---@param customName string
+---@return LSXNode?
+function ResourceHelpers.BuildMaterialResource(params, matName, customName)
+    local root = LSXHelpers.new()
+    if not root then
+        Error("CustomMaterialProxy: Could not create LSXTableNode for export.")
+        return nil
+    end
+
+    local matRes = Ext.Resource.Get(matName, "Material") --[[@as ResourceMaterialResource]]
+    if not matRes then
+        Error("CustomMaterialProxy: Could not find origin material resource for '" ..
+            tostring(matName) .. "'. Cannot export to LSX.")
+        return nil
+    end
+
+    local resNode = root:AppendChild(LSXNode.new("region", { id = "MaterialBank" }))
+        :AppendChild(LSXNode.new("node", { id = "MaterialBank" }))
+        :AppendChild(LSXNode.new("children"))
+        :AppendChild(LSXNode.new("node", { id = "Resource" }))
+
+    local sourceFile = LSXHelpers.GetPathAfterData(matRes.SourceFile or "")
+    local baseAttr = {
+        lsattrNode("ID", "guid", customName or matName),
+        lsattrNode("Name", "LSString", "Custom Material"),
+        lsattrNode("SourceFile", "LSString", sourceFile),
+        lsattrNode("MaterialType", "uint8", matRes.MaterialType or 0),
+        lsattrNode("DiffusionProfileUUID", "FixedString", matRes.bUseDiffusionProfile or ""),
+    }
+    resNode:AppendChildren(baseAttr)
+    resNode:SortChildren(function(a, b) return a:GetAttribute("id") < b:GetAttribute("id") end)
+
+    local secondChildrenWrapper = LSXNode.new("children")
+    resNode:AppendChild(secondChildrenWrapper)
+    local paramNodes = createParameterNodes(matRes, params)
+    if paramNodes then
+        secondChildrenWrapper:AppendChildren(paramNodes)
+    end
+
+    return root
+end
+
+local function createPresetParamAttrNodes(parameterName, value)
+    local attrs = {}
+    local valueType = LSXHelpers.LSValueType(value)
+    local saveValue = #value == 1 and value[1] or value
+    if not valueType then
+        Warning("CustomMaterialProxy: Could not determine LSX value type for preset parameter '" ..
+            tostring(parameterName) .. "'. Skipping.")
+        return nil
+    end
+
+    attrs = {
+        lsattrNode("Color", LSValueType.bool,
+            parameterName:find("Color") ~= nil or parameterName:find("Colour") ~= nil),
+        lsattrNode("Custom", LSValueType.bool, false),
+        lsattrNode("Enabled", LSValueType.bool, true),
+        lsattrNode("Value", valueType, saveValue),
+        lsattrNode("Parameter", LSValueType.FixedString, parameterName),
+    }
+
+    return attrs
+end
+
+local function createPresetParameterNodes(matRes, parameters)
+    local paramNodes = {} --[[@as LSXNode[] ]]
+    for i, params in pairs(parameters) do
+        for paramName, value in pairs(params) do
+            local node = LSXNode.new("node", { id = PropTypeToField[i] })
+            local attrs = createPresetParamAttrNodes(paramName, value)
+            if not attrs then
+                Warning("CustomMaterialProxy: Could not create LSX attribute nodes for parameter '" ..
+                    tostring(paramName) .. "'. Skipping parameter.")
+            else
+                node:AppendChildren(attrs)
+                node:SortChildren(function(a, b) return a:GetAttribute("id") < b:GetAttribute("id") end)
+                table.insert(paramNodes, node)
+            end
+        end
+    end
+
+    return paramNodes
+end
+
+---@param parameters table<1|2|3|4, table<string, number[]>>
+---@param uuid GUIDSTRING
+---@param internalName string
+---@return LSXNode
+function ResourceHelpers.BuildMaterialPresetResourceNode(parameters, uuid, internalName)
+    local root = LSXNode.new("node", { id = "Resource" })
+
+    local baseAttr = {
+        lsattrNode("ID", LSValueType.FixedString, uuid),
+        lsattrNode("Name", LSValueType.LSString, internalName),
+        lsattrNode("Localized", LSValueType.bool, false),
+        lsattrNode("_OriginalFileVersion_", LSValueType.int64, "144115198813274414"),
+    }
+    root:AppendChildren(baseAttr)
+
+    root:SortChildren(function(a, b) return a:GetAttribute("id") < b:GetAttribute("id") end)
+
+    local childrenNode = root:AppendChild(LSXHelpers.ChildrenNode())
+
+    local presetsNode = childrenNode:AppendChild(LSXNode.new("node", { id = "Presets" }, {
+        lsattrNode("MaterialResource", LSValueType.FixedString, ""),
+    }))
+
+    local thirdChildrenWrapper = presetsNode:AppendChild(LSXHelpers.ChildrenNode())
+
+    local colorPresetNode = thirdChildrenWrapper:AppendChild(LSXNode.new("node", { id = "ColorPreset" }))
+
+    local colorPresetAttrNodes = {
+        lsattrNode("ForcePresetValues", LSValueType.bool, false),
+        lsattrNode("GroupName", LSValueType.FixedString, ""),
+        lsattrNode("MaterialPresetResource", LSValueType.FixedString, ""),
+    }
+    colorPresetNode:AppendChildren(colorPresetAttrNodes)
+
+    local matePresetNode = LSXNode.new("node", { id = "MaterialPresets" })
+    thirdChildrenWrapper:AppendChild(matePresetNode)
+
+    local paramNodes = createPresetParameterNodes(nil, parameters)
+
+    if paramNodes then
+        thirdChildrenWrapper:AppendChildren(paramNodes)
+    end
+
+    return root
+end
+
+local function buildMPNode(force, groupName, mapKey, materialPresetResource)
+    local presetNode = LSXNode.new("node", { id = "Object", key = "MapKey" })
+    presetNode:AppendChild(LSXHelpers.AttrNode("ForcePresetValues", "bool", force))
+    presetNode:AppendChild(LSXHelpers.AttrNode("GroupName", "FixedString", groupName))
+    presetNode:AppendChild(LSXHelpers.AttrNode("MapKey", "FixedString", mapKey))
+    presetNode:AppendChild(LSXHelpers.AttrNode("MaterialPresetResource", "FixedString", materialPresetResource))
+    return presetNode
+end
+
+--- @param mat ResourcePresetData
+local function buildMaterialNode(mat)
+    local node = LSXNode.new("node", { id = "Materials", key = "MapKey" })
+    node:AppendChild(LSXHelpers.AttrNode("MapKey", "FixedString", mat.MapKey))
+    local children = node:AppendChild(LSXHelpers.ChildrenNode())
+    local matOverrideNode = children:AppendChild(LSXNode.new("node", { id = "MaterialOverrides", }))
+    matOverrideNode:AppendChild(LSXHelpers.AttrNode("MaterialResource", "FixedString", mat.MaterialResource))
+    local matOverrideChildren = matOverrideNode:AppendChild(LSXHelpers.ChildrenNode())
+
+    local paramProxt = ParametersSetProxy.BuildFromMaterialPresetParamSet(mat)
+
+    local paramNodes = createPresetParameterNodes(nil, paramProxt.Parameters)
+
+
+
+
+end
+
+--- copy a CharacterVisual resource and modify it
+--- @param srcUuid string Source CharacterVisual resource UUID
+--- @param uuid string New CharacterVisual resource UUID
+--- @param internalName string New CharacterVisual internal name
+--- @param overrideMaterialPresets table<string, string>? Material preset overrides, map of GroupName to MaterialPresetResource UUID
+--- @param modfiedParams RB_ParameterSet? Additional modified parameters to set on the resource
+function ResourceHelpers.BuildCharacterVisualResource(srcUuid, uuid, internalName, overrideMaterialPresets, modfiedParams)
+    local src = Ext.Resource.Get(srcUuid, "CharacterVisual") --[[@as ResourceCharacterVisualResource]]
+    local srcSet = src.VisualSet
+
+    overrideMaterialPresets = overrideMaterialPresets or {}
+    local resourceNode = LSXNode.new("node", { id = "Resource", })
+
+    local attributes = {
+        LSXHelpers.AttrNode("BaseVisual", "FixedString", src.BaseVisual),
+        LSXHelpers.AttrNode("BodySetVisual", "FixedString", srcSet.BodySetVisual),
+        LSXHelpers.AttrNode("ID", "FixedString", uuid),
+        LSXHelpers.AttrNode("Name", "LSString", internalName),
+        LSXHelpers.AttrNode("ShowEquipmentVisuals", "bool", srcSet.ShowEquipmentVisuals),
+    }
+
+    resourceNode:AppendChildren(attributes)
+    local childrenNode = resourceNode:AppendChild(LSXHelpers.ChildrenNode())
+
+    -- MaterialOverrides
+    local materialOverridesNode = childrenNode:AppendChild(LSXNode.new("node", { id = "MaterialOverrides", }))
+    materialOverridesNode:AppendChild(LSXHelpers.AttrNode("MaterialResource", "FixedString", srcSet.MaterialOverrides.MaterialResource))
+    
+    local matOverridesChildren = materialOverridesNode:AppendChild(LSXHelpers.ChildrenNode())
+
+    local colorPresetNode = matOverridesChildren:AppendChild(LSXNode.new("node", { id = "ColorPreset", }))
+    colorPresetNode:AppendChild(LSXHelpers.AttrNode("ForcePresetValues", "bool", false))
+    colorPresetNode:AppendChild(LSXHelpers.AttrNode("GroupName", "FixedString", ""))
+    colorPresetNode:AppendChild(LSXHelpers.AttrNode("MaterialPresetResource", "FixedString", ""))
+
+
+
+    local matPresetsNode = matOverridesChildren:AppendChild(LSXNode.new("node", { id = "MaterialPresets", }))
+    for _, preset in pairs(srcSet.MaterialOverrides.MaterialPresets) do
+        local overrideUuid = overrideMaterialPresets[preset.GroupName]
+        overrideMaterialPresets[preset.GroupName] = nil
+        local presetNode = buildMPNode(
+            false,
+            preset.GroupName,
+            preset.GroupName,
+            overrideUuid or preset.MaterialPresetResource
+        )
+        --matPresetsNode:AppendChild(presetNode)
+    end
+    for groupName, overrideUuid in pairs(overrideMaterialPresets) do
+        local presetNode = buildMPNode(
+            true,
+            groupName,
+            groupName,
+            overrideUuid
+        )
+        matPresetsNode:AppendChild(presetNode)
+    end
+
+    local paramSetProxy = ParametersSetProxy.BuildFromMaterialPresetParamSet(srcSet.MaterialOverrides)
+    if not paramSetProxy then
+        error("Failed to create ParametersSetProxy for CharacterVisual MaterialOverrides")
+    end
+    paramSetProxy:Merge(modfiedParams or {})
+
+    local paramsNode = createPresetParameterNodes(nil, paramSetProxy.Parameters)
+
+    if paramsNode then
+        matOverridesChildren:AppendChildren(paramsNode)
+    end
+
+    --[[
+    						<node id="Materials" key="MapKey">
+							<attribute id="MapKey" type="FixedString" value="285a65c3-6323-0cbc-34fb-f60d99911f72" />
+							<children>
+								<node id="MaterialOverrides">
+									<attribute id="MaterialResource" type="FixedString" value="285a65c3-6323-0cbc-34fb-f60d99911f72" />
+									<children>
+										<node id="Texture2DParameters">
+											<attribute id="Parameter" type="FixedString" value="TattooAtlas" />
+											<attribute id="Value" type="FixedString" value="e2379634-0737-c1e8-1914-2e28b3a7a50f" />
+											<attribute id="Enabled" type="bool" value="True" />
+											<attribute id="Color" type="bool" value="False" />
+											<attribute id="Custom" type="bool" value="False" />
+										</node>
+										<node id="MaterialPresets" />
+									</children>
+								</node>
+							</children>
+						</node>]]
+    
+    -- Materials
+
+    for mapKey, mat in pairs(srcSet.Materials) do
+        local matNode = buildMaterialNode(mat)
+        childrenNode:AppendChild(matNode)
+    end
+
+    -- RealMaterialOverrides
+    local realMatOverridesNode = childrenNode:AppendChild(LSXNode.new("node", { id = "RealMaterialOverrides", }))
+    local realMatOverridesChildren = nil
+    for mapKey, mapValue in pairs(srcSet.RealMaterialOverrides) do
+        realMatOverridesChildren = realMatOverridesChildren or realMatOverridesNode:AppendChild(LSXHelpers.ChildrenNode())
+        local overrideNode = LSXNode.new("node", { id = "Object", key = "MapKey", })
+        overrideNode:AppendChild(LSXHelpers.AttrNode("MapKey", "FixedString", mapKey))
+        overrideNode:AppendChild(LSXHelpers.AttrNode("MapValue", "FixedString", mapValue))
+        realMatOverridesChildren:AppendChild(overrideNode)
+    end
+
+    -- Slots
+    for _, slot in pairs(srcSet.Slots) do
+        local slotNode = childrenNode:AppendChild(LSXNode.new("node", { id = "Slots", }))
+        slotNode:AppendChild(LSXHelpers.AttrNode("Bone", "FixedString", slot.Bone))
+        slotNode:AppendChild(LSXHelpers.AttrNode("Slot", "FixedString", slot.Slot))
+        slotNode:AppendChild(LSXHelpers.AttrNode("VisualResource", "FixedString", slot.VisualResource))
+    end
+
+    return resourceNode
+end

@@ -218,7 +218,7 @@ function MaterialEditor:BuildMaterialPresetResource(path)
     local bank = LSXHelpers.BuildMaterialPresetBank()
 
     local uuid = Uuid_v4()
-    local resource = LSXHelpers.BuildMaterialPresetResourceNode(self.Parameters, uuid, "Custom_Material_Preset")
+    local resource = ResourceHelpers.BuildMaterialPresetResourceNode(self.Parameters, uuid, "Custom_Material_Preset")
 
     bank:AppendChild(resource)
 

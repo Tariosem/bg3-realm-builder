@@ -1,6 +1,6 @@
 local materialProxies = {}
 
---- @alias RB_ParamType integer -- 1=Scalar, 2=Vector2, 3=Vector3, 4=Vector4 maybe expand in future
+--- @alias RB_ParamType integer -- 1=Scalar, 2=Vector2, 3=Vector3, 4=Vector4 5=Texture2D 6=VirtualTexture
 --- @alias RB_ParameterSet table< RB_ParamType, table<string, number[]> > 
 
 --- @class MaterialProxy
@@ -39,21 +39,27 @@ PropTypeToFunc = {
     [1] = "SetScalar",
     [2] = "SetVector2",
     [3] = "SetVector3",
-    [4] = "SetVector4"
+    [4] = "SetVector4",
+    [5] = "SetTexture2D",
+    [6] = "SetVirtualTexture"
 }
 
 PropTypeToField = {
     [1] = "ScalarParameters",
     [2] = "Vector2Parameters",
     [3] = "Vector3Parameters",
-    [4] = "VectorParameters"
+    [4] = "VectorParameters",
+    [5] = "Texture2DParameters",
+    [6] = "VirtualTextureParameters"
 }
 
 PropTypeToLSXValueType = {
     [1] = "float",
     [2] = "fvec2",
     [3] = "fvec3",
-    [4] = "fvec4"
+    [4] = "fvec4",
+    [5] = "FixedString",
+    [6] = "FixedString",
 }
 
 ---@param materialName string
@@ -215,6 +221,8 @@ function ParametersSetProxy.new(paramSet)
     return mP
 end
 
+--- actually copy from format parameters
+--- @param params RB_ParameterSet
 function ParametersSetProxy.BuildFromFormatParameters(params)
     local paramSetProxy = setmetatable({}, ParametersSetProxy) --[[@as ParametersSetProxy]]
     paramSetProxy.TypeRefs = {}
@@ -251,19 +259,29 @@ function ParametersSetProxy.BuildFromFormatParameters(params)
 
 end
 
+function ParametersSetProxy.BuildFromMaterialPresetParamSet(paramSet)
+    local paramSetProxy = setmetatable({}, ParametersSetProxy) --[[@as ParametersSetProxy]]
+    
+    MaterialProxy.__buildParameterTables(paramSetProxy, {
+        paramSet.ScalarParameters,
+        paramSet.Vector2Parameters,
+        paramSet.Vector3Parameters,
+        paramSet.VectorParameters
+    }, "ParameterSet", "Parameter", "Value")
+
+    return paramSetProxy
+end
+
 ---@param paramSet MaterialParametersSet
 function ParametersSetProxy:__init(paramSet)
-    if not paramSet then
-        Error("ParameterSetProxy: Could not find parameter set: " .. tostring(paramSet))
-        return
-    end
-
     MaterialProxy.__buildParameterTables(self, {
         paramSet.ScalarParameters,
         paramSet.Vector2Parameters,
         paramSet.Vector3Parameters,
         paramSet.VectorParameters
     }, "ParameterSet", "ParameterName", "Value")
+
+    return self
 end
 
 function ParametersSetProxy:GetParameter(paramName)
@@ -302,6 +320,15 @@ function ParametersSetProxy:SetParameter(paramName, value)
     -- Set value
     self.Parameters[typeRef][paramName] = value
     return true
+end
+
+--- @param paramSet RB_ParameterSet
+function ParametersSetProxy:Merge(paramSet)
+    for paramType, params in pairs(paramSet) do
+        for paramName, value in pairs(params) do
+            self:SetParameter(paramName, value)
+        end
+    end
 end
 
 --- @param paramName string

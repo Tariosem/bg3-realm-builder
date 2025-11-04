@@ -429,10 +429,11 @@ function MaterialTab:SetupManagePopup(popup)
     btnReset.DontClosePopups = true
 
     local defaultMatPath = "Realm_Builder/Materials/"
-    local finalPath = defaultMatPath .. self.ParentNodeName
 
     local btnExport = AddSelectableButton(row:AddCell(), "Export As Material##" .. self.MaterialName, function (sel)
-        local save = LSXHelpers.BuildMaterialResource(self.Editor.Parameters, self.Editor.Material)
+        local uuid = Uuid_v4()
+        local finalPath = defaultMatPath .. uuid .. ".lsx"
+        local save = ResourceHelpers.BuildMaterialResource(self.Editor.Parameters, self.Editor.Material, uuid)
         if save then
             Ext.IO.SaveFile(finalPath, save:Stringify())
         end
@@ -441,8 +442,10 @@ function MaterialTab:SetupManagePopup(popup)
     local btnExportAsPreset = AddSelectableButton(row:AddCell(), "Export As Preset##" .. self.MaterialName, function (sel)
         local save = LSXHelpers.BuildMaterialPresetBank()
 
-        local preset = LSXHelpers.BuildMaterialPresetResourceNode(self.Editor.Parameters, Uuid_v4(), self.ParentNodeName:gsub("%.[lL][sS][fF]$", "") .. "_Preset")
+        local uuid = Uuid_v4()
+        local preset = ResourceHelpers.BuildMaterialPresetResourceNode(self.Editor.Parameters, uuid, self.ParentNodeName:gsub("%.[lL][sS][fF]$", "") .. "_Preset")
         save:AppendChild(preset)
+        local finalPath = defaultMatPath .. uuid .. ".lsx"
 
         Ext.IO.SaveFile(finalPath, save:Stringify({ AutoFindRoot = true }))
     end)

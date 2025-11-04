@@ -35,6 +35,13 @@ EntityStore = {
 --- @field Position Vec3?
 --- @field Rotation Quat?
 --- @field Scale Vec3?
+--- @field Icon string?
+--- Character-specific fields
+--- @field WanderConfig WanderConfig?
+--- @field UseCustomVisualParameters boolean?
+--- @field OverrideVisualParameters RB_ParameterSet?
+--- @field OverrideCharacterVisualUuid string?
+--- end
 
 --- @class EntityStore
 --- @field AddEntity fun(self:EntityStore, guid:string, data:EntityData|ServerEntityData)
@@ -120,6 +127,7 @@ function EntityStore:SetupServerListeners()
     NetChannel.AttributeChanged:SetHandler(function(data)
         for _,guid in pairs(data.Guid) do
             if EntityDatas[guid] then
+                EntityDatas[guid].Visible = data.Attributes.Visible
                 RBMenu.entityMenu:UpdateSelectableAlpha(guid)
             end
         end
@@ -224,7 +232,7 @@ function EntityStore:GetStoredData(guid)
     local data = EntityDatas[guid]
     if entity then
         data.CanInteract = entity.CanInteract and true or false
-        data.Visible = not entity.Invisibility
+        --data.Visible = not entity.Invisibility
         data.Gravity = not entity.GravityDisabled 
         data.Movable = entity.CanMove and true or false
         data.CanBeLooted = entity.CanBeLooted and true or false
@@ -429,7 +437,7 @@ function EntityStore:GetExportCopy(guids)
             local entity = Ext.Entity.Get(guid)
             if not entity then goto continue end
             local data = DeepCopy(self:GetStoredData(guid))
-            local template = Ext.Template.GetTemplate(TakeTailTemplate(data.TemplateId))
+            local template = Ext.Template.GetTemplate(TakeTailTemplate(data.TemplateId)) --[[@as CharacterTemplate]]
             self:DeleteUselessExportAttributes(data)
 
             data.Position = { CGetPosition(guid) }
@@ -441,6 +449,16 @@ function EntityStore:GetExportCopy(guids)
             data.LevelName = entity.Level.LevelName
 
             data.TemplateType = templateType(guid)
+
+            local visualTab = VisualTab.FetchByGuid(guid)
+            if data.TemplateType == "character" and template and visualTab then
+
+                data.OriginalCharacterVisualUuid = template.CharacterVisualResourceID
+                data.UseCustomVisualParameters = true
+                data.OverrideVisualParameters = visualTab:ExportModifiedMaterialParams()
+                _D(data.OverrideVisualParameters)
+            end
+
             results[guid] = data
 
             ::continue::

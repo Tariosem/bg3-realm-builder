@@ -7,6 +7,7 @@ NetChannel.SetVisualTransform = Ext.Net.CreateChannel(ModuleUUID, "SetVisualTran
 
 --- @class AttributeChangedChannel : NetChannel
 --- @field Broadcast fun(self, data: {Guid: GUIDSTRING[]|GUIDSTRING, Attributes: table<'Moveable'|'Persistent'|'Gravity'|'Visible'|'CanInteract', boolean>})
+--- @field SetHandler fun(self, handler: fun(self, data: {Guid: GUIDSTRING[]|GUIDSTRING, Attributes: table<'Moveable'|'Persistent'|'Gravity'|'Visible'|'CanInteract', boolean>}))
 NetChannel.AttributeChanged = Ext.Net.CreateChannel(ModuleUUID, "AttributeChanged")
 
 --- @class BindPropsChannel : NetChannel

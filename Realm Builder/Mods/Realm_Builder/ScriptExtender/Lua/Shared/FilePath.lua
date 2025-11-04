@@ -31,6 +31,7 @@ local mapModsPath = "Realm_Builder/Map_Mods/"
 local mapModMetaFile = mapModsPath .. "%s/Mods/%s/meta.lsx"
 local mapModLocalizationFile = mapModsPath .. "%s/Localization/%s/%s.xml"
 
+local mapCharacterVisualPath = mapModsPath .. "%s/Public/%s/Content/[PAK]_CharacterVisuals/%s.lsx"
 local mapTemplatePath = mapModsPath .. "%s/Mods/%s/Levels/%s/%s/%s.lsx"
 
 local mapModCachePath = "Realm_Builder/Map_Mod_Uuids.json"
@@ -150,6 +151,7 @@ local templateTypeToFolder = {
     character = "Characters",
     item = "Items",
     scenery = "Scenery",
+    trigger = "Triggers",
 }
 
 function RealmPaths.GetTemplatePath(modName, levelName, guid, templateType)
@@ -159,6 +161,10 @@ function RealmPaths.GetTemplatePath(modName, levelName, guid, templateType)
         return nil
     end
     return string.format(mapTemplatePath, modName, modName, levelName, templateType, guid)
+end
+
+function RealmPaths.GetCharacterVisualPath(modName, visualName)
+    return string.format(mapCharacterVisualPath, modName, modName, visualName)
 end
 
 function RealmPaths.GetMapModCachePath()

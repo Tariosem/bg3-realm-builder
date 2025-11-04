@@ -87,7 +87,7 @@ function TemplateExportMenu:Render()
 
                 return
             end
-            progressBar.Value = progress/100
+            progressBar.Value = progress / 100
             progressBar.Overlay = string.format("%.2f%% - %s", progress, message)
             if progress >= 100 then
                 panel.Disabled = false
@@ -219,7 +219,7 @@ function TemplateExportMenu:RenderTemplateEntry(cell, entData)
         attrTable.Visible = not header.Disabled
 
         if header.Disabled then
-            entData.ExcludeFromExport = true    
+            entData.ExcludeFromExport = true
         else
             entData.ExcludeFromExport = false
         end
@@ -241,6 +241,9 @@ function TemplateExportMenu:RenderTemplateEntry(cell, entData)
     }
     local ignoreAttrs = {
         TemplateType = true,
+        OriginalCharacterVisualUuid = true,
+        OverrideVisualParameters = true,
+        OverrideCharacterVisualUuid = true,
     }
 
     local attrOrder = {
@@ -335,6 +338,49 @@ function TemplateExportMenu:RenderTemplateEntry(cell, entData)
 
             ::continue::
         end
+
+        if entData.TemplateType == "character" then
+            local wanderConfigRow = attrTable:AddRow()
+            local wanderConfigCell = wanderConfigRow:AddCell():AddText("Wander Config:")
+            local wanderConfigValueCell = wanderConfigRow:AddCell()
+
+            local cached = {
+                Area = entData.WanderConfig and entData.WanderConfig.Area or 10,
+                WanderMin = entData.WanderConfig and entData.WanderConfig.WanderMin or 5,
+                WanderMax = entData.WanderConfig and entData.WanderConfig.WanderMax or 10,
+                SleepMin = entData.WanderConfig and entData.WanderConfig.SleepMin or 2,
+                SleepMax = entData.WanderConfig and entData.WanderConfig.SleepMax or 5,
+            }
+            local editWanderButton = wanderConfigValueCell:AddCheckbox("Enable Wandering")
+            local configTab = wanderConfigValueCell:AddTable("Wander Config Table", 2)
+            configTab.Visible = entData.WanderConfig ~= nil
+            configTab.ColumnDefs[1] = { WidthFixed = true }
+            configTab.ColumnDefs[2] = { WidthStretch = true }
+            configTab.SizingFixedSame = true
+
+            editWanderButton.OnChange = function(sel)
+                if not sel.Checked then
+                    entData.WanderConfig = nil
+                    configTab.Visible = false
+                else
+                    entData.WanderConfig = cached
+                    configTab.Visible = true
+                end
+            end
+
+            for attrName, defaultValue in SortedPairs(cached) do
+                local attRow = configTab:AddRow()
+                local attrKeyCell = attRow:AddCell()
+                local attrValueCell = attRow:AddCell()
+
+                attrKeyCell:AddText(attrName .. ":")
+
+                local slider = AddSliderWithStep(attrValueCell, "##" .. attrName .. entData.Guid, defaultValue, 0, 120, 1)
+                slider.OnChange = function(sld)
+                    cached.WanderConfig[attrName] = sld.Value[1]
+                end
+            end
+        end
     end
 
     header.OnExpand = function()
@@ -359,7 +405,7 @@ end
 function TemplateExportMenu:__export(exportSettings, progressCallback)
     local thread = coroutine.running()
     local startTime = Ext.Timer.MonotonicTime()
-    local toExport = {}
+    local toExport = {} --[[@type table<string, EntityData> ]]
     for guid, entData in pairs(self.ExportDatas) do
         if not entData.ExcludeFromExport then
             toExport[guid] = entData
@@ -368,8 +414,8 @@ function TemplateExportMenu:__export(exportSettings, progressCallback)
     local exportCnt = CountMap(toExport)
 
     local actCnt =
-        1 +         -- build meta.lsx
-        1 +         -- build localizaion
+        1 +       -- build meta.lsx
+        1 +       -- build localizaion
         exportCnt -- export templates
 
     progressCallback = progressCallback or function(num, msg)
@@ -383,9 +429,7 @@ function TemplateExportMenu:__export(exportSettings, progressCallback)
     local suc = true
 
     local function throwError(message)
-        if progressCallback then
-            progressCallback(-1, message)
-        end
+        progressCallback(-1, message)
         Error(message)
         coroutine.yield()
     end
@@ -408,23 +452,21 @@ function TemplateExportMenu:__export(exportSettings, progressCallback)
         end
         yield()
     end
-    
+
     local modInternalName = exportSettings.ModName:gsub("%s+", "_"):upper()
     local modUuid = nil
     local modCache = RealmPaths.GetMapModCachePath()
     local file = Ext.IO.LoadFile(modCache)
+    local modCachedUuids = Ext.Json.Parse(file or "{}")
+    _D(modCachedUuids)
     if file then
-        modUuid = Ext.Json.Parse(file)[modInternalName]
+        modUuid = modCachedUuids[modInternalName]
     end
 
     if not modUuid then
         modUuid = Uuid_v4()
-        local modCacheData = {}
-        if file then
-            modCacheData = Ext.Json.Parse(file)
-        end
-        modCacheData[modInternalName] = modUuid
-        suc = Ext.IO.SaveFile(modCache, Ext.Json.Stringify(modCacheData))
+        modCachedUuids[modInternalName] = modUuid
+        suc = Ext.IO.SaveFile(modCache, Ext.Json.Stringify(modCachedUuids))
         if not suc then
             throwError("Failed to save mod cache file at " .. modCache)
         end
@@ -468,7 +510,7 @@ function TemplateExportMenu:__export(exportSettings, progressCallback)
         end
         advance("Building localization...")
     end
-    
+
     -- export templates
     local templateNameCnt = {}
     local function padNumber(num, size)
@@ -480,27 +522,52 @@ function TemplateExportMenu:__export(exportSettings, progressCallback)
         templateNameCnt[templateName] = (templateNameCnt[templateName] or 0) + 1
 
         local levelName = entData.LevelName
-        if not levelName then
-            throwError("Entity " .. guid .. " is missing LevelName attribute.")
-        end
 
         local templateInternalName = modInternalName ..
             "_" .. templateName .. "_" .. padNumber(templateNameCnt[templateName], 3)
         local templatePath = RealmPaths.GetTemplatePath(modInternalName, levelName, guid, entData.TemplateType)
         if not templatePath then
             throwError("Failed to get template path for entity " .. guid)
-            return 
+            return
         end
 
-        local templateNode = LSXHelpers.BuildTemplate(guid, entData, templateInternalName, guidToHandle[guid])
+        if entData.UseCustomVisualParameters and entData.OverrideVisualParameters then
+            local overrideuuid = Uuid_v4()
+            local visualInternalName = templateInternalName .. "_CharacterVisual"
+            local bank = LSXHelpers.BuildCharacterVisualBank()
+            local visualNode = ResourceHelpers.BuildCharacterVisualResource(entData.OriginalCharacterVisualUuid,
+                overrideuuid, visualInternalName, nil, entData.OverrideVisualParameters)
+            bank:AppendChild(visualNode)
+            local visualPath = RealmPaths.GetCharacterVisualPath(modInternalName, overrideuuid)
+            suc = Ext.IO.SaveFile(visualPath, bank:Stringify({ AutoFindRoot = true }))
+            if not suc then
+                throwError("Failed to save character visual file at " .. visualPath)
+            end
+            entData.OverrideCharacterVisualUuid = overrideuuid
+        end
+
+
+        local templateNode, others = LSXHelpers.BuildTemplate(guid, entData, templateInternalName, guidToHandle[guid])
         if not templateNode then
             throwError("Failed to build template for entity " .. guid)
-            return 
+            return
         end
 
         suc = Ext.IO.SaveFile(templatePath, templateNode:Stringify({ AutoFindRoot = true }))
         if not suc then
             throwError("Failed to save template file at " .. templatePath)
+        end
+
+        for _, other in ipairs(others or {}) do
+            local otherPath = RealmPaths.GetTemplatePath(modInternalName, levelName, other.Uuid, other.TemplateType)
+            if not otherPath then
+                throwError("Failed to get template path for entity " .. other.Uuid)
+                return
+            end
+            suc = Ext.IO.SaveFile(otherPath, other.LSXNode:Stringify({ AutoFindRoot = true }))
+            if not suc then
+                throwError("Failed to save template file at " .. otherPath)
+            end
         end
 
         advance("Exporting template " .. entData.DisplayName .. "...")

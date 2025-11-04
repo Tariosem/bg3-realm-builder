@@ -1,5 +1,5 @@
---- @enum LSXValueType
-LSXValueType = {
+--- @enum LSValueType
+LSValueType = {
     TranslatedString = "TranslatedString",
     FixedString = "FixedString",
     LSString = "LSString",
@@ -12,6 +12,7 @@ LSXValueType = {
     uint64 = "uint64",
     int64 = "int64",
     float = "float",
+    double = "double",
     fvec2 = "fvec2",
     fvec3 = "fvec3",
     fvec4 = "fvec4",
@@ -103,14 +104,19 @@ end
 --- @field Stringify fun(self: LSXNode, stringifyOpts?: LSXStringifyOptions): string
 --- @field Unserialize fun(xmlString: string): LSXNode?
 --- @field SetInnerText fun(self: LSXNode, text: string): LSXNode -- returns self
+--- @field GetInnerText fun(self: LSXNode): string|nil
+--- @field GetName fun(self: LSXNode): string
 --- @field SetName fun(self: LSXNode, name: string): LSXNode -- returns self
 --- @field SetAttribute fun(self: LSXNode, key: string, value: any): LSXNode -- returns self
 --- @field GetAttribute fun(self: LSXNode, key: string): any 
 --- @field SetAttrOrder fun(self: LSXNode, attrOrder: string[]): LSXNode -- returns self
 --- @field AppendChild fun(self: LSXNode, child: LSXNode|table?):LSXNode -- returns child
 --- @field AppendChildren fun(self: LSXNode, children: LSXNode[]|table[]):LSXNode -- returns self
---- @field InsertChild fun(self: LSXNode, index: number, child: LSXNode|table?):LSXNode -- returns self
+--- @field InsertChild fun(self: LSXNode, child: LSXNode, index: number): LSXNode -- returns child
 --- @field GetChild fun(self: LSXNode, index: number): LSXNode?
+--- @field GetParent fun(self: LSXNode): LSXNode?
+--- @field SearchChild fun(self: LSXNode, predicate: fun(child: LSXNode):boolean): LSXNode?
+--- @field MatchChild fun(self: LSXNode, name:string, attrs?:table<string, any>): LSXNode?
 --- @field GetChildren fun(self: LSXNode): LSXNode[]
 --- @field CountChildren fun(self: LSXNode): number
 --- @field SortChildren fun(self: LSXNode, comparator: fun(a: LSXNode, b: LSXNode):boolean)
@@ -431,6 +437,10 @@ function LSXNode:SetInnerText(text)
     return self
 end
 
+function LSXNode:GetInnerText()
+    return self.__innerText
+end
+
 function LSXNode:SetName(name)
     if type(name) ~= "string" then
         Error("LSXTableNode:SetName: Expected string, got " .. type(name))
@@ -439,6 +449,10 @@ function LSXNode:SetName(name)
     self.__name = name
 
     return self
+end
+
+function LSXNode:GetName()
+    return self.__name
 end
 
 function LSXNode:SetAttribute(key, value)
@@ -511,7 +525,7 @@ function LSXNode:AppendChildren(children)
     return self
 end
 
-function LSXNode:InsertChild(index, child)
+function LSXNode:InsertChild(child, index)
     if not self.__children then
         self.__children = {}
     end
@@ -527,7 +541,7 @@ function LSXNode:InsertChild(index, child)
     child.__parent = self
     table.insert(self.__children, index, child)
 
-    return self
+    return child
 end
 
 
@@ -549,8 +563,35 @@ function LSXNode:SearchChild(predicate)
     return nil
 end
 
+function LSXNode:MatchChild(name, attrs)
+    if not self.__children then
+        return nil
+    end
+    for _, child in ipairs(self.__children) do
+        if child.__name == name then
+            local match = true
+            if attrs then
+                for k, v in pairs(attrs) do
+                    if child.__attributes[k] ~= v then
+                        match = false
+                        break
+                    end
+                end
+            end
+            if match then
+                return child
+            end
+        end
+    end
+    return nil
+end
+
 function LSXNode:GetChildren()
     return self.__children or {}
+end
+
+function LSXNode:GetParent()
+    return self.__parent
 end
 
 function LSXNode:CountChildren()
