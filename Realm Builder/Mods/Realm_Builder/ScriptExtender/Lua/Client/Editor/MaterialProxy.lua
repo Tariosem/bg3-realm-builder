@@ -1,6 +1,6 @@
 local materialProxies = {}
 
---- @alias RB_ParamType integer -- 1=Scalar, 2=Vector2, 3=Vector3, 4=Vector4 5=Texture2D 6=VirtualTexture
+--- @alias RB_ParamType integer -- 1=Scalar, 2=Vector2, 3=Vector3, 4=Vector4
 --- @alias RB_ParameterSet table< RB_ParamType, table<string, number[]> > 
 
 --- @class MaterialProxy
@@ -40,8 +40,6 @@ PropTypeToFunc = {
     [2] = "SetVector2",
     [3] = "SetVector3",
     [4] = "SetVector4",
-    [5] = "SetTexture2D",
-    [6] = "SetVirtualTexture"
 }
 
 PropTypeToField = {
@@ -49,8 +47,6 @@ PropTypeToField = {
     [2] = "Vector2Parameters",
     [3] = "Vector3Parameters",
     [4] = "VectorParameters",
-    [5] = "Texture2DParameters",
-    [6] = "VirtualTextureParameters"
 }
 
 PropTypeToLSXValueType = {

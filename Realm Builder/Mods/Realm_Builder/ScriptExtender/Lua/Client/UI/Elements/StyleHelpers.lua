@@ -693,3 +693,135 @@ function StyleHelpers.AddSelectionTable(parent)
 
     return tab, row
 end
+
+function SetWarningBorder(extui)
+    extui:SetColor("Text", HexToRGBA("FFFF0000"))
+    extui:SetColor("Border", HexToRGBA("FFFF4444"))
+end
+
+function ClearWarningBorder(extui)
+    extui:SetColor("Text", HexToRGBA("FFFFFFFF"))
+    extui:SetColor("Border", HexToRGBA("FF888888"))
+end
+
+function ApplyWarningButtonStyle(button)
+    button:SetColor("Text", HexToRGBA("FFFF0000"))
+    button:SetColor("Border", HexToRGBA("FFFF4444"))
+    button:SetColor("Button", HexToRGBA("FF470000"))
+    button:SetColor("ButtonHovered", HexToRGBA("FF700000"))
+    button:SetColor("ButtonActive", HexToRGBA("FF900000"))
+end
+
+function ApplyOkButtonStyle(button)
+    button:SetColor("Text", HexToRGBA("FFFFFFFF"))
+    button:SetColor("Border", HexToRGBA("FF888888"))
+    button:SetColor("Button", HexToRGBA("FF004747"))
+    button:SetColor("ButtonHovered", HexToRGBA("FF007070"))
+    button:SetColor("ButtonActive", HexToRGBA("FF009090"))
+end
+
+function ApplyWarningTooltipStyle(tooltip)
+    tooltip:SetColor("Text", HexToRGBA("FFFF0000"))
+    tooltip:SetColor("Border", HexToRGBA("FFFF4444"))
+    tooltip:SetColor("WindowBg", HexToRGBA("FF220000"))
+end
+
+function ApplyOkTooltipStyle(tooltip)
+    tooltip:SetColor("Text", HexToRGBA("FFFFFFFF"))
+    tooltip:SetColor("Border", HexToRGBA("FF888888"))
+    tooltip:SetColor("WindowBg", HexToRGBA("FF222222"))
+end
+
+---@param parent ExtuiTreeParent
+---@param settings RB_Mod_ExportSetting
+---@return function -- refresh function
+function RenderExportSettingPanel(parent, settings)
+    local modNameText = parent:AddText("Mod Name:")
+    local modNameInput = parent:AddInputText("##MaterialPresetModName")
+    modNameInput.Hint = "Enter Mod Name..."
+    modNameInput:SetStyle("FrameBorderSize", 2)
+
+    modNameInput.OnChange = Debounce(50, function()
+        if IsValidName(modNameInput.Text) then
+            ClearWarningBorder(modNameInput)
+            settings.ModName = modNameInput.Text
+        else
+            SetWarningBorder(modNameInput)
+            settings.ModName = ""
+            GuiAnim.PulseBorder(modNameInput, 2)
+        end
+    end)
+    modNameInput.Text = settings.ModName or ""
+    if modNameInput.Text == "" then
+        SetWarningBorder(modNameInput)
+    else
+        ClearWarningBorder(modNameInput)
+    end
+    local authorNameText = parent:AddText("Author Name:")
+    local authorNameInput = parent:AddInputText("##MaterialPresetAuthorName")
+    authorNameInput:SetStyle("FrameBorderSize", 2)
+    modNameInput:Tooltip():AddText("CAUTION:")
+    modNameInput:Tooltip():AddText("Special character are not allowed.")
+    modNameInput:Tooltip():AddText("Space will be treated as underscore (_), but display name will remain unchanged.")
+    modNameInput:Tooltip():AddText("My Mod and My_Mod are considered the same mod name.")
+
+    authorNameInput.Hint = "Enter Author Name..."
+    authorNameInput.OnChange = Debounce(50, function()
+        local newName = authorNameInput.Text
+        if not IsValidName(newName) then
+            SetWarningBorder(authorNameInput)
+            settings.Author = ""
+            GuiAnim.PulseBorder(authorNameInput, 2)
+        else
+            ClearWarningBorder(authorNameInput)
+            settings.Author = authorNameInput.Text
+        end
+    end)
+    authorNameInput.Text = settings.Author or ""
+
+    if authorNameInput.Text == "" then
+        SetWarningBorder(authorNameInput)
+    else
+        ClearWarningBorder(authorNameInput)
+    end
+
+    local descriptionText = parent:AddText("Description:")
+    local descriptionInput = parent:AddInputText("##MaterialPresetDescription")
+    descriptionInput.Hint = "Enter Description..."
+    descriptionInput.OnChange = function()
+        settings.Description = descriptionInput.Text
+    end
+    descriptionInput.Multiline = true
+    descriptionInput.Text = settings.Description or ""
+
+    local versionText = parent:AddText("Version:")
+    local versionInput = parent:AddInputInt("##MaterialPresetVersion")
+    versionInput.Components = 4
+    versionInput:SetStyle("FrameBorderSize", 2)
+    versionInput.OnChange = function()
+        local valid = true
+        for _, var in pairs(versionInput.Value) do
+            if not tonumber(var) or var < 0 then
+                valid = false
+                SetWarningBorder(versionInput)
+                GuiAnim.PulseBorder(versionInput, 2)
+            end
+        end
+        if valid then ClearWarningBorder(versionInput) end
+        settings.Version = { versionInput.Value[1], versionInput.Value[2], versionInput.Value[3], versionInput.Value[4] }
+    end
+    versionInput.Value = { settings.Version[1], settings.Version[2], settings.Version[3], settings.Version[4] }
+    ClearWarningBorder(versionInput)
+
+    local function refresh()
+        modNameInput.Text = settings.ModName or ""
+        authorNameInput.Text = settings.Author or ""
+        descriptionInput.Text = settings.Description or ""
+        versionInput.Value = { settings.Version[1], settings.Version[2], settings.Version[3], settings.Version[4] }
+        authorNameInput.OnChange()
+        modNameInput.OnChange()
+        versionInput.OnChange()
+    end
+
+    return refresh
+end

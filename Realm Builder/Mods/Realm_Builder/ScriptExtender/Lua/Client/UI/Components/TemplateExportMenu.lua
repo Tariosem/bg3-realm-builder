@@ -38,7 +38,11 @@ function TemplateExportMenu:Render()
     local progressBar = progressCell:AddProgressBar("Export Progress") --[[@as ExtuiProgressBar ]]
     local exportButton = exportCell:AddButton("Export")
 
+    local childWin = panel:AddChildWindow("Export Options")
+    local refreshExportPanel = RenderExportSettingPanel(childWin, exportSettings)
+
     local function isExportable()
+        refreshExportPanel()
         return
             exportSettings.ModName ~= nil and exportSettings.ModName ~= "" and
             exportSettings.Author ~= nil and exportSettings.Author ~= ""
@@ -95,10 +99,6 @@ function TemplateExportMenu:Render()
         end)
     end
 
-    local childWin = panel:AddChildWindow("Export Options")
-
-    self:RenderExportSettings(childWin, exportSettings)
-
     self:RenderExportEntities(childWin)
 end
 
@@ -115,7 +115,7 @@ function TemplateExportMenu:RenderExportSettings(panel, exportSettings)
     local modNameInput = modName:AddInputText("")
     modNameInput.Hint = "Enter mod name ..."
     modNameInput.OnChange = Debounce(50, function(input)
-        if not CheckNameValidity(input.Text) then
+        if not IsValidName(input.Text) then
             SetWarningBorder(input)
             GuiAnim.PulseBorder(input, 2)
             return
@@ -453,12 +453,11 @@ function TemplateExportMenu:__export(exportSettings, progressCallback)
         yield()
     end
 
-    local modInternalName = exportSettings.ModName:gsub("%s+", "_"):upper()
+    local modInternalName = exportSettings.ModName:gsub("%s+", "_")
     local modUuid = nil
     local modCache = RealmPaths.GetMapModCachePath()
     local file = Ext.IO.LoadFile(modCache)
     local modCachedUuids = Ext.Json.Parse(file or "{}")
-    _D(modCachedUuids)
     if file then
         modUuid = modCachedUuids[modInternalName]
     end
@@ -545,7 +544,6 @@ function TemplateExportMenu:__export(exportSettings, progressCallback)
             end
             entData.OverrideCharacterVisualUuid = overrideuuid
         end
-
 
         local templateNode, others = LSXHelpers.BuildTemplate(guid, entData, templateInternalName, guidToHandle[guid])
         if not templateNode then

@@ -99,6 +99,17 @@ function IsArray(t)
     return true
 end
 
+function IsValidName(name)
+    -- simple check: no special characters
+    if name:match("[^%w_%s%-]") then
+        return false
+    end
+    if name == "" then
+        return false
+    end
+    return true
+end
+
 function TableMerge(dest, src)
     for k, v in pairs(src) do
         dest[k] = v

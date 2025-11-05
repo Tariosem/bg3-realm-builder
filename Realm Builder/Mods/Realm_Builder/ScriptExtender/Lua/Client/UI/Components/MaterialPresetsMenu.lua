@@ -12,22 +12,24 @@ MATERIALPRESET_DRAGDROP_TYPE = "MaterialPreset"
 --- @field ExportType MaterialPresetExportType
 --- @field UIColor vec4
 
---- @class CCMod_Pack
+--- @class RB_Mod_ExportSetting
 --- @field ModName string
---- @field ModuleUUID string
 --- @field Author string
 --- @field Description string
 --- @field Version vec4
+
+--- @class CCMod_Pack : RB_Mod_ExportSetting
+--- @field ModuleUUID string
 --- @field FolderDefinitions table<string, CCMOD_FolderDefinition> -- folder name -> definition
 --- @field Folders table<string, table<string, any>> -- folder name -> preset GUID -> any
 --- @field MaterialPresets table<string, MaterialPresetData[]>
 
+--- @alias CCMod_Reference { ModuleUUID: string, Versions: table<string, any>, Cache: table<string, CCMod_Pack> } -- version -> CCMod_Pack
 
 --- @class MaterialPresetsMenu
 --- @field isVisible boolean
 --- @field panel ExtuiWindow
---- @field cachedMods table<string, table<string, CCMod_Pack>>
---- @field modUuids table<string, string>
+--- @field cachedMods table<string, CCMod_Reference>
 --- @field UpdateCustomMaterialPresetsList fun(self:MaterialPresetsMenu)
 --- @field SaveMaterialPreset fun(self:MaterialPresetsMenu, mat:MaterialEditor)
 --- @field RenderPresetColorBox fun(self:MaterialPresetsMenu, preset:ResourceCharacterCreationColor, parent:ExtuiTreeParent):ExtuiColorEdit
@@ -61,59 +63,9 @@ local function colorPresetComparator(a, b, aName, bName)
     end
 end
 
-function SetWarningBorder(extui)
-    extui:SetColor("Text", HexToRGBA("FFFF0000"))
-    extui:SetColor("Border", HexToRGBA("FFFF4444"))
-end
-
-function ClearWarningBorder(extui)
-    extui:SetColor("Text", HexToRGBA("FFFFFFFF"))
-    extui:SetColor("Border", HexToRGBA("FF888888"))
-end
-
-function ApplyWarningButtonStyle(button)
-    button:SetColor("Text", HexToRGBA("FFFF0000"))
-    button:SetColor("Border", HexToRGBA("FFFF4444"))
-    button:SetColor("Button", HexToRGBA("FF470000"))
-    button:SetColor("ButtonHovered", HexToRGBA("FF700000"))
-    button:SetColor("ButtonActive", HexToRGBA("FF900000"))
-end
-
-function ApplyOkButtonStyle(button)
-    button:SetColor("Text", HexToRGBA("FFFFFFFF"))
-    button:SetColor("Border", HexToRGBA("FF888888"))
-    button:SetColor("Button", HexToRGBA("FF004747"))
-    button:SetColor("ButtonHovered", HexToRGBA("FF007070"))
-    button:SetColor("ButtonActive", HexToRGBA("FF009090"))
-end
-
-function ApplyWarningTooltipStyle(tooltip)
-    tooltip:SetColor("Text", HexToRGBA("FFFF0000"))
-    tooltip:SetColor("Border", HexToRGBA("FFFF4444"))
-    tooltip:SetColor("WindowBg", HexToRGBA("FF220000"))
-end
-
-function ApplyOkTooltipStyle(tooltip)
-    tooltip:SetColor("Text", HexToRGBA("FFFFFFFF"))
-    tooltip:SetColor("Border", HexToRGBA("FF888888"))
-    tooltip:SetColor("WindowBg", HexToRGBA("FF222222"))
-end
-
-function CheckNameValidity(name)
-    -- simple check: no special characters
-    if name:match("[^%w_%s%-]") then
-        return false
-    end
-    if name == "" then
-        return false
-    end
-    return true
-end
-
 function MaterialPresetsMenu:Render(parent)
     if self.isVisible then return end
     self.cachedMods = {} --- @type table<string, table<string, CCMod_Pack>>
-    self.modUuids = {}   --- @type table<string, string>
 
     self.isVisible = true
     self:LoadSaveFromCache()
@@ -202,7 +154,7 @@ function MaterialPresetsMenu:SetupWorkspace(parent, ccaModPack, notRenderImport)
 
     local function rerenderFolders() end
 
-    local refreshExport = self:RenderExportSettingPanel(exportCell, exportSettings)
+    local refreshExport = RenderExportSettingPanel(exportCell, exportSettings)
 
     local refreshImport = function () end
     if not notRenderImport then
@@ -532,110 +484,19 @@ function MaterialPresetsMenu:RenderFolderRow(presetTab, folderName, openedFolder
     refreshFolderList[folderName] = refreshFolder
 end
 
----@param parent ExtuiTreeParent
----@param settings CCMod_Pack
-function MaterialPresetsMenu:RenderExportSettingPanel(parent, settings)
-    local modNameText = parent:AddText("Mod Name:")
-    local modNameInput = parent:AddInputText("##MaterialPresetModName")
-    modNameInput.Hint = "Enter Mod Name..."
-    modNameInput:SetStyle("FrameBorderSize", 2)
-
-    modNameInput.OnChange = Debounce(50, function()
-        if CheckNameValidity(modNameInput.Text) then
-            ClearWarningBorder(modNameInput)
-            settings.ModName = modNameInput.Text
-        else
-            SetWarningBorder(modNameInput)
-            settings.ModName = ""
-            GuiAnim.PulseBorder(modNameInput, 2)
-        end
-    end)
-    modNameInput.Text = settings.ModName or ""
-    if modNameInput.Text == "" then
-        SetWarningBorder(modNameInput)
-    else
-        ClearWarningBorder(modNameInput)
-    end
-    local authorNameText = parent:AddText("Author Name:")
-    local authorNameInput = parent:AddInputText("##MaterialPresetAuthorName")
-    authorNameInput:SetStyle("FrameBorderSize", 2)
-    modNameInput:Tooltip():AddText("CAUTION:")
-    modNameInput:Tooltip():AddText("Special character are not allowed.")
-    modNameInput:Tooltip():AddText("Space will be treated as underscore (_), but display name will remain unchanged.")
-    modNameInput:Tooltip():AddText("Examples: My_Mod, MY_MOD, My Mod -> all treated as 'MY_MOD' internally.")
-
-    authorNameInput.Hint = "Enter Author Name..."
-    authorNameInput.OnChange = Debounce(50, function()
-        local newName = authorNameInput.Text
-        if not CheckNameValidity(newName) then
-            SetWarningBorder(authorNameInput)
-            settings.Author = ""
-            GuiAnim.PulseBorder(authorNameInput, 2)
-        else
-            ClearWarningBorder(authorNameInput)
-            settings.Author = authorNameInput.Text
-        end
-    end)
-    authorNameInput.Text = settings.Author or ""
-
-    if authorNameInput.Text == "" then
-        SetWarningBorder(authorNameInput)
-    else
-        ClearWarningBorder(authorNameInput)
-    end
-
-    local descriptionText = parent:AddText("Description:")
-    local descriptionInput = parent:AddInputText("##MaterialPresetDescription")
-    descriptionInput.Hint = "Enter Description..."
-    descriptionInput.OnChange = function()
-        settings.Description = descriptionInput.Text
-    end
-    descriptionInput.Multiline = true
-    descriptionInput.Text = settings.Description or ""
-
-    local versionText = parent:AddText("Version:")
-    local versionInput = parent:AddInputInt("##MaterialPresetVersion")
-    versionInput.Components = 4
-    versionInput:SetStyle("FrameBorderSize", 2)
-    versionInput.OnChange = function()
-        local valid = true
-        for _, var in pairs(versionInput.Value) do
-            if not tonumber(var) or var < 0 then
-                valid = false
-                SetWarningBorder(versionInput)
-                GuiAnim.PulseBorder(versionInput, 2)
-            end
-        end
-        if valid then ClearWarningBorder(versionInput) end
-        settings.Version = { versionInput.Value[1], versionInput.Value[2], versionInput.Value[3], versionInput.Value[4] }
-    end
-    versionInput.Value = { settings.Version[1], settings.Version[2], settings.Version[3], settings.Version[4] }
-    ClearWarningBorder(versionInput)
-
-    local function refresh()
-        modNameInput.Text = settings.ModName or ""
-        authorNameInput.Text = settings.Author or ""
-        descriptionInput.Text = settings.Description or ""
-        versionInput.Value = { settings.Version[1], settings.Version[2], settings.Version[3], settings.Version[4] }
-        authorNameInput.OnChange()
-        modNameInput.OnChange()
-        versionInput.OnChange()
-    end
-
-    return refresh
-end
-
 function MaterialPresetsMenu:LoadSaveFromCache()
     local locStr = Ext.IO.LoadFile(RealmPaths.GetCCAModCacheRefPath())
     local cache = locStr and Ext.Json.Parse(locStr) or {}
-    self.cachedMods = cache or {}
+    self.cachedMods = {}
 
-    for modName, versions in pairs(self.cachedMods) do
-        for version, modPack in pairs(versions) do
-            if modPack.ModuleUUID and IsUuid(modPack.ModuleUUID) then
-                self.modUuids[modName] = modPack.ModuleUUID
-                break
-            end
+    for modName, modData in pairs(cache or {}) do
+        self.cachedMods[modName] = {
+            ModuleUUID = modData.ModuleUUID,
+            Versions = {},
+            Cache = {},
+        }
+        for version, _ in pairs(modData.Versions or {}) do
+            self.cachedMods[modName].Versions[version] = true
         end
     end
 end
@@ -650,7 +511,7 @@ function MaterialPresetsMenu:RenderImportSection(parent, exportSettings, onImpor
     local function import(modName, version)
         local ccaModPack = self:ImportFromFile(modName, version)
         if not ccaModPack then
-            self.cachedMods[modName][version] = nil
+            self.cachedMods[modName].Cache[version] = nil
             self:SaveModCacheRef()
 
             refreshCached()
@@ -666,7 +527,6 @@ function MaterialPresetsMenu:RenderImportSection(parent, exportSettings, onImpor
         exportSettings.ModuleUUID = ccaModPack.ModuleUUID
         exportSettings.Folders = DeepCopy(ccaModPack.Folders or {})
         exportSettings.FolderDefinitions = DeepCopy(ccaModPack.FolderDefinitions or {})
-
 
         Debug("MaterialPresetsMenu: Imported CCA mod pack for mod " .. modName .. " version " .. version)
         onImportComplete()
@@ -731,7 +591,8 @@ function MaterialPresetsMenu:RenderImportSection(parent, exportSettings, onImpor
         local deleteBtnCell = selectRow:AddCell()
         local deleteBtn = AddSelectableButton(deleteBtnCell, "Delete##DeleteCCAModVersionBtn_" .. modName .. "_" .. version, function ()
             if not self.cachedMods[modName] then return end
-            self.cachedMods[modName][version] = nil
+            self.cachedMods[modName].Versions[version] = nil
+            self.cachedMods[modName].Cache[version] = nil
             self:SaveModCacheRef()
             refreshCached()
         end)
@@ -773,7 +634,8 @@ function MaterialPresetsMenu:RenderImportSection(parent, exportSettings, onImpor
 
         local sortedModNames = {}
         for modName, _ in pairs(cache) do
-            if CountMap(cache[modName]) == 0 then
+            if CountMap(cache[modName].Versions) == 0 then
+                cache[modName] = nil
                 self.cachedMods[modName] = nil
             else
                 table.insert(sortedModNames, modName)
@@ -864,7 +726,7 @@ function MaterialPresetsMenu:RenderFolderManagePopup(popup, folderName, folderSe
     renameInput:SetColor("Border", HexToRGBA("FF888888"))
     renameInput.OnChange = Debounce(50, function()
         local newName = renameInput.Text
-        if not CheckNameValidity(newName) then
+        if not IsValidName(newName) then
             SetWarningBorder(renameInput)
             GuiAnim.PulseBorder(renameInput, 2)
             return
@@ -894,7 +756,7 @@ function MaterialPresetsMenu:RenderFolderManagePopup(popup, folderName, folderSe
         local newName = renameInput.Text
         if newName == folderName then return end
 
-        if not CheckNameValidity(newName) then return end
+        if not IsValidName(newName) then return end
 
         newName = newName:gsub("%s", "_")
         if exportSettings.Folders[newName] then
@@ -1137,14 +999,15 @@ function MaterialPresetsMenu:ImportFromFile(modName, version)
     local versionStr = type(version) == "table" and BuildVersionString(version[1], version[2], version[3], version[4]) or
         tostring(version)
 
-    if self.cachedMods and self.cachedMods[modName] then
-        local cachedMod = self.cachedMods[modName][versionStr]
-        if cachedMod and cachedMod.MaterialPresets then
+    if self.cachedMods and self.cachedMods[modName] and self.cachedMods[modName].Cache then
+        local cachedMod = self.cachedMods[modName].Cache[versionStr]
+        if cachedMod then
             return cachedMod
         end
     end
 
-    local filePath = RealmPaths.GetCCAModCachePath(modName, version)
+    local moduleID = self.cachedMods and self.cachedMods[modName] and self.cachedMods[modName].ModuleUUID or nil 
+    local filePath = RealmPaths.GetCCAModCachePath(moduleID, version)
 
     local jsonStr = Ext.IO.LoadFile(filePath)
 
@@ -1160,8 +1023,7 @@ function MaterialPresetsMenu:ImportFromFile(modName, version)
         return nil
     end
 
-    self.cachedMods[modName] = self.cachedMods[modName] or {}
-    self.cachedMods[modName][versionStr] = cacheFile
+    self.cachedMods[modName].Cache[versionStr] = cacheFile
 
     return cacheFile
 end
@@ -1193,7 +1055,7 @@ function MaterialPresetsMenu:__exportToMod(modPack, progressCallback)
     end
 
     local displayModName = modPack.ModName or "Unnamed Mod"
-    local modInternalName = modPack.ModName:gsub("%s+", "_"):upper()
+    local modInternalName = modPack.ModName:gsub("%s+", "_")
     local authorName = modPack.Author
     local description = modPack.Description
     local version = modPack.Version
@@ -1205,8 +1067,8 @@ function MaterialPresetsMenu:__exportToMod(modPack, progressCallback)
     local presetCnt = CountMap(matPresets)
     local folderCnt = CountMap(folders)
 
-    if not existUuid and self.modUuids[modInternalName] then
-        existUuid = self.modUuids[modInternalName]
+    if not existUuid and self.cachedMods and self.cachedMods[modInternalName] then
+        existUuid = self.cachedMods[modInternalName].ModuleUUID
     end
 
     local actionCnt =
@@ -1223,9 +1085,12 @@ function MaterialPresetsMenu:__exportToMod(modPack, progressCallback)
     local progressStep = 100 / actionCnt
 
     local yieldThreshold = 5 -- ms
+    local yieldTimer = nil
+
     local function throwError(message)
         progress = -1
         Warning("MaterialPresetsMenu: ExportToMod Error: " .. message)
+        Timer:Cancel(yieldTimer)
         progressCallback(progress, message)
         local running = coroutine.running()
         if running and running == exportThread then
@@ -1252,14 +1117,18 @@ function MaterialPresetsMenu:__exportToMod(modPack, progressCallback)
         lastYieldTime = Ext.Timer.MonotonicTime()
     end
 
+    yieldTimer = Timer:EveryFrame(function()
+        yieldyield()
+    end)
+
     local function advance(message)
         --Debug("MaterialPresetsMenu: Current Export Progress: " .. tostring(progress) .. "% " .. (message and (" - " .. message) or ""))
         progress = progress + progressStep
         progressCallback(math.min(progress, 100), message)
-        yieldyield()
     end
 
     local function completeAdvance(message)
+        Timer:Cancel(yieldTimer)
         Debug("MaterialPresetsMenu: Export Complete: " ..
             tostring(progress) .. "% " .. (message and (" - " .. message) or ""))
         progress = 100
@@ -1443,25 +1312,32 @@ end
 ---@return boolean
 function MaterialPresetsMenu:SaveModCache(modPack)
     local cacheFile = DeepCopy(modPack)
-    local modInternalName = modPack.ModName:gsub("%s+", "_"):upper()
+    local modInternalName = modPack.ModName:gsub("%s+", "_")
     local version = modPack.Version
+    local moduleID = modPack.ModuleUUID
     local jsonStr = Ext.Json.Stringify(cacheFile, { Indent = 4 })
-    local filePath = RealmPaths.GetCCAModCachePath(modInternalName, version)
+    local filePath = RealmPaths.GetCCAModCachePath(moduleID, version)
 
     self.cachedMods[modInternalName] = self.cachedMods[modInternalName] or {}
-    self.cachedMods[modInternalName][BuildVersionString(version[1], version[2], version[3], version[4])] = cacheFile
+    self.cachedMods[modInternalName].ModuleUUID = moduleID
+    self.cachedMods[modInternalName].Cache = self.cachedMods[modInternalName].Cache or {}
+    local versionStr = type(version) == "table" and BuildVersionString(version[1], version[2], version[3], version[4]) or
+        tostring(version)
+    self.cachedMods[modInternalName].Cache[versionStr] = cacheFile
 
     return Ext.IO.SaveFile(filePath, jsonStr)
 end
 
-function MaterialPresetsMenu:SaveModCacheRef()
+function MaterialPresetsMenu:SaveModCacheRef(modUuid)
     local allRefs = {}
     for modName, modCache in pairs(self.cachedMods) do
-        allRefs[modName] = {}
-        for version, cache in pairs(modCache) do
-            allRefs[modName][version] = {
-                ModuleUUID = cache.ModuleUUID,
-            }
+        local versions = {}
+        allRefs[modName] = {
+            ModuleUUID = modUuid or modCache.ModuleUUID,
+            Versions = versions,
+        }
+        for version, cache in pairs(modCache.Cache) do
+            table.insert(versions, version)
         end
     end
 
