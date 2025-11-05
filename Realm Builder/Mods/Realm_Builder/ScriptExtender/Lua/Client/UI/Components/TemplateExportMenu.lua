@@ -26,6 +26,7 @@ function TemplateExportMenu:Render()
         Author = "",
         ModName = "",
         Description = "",
+        Version = {1,0,0,0},
     }
 
     local topBar = panel:AddTable("Top Bar", 2)
@@ -39,7 +40,7 @@ function TemplateExportMenu:Render()
     local exportButton = exportCell:AddButton("Export")
 
     local childWin = panel:AddChildWindow("Export Options")
-    local refreshExportPanel = RenderExportSettingPanel(childWin, exportSettings)
+    local refreshExportPanel = RenderExportSettingPanel(childWin:AddCollapsingHeader("Export Setting"), exportSettings)
 
     local function isExportable()
         refreshExportPanel()
@@ -455,12 +456,10 @@ function TemplateExportMenu:__export(exportSettings, progressCallback)
 
     local modInternalName = exportSettings.ModName:gsub("%s+", "_")
     local modUuid = nil
-    local modCache = RealmPaths.GetMapModCachePath()
+    local modCache = RealmPath.GetMapModCachePath()
     local file = Ext.IO.LoadFile(modCache)
     local modCachedUuids = Ext.Json.Parse(file or "{}")
-    if file then
-        modUuid = modCachedUuids[modInternalName]
-    end
+    modUuid = modCachedUuids[modInternalName]
 
     if not modUuid then
         modUuid = Uuid_v4()
@@ -476,7 +475,7 @@ function TemplateExportMenu:__export(exportSettings, progressCallback)
     local modMetaNode = LSXHelpers.BuildModMeta(exportSettings.Uuid or Uuid_v4(), exportSettings.ModName, modInternalName,
         exportSettings.Author, exportSettings.Version, exportSettings.Description)
 
-    local modMetaPath = RealmPaths.GetMapModMetaPath(modInternalName)
+    local modMetaPath = RealmPath.GetMapModMetaPath(modInternalName)
     suc = Ext.IO.SaveFile(modMetaPath, modMetaNode:Stringify({ AutoFindRoot = true }))
     if not suc then throwError("Failed to save mod meta file at " .. modMetaPath) end
     advance("Building mod meta...")
@@ -498,7 +497,7 @@ function TemplateExportMenu:__export(exportSettings, progressCallback)
     else
         local locFile, stringToHandles = LSXHelpers.GenerateLocalization(needNames, 1)
 
-        local locPath = RealmPaths.GetMapModLocalizationPath(modInternalName, "English")
+        local locPath = RealmPath.GetMapModLocalizationPath(modInternalName, "English")
         suc = Ext.IO.SaveFile(locPath, locFile)
         if not suc then throwError("Failed to save localization file at " .. locPath) end
 
@@ -524,20 +523,30 @@ function TemplateExportMenu:__export(exportSettings, progressCallback)
 
         local templateInternalName = modInternalName ..
             "_" .. templateName .. "_" .. padNumber(templateNameCnt[templateName], 3)
-        local templatePath = RealmPaths.GetTemplatePath(modInternalName, levelName, guid, entData.TemplateType)
+        local templatePath = RealmPath.GetTemplatePath(modInternalName, levelName, guid, entData.TemplateType)
         if not templatePath then
             throwError("Failed to get template path for entity " .. guid)
             return
         end
 
         if entData.UseCustomVisualParameters and entData.OverrideVisualParameters then
+            local presetUuid = Uuid_v4()
+            local presetInternalName = templateInternalName .. "_CharacterPreset"
+            local presetBank = LSXHelpers.BuildMaterialPresetBank()
+            local presetNode = ResourceHelpers.BuildMaterialPresetResourceNode(entData.OverrideVisualParameters, presetUuid, presetInternalName)
+            presetBank:AppendChild(presetNode)
+            local presetPath = RealmPath.GetCharacterPresetPath(modInternalName, presetUuid)
+            suc = Ext.IO.SaveFile(presetPath, presetNode:Stringify({ AutoFindRoot = true }))
+            if not suc then
+                throwError("Failed to save character preset file at " .. presetPath)
+            end
             local overrideuuid = Uuid_v4()
             local visualInternalName = templateInternalName .. "_CharacterVisual"
             local bank = LSXHelpers.BuildCharacterVisualBank()
             local visualNode = ResourceHelpers.BuildCharacterVisualResource(entData.OriginalCharacterVisualUuid,
-                overrideuuid, visualInternalName, nil, entData.OverrideVisualParameters)
+                overrideuuid, visualInternalName, { [""] = presetUuid })
             bank:AppendChild(visualNode)
-            local visualPath = RealmPaths.GetCharacterVisualPath(modInternalName, overrideuuid)
+            local visualPath = RealmPath.GetCharacterVisualPath(modInternalName, overrideuuid)
             suc = Ext.IO.SaveFile(visualPath, bank:Stringify({ AutoFindRoot = true }))
             if not suc then
                 throwError("Failed to save character visual file at " .. visualPath)
@@ -557,7 +566,7 @@ function TemplateExportMenu:__export(exportSettings, progressCallback)
         end
 
         for _, other in ipairs(others or {}) do
-            local otherPath = RealmPaths.GetTemplatePath(modInternalName, levelName, other.Uuid, other.TemplateType)
+            local otherPath = RealmPath.GetTemplatePath(modInternalName, levelName, other.Uuid, other.TemplateType)
             if not otherPath then
                 throwError("Failed to get template path for entity " .. other.Uuid)
                 return

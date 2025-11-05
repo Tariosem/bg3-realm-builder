@@ -317,13 +317,13 @@ function KeybindManager:ForceBindTo(module, eventName, key, modifiers)
 end
 
 function KeybindManager:SaveToFile()
-    local path = RealmPaths.GetKeybindPath()
+    local path = RealmPath.GetKeybindPath()
     local data = self:Save()
     Ext.IO.SaveFile(path, Ext.Json.Stringify(data))
 end
 
 function KeybindManager:LoadFromFile()
-    local path = RealmPaths.GetKeybindPath()
+    local path = RealmPath.GetKeybindPath()
     local content = Ext.IO.LoadFile(path)
     if not content then return end
     local data = Ext.Json.Parse(content)

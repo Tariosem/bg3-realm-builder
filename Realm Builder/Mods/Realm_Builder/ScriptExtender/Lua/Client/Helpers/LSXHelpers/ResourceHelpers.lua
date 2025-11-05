@@ -207,6 +207,11 @@ function ResourceHelpers.BuildMaterialPresetResourceNode(parameters, uuid, inter
     return root
 end
 
+---@param force any
+---@param groupName any
+---@param mapKey any
+---@param materialPresetResource any
+---@return LSXNode
 local function buildMPNode(force, groupName, mapKey, materialPresetResource)
     local presetNode = LSXNode.new("node", { id = "Object", key = "MapKey" })
     presetNode:AppendChild(LSXHelpers.AttrNode("ForcePresetValues", "bool", force))
@@ -216,8 +221,12 @@ local function buildMPNode(force, groupName, mapKey, materialPresetResource)
     return presetNode
 end
 
+--- @param matOv ResourcePresetData
+--- @param overrideMaterialPresets table<string, string> groupname -> materialpreset uuid
+--- @param modfiedParams RB_ParameterSet
+--- @return LSXNode
 local function buildMaterialOverrideNodes(matOv, overrideMaterialPresets, modfiedParams)
-     local materialOverridesNode = LSXNode.new("node", { id = "MaterialOverrides", })
+    local materialOverridesNode = LSXNode.new("node", { id = "MaterialOverrides", })
     materialOverridesNode:AppendChild(LSXHelpers.AttrNode("MaterialResource", "FixedString", matOv.MaterialResource))
     
     local matOverridesChildren = materialOverridesNode:AppendChild(LSXHelpers.ChildrenNode())
@@ -255,6 +264,8 @@ local function buildMaterialOverrideNodes(matOv, overrideMaterialPresets, modfie
     if paramsNode then
         matOverridesChildren:AppendChildren(paramsNode)
     end
+
+    return materialOverridesNode
 end
 
 --- @param mat ResourcePresetData
@@ -295,7 +306,7 @@ function ResourceHelpers.BuildCharacterVisualResource(srcUuid, uuid, internalNam
     local matOvNode = buildMaterialOverrideNodes(
         srcSet.MaterialOverrides,
         overrideMaterialPresets,
-        modfiedParams
+        modfiedParams or {}
     )
     childrenNode:AppendChild(matOvNode)
 
@@ -319,10 +330,90 @@ function ResourceHelpers.BuildCharacterVisualResource(srcUuid, uuid, internalNam
     -- Slots
     for _, slot in pairs(srcSet.Slots) do
         local slotNode = childrenNode:AppendChild(LSXNode.new("node", { id = "Slots", }))
-        slotNode:AppendChild(LSXHelpers.AttrNode("Bone", "FixedString", slot.Bone))
-        slotNode:AppendChild(LSXHelpers.AttrNode("Slot", "FixedString", slot.Slot))
-        slotNode:AppendChild(LSXHelpers.AttrNode("VisualResource", "FixedString", slot.VisualResource))
+        slotNode:AppendChild(lsattrNode("Bone", "FixedString", slot.Bone))
+        slotNode:AppendChild(lsattrNode("Slot", "FixedString", slot.Slot))
+        slotNode:AppendChild(lsattrNode("VisualResource", "FixedString", slot.VisualResource))
     end
 
     return resourceNode
 end
+
+--- copy a Visual resource and modify it
+---@param srcUuid string
+---@param uuid string
+---@param internalName string
+---@param overrideObjectMat table<string, string> objectId -> matId
+function ResourceHelpers.BuildVisualResource(srcUuid, uuid, internalName, overrideObjectMat)
+    local src = Ext.Resource.Get(srcUuid, "Visual") --[[@as ResourceVisualResource]]
+
+    local resourceNode = LSXNode.new("node", { id = "Resource", })
+
+    local attributes = {
+        LSXHelpers.AttrNode("ID", "FixedString", uuid),
+        LSXHelpers.AttrNode("Name", "LSString", internalName .. "_" .. uuid),
+        LSXHelpers.AttrNode("SourceFile", "LSString", LSXHelpers.GetPathAfterData(src.SourceFile or "")),
+    }
+
+    resourceNode:AppendChildren(attributes)
+    local childrenNode = resourceNode:AppendChild(LSXHelpers.ChildrenNode())
+
+    -- Objects
+    for _, obj in pairs(src.Objects) do
+        local objNode = childrenNode:AppendChild(LSXNode.new("node", { id = "Objects", }))
+        objNode:AppendChild(lsattrNode("ObjectID", "FixedString", obj.ObjectID))
+        objNode:AppendChild(lsattrNode("LOD", "uint8", obj.LOD))
+        local matId = overrideObjectMat[obj.ObjectID] or obj.MaterialID
+        objNode:AppendChild(lsattrNode("MaterialID", "FixedString", matId))
+    end
+
+    return resourceNode
+end
+
+
+--[[
+<node id="Resource">
+	<attribute id="AttachBone" type="FixedString" value="" />
+	<attribute id="AttachmentSkeletonResource" type="FixedString" value="" />
+	<attribute id="BlueprintInstanceResourceID" type="FixedString" value="" />
+	<attribute id="BoundsMax" type="fvec3" value="1.4225477 2.2880502 1.4143094" />
+	<attribute id="BoundsMin" type="fvec3" value="-1.4225483 0.42886278 0.0118334945" />
+	<attribute id="ClothColliderResourceID" type="FixedString" value="" />
+	<attribute id="HairPresetResourceId" type="FixedString" value="" />
+	<attribute id="HairType" type="uint8" value="0" />
+	<attribute id="ID" type="FixedString" value="a3b75b3e-6ded-1034-2d5d-8f1be8720794" />
+	<attribute id="MaterialType" type="uint8" value="0" />
+	<attribute id="Name" type="LSString" value="CAMBION_F_NKD_Wing_A" />
+	<attribute id="NeedsSkeletonRemap" type="bool" value="False" />
+	<attribute id="RemapperSlotId" type="FixedString" value="" />
+	<attribute id="ScalpMaterialId" type="FixedString" value="" />
+	<attribute id="SkeletonResource" type="FixedString" value="" />
+	<attribute id="SkeletonSlot" type="FixedString" value="" />
+	<attribute id="Slot" type="FixedString" value="Unassigned" />
+	<attribute id="SoftbodyResourceID" type="FixedString" value="" />
+	<attribute id="SourceFile" type="LSString" value="Generated/Public/Shared/Assets/Characters/_Models/_Creatures/Cambion/_Female/Resources/CAMBION_F_NKD_Wing_A.GR2" />
+	<attribute id="SupportsVertexColorMask" type="bool" value="False" />
+	<attribute id="Template" type="FixedString" value="Generated/Public/Shared/Assets/Characters/_Models/_Creatures/Cambion/_Female/Resources/CAMBION_F_NKD_Wing_A.Dummy_Root.0" />
+	<attribute id="_OriginalFileVersion_" type="int64" value="144115207403209024" />
+	<children>
+		<node id="AnimationWaterfall">
+			<attribute id="Object" type="FixedString" value="" />
+		</node>
+		<node id="Base" />
+		<node id="ClothProxyMapping" />
+		<node id="Objects">
+			<attribute id="LOD" type="uint8" value="0" />
+			<attribute id="MaterialID" type="FixedString" value="9e2966c7-b61c-4bc1-bef1-a79cb5fde067" />
+			<attribute id="ObjectID" type="FixedString" value="CAMBION_F_NKD_Wing_A.CAMBION_F_NKD_Wing_A_Mesh.0" />
+		</node>
+		<node id="Objects">
+			<attribute id="LOD" type="uint8" value="1" />
+			<attribute id="MaterialID" type="FixedString" value="9e2966c7-b61c-4bc1-bef1-a79cb5fde067" />
+			<attribute id="ObjectID" type="FixedString" value="CAMBION_F_NKD_Wing_A.CAMBION_F_NKD_Wing_A_Mesh_LOD1.1" />
+		</node>
+		<node id="Objects">
+			<attribute id="LOD" type="uint8" value="2" />
+			<attribute id="MaterialID" type="FixedString" value="9e2966c7-b61c-4bc1-bef1-a79cb5fde067" />
+			<attribute id="ObjectID" type="FixedString" value="CAMBION_F_NKD_Wing_A.CAMBION_F_NKD_Wing_A_Mesh_LOD2.2" />
+		</node>
+	</children>
+</node>]]
