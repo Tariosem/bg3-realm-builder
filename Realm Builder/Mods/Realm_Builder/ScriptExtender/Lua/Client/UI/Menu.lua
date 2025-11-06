@@ -5,8 +5,8 @@ Menu = _Class("Menu")
 --- @class RB_MainMenu
 --- @field isValid boolean
 --- @field effectsMenu EffectsMenu
---- @field entityMenu SceneMenu
---- @field presetMenu PresetMenu
+--- @field entityMenu OutlinerMenu
+--- @field presetMenu SceneMenu
 --- @field styleMenu StyleMenu
 --- @field itemBrowser ItemBrowser
 --- @field effectBrowser EffectBrowser
@@ -55,11 +55,11 @@ function Menu:Render()
     now = Ext.Timer.MonotonicTime()
 
     Timer:Ticks(2, function()
-        self.presetMenu = PresetMenu:Add(self.tabBar)
+        self.presetMenu = SceneMenu:Add(self.tabBar)
     end)
 
     Timer:Ticks(3, function()
-        self.entityMenu = SceneMenu:Add(self.tabBar)
+        self.entityMenu = OutlinerMenu:Add(self.tabBar)
     end)
 
     Timer:Ticks(4, function()

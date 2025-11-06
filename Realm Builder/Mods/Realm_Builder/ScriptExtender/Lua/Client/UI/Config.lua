@@ -45,7 +45,7 @@ CONFIG = {
     ItemBrowser = {
         autoSave = true,
     },
-    PresetMenu = {
+    SceneMenu = {
         autoSave = true,
     },
     Misc = {

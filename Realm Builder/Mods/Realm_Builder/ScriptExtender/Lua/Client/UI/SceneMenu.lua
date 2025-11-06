@@ -1,7 +1,7 @@
-PRESETMENU_WIDTH = 1000 * SCALE_FACTOR
-PRESETMENU_HEIGHT = 1200 * SCALE_FACTOR
+SCENEMENU_WIDTH = 1000 * SCALE_FACTOR
+SCENEMENU_HEIGHT = 1200 * SCALE_FACTOR
 
---- @class PropPresetData
+--- @class SceneData
 --- @field PresetType "Relative"|"Absolute"
 --- @field Name string
 --- @field Level string
@@ -11,11 +11,11 @@ PRESETMENU_HEIGHT = 1200 * SCALE_FACTOR
 --- @field Highlight boolean|nil
 --- @field HighlightColor Vec4|nil
 
---- @class PresetMenu
---- @field presets table<string, PropPresetData>
-PresetMenu = _Class("PresetMenu")
+--- @class SceneMenu
+--- @field presets table<string, SceneData>
+SceneMenu = _Class("PresetMenu")
 
-function PresetMenu:__init(parent)
+function SceneMenu:__init(parent)
     self.panel = nil
     self.parent = parent
 
@@ -23,7 +23,7 @@ function PresetMenu:__init(parent)
     self.currentPreset = nil
 
     self.visibleOnly = true
-    self.autoSave = CONFIG.PresetMenu.autoSave or false
+    self.autoSave = CONFIG.SceneMenu.autoSave or false
     self.isRelative = true
 
     self:LoadFromFile()
@@ -31,8 +31,8 @@ function PresetMenu:__init(parent)
     return self
 end
 
-function PresetMenu:Render()
-    self.panel = self.parent:AddTabItem(GetLoca("Presets"))
+function SceneMenu:Render()
+    self.panel = self.parent:AddTabItem(GetLoca("Scene"))
 
     local topTable = self.panel:AddTable("topTable", 2) --[[@as ExtuiTable]]
     topTable.ColumnDefs[1] = { WidthFixed = true }
@@ -176,13 +176,13 @@ function PresetMenu:Render()
     self:RenderSidebarSelection()
 end
 
-function PresetMenu:Add(parent)
-    local menu = PresetMenu.new(parent)
+function SceneMenu:Add(parent)
+    local menu = SceneMenu.new(parent)
     menu:Render()
     return menu
 end
 
-function PresetMenu:Destroy()
+function SceneMenu:Destroy()
     self.parent = nil
     if self.panel then
         self.panel:Destroy()
@@ -196,7 +196,7 @@ function PresetMenu:Destroy()
 
 end
 
-function PresetMenu:SavePreset(name, overwrite)
+function SceneMenu:SavePreset(name, overwrite)
     if not name or name == "" then
         Error("Preset name cannot be empty.")
         return
@@ -289,7 +289,7 @@ function PresetMenu:SavePreset(name, overwrite)
     self:ChangePresentingPreset(name)
 end
 
-function PresetMenu:GetUniqueName(baseName)
+function SceneMenu:GetUniqueName(baseName)
     local name = baseName
     local index = 1
 
@@ -311,7 +311,7 @@ function PresetMenu:GetUniqueName(baseName)
     end
 end
 
-function PresetMenu:GetAllPresetNames()
+function SceneMenu:GetAllPresetNames()
     local names = {}
     for name,_ in pairs(self.presets) do
         table.insert(names, name)
@@ -320,7 +320,7 @@ function PresetMenu:GetAllPresetNames()
     return names
 end
 
-function PresetMenu:CheckModList(name)
+function SceneMenu:CheckModList(name)
     for modId, modName in pairs(self.presets[name].ModList or {}) do
         if not Ext.Mod.IsModLoaded(modId) then
             local presentInfo = modName and modName ~= "" and modName or modId
@@ -336,7 +336,7 @@ function PresetMenu:CheckModList(name)
     return true
 end
 
-function PresetMenu:LoadPreset(name, isPreview, force)
+function SceneMenu:LoadPreset(name, isPreview, force)
     if not self.presets[name] then
         return nil
     end
@@ -370,7 +370,7 @@ function PresetMenu:LoadPreset(name, isPreview, force)
     return nil
 end
 
-function PresetMenu:DeletePreset(name)
+function SceneMenu:DeletePreset(name)
     if not self.presets[name] then
         Warning("Preset not found: " .. name)
         return false
@@ -391,7 +391,7 @@ function PresetMenu:DeletePreset(name)
     return true
 end
 
-function PresetMenu:ChangePresentingPreset(name)
+function SceneMenu:ChangePresentingPreset(name)
     local cT = self.collapsingTable
     cT.OnWidthChange = nil
 
@@ -405,7 +405,7 @@ function PresetMenu:ChangePresentingPreset(name)
     self.collapsingTable.Collapse()
 end
 
-function PresetMenu:ClearSidebarHighlights()
+function SceneMenu:ClearSidebarHighlights()
     if not self.presetSideBarButtons then
         return
     end
@@ -415,7 +415,7 @@ function PresetMenu:ClearSidebarHighlights()
     end
 end
 
-function PresetMenu:RenderSidebarSelection()
+function SceneMenu:RenderSidebarSelection()
     local ud = self.collapsingTable
     local buttonPanel = self.buttonPanel or ud.SideBar:AddChildWindow("buttonPanel")
     self.buttonPanel = buttonPanel
@@ -551,7 +551,7 @@ function PresetMenu:RenderSidebarSelection()
     end
 end
 
-function PresetMenu:RenderPresetInfo(name)
+function SceneMenu:RenderPresetInfo(name)
     if self.descKeyInputSub then
         self.descKeyInputSub:Unsubscribe()
         self.descKeyInputSub = nil
@@ -775,7 +775,7 @@ function PresetMenu:RenderPresetInfo(name)
     entInfoWindow:AddText("Click to spawn preview, right-click to spawn.").TextWrapPos = 950 * SCALE_FACTOR
 end
 
-function PresetMenu:RenderPresetObjectInfo(parent, entInfo, presetName, presetType, path)
+function SceneMenu:RenderPresetObjectInfo(parent, entInfo, presetName, presetType, path)
     local group = entInfo.Group or presetName
     local tags = entInfo.Tags or {}
     local note = entInfo.Note or ""
@@ -952,7 +952,7 @@ function PresetMenu:RenderPresetObjectInfo(parent, entInfo, presetName, presetTy
     return header
 end
 
-function PresetMenu:SaveToFile(presetName)
+function SceneMenu:SaveToFile(presetName)
     local refFilePath = GetPresetReferencePath()
     local refData = {}
 
@@ -973,7 +973,7 @@ function PresetMenu:SaveToFile(presetName)
     end
 end
 
-function PresetMenu:LoadFromFile()
+function SceneMenu:LoadFromFile()
     local refFilePath = GetPresetReferencePath()
     local refData = Ext.IO.LoadFile(refFilePath)
     if refData then
@@ -996,7 +996,7 @@ function PresetMenu:LoadFromFile()
     
 end
 
-function PresetMenu:TryToLoadFile(presetName)
+function SceneMenu:TryToLoadFile(presetName)
     if not presetName or presetName == "" then
         return false
     end

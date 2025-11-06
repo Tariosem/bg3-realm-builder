@@ -1,10 +1,10 @@
---- @class SceneMenu
+--- @class OutlinerMenu
 --- @field entityTabs table<string, EntityTab>
 --- @field CollectionPopup ExtuiPopup
 --- @field EntityPopup ExtuiPopup
-SceneMenu = _Class("EntityMenu")
+OutlinerMenu = _Class("EntityMenu")
 
-function SceneMenu:__init(parent)
+function OutlinerMenu:__init(parent)
     self.parent = parent
     
     self.isAttach = true
@@ -20,7 +20,7 @@ function SceneMenu:__init(parent)
     self.entityTabs = {}
 end
 
-function SceneMenu:NewEntityAdded(guids)
+function OutlinerMenu:NewEntityAdded(guids)
     local list = NormalizeGuidList(guids)
 
     for _, guid in ipairs(list) do
@@ -34,7 +34,7 @@ function SceneMenu:NewEntityAdded(guids)
     self:UpdateList()
 end
 
-function SceneMenu:EntityDeleted(guids)
+function OutlinerMenu:EntityDeleted(guids)
     local list = NormalizeGuidList(guids)
     for _, guid in ipairs(list) do
         if guid ~= nil and guid ~= "" then
@@ -48,10 +48,10 @@ function SceneMenu:EntityDeleted(guids)
     self:UpdateList()
 end
 
-function SceneMenu:Render()
+function OutlinerMenu:Render()
 
     if self.isAttach and self.parent then
-        self.panel = self.parent:AddTabItem(GetLoca("Scene"))
+        self.panel = self.parent:AddTabItem(GetLoca("Outliner"))
         self.isWindow = false
     else
         self.panel = RegisterWindow("generic", "", "Props Menu", self)
@@ -68,7 +68,7 @@ function SceneMenu:Render()
     self:RenderMainArea()
 end
 
-function SceneMenu:RenderMenu()
+function OutlinerMenu:RenderMenu()
     if self.isWindow then
         self.mainMenu = self.panel:AddMainMenu()
         self.debugMenu = self.mainMenu:AddMenu(GetLoca("Debug"))
@@ -104,7 +104,7 @@ function SceneMenu:RenderMenu()
     ApplyDangerSelectableStyle(self.bruteForceDeleteAllButton)
 end
 
-function SceneMenu:RenderSideBar()
+function OutlinerMenu:RenderSideBar()
     local panel = self.mainPanel.SideBar
     local tree = EntityStore.Tree
 
@@ -146,7 +146,7 @@ function SceneMenu:RenderSideBar()
 
         local displayName = propData and propData.DisplayName or key
 
-        local icon = GetIconForTemplateId(propData and propData.TemplateId)
+        local icon = GetIcon(propData.Guid)
 
         local image = node:AddImageButton(propData.Guid, icon, {36, 36}) --[[@as ExtuiImageButton]]
 
@@ -255,7 +255,7 @@ function SceneMenu:RenderSideBar()
     self.propTreeList = treeList   
 end
 
-function SceneMenu:SetupLeaf(sel, key, node)
+function OutlinerMenu:SetupLeaf(sel, key, node)
     local selectable = sel
 
     selectable.SameLine = true
@@ -272,7 +272,7 @@ function SceneMenu:SetupLeaf(sel, key, node)
     end
 end
 
-function SceneMenu:SetupTree(sel, key, node)
+function OutlinerMenu:SetupTree(sel, key, node)
     local selectable = sel
 
     selectable.SameLine = true
@@ -283,7 +283,7 @@ function SceneMenu:SetupTree(sel, key, node)
     end
 end
 
-function SceneMenu:GroupLogic(from, target)
+function OutlinerMenu:GroupLogic(from, target)
     if not from or not target or from == target then
         return
     end
@@ -320,7 +320,7 @@ function SceneMenu:GroupLogic(from, target)
     self:UpdateList()
 end
 
-function SceneMenu:SetupSelectablePopup()
+function OutlinerMenu:SetupSelectablePopup()
     if self.EntityPopup then self.EntityPopup:Open() return end
 
     self.EntityPopup = self.propTreeList.panel:AddPopup("PropRightClickPopup") --[[@as ExtuiPopup]]
@@ -415,7 +415,7 @@ function SceneMenu:SetupSelectablePopup()
     self.EntityPopup:Open()
 end
 
-function SceneMenu:SetupCollectionSelectablePopup()
+function OutlinerMenu:SetupCollectionSelectablePopup()
     if self.CollectionPopup then self.CollectionPopup:Open() return end
 
     self.CollectionPopup = self.propTreeList.panel:AddPopup("CollectionRightClickPopup") --[[@as ExtuiPopup]]
@@ -492,13 +492,13 @@ function SceneMenu:SetupCollectionSelectablePopup()
     self.CollectionPopup:Open()
 end
 
-function SceneMenu:RenderMainArea()
+function OutlinerMenu:RenderMainArea()
     local panel = self.mainPanel.MainArea
 
     self.mainArea = panel
 end
 
-function SceneMenu:CreateEntityTab(ent, opts)
+function OutlinerMenu:CreateEntityTab(ent, opts)
     --self.props[prop.Guid] = prop
 
     local entityTab = nil
@@ -539,7 +539,7 @@ function SceneMenu:CreateEntityTab(ent, opts)
     return nil
 end
 
-function SceneMenu:FocusTab(guid, doDetach)
+function OutlinerMenu:FocusTab(guid, doDetach)
     local entityTab = self.entityTabs[guid]
     if guid == self.presentingProp and entityTab.isVisible == false then
         self.presentingProp = nil
@@ -567,7 +567,7 @@ function SceneMenu:FocusTab(guid, doDetach)
     end
 end
 
-function SceneMenu:FocusEntityVisualTab(guid)
+function OutlinerMenu:FocusEntityVisualTab(guid)
     local entityTab = self.entityTabs[guid]
     if entityTab and entityTab.isValid then
 
@@ -582,19 +582,19 @@ function SceneMenu:FocusEntityVisualTab(guid)
     end
 end
 
-function SceneMenu:UpdateList()
+function OutlinerMenu:UpdateList()
     self.propTreeList:RenderList()
 end
 
-function SceneMenu:UpdateSelectableAlpha(guid)
+function OutlinerMenu:UpdateSelectableAlpha(guid)
     if self.imageRefs and self.imageRefs[guid] then
         local image = self.imageRefs[guid]
         image.UserData.UpdateAlpha()
     end
 end
 
-function SceneMenu:Add(parent)
-    local menu = SceneMenu.new(parent)
+function OutlinerMenu:Add(parent)
+    local menu = OutlinerMenu.new(parent)
     menu:Render()
     return menu
 end

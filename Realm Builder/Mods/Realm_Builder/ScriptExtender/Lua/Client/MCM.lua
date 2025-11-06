@@ -37,6 +37,7 @@ local function ToggleBrowser(targetKey)
 end
 
 local browserMenu = RegisterWindow("generic", "Browser Menu", "Guide Menu")
+browserMenu.AlwaysAutoResize = true
 
 local allAvailableBrowsers = {
     {Key = "item", Label = "Item Browser"},
