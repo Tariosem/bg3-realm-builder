@@ -7,5 +7,6 @@ RequireFiles("Client/UI/Stores/", {
     "ManagerBase",
     "CharacterManager",
     "ItemManager",
+    "SceneryManager",
     "MultiEffectManager",
 })

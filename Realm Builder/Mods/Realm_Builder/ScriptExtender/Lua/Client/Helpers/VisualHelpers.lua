@@ -125,6 +125,19 @@ function VisualHelpers.SetVisualScale(handle, scale)
     return true
 end
 
+function VisualHelpers.GetVisualTransform(handle)
+    local entity = handle
+    local visual = VisualHelpers.GetEntityVisual(entity)
+    if not visual or not visual.WorldTransform then
+        return nil
+    end
+    local transform = {}
+    transform.Translate = visual.WorldTransform.Translate
+    transform.RotationQuat = visual.WorldTransform.RotationQuat
+    transform.Scale = visual.WorldTransform.Scale
+    return transform
+end
+
 function VisualHelpers.GetEntityAABB(handle)
     local entity = handle
     local visual = VisualHelpers.GetEntityVisual(entity)

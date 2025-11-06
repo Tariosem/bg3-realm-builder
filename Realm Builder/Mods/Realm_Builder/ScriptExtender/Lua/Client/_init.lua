@@ -90,6 +90,7 @@ end
 RB_CharacterManager = CharacterManager.new()
 RB_ItemManager = ItemManager.new()
 RB_MultiEffectManager = MultiEffectManager.new()
+RB_SceneryManager = SceneryManager.new()
 
 --- @param uuid GUIDSTRING
 --- @return GameObjectTemplate|ResourceMultiEffectInfo|ResourceEffectInfo|nil
@@ -116,6 +117,7 @@ local function PopulateAllTemplates()
     if RB_ItemManager.populated then return -1 end
     local itemCnt = 0
     local characterCnt = 0
+    local sceneryCnt = 0
 
     local allWeaponStats = Ext.Stats.GetStats("Weapon")
     for _, statsId in pairs(allWeaponStats) do
@@ -142,7 +144,6 @@ local function PopulateAllTemplates()
         ::continue::
     end
 
-
     local raw = Ext.ClientTemplate.GetAllRootTemplates()
     for uuid, object in pairs(raw) do
         if object.TemplateType == "item" and not RB_ItemManager.Data[uuid] then
@@ -154,24 +155,31 @@ local function PopulateAllTemplates()
             --- @diagnostic disable-next-line
             RB_CharacterManager:PopulateCharacter(object)
             characterCnt = characterCnt + 1
+        elseif object.TemplateType == "scenery" then
+            object = object --[[@as SceneryTemplate]]
+            RB_SceneryManager:PopulateScenery(object)
+            sceneryCnt = sceneryCnt + 1
         end
     end
 
     RB_CharacterManager.populated = true
     RB_ItemManager.populated = true
     RB_ItemManager.modCache = {}
-    return itemCnt, characterCnt
+    return itemCnt, characterCnt, sceneryCnt
 end
 
 
 local function Realm_Builder_Population()
     local now = Ext.Timer:MonotonicTime()
-    local itemCnt, characterCnt = PopulateAllTemplates()
+    local itemCnt, characterCnt, sceneryCnt = PopulateAllTemplates()
     local itemsFinished = Ext.Timer:MonotonicTime()
     local effectCnt = RB_MultiEffectManager:PopulateAllEffects()
     local effectsFinished = Ext.Timer:MonotonicTime()
     if itemCnt ~= -1 and effectCnt ~= -1 then
-        RPrintPurple("[Realm Builder] Populating Templates took " .. (itemsFinished - now) .. " ms for " .. itemCnt .. " items and " .. characterCnt .. " characters")
+        RPrintPurple("[Realm Builder] Populating Templates took " .. (itemsFinished - now) .. " ms.")
+        RPrintPurple("  - " .. itemCnt .. " items populated.")
+        RPrintPurple("  - " .. characterCnt .. " characters populated.")
+        RPrintPurple("  - " .. sceneryCnt .. " scenery populated.")
         RPrintPurple("[Realm Builder] Populating Effects took " .. (effectsFinished - itemsFinished) .. " ms for " .. effectCnt .. " effects")
     end
 end

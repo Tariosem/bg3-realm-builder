@@ -54,47 +54,9 @@
                             }
                         },
                         {
-                            "Id": "key_toggle_item_browser",
-                            "Name": "Toggle Item Browser",
-                            "Description": "Keybinding to toggle the item browser.",
-                            "Type": "keybinding_v2",
-                            "Default": {
-                                "Keyboard": {
-                                    "Key": "",
-                                    "ModifierKeys": []
-                                }
-                            },
-                            "Options": {
-                                "ShouldTriggerOnKeyDown": true,
-                                "ShouldTriggerOnKeyUp": false,
-                                "ShouldTriggerOnRepeat": false,
-                                "IsDeveloperOnly": false,
-                                "BlockIfLevelNotStarted": true
-                            }
-                        },
-                        {
-                            "Id": "key_toggle_effect_browser",
-                            "Name": "Toggle Effect Browser",
-                            "Description": "Keybinding to toggle the effect browser.",
-                            "Type": "keybinding_v2",
-                            "Default": {
-                                "Keyboard": {
-                                    "Key": "",
-                                    "ModifierKeys": []
-                                }
-                            },
-                            "Options": {
-                                "ShouldTriggerOnKeyDown": true,
-                                "ShouldTriggerOnKeyUp": false,
-                                "ShouldTriggerOnRepeat": false,
-                                "IsDeveloperOnly": false,
-                                "BlockIfLevelNotStarted": true
-                            }
-                        },
-                        {
-                            "Id": "key_toggle_character_browser",
-                            "Name": "Toggle Character Browser",
-                            "Description": "Keybinding to toggle the character browser.",
+                            "Id": "key_toggle_browser_menu",
+                            "Name": "Toggle Browser Menu",
+                            "Description": "A menu let you open various browsers.",
                             "Type": "keybinding_v2",
                             "Default": {
                                 "Keyboard": {

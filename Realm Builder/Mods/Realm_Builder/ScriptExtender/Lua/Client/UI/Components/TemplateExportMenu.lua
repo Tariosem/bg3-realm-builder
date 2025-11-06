@@ -26,7 +26,7 @@ function TemplateExportMenu:Render()
         Author = "",
         ModName = "",
         Description = "",
-        Version = {1,0,0,0},
+        Version = { 1, 0, 0, 0 },
     }
 
     local topBar = panel:AddTable("Top Bar", 2)
@@ -242,9 +242,11 @@ function TemplateExportMenu:RenderTemplateEntry(cell, entData)
     }
     local ignoreAttrs = {
         TemplateType = true,
-        OriginalCharacterVisualUuid = true,
+        OriginalVisualUuid = true,
         OverrideVisualParameters = true,
-        OverrideCharacterVisualUuid = true,
+        OverrideVisualUuid = true,
+        VisualObjectMaterialOverride = true,
+        ExcludeFromExport = true,
     }
 
     local attrOrder = {
@@ -327,7 +329,7 @@ function TemplateExportMenu:RenderTemplateEntry(cell, entData)
                 local disableUntilMovedCB = valueCell:AddCheckbox("##" .. entData.Guid .. "_disableUntilMoved")
                 disableUntilMovedCB.SameLine = true
                 disableUntilMovedCB:Tooltip():AddText(
-                    "Disable gravity until the entity is moved by the player.")
+                    "Disable gravity until the entity is moved.")
                 disableUntilMovedCB.OnChange = function(cb)
                     if not cb.Checked then
                         entData.DisableGravityUntilMoved = false
@@ -353,7 +355,9 @@ function TemplateExportMenu:RenderTemplateEntry(cell, entData)
                 SleepMax = entData.WanderConfig and entData.WanderConfig.SleepMax or 5,
             }
             local editWanderButton = wanderConfigValueCell:AddCheckbox("Enable Wandering")
+            local visualizeBtn = wanderConfigValueCell:AddButton("Visualize Wander Area")
             local configTab = wanderConfigValueCell:AddTable("Wander Config Table", 2)
+            configTab.Borders = true
             configTab.Visible = entData.WanderConfig ~= nil
             configTab.ColumnDefs[1] = { WidthFixed = true }
             configTab.ColumnDefs[2] = { WidthStretch = true }
@@ -363,10 +367,29 @@ function TemplateExportMenu:RenderTemplateEntry(cell, entData)
                 if not sel.Checked then
                     entData.WanderConfig = nil
                     configTab.Visible = false
+                    visualizeBtn.Visible = false
                 else
                     entData.WanderConfig = cached
                     configTab.Visible = true
+                    visualizeBtn.Visible = true
                 end
+            end
+
+            visualizeBtn.SameLine = true
+            visualizeBtn.OnClick = function()
+                local pos = Vec3.new(entData.Position)
+                local extents = Vec3.new(cached.Area, cached.Area, 5)
+                local min = pos - extents
+                local max = pos + extents
+
+                NetChannel.Visualize:RequestToServer({
+                    Type = "Box",
+                    Min = min,
+                    Max = max,
+                    Duration = 5000,
+                }, function (response)
+                    
+                end)
             end
 
             for attrName, defaultValue in SortedPairs(cached) do
@@ -406,18 +429,25 @@ end
 function TemplateExportMenu:__export(exportSettings, progressCallback)
     local thread = coroutine.running()
     local startTime = Ext.Timer.MonotonicTime()
+    local customVisualCnt = 0
     local toExport = {} --[[@type table<string, EntityData> ]]
+    local toBuildCustomVisuals = {} --[[@type table<string, EntityData> ]]
     for guid, entData in pairs(self.ExportDatas) do
         if not entData.ExcludeFromExport then
             toExport[guid] = entData
+            if entData.UseCustomVisualParameters then
+                customVisualCnt = customVisualCnt + 1
+                toBuildCustomVisuals[guid] = entData
+            end
         end
     end
     local exportCnt = CountMap(toExport)
 
     local actCnt =
-        1 +       -- build meta.lsx
-        1 +       -- build localizaion
-        exportCnt -- export templates
+        1 +               -- build meta.lsx
+        1 +               -- build localizaion
+        customVisualCnt + -- export custom visuals
+        exportCnt         -- export templates
 
     progressCallback = progressCallback or function(num, msg)
         Debug(string.format("Export Progress: %.2f%% - %s", num, msg))
@@ -438,9 +468,11 @@ function TemplateExportMenu:__export(exportSettings, progressCallback)
     local function yield()
         if Ext.Timer.MonotonicTime() - lastYieldTime < yieldInterval then return end
         Timer:Ticks(5, function(timerID)
-            local suc, msg = coroutine.resume(thread)
+            local msg
+            suc, msg = coroutine.resume(thread)
             if not suc then
-                throwError(msg)
+                progressCallback(-1, "Export failed: " .. tostring(msg))
+                Error("Export failed: " .. tostring(msg))
             end
         end)
         coroutine.yield()
@@ -450,6 +482,14 @@ function TemplateExportMenu:__export(exportSettings, progressCallback)
         currentProgress = currentProgress + progressStep
         if progressCallback then
             progressCallback(currentProgress, message)
+        end
+        yield()
+    end
+
+    local function saveFile(path, content)
+        suc = Ext.IO.SaveFile(path, content)
+        if not suc then
+            throwError("Failed to save file at " .. path)
         end
         yield()
     end
@@ -471,13 +511,11 @@ function TemplateExportMenu:__export(exportSettings, progressCallback)
     end
 
     -- export mod meta.lsx
-
-    local modMetaNode = LSXHelpers.BuildModMeta(exportSettings.Uuid or Uuid_v4(), exportSettings.ModName, modInternalName,
+    local modMetaNode = LSXHelpers.BuildModMeta(modUuid, exportSettings.ModName, modInternalName,
         exportSettings.Author, exportSettings.Version, exportSettings.Description)
 
     local modMetaPath = RealmPath.GetMapModMetaPath(modInternalName)
-    suc = Ext.IO.SaveFile(modMetaPath, modMetaNode:Stringify({ AutoFindRoot = true }))
-    if not suc then throwError("Failed to save mod meta file at " .. modMetaPath) end
+    saveFile(modMetaPath, modMetaNode:Stringify({ AutoFindRoot = true }))
     advance("Building mod meta...")
 
     -- export localization
@@ -498,8 +536,7 @@ function TemplateExportMenu:__export(exportSettings, progressCallback)
         local locFile, stringToHandles = LSXHelpers.GenerateLocalization(needNames, 1)
 
         local locPath = RealmPath.GetMapModLocalizationPath(modInternalName, "English")
-        suc = Ext.IO.SaveFile(locPath, locFile)
-        if not suc then throwError("Failed to save localization file at " .. locPath) end
+        saveFile(locPath, locFile)
 
         for name, guids in pairs(nameToGuids) do
             local handle = table.remove(stringToHandles[name])
@@ -507,6 +544,87 @@ function TemplateExportMenu:__export(exportSettings, progressCallback)
             guidToHandle[guid] = handle
         end
         advance("Building localization...")
+    end
+
+    -- export custom visuals
+
+    local intenalNameMap = {}
+
+    for guid, entData in pairs(toBuildCustomVisuals) do
+        local baseName = TrimTail(entData.TemplateId, 37)
+        intenalNameMap[guid] = modInternalName .. "_" .. baseName .. "_" .. guid
+    end
+
+    for guid, entData in pairs(toBuildCustomVisuals) do
+        local overrideVisualID = Uuid_v4()
+        local internalName = intenalNameMap[guid]
+        if entData.TemplateType == "character" then
+            local presetUuid = Uuid_v4()
+            local presetInternalName = internalName .. "_CharacterPreset_" .. presetUuid
+
+            --- build preset resource
+            local presetBank = LSXHelpers.BuildMaterialPresetBank()
+            local presetNode = ResourceHelpers.BuildMaterialPresetResourceNode(entData.OverrideVisualParameters,
+                presetUuid, presetInternalName)
+            presetBank:AppendChild(presetNode)
+            local presetPath = RealmPath.GetCharacterPresetPath(modInternalName, presetUuid)
+            saveFile(presetPath, presetNode:Stringify({ AutoFindRoot = true }))
+
+            --- build visual resource
+            local visualInternalName = modInternalName .. "_CharacterVisual_" .. overrideVisualID
+            local bank = LSXHelpers.BuildCharacterVisualBank()
+            local visualNode = ResourceHelpers.BuildCharacterVisualResource(entData.OriginalVisualUuid,
+                overrideVisualID, visualInternalName, { [""] = presetUuid })
+            bank:AppendChild(visualNode)
+            local visualPath = RealmPath.GetCharacterVisualPath(modInternalName, overrideVisualID)
+            saveFile(visualPath, bank:Stringify({ AutoFindRoot = true }))
+
+            entData.OverrideVisualUuid = overrideVisualID
+        elseif entData.TemplateType == "item" then
+            local matOverrideMap = {}
+
+            --- build material resource we need
+            for oriMat, overrideParams in pairs(entData.VisualObjectMaterialOverride or {}) do
+                local overrideMat = Uuid_v4()
+                matOverrideMap[oriMat] = overrideMat
+                local matInternalName = internalName .. "_MatOverride_" .. overrideMat
+                local matBank = LSXHelpers.BuildMaterialBank()
+                local matResource = ResourceHelpers.BuildMaterialResource(oriMat, overrideMat, overrideParams,
+                    matInternalName)
+                matBank:AppendChild(matResource)
+                if not matResource then
+                    throwError("Failed to build item material override resource for original material " .. oriMat)
+                    return
+                end
+
+                local matPath = RealmPath.GetItemPresetPath(modInternalName, overrideMat)
+                saveFile(matPath, matBank:Stringify({ AutoFindRoot = true }))
+            end
+
+            --- build visual resource
+            local visualInternalName = internalName .. "_ItemVisual_" .. overrideVisualID
+            local visualBank = LSXHelpers.BuildVisualBank()
+            local visual = ResourceHelpers.BuildVisualResource(entData.OriginalVisualUuid, overrideVisualID,
+                visualInternalName, matOverrideMap)
+            visualBank:AppendChild(visual)
+            local visualPath = RealmPath.GetItemVisualPath(modInternalName, overrideVisualID)
+            saveFile(visualPath, visualBank:Stringify({ AutoFindRoot = true }))
+
+            --- build root template with visual override
+            local overrideTemplateID = Uuid_v4()
+            local overrideTemplateInternalName = internalName .. "_VisualTemplate"
+            local rootTemplate = LSXHelpers.BuildItemRootTemplate(entData.TemplateId, overrideTemplateID,
+                overrideTemplateInternalName, { VisualTemplate = overrideVisualID })
+
+            local overrideTemplatePath = RealmPath.GetItemRootTemplatePath(modInternalName, overrideTemplateID)
+            --- @diagnostic disable-next-line
+            saveFile(overrideTemplatePath, rootTemplate:Stringify({ AutoFindRoot = true }))
+
+            --- set override template id
+            entData.TemplateId = overrideTemplateInternalName .. "_" .. overrideTemplateID
+        end
+        entData.OverrideVisualUuid = overrideVisualID
+        advance("Exporting custom visual for " .. entData.DisplayName .. "...")
     end
 
     -- export templates
@@ -529,52 +647,17 @@ function TemplateExportMenu:__export(exportSettings, progressCallback)
             return
         end
 
-        if entData.UseCustomVisualParameters and entData.OverrideVisualParameters then
-            local presetUuid = Uuid_v4()
-            local presetInternalName = templateInternalName .. "_CharacterPreset"
-            local presetBank = LSXHelpers.BuildMaterialPresetBank()
-            local presetNode = ResourceHelpers.BuildMaterialPresetResourceNode(entData.OverrideVisualParameters, presetUuid, presetInternalName)
-            presetBank:AppendChild(presetNode)
-            local presetPath = RealmPath.GetCharacterPresetPath(modInternalName, presetUuid)
-            suc = Ext.IO.SaveFile(presetPath, presetNode:Stringify({ AutoFindRoot = true }))
-            if not suc then
-                throwError("Failed to save character preset file at " .. presetPath)
-            end
-            local overrideuuid = Uuid_v4()
-            local visualInternalName = templateInternalName .. "_CharacterVisual"
-            local bank = LSXHelpers.BuildCharacterVisualBank()
-            local visualNode = ResourceHelpers.BuildCharacterVisualResource(entData.OriginalCharacterVisualUuid,
-                overrideuuid, visualInternalName, { [""] = presetUuid })
-            bank:AppendChild(visualNode)
-            local visualPath = RealmPath.GetCharacterVisualPath(modInternalName, overrideuuid)
-            suc = Ext.IO.SaveFile(visualPath, bank:Stringify({ AutoFindRoot = true }))
-            if not suc then
-                throwError("Failed to save character visual file at " .. visualPath)
-            end
-            entData.OverrideCharacterVisualUuid = overrideuuid
-        end
-
         local templateNode, others = LSXHelpers.BuildTemplate(guid, entData, templateInternalName, guidToHandle[guid])
         if not templateNode then
             throwError("Failed to build template for entity " .. guid)
             return
         end
 
-        suc = Ext.IO.SaveFile(templatePath, templateNode:Stringify({ AutoFindRoot = true }))
-        if not suc then
-            throwError("Failed to save template file at " .. templatePath)
-        end
+        saveFile(templatePath, templateNode:Stringify({ AutoFindRoot = true }))
 
         for _, other in ipairs(others or {}) do
             local otherPath = RealmPath.GetTemplatePath(modInternalName, levelName, other.Uuid, other.TemplateType)
-            if not otherPath then
-                throwError("Failed to get template path for entity " .. other.Uuid)
-                return
-            end
-            suc = Ext.IO.SaveFile(otherPath, other.LSXNode:Stringify({ AutoFindRoot = true }))
-            if not suc then
-                throwError("Failed to save template file at " .. otherPath)
-            end
+            saveFile(otherPath, other.LSXNode:Stringify({ AutoFindRoot = true }))
         end
 
         advance("Exporting template " .. entData.DisplayName .. "...")

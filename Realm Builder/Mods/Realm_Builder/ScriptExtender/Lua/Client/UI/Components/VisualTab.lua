@@ -4,7 +4,7 @@ local VISUALTAB_HEIGHT = 1000 * SCALE_FACTOR
 local visualTabCache = {}
 
 --- @class VisualTab
---- @field Materials MaterialTab[]
+--- @field Materials table<string, MaterialTab>
 --- @field new fun(guid: GUIDSTRING, displayName: string|nil, parent: ExtuiTreeParent|nil, templateName: string|nil): VisualTab
 --- @field FetchByGuid fun(guid: GUIDSTRING): VisualTab|nil
 VisualTab = {}
@@ -166,11 +166,11 @@ function VisualTab:Render(retryCnt)
 
     -- Right cell content
 
-    self:RenderAttachmentsSection()
+    self:RenderAttachmentSection()
 
     --#region Material Editor
 
-    self:RenderMaterialEditor()
+    self:RenderObjectEditor()
 
     --#endregion Material Editor
 
@@ -180,10 +180,7 @@ end
 
 function VisualTab:RenderPresetsCell()
     if Ext.Entity.Get(self.guid) and not self.isAttach then
-        local icon = GetIcon(self.guid)
-        if icon == "Item_Unknown" and self.templateName then
-            icon = GetIconForTemplateName(self.templateName)
-        end
+        local icon = GetIcon(self.guid) or "Item_Unknown"
         self.symbol = self.topLeftCell:AddImage(icon)
         self.symbol.ImageData.Size = {64 * SCALE_FACTOR, 64 * SCALE_FACTOR}
         if EntityStore[self.guid] and EntityStore[self.guid].IconTintColor then
@@ -396,7 +393,7 @@ function VisualTab:RenderUtilsCell()
     end
 end
 
-function VisualTab:RenderAttachmentsSection()
+function VisualTab:RenderAttachmentSection()
     local entity = Ext.Entity.Get(self.guid) --[[@as EntityHandle]]
     
     local visual = VisualHelpers.GetEntityVisual(self.guid)
@@ -464,11 +461,12 @@ function VisualTab:RenderAttachmentsSection()
     for attIndex,attach in ipairs(attachments) do
 
         if #attach.Visual.ObjectDescs == 0 then goto continue end
-        local source = attach.Visual.VisualResource and attach.Visual.VisualResource.SourceFile or "Unknown Model"
+        local vres = attach.Visual.VisualResource
+        local source = vres and vres.SourceFile or "Unknown Model"
         local gr2FileName = GetLastPath(source)
 
         local displayName = gr2FileName
-
+        
         local attachNode = self.attachmentsHeader:AddTree(displayName .. "##" .. tostring(attIndex))
 
         for descIndex, obj in ipairs(attach.Visual.ObjectDescs) do
@@ -531,10 +529,20 @@ function VisualTab:RenderAttachmentsSection()
                 return mat.Material.Parameters
             end
 
+
             local keyName = gr2FileName .. "." .. modelName .. "." .. tostring(attIndex) .. "." .. tostring(descIndex)
+
+            local function appltToOthers()
+                local matTab = self.Materials[keyName]
+                for _, otherMatTab in pairs(self.Materials) do
+                    otherMatTab.Editor:ApplyParameters(matTab.Editor.Parameters)
+                    otherMatTab:UpdateUIState()
+                end
+            end
 
             local materialTab = self.Materials[keyName] or MaterialTab.new(objNode, matName, getliveMat, getliveParams) --[[@as MaterialTab]]
             materialTab.Parent = objNode
+            materialTab.ApplyToOthers = appltToOthers
             materialTab.Editor.Instance = getliveMat
             materialTab.Editor.ParamsSrc = getliveParams
             materialTab.Editor.ParamSetProxy = ParametersSetProxy.new(getliveParams()) --[[@as ParametersSetProxy]]
@@ -547,17 +555,6 @@ function VisualTab:RenderAttachmentsSection()
             end
 
             self.Materials[keyName] = materialTab
-
-            local applyToAllSameMaterial = AddSelectableButton(utilisRow:AddCell(), GetLoca("Apply to all same material"), function ()
-                local matTab = self.Materials[keyName]
-                for _, otherMatTab in pairs(self.Materials) do
-                    otherMatTab.Editor:ApplyParameters(matTab.Editor.Parameters)
-                    otherMatTab:UpdateUIState()
-                end
-            end)
-
-            
-
         end
 
         ::continue::
@@ -565,10 +562,13 @@ function VisualTab:RenderAttachmentsSection()
 
 end
 
-function VisualTab:RenderMaterialEditor()
+function VisualTab:RenderObjectEditor()
     if next(LightCToArray(Ext.Entity.Get(self.guid).Visual.Visual.ObjectDescs)) == nil then
         return
     end
+
+    local visual = VisualHelpers.GetEntityVisual(self.guid)
+    if not visual then return end
 
     if self.materialHeader then
         self.materialHeader:Destroy()
@@ -583,7 +583,7 @@ function VisualTab:RenderMaterialEditor()
 
     --self.materialRoot = self.materialHeader:AddTree(GetLoca("Materials"))
 
-    for descIndex, desc in ipairs(Ext.Entity.Get(self.guid).Visual.Visual.ObjectDescs) do
+    for descIndex, desc in ipairs(visual.ObjectDescs) do
         if not desc.Renderable or not desc.Renderable.ActiveMaterial then
             goto continue
         end
@@ -611,10 +611,20 @@ function VisualTab:RenderMaterialEditor()
 
         --- @return MaterialParametersSet|nil
 
-        local keyName = meshName .. "." .. tostring(descIndex)
+        local keyName = meshName .. "::" .. tostring(descIndex)
+
+        local function appltToOthers()
+            local matTab = self.Materials[keyName]
+            for _, otherMatTab in pairs(self.Materials) do
+                otherMatTab.Editor:ApplyParameters(matTab.Editor.Parameters)
+                otherMatTab:UpdateUIState()
+            end
+        end
     
         local materialEditor = self.Materials[keyName] or MaterialTab.new(materialNode, material.MaterialName, getliveMat, getliveParams) --[[@as MaterialTab]]
+        materialEditor.IsObject = true
         materialEditor.Parent = materialNode
+        materialEditor.ApplyToOthers = appltToOthers
         materialEditor.Editor.Instance = getliveMat
         materialEditor.Editor.ParamsSrc = getliveParams
         materialEditor.Editor.ParamSetProxy = ParametersSetProxy.new(getliveParams()) --[[@as ParametersSetProxy]]
@@ -1300,264 +1310,17 @@ function VisualTab:RenderParticleSystemComponent(node, component, compIndex)
     end
 end
 
-
 function VisualTab:RenderTransformSliders(parent, descIndex, attachIndex, modelName)
-    self:RenderPositionSliders(parent, descIndex, attachIndex, modelName)
-    self:RenderRotationSliders(parent, descIndex, attachIndex, modelName)
-    self:RenderScaleSliders(parent, descIndex, attachIndex, modelName)
-end
+    local selectInTransformEditor = parent:AddButton(GetLoca("Select in Transform Editor"))
+    selectInTransformEditor.IDContext = tostring(parent) .. "::" .. modelName .. "::" .. descIndex .. "::" .. (attachIndex or 0) .. "::SelectInTransformEditor"
 
-function VisualTab:RenderScaleSliders(parent, descIndex, attachIndex, modelName)
-    attachIndex = attachIndex or 0
-    local getRenderableFunc = function()
-        if not self:CheckVisual() then return nil end
-        local entity = Ext.Entity.Get(self.guid) --[[@as EntityHandle]]
-        if attachIndex and attachIndex > 0 then
-            local attach = entity.Visual.Visual.Attachments[attachIndex]
-            if attach and attach.Visual.ObjectDescs and attach.Visual.ObjectDescs[descIndex] then
-                return attach.Visual.ObjectDescs[descIndex].Renderable
-            end
-        else
-            if entity.Visual.Visual.ObjectDescs and entity.Visual.Visual.ObjectDescs[descIndex] then
-                return entity.Visual.Visual.ObjectDescs[descIndex].Renderable
-            end
-        end
-    end
-    local tempRenderable = getRenderableFunc()
-    if not tempRenderable then
-        Error("VisualTab:RenderScaleSliders - No renderable found for descIndex: " .. descIndex)
-        return
-    end
-
-    
-    local scaleNode = parent:AddTree(GetLoca("Scale"))
-    local key = modelName .. "::" .. descIndex .. "::" .. attachIndex .. "::Scale"
-    local oriScale = tempRenderable.WorldTransform.Scale
-    local currentScale = tempRenderable.WorldTransform.Scale
-
-    scaleNode:AddText(GetLoca("Uniform Scale"))
-    local uniformScaleSlider = AddSliderWithStep(scaleNode, modelName .. "UniformScale", currentScale[1], 0.1, 100, 0.1)
-
-    local scaleXSlider = AddSliderWithStep(scaleNode, modelName .. "ScaleX", currentScale[1], 0.1, 100, 0.1)
-    scaleNode:AddText("X").SameLine = true
-    
-    local scaleYSlider = AddSliderWithStep(scaleNode, modelName .. "ScaleY", currentScale[2], 0.1, 100, 0.1)
-    scaleNode:AddText("Y").SameLine = true
-    
-    local scaleZSlider = AddSliderWithStep(scaleNode, modelName .. "ScaleZ", currentScale[3], 0.1, 100, 0.1)
-    scaleNode:AddText("Z").SameLine = true
-
-    local scaleResetButton = scaleNode:AddButton(GetLoca("Reset"))
-
-    scaleResetButton.IDContext = modelName .. "ScaleResetButton"
-    uniformScaleSlider.IDContext = modelName .. "UniformScaleSlider"
-    scaleXSlider.IDContext = modelName .. "ScaleXSlider"
-    scaleYSlider.IDContext = modelName .. "ScaleYSlider"
-    scaleZSlider.IDContext = modelName .. "ScaleZSlider"
-
-    local function saveScale()
-        self.modifiedParams[key] = {
-            Type = "Scale",
-            AttachIndex = attachIndex,
-            DescIndex = descIndex,
-            Value = {
-                scaleXSlider.Value[1],
-                scaleYSlider.Value[1],
-                scaleZSlider.Value[1]
-            }
-        }
-    end
-
-    local function scaleSliderOnChange()
-        local entity = Ext.Entity.Get(self.guid)
+    selectInTransformEditor.OnClick = function()
         if not self:CheckVisual() then return end
-        local renderable = getRenderableFunc()
-        if not renderable then return end
-        renderable.WorldTransform.Scale = {
-            scaleXSlider.Value[1],
-            scaleYSlider.Value[1],
-            scaleZSlider.Value[1]
-        }
-        saveScale()
-    end
-
-    uniformScaleSlider.OnChange = function(slider)
-        scaleXSlider.Value = ToVec4(slider.Value[1])
-        scaleYSlider.Value = ToVec4(slider.Value[1])
-        scaleZSlider.Value = ToVec4(slider.Value[1])
-        scaleSliderOnChange()
-        saveScale()
-    end
-
-    scaleXSlider.OnChange = scaleSliderOnChange
-    scaleYSlider.OnChange = scaleSliderOnChange
-    scaleZSlider.OnChange = scaleSliderOnChange
-
-    scaleResetButton.OnClick = function(sel, updateInit)
-        local entity = Ext.Entity.Get(self.guid)
-        if not self:CheckVisual() then return end
-        local renderable = getRenderableFunc()
-        if not renderable then return end
-
-        if updateInit then
-            oriScale = {
-                renderable.WorldTransform.Scale[1],
-                renderable.WorldTransform.Scale[2],
-                renderable.WorldTransform.Scale[3]
-            }
-            return
+        local renderableFunc = function()
+            return VisualHelpers.GetRenderable(self.guid, descIndex, attachIndex)
         end
-
-        renderable.WorldTransform.Scale = oriScale
-        uniformScaleSlider.Value = {oriScale[1], oriScale[1], oriScale[1], oriScale[1]}
-        scaleXSlider.Value = {oriScale[1], oriScale[1], oriScale[1], oriScale[1]}
-        scaleYSlider.Value = {oriScale[2], oriScale[2], oriScale[2], oriScale[2]}
-        scaleZSlider.Value = {oriScale[3], oriScale[3], oriScale[3], oriScale[3]}
-        self.modifiedParams[key] = nil
-    end
-
-    self.resetFuncs[key] = scaleResetButton.OnClick
-
-    self.updateFuncs[key] = function()
-        local entity = Ext.Entity.Get(self.guid)
-        if not self:CheckVisual() then return end
-        local renderable = getRenderableFunc()
-        if renderable and renderable.WorldTransform then
-            local scale = renderable.WorldTransform.Scale
-            uniformScaleSlider.Value = {scale[1], scale[1], scale[1], scale[1]}
-            scaleXSlider.Value = {scale[1], scale[1], scale[1], scale[1]}
-            scaleYSlider.Value = {scale[2], scale[2], scale[2], scale[2]}
-            scaleZSlider.Value = {scale[3], scale[3], scale[3], scale[3]}
-        end
-    end
-end
-
-function VisualTab:RenderPositionSliders(parent, descIndex, attachIndex, modelName)
-    attachIndex = attachIndex or 0
-    local getRenderableFunc = function()
-        if not self:CheckVisual() then return nil end
-        local entity = Ext.Entity.Get(self.guid) --[[@as EntityHandle]]
-        if attachIndex and attachIndex > 0 then
-            local attach = entity.Visual.Visual.Attachments[attachIndex]
-            if attach and attach.Visual.ObjectDescs and attach.Visual.ObjectDescs[descIndex] then
-                return attach.Visual.ObjectDescs[descIndex].Renderable
-            end
-        else
-            if entity.Visual.Visual.ObjectDescs and entity.Visual.Visual.ObjectDescs[descIndex] then
-                return entity.Visual.Visual.ObjectDescs[descIndex].Renderable
-            end
-        end
-    end
-    local tempRenderable = getRenderableFunc()
-    if not tempRenderable then
-        Error("VisualTab:RenderPositionSliders - No renderable found for descIndex: " .. descIndex)
-        return
-    end
-
-    local positionNode = parent:AddTree(GetLoca("Position"))
-
-    positionNode:AddText(GetLoca("X"))
-    local posXSlider = AddSliderWithStep(positionNode, modelName .. "PosX", 0, -10, 10, 0.1)
-    positionNode:AddText(GetLoca("Y"))
-    local posYSlider = AddSliderWithStep(positionNode, modelName .. "PosY", 0, -10, 10, 0.1)
-    positionNode:AddText(GetLoca("Z"))
-    local posZSlider = AddSliderWithStep(positionNode, modelName .. "PosZ", 0, -10, 10, 0.1)
-
-    local sliders = {posXSlider, posYSlider, posZSlider}
-
-    posXSlider.IDContext = modelName .. "PosXSlider" .. descIndex .. attachIndex
-    posYSlider.IDContext = modelName .. "PosYSlider" .. descIndex .. attachIndex
-    posZSlider.IDContext = modelName .. "PosZSlider" .. descIndex .. attachIndex
-
-    local function positionSliderOnChange()
-        if not self:CheckVisual() then return end
-        local renderable = getRenderableFunc()
-        if not renderable then return end
-        local origin = renderable.WorldTransform.Translate
-        renderable.WorldTransform.Translate = {
-            origin[1] + sliders[1].Value[1],
-            origin[2] + sliders[2].Value[1],
-            origin[3] + sliders[3].Value[1]
-        }
-        for i, slider in ipairs(sliders) do
-            slider.Value = {0,0,0,0}
-        end
-    end
-
-    for _, slider in ipairs(sliders) do
-        slider.OnChange = positionSliderOnChange
-        slider.SameLine = true
-        slider.UserData.ResetButton.Visible = false
-    end
-   
-end
-
-function VisualTab:RenderRotationSliders(parent, descIndex, attachIndex, modelName)
-    attachIndex = attachIndex or 0
-    local getRenderableFunc = function()
-        if not self:CheckVisual() then return nil end
-        local entity = Ext.Entity.Get(self.guid) --[[@as EntityHandle]]
-        if attachIndex and attachIndex > 0 then
-            local attach = entity.Visual.Visual.Attachments[attachIndex]
-            if attach and attach.Visual.ObjectDescs and attach.Visual.ObjectDescs[descIndex] then
-                return attach.Visual.ObjectDescs[descIndex].Renderable
-            end
-        else
-            if entity.Visual.Visual.ObjectDescs and entity.Visual.Visual.ObjectDescs[descIndex] then
-                return entity.Visual.Visual.ObjectDescs[descIndex].Renderable
-            end
-        end
-    end
-    local tempRenderable = getRenderableFunc()
-    if not tempRenderable then
-        Error("VisualTab:RenderRotationSliders - No renderable found for descIndex: " .. descIndex)
-        return
-    end
-
-    local rotationNode = parent:AddTree(GetLoca("Rotation"))
-    local tab = rotationNode:AddTable("RotationTable", 2) --[[@as ExtuiTable]]
-    tab.SizingFixedSame = true
-    tab.ColumnDefs[1] = { WidthFixed = true }
-    tab.ColumnDefs[2] = { WidthStretch = true }
-    local row = tab:AddRow()
-    row:AddCell():AddText("Pitch")
-    local rxSlider = AddSliderWithStep(row:AddCell(), modelName .. "RotX", 0, -180, 180, 1)
-    row:AddCell():AddText("Yaw")
-    local rySlider = AddSliderWithStep(row:AddCell(), modelName .. "RotY", 0, -180, 180, 1)
-    row:AddCell():AddText("Roll")
-    local rzSlider = AddSliderWithStep(row:AddCell(), modelName .. "RotZ", 0, -180, 180, 1)
-
-    local sliders = {rxSlider, rySlider, rzSlider}
-
-    rxSlider.IDContext = modelName .. "RotXSlider" .. descIndex .. attachIndex
-    rySlider.IDContext = modelName .. "RotYSlider" .. descIndex .. attachIndex
-    rzSlider.IDContext = modelName .. "RotZSlider" .. descIndex .. attachIndex
-
-    local function rotationSliderOnChange()
-        if not self:CheckVisual() then return end
-        local renderable = getRenderableFunc()
-        if not renderable then return end
-        local eulers = {
-            sliders[1].Value[1],
-            sliders[2].Value[1],
-            sliders[3].Value[1]
-        }
-        for i=1,3 do
-            eulers[i] = math.rad(eulers[i])
-        end
-        local currentQuat = renderable.WorldTransform.RotationQuat
-        local quat = Ext.Math.QuatFromEuler(eulers)
-        local newRotation = Ext.Math.QuatMul(quat, currentQuat)
-        renderable.WorldTransform.RotationQuat = newRotation
-        for i, slider in ipairs(sliders) do
-            slider.Value = {0,0,0,0}
-        end
-    end
-
-    for _, slider in ipairs(sliders) do
-        slider.SameLine = true
-        slider.UserData.ResetButton.Visible = false
-        slider.OnChange = rotationSliderOnChange
+        local proxy = RenderableMovableProxy.new(renderableFunc)
+        RB_GLOBALS.TransformEditor:Select({proxy})
     end
 end
 
@@ -1934,6 +1697,25 @@ function VisualTab:ExportModifiedMaterialParams()
     end
 
     return exportedParams
+end
+
+--- @alias RB_ObjectEdit table<string, RB_ParameterSet> materialName -> parameter set
+
+--- @return RB_ObjectEdit?
+function VisualTab:ExportObjectEdit()
+    local objEdit = {}
+
+    for key, mat in FilteredPairs(self.Materials, function (k, v)
+        return v.IsObject and v:HasChanges() and not objEdit[v.MaterialName]
+    end) do
+        objEdit[mat.MaterialName] = mat:ExportChanges()
+    end
+
+    if not next(objEdit) then
+        return nil
+    end
+
+    return objEdit
 end
 
 function VisualTab:OnDetach() end

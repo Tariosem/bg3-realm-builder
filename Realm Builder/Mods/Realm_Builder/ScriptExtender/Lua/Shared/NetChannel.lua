@@ -61,7 +61,7 @@ NetChannel.SetTransform = Ext.Net.CreateChannel(ModuleUUID, "SetTransform")
 NetChannel.SetAttributes = Ext.Net.CreateChannel(ModuleUUID, "SetAttributes")
 
 --- @class ManageGizmoChannel : NetChannel
---- @field RequestToServer fun(channel:self , data: {GizmoType: TransformEditorMode, Clear: boolean?}, callback: fun(response: {Guid: GUIDSTRING}))
+--- @field RequestToServer fun(channel:self , data: {GizmoType: TransformEditorMode|"All", Clear: boolean?}, callback: fun(response: {Guid: GUIDSTRING}))
 NetChannel.ManageGizmo = Ext.Net.CreateChannel(ModuleUUID, "ManageGizmo")
 
 --- @class BindChannel : NetChannel

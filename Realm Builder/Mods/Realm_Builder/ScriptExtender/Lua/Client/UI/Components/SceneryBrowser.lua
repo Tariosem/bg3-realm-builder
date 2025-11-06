@@ -1,9 +1,9 @@
---- @class CharacterBrowser : IconBrowser
---- @field DataManager RB_CharacterManager
---- @field new fun(dataManager:RB_CharacterManager, title:string):CharacterBrowser
-CharacterBrowser = _Class("CharacterBrowser", IconBrowser)
+--- @class SceneryBrowser : IconBrowser
+--- @field DataManager SceneryManager
+--- @field new fun(dataManager:SceneryManager, title:string):SceneryBrowser
+SceneryBrowser = _Class("SceneryBrowser", IconBrowser)
 
-function CharacterBrowser:SubclassInit()
+function SceneryBrowser:SubclassInit()
     local config = self:GetConfig()
 
     self.iconToName = true
@@ -14,27 +14,31 @@ function CharacterBrowser:SubclassInit()
     self.iconButtonBgColor = config.ButtonBgColor or HexToRGBA("FF615238")
 end
 
-function CharacterBrowser:GetConfig()
-    return CONFIG.CharacterBrowser or {}
+function SceneryBrowser:GetConfig()
+    if not CONFIG.SceneryBrowser then
+        CONFIG.SceneryBrowser = {}
+    end
+
+    return CONFIG.SceneryBrowser
 end
 
-function CharacterBrowser:SaveToConfig()
+function SceneryBrowser:SaveToConfig()
     self.lastPosition = self.panel.LastPosition
     self.lastSize = self.panel.LastSize
-    CONFIG.CharacterBrowser.IconWidth = self.iconWidth
-    CONFIG.CharacterBrowser.IconPerRow = self.iconPR
-    CONFIG.CharacterBrowser.IconPerColumn = self.iconPC
-    CONFIG.CharacterBrowser.CellsPadding = self.cellsPadding
-    CONFIG.CharacterBrowser.autoSave = self.autoSave
-    CONFIG.CharacterBrowser.ButtonBgColor = self.iconButtonBgColor
-    CONFIG.CharacterBrowser.BackgroundColor = self.browserBackgroundColor
-    CONFIG.CharacterBrowser.StickToRight = self.stickToRight
-    CONFIG.CharacterBrowser.LastPosition = self.lastPosition
-    CONFIG.CharacterBrowser.LastSize = self.lastSize
-    SaveConfig("CharacterBrowser")
+    CONFIG.SceneryBrowser.IconWidth = self.iconWidth
+    CONFIG.SceneryBrowser.IconPerRow = self.iconPR
+    CONFIG.SceneryBrowser.IconPerColumn = self.iconPC
+    CONFIG.SceneryBrowser.CellsPadding = self.cellsPadding
+    CONFIG.SceneryBrowser.autoSave = self.autoSave
+    CONFIG.SceneryBrowser.ButtonBgColor = self.iconButtonBgColor
+    CONFIG.SceneryBrowser.BackgroundColor = self.browserBackgroundColor
+    CONFIG.SceneryBrowser.StickToRight = self.stickToRight
+    CONFIG.SceneryBrowser.LastPosition = self.lastPosition
+    CONFIG.SceneryBrowser.LastSize = self.lastSize
+    SaveConfig("SceneryBrowser")
 end
 
-function CharacterBrowser:TooltipChangeLogic()
+function SceneryBrowser:TooltipChangeLogic()
     if self.iconTooltipName == "DisplayName" then
         self.iconTooltipName = "TemplateName"
         self.tooltipName.Label = GetLoca("Tooltip Name: Template Name")
@@ -44,12 +48,12 @@ function CharacterBrowser:TooltipChangeLogic()
     end
 end
 
---- @param entry RB_Character
+--- @param entry RB_Scenery
 --- @param cell ExtuiTableCell
 --- @return ExtuiImageButton|ExtuiStyledRenderable?
-function CharacterBrowser:RenderIcon(entry, cell)
+function SceneryBrowser:RenderIcon(entry, cell)
     if entry.Uuid == nil then
-        Warning("[CharacterBrowser] Icon with UUID: " .. tostring(entry.Uuid) .. " is missing Uuid field.")
+        Warning("[SceneryBrowser] Icon with UUID: " .. tostring(entry.Uuid) .. " is missing Uuid field.")
         return nil
     end
 
@@ -88,7 +92,7 @@ function CharacterBrowser:RenderIcon(entry, cell)
         local pos = {CGetPosition(target)}
         local rot = {CGetRotation(target)}
 
-        Commands.SpawnCommand(entry.TemplateId, pos, rot)
+        Commands.SpawnCommand(entry.TemplateId, pos, rot, { IsScenery = true })
     end
 
     iconImage.OnClick = function()
@@ -96,7 +100,7 @@ function CharacterBrowser:RenderIcon(entry, cell)
     end
 
     iconImage.CanDrag = true
-    iconImage.DragDropType = "RB_CharacterTemplate"
+    iconImage.DragDropType = "RB_SceneryTemplate"
 
     iconImage.OnDragStart = function(sel)
         sel.DragPreview:AddText(entry[self.iconTooltipName] or "Unknown")
@@ -106,7 +110,7 @@ function CharacterBrowser:RenderIcon(entry, cell)
         Timer:Ticks(20, function (timerID)
             local spawnPos, spawnRot = GetPickingHitPosAndRot()
             if not spawnPos or not spawnRot then return end
-            Commands.SpawnCommand(entry.TemplateId, spawnPos, spawnRot)
+            Commands.SpawnCommand(entry.TemplateId, spawnPos, spawnRot, { IsScenery = true })
         end)
     end
 

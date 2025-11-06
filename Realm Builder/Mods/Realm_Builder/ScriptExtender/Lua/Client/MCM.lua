@@ -11,14 +11,6 @@ local function toggleMainWindow()
     
 end
 
-MCM.Keybinding.SetCallback("key_toggle_main_window", function()
-    toggleMainWindow()
-end)
-
-MCM.EventButton.RegisterCallback("event_button_toggle_main_widnow", function()
-    toggleMainWindow()
-end)
-
 local function ToggleBrowser(targetKey)
     if not RBMenu then
         return
@@ -28,6 +20,7 @@ local function ToggleBrowser(targetKey)
         effect = RBMenu.effectBrowser,
         item = RBMenu.itemBrowser,
         character = RBMenu.characterBrowser,
+        scenery = RBMenu.sceneryBrowser,
     }
 
     local targetBrowser = allBrowsers[targetKey]
@@ -40,20 +33,34 @@ local function ToggleBrowser(targetKey)
             browser:Close()
         end
     end
-
     targetBrowser:Toggle()
 end
 
-MCM.Keybinding.SetCallback("key_toggle_item_browser", function()
-    ToggleBrowser("item")
+local browserMenu = RegisterWindow("generic", "Browser Menu", "Guide Menu")
+
+local allAvailableBrowsers = {
+    {Key = "item", Label = "Item Browser"},
+    {Key = "effect", Label = "Effect Browser"},
+    {Key = "character", Label = "Character Browser"},
+    {Key = "scenery", Label = "Scenery Browser"},
+}
+
+for _, browser in pairs(allAvailableBrowsers) do
+    browserMenu:AddButton(browser.Label).OnClick = function()
+        ToggleBrowser(browser.Key)
+    end
+end
+
+MCM.Keybinding.SetCallback("key_toggle_main_window", function()
+    toggleMainWindow()
 end)
 
-MCM.Keybinding.SetCallback("key_toggle_effect_browser", function()
-    ToggleBrowser("effect")
+MCM.EventButton.RegisterCallback("event_button_toggle_main_widnow", function()
+    toggleMainWindow()
 end)
 
-MCM.Keybinding.SetCallback("key_toggle_character_browser", function()
-    ToggleBrowser("character")
+MCM.Keybinding.SetCallback("key_toggle_browser_menu", function()
+    browserMenu.Open = not browserMenu.Open
 end)
 
 MCM.Keybinding.SetCallback("key_toggle_transform_toolbar", function()

@@ -17,12 +17,25 @@ function TransformToolbar:RegisterKeyInputEvents()
 
     local function singleSelect()
         local guid = GetPickingGuid()
+        local entity = GetPickingEntity()
+
+        if entity and entity.Scenery then
+            RB_GLOBALS.TransformEditor:Select({SceneryMovableProxy.new(entity.Scenery)})
+            return
+        end
+
         if guid and guid ~= "" then
             if self.MultiSelecting then
                 self.Selecting[guid] = {}
-                TransformEditor:Select(self.Selecting)
+
+                local proxies = {}
+                for selGuid,_ in pairs(self.Selecting) do
+                    table.insert(proxies, MovableProxy.CreateByGuid(selGuid))
+                end
+
+                RB_GLOBALS.TransformEditor:Select(proxies)
             else
-                TransformEditor:Select(guid)
+                RB_GLOBALS.TransformEditor:Select({MovableProxy.CreateByGuid(guid)})
             end
         else
         end
@@ -51,16 +64,15 @@ function TransformToolbar:RegisterKeyInputEvents()
         if not restrainOpening(e) then return end
         if e.Repeat then return end
         if e.Event ~= "KeyDown" then return end
-        if not TransformEditor.Gizmo then return end
-        if not TransformEditor.Gizmo.IsDragging then return end
-        if not TransformEditor.Target or #TransformEditor.Target == 0 then return end
+        if not RB_GLOBALS.TransformEditor.Gizmo then return end
+        if not RB_GLOBALS.TransformEditor.Gizmo.IsDragging then return end
+        if not RB_GLOBALS.TransformEditor.Target or #RB_GLOBALS.TransformEditor.Target == 0 then return end
 
         if tonumber(KeybindHelpers.ParseInputToCharInput(e)) then
-            local selectedAxis = TransformEditor.Gizmo and TransformEditor.Gizmo.SelectedAxis
-            local startTransformRef = TransformEditor.StartTransforms
-            TransformEditor.Gizmo:CancelDragging()
+            local selectedAxis = RB_GLOBALS.TransformEditor.Gizmo and RB_GLOBALS.TransformEditor.Gizmo.SelectedAxis
+            RB_GLOBALS.TransformEditor.Gizmo:CancelDragging()
 
-            self:SetupOperator(TransformEditor.Gizmo.Mode, self:GetCurrentSpace(), selectedAxis, startTransformRef)
+            self:SetupOperator(RB_GLOBALS.TransformEditor.Gizmo.Mode, self:GetCurrentSpace(), selectedAxis)
         end
     end)
 
@@ -68,7 +80,12 @@ function TransformToolbar:RegisterKeyInputEvents()
         if e.Event == "KeyDown" then
             self.MultiSelecting = true
         elseif e.Event == "KeyUp" then
-            TransformEditor:Select(self.Selecting)
+            local proxies = {}
+            for guid,_ in pairs(self.Selecting) do
+                table.insert(proxies, MovableProxy.CreateByGuid(guid))
+            end
+
+            RB_GLOBALS.TransformEditor:Select(proxies)
             self.MultiSelecting = false
             self.Selecting = {}
         end
@@ -82,14 +99,14 @@ function TransformToolbar:RegisterKeyInputEvents()
 
     ttMod:RegisterEvent("ClearSelection", function (e)
         if e.Event ~= "KeyDown" then return end
-        TransformEditor:Clear()
+        RB_GLOBALS.TransformEditor:Clear()
         self.Selecting = {}
     end)
 
     ttMod:RegisterEvent("MoveToCursor", function (e)
         if e.Event ~= "KeyDown" then return end
 
-        local targets = NormalizeGuidList(TransformEditor.Target)
+        local targets = RB_GLOBALS.RB_GLOBALS.TransformEditor.Target
         local pos, rot = GetPickingHitPosAndRot()
 
         Commands.SetTransform(targets, {Translate = pos, RotationQuat = rot})
@@ -105,9 +122,6 @@ function TransformToolbar:RegisterKeyInputEvents()
         if e.Event ~= "KeyDown" then return end
         local pick = GetPickingGuid()
         if not pick or pick == "" then
-            pick = TransformEditor.Target and TransformEditor.Target[1] or nil
-        end
-        if not pick or pick == "" then
             pick = CGetHostCharacter()
         end
         local visualTab = VisualTab.new(pick, GetName(pick), nil, nil)
@@ -116,36 +130,62 @@ function TransformToolbar:RegisterKeyInputEvents()
 
     buMod:RegisterEvent("BindTo", function (e)
         if e.Event ~= "KeyDown" then return end
-        if not TransformEditor.Target or #TransformEditor.Target == 0 then return end
+        if not RB_GLOBALS.TransformEditor.Target or #RB_GLOBALS.TransformEditor.Target == 0 then return end
         local parent = GetPickingGuid()
         if not parent or parent == "" then
             Debug("No valid target to bind to")
             return
         end
-        local targets = NormalizeGuidList(TransformEditor.Target)
+        local targets = {}
+
+        for _,proxy in pairs(RB_GLOBALS.TransformEditor.Target) do
+            if proxy.Guid then
+                table.insert(targets, proxy.Guid)
+            end
+        end
+
         Commands.Bind(targets, parent)
     end)
 
     buMod:RegisterEvent("Unbind", function (e)
         if e.Event ~= "KeyDown" then return end
-        if not TransformEditor.Target or #TransformEditor.Target == 0 then return end
+        if not RB_GLOBALS.TransformEditor.Target or #RB_GLOBALS.TransformEditor.Target == 0 then return end
 
-        local targets = NormalizeGuidList(TransformEditor.Target)
+        local targets = {}
+        for _,proxy in pairs(RB_GLOBALS.TransformEditor.Target) do
+            if proxy.Guid then
+                table.insert(targets, proxy.Guid)
+            end
+        end
 
         Commands.Unbind(targets)
     end)
 
     buMod:RegisterEvent("Snap", function (e)
         if e.Event ~= "KeyDown" then return end
-        if not TransformEditor.Target or #TransformEditor.Target == 0 then return end
+        if not RB_GLOBALS.TransformEditor.Target or #RB_GLOBALS.TransformEditor.Target == 0 then return end
 
-        local targets = NormalizeGuidList(TransformEditor.Target)
+        local targets = {}
+
+        for _,proxy in pairs(RB_GLOBALS.TransformEditor.Target) do
+            if proxy.Guid then
+                table.insert(targets, proxy.Guid)
+            end
+        end
+
         Commands.SnapCommand(targets)
     end)
 
     buMod:RegisterEvent("BindPopup", function (e)
         if e.Event ~= "KeyDown" then return end
-        local targets = NormalizeGuidList(TransformEditor.Target)
+        local targets = {}
+
+        for _,proxy in pairs(RB_GLOBALS.TransformEditor.Target) do
+            if proxy.Guid then
+                table.insert(targets, proxy.Guid)
+            end
+        end
+
         if #targets == 0 then 
             targets = {GetPickingGuid()}
         end
@@ -164,8 +204,8 @@ function TransformToolbar:RegisterKeyInputEvents()
 
         mod:RegisterEvent(eventName, function (e)
             if e.Event ~= "KeyDown" then return end
-            if not TransformEditor.Target or #TransformEditor.Target == 0 then return end
-            local targets = NormalizeGuidList(TransformEditor.Target)
+            if not RB_GLOBALS.TransformEditor.Target or #RB_GLOBALS.TransformEditor.Target == 0 then return end
+            local targets = NormalizeGuidList(RB_GLOBALS.TransformEditor.Target)
             local paramsOn = { Guid = targets , Attributes = {} , Type = "SetAttributes"}
             local paramsOff = { Guid = targets , Attributes = {} , Type = "SetAttributes"}
             paramsOn.Attributes[field] = valueOn
@@ -335,20 +375,19 @@ function TransformToolbar:SetupBoxSelect()
             boxSelectStart = nil
             boxSelectEnd = nil
 
-            TransformEditor:Select(self.Selecting)
+            local proxies = {}
+            for selGuid,_ in pairs(self.Selecting) do
+                table.insert(proxies, MovableProxy.CreateByGuid(selGuid))
+            end
 
-            --for guid,_ in pairs(self.Selecting) do
-            --    VisualHelpers.VisualizeAABB(UuidToHandle(guid))
-            --end
+            RB_GLOBALS.TransformEditor:Select(proxies)
+
         end
     end)
 end
 
 function TransformToolbar:DuplicateSelection()
-    local toPost = {
-        Guid = {},
-    }
-    local targets = NormalizeGuidList(TransformEditor.Target)
+    local targets = {}
     Commands.DuplicateCommand(targets)
 end
 
@@ -363,7 +402,7 @@ function TransformToolbar:RenderTopBar()
     self.TopToolBar = panel
 
     panel.OnClose = function()
-        TransformEditor:Clear()
+        RB_GLOBALS.TransformEditor:Clear()
         self.Selecting = {}
         self.KeybindConfigWindow.Open = false
         self.BindManagerWindow.Open = false
@@ -440,7 +479,7 @@ function TransformToolbar:RenderTopBar()
     spaceCombo.SelectedIndex = 0
     spaceCombo.OnChange = function (e)
         local mode = indexToMode[e.SelectedIndex + 1]
-        TransformEditor:SetSpace(mode)
+        RB_GLOBALS.TransformEditor:SetSpace(mode)
     end
     self.spaceCombo = spaceCombo
     self.GetCurrentSpace = function()
@@ -486,15 +525,15 @@ function TransformToolbar:RenderOtherConfigOptions(panel)
     local stepSlider = AddSliderWithStep(row1:AddCell(), "Step", 1, 0.1, 3, 0.05)
     stepSlider.UserData.StepInput.Visible = false
     stepSlider.OnChange = function (e)
-        if not TransformEditor.Gizmo then return end
-        TransformEditor.Gizmo.Step = e.Value[1]
+        if not RB_GLOBALS.TransformEditor.Gizmo then return end
+        RB_GLOBALS.TransformEditor.Gizmo.Step = e.Value[1]
     end
 
     row2:AddCell():AddText("Gizmo Size")
     local gizmoSizeSlider = AddSliderWithStep(row2:AddCell(), "Gizmo Size", 0.1, 0.01, 2, 0.01)
     gizmoSizeSlider.UserData.StepInput.Visible = false
     gizmoSizeSlider.OnChange = function (e)
-        local editor = TransformEditor
+        local editor = RB_GLOBALS.TransformEditor
         if editor.Gizmo then
             editor.Gizmo:SetScale(e.Value[1])
         end
@@ -505,10 +544,10 @@ function TransformToolbar:RenderOtherConfigOptions(panel)
 end
 
 function TransformToolbar:SetupOperator(mode, space, axis, startTransforms)
-    if not TransformEditor.Target or #TransformEditor.Target == 0 or self.isInputing then return end
-    TransformEditor.Disabled = true
-    TransformEditor:HideAndDisableGizmo()
-    local targets = NormalizeGuidList(TransformEditor.Target)
+    if not RB_GLOBALS.TransformEditor.Target or #RB_GLOBALS.TransformEditor.Target == 0 or self.isInputing then return end
+    RB_GLOBALS.TransformEditor.Disabled = true
+    RB_GLOBALS.TransformEditor:HideAndDisableGizmo()
+    local targets = NormalizeGuidList(RB_GLOBALS.TransformEditor.Target)
     self.isInputing = true
     if not self.Operator then
         if mode == "Scale" then axis = {X = true, Y = true, Z = true} end
@@ -532,8 +571,8 @@ function TransformToolbar:SetupOperator(mode, space, axis, startTransforms)
             self.Operator = nil
             self.OperatorInput.Text = ""
             self.OperatorInput.Hint = GetLoca("Input any number key when dragging gizmo to start")
-            TransformEditor:ShowAndEnableGizmo()
-            TransformEditor.Disabled = false
+            RB_GLOBALS.TransformEditor:ShowAndEnableGizmo()
+            RB_GLOBALS.TransformEditor.Disabled = false
             return UNSUBSCRIBE_SYMBOL
         end
 
@@ -718,8 +757,8 @@ function TransformToolbar:Toggle()
     self.TopToolBar.Open = not self.TopToolBar.Open
     local open = self.TopToolBar.Open
     if not open then
-        TransformEditor:HideAndDisableGizmo()
+        RB_GLOBALS.TransformEditor:HideAndDisableGizmo()
     else
-        TransformEditor:ShowAndEnableGizmo()
+        RB_GLOBALS.TransformEditor:ShowAndEnableGizmo()
     end
 end

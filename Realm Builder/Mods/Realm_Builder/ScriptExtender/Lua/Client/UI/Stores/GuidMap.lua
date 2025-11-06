@@ -100,8 +100,8 @@ Ext.Entity.OnCreate("ClientCCDummyDefinition", function(entity)
             local handle = UuidToHandle(uuid)
             local displayName = handle.DisplayName.Name:Get()
             if displayName == name then
-                if TransformEditor then
-                    TransformEditor:Clear()
+                if RB_GLOBALS.TransformEditor then
+                    RB_GLOBALS.TransformEditor:Clear()
                 end
 
                 clientVisualDummies[uuid] = entity.ClientCCDummyDefinition.Dummy

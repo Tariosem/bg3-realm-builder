@@ -140,7 +140,7 @@ local uinqueAttrs = {
 --- @field SleepMin number?
 --- @field SleepMax number?
 
---- build a game object LSX node for EntityData
+--- build a local template
 --- @param guid any
 --- @param internalName string
 --- @param displayNameHandle string?
@@ -168,9 +168,10 @@ function LSXHelpers.BuildTemplate(guid, entData, internalName, displayNameHandle
         lsattrNode("Type", "FixedString", templateType),
         lsattrNode("TemplateName", "FixedString", templateUuid),
         lsattrNode("Flag", "uint8", entData.Flag or 1),
+        lsattrNode("ParentTemplateId", "FixedString", templateUuid),
     }
-    if templateType == "item" then
-        table.insert(basicAttrs, lsattrNode("ParentTemplateId", "FixedString", TakeTailTemplate(entData.TemplateId or "")))
+    if templateType == "item" and entData.OverrideVisualUuid then
+        gameObjectNode:InsertChild(LSXHelpers.AttrNode("VisualTemplate", "FixedString", entData.OverrideVisualUuid), 1)
     end
 
     if displayNameHandle then
@@ -202,8 +203,8 @@ function LSXHelpers.BuildTemplate(guid, entData, internalName, displayNameHandle
     if templateType == "character" then
         secondChidren:AppendChild(LSXNode.new("node", { id = "LocomotionParams" }))
         
-        if entData.UseCustomVisualParameters and entData.OverrideCharacterVisualUuid then
-            gameObjectNode:InsertChild(LSXHelpers.AttrNode("CharacterVisualResourceID", "FixedString", entData.OverrideCharacterVisualUuid), 1)
+        if entData.OverrideVisualUuid then
+            gameObjectNode:InsertChild(LSXHelpers.AttrNode("CharacterVisualResourceID", "FixedString", entData.OverrideVisualUuid), 1)
         end
 
         if not entData.WanderConfig then
@@ -230,9 +231,32 @@ function LSXHelpers.BuildTemplate(guid, entData, internalName, displayNameHandle
         table.insert(others, { Uuid = wanderTriggerUuid, TemplateType = "trigger", LSXNode = triggerNode })
     end
 
-
-
     return gameObjectNode, others
+end
+
+
+function LSXHelpers.BuildItemRootTemplate(srcUuid, uuid, internalName, override)
+    srcUuid = TakeTailTemplate(srcUuid)
+    override = override or {}
+    local templateRegion = LSXHelpers.BuildTemplatesRegionNode()
+    local gameObjectNode = templateRegion:AppendChild(LSXNode.new("node", { id = "GameObjects" }))
+
+    local parentType = Ext.Template.GetTemplate(srcUuid).TemplateType
+
+    local basicAttrs = {
+        lsattrNode("Type", "FixedString", parentType),
+        lsattrNode("MapKey", "FixedString", uuid),
+        lsattrNode("Name", "LSString", internalName),
+        lsattrNode("ParentTemplateId", "FixedString", srcUuid),
+    }
+
+    if override.VisualTemplate then
+        table.insert(basicAttrs, lsattrNode("VisualTemplate", "FixedString", override.VisualTemplate))
+    end
+
+    gameObjectNode:AppendChildren(basicAttrs)
+
+    return gameObjectNode
 end
 
 function LSXHelpers.ChildrenNode()
@@ -328,7 +352,7 @@ function LSXHelpers.LSValueType(value)
     return LSValueType.LSString
 end
 
----@return LSXNode -- childrenNode
+---@return LSXNode, LSXNode -- childrenNode, regionNode
 function LSXHelpers.BuildMaterialPresetBank()
     local saveNode = LSXHelpers.new()
 
@@ -337,10 +361,22 @@ function LSXHelpers.BuildMaterialPresetBank()
 
     local childrenNode = templateNode:AppendChild(LSXHelpers.ChildrenNode())
 
-    return childrenNode
+    return childrenNode, regionNode
 end
 
---- @return LSXNode
+--- @return LSXNode, LSXNode -- childrenNode, regionNode
+function LSXHelpers.BuildMaterialBank()
+    local saveNode = LSXHelpers.new()
+
+    local regionNode = saveNode:AppendChild(LSXNode.new("region", { id = "MaterialBank" }))
+    local templateNode = regionNode:AppendChild(LSXNode.new("node", { id = "MaterialBank" }))
+
+    local childrenNode = templateNode:AppendChild(LSXHelpers.ChildrenNode())
+
+    return childrenNode, regionNode
+end
+
+--- @return LSXNode, LSXNode -- childrenNode, regionNode
 function LSXHelpers.BuildCharacterVisualBank()
     local saveNode = LSXHelpers.new()
 
@@ -349,7 +385,19 @@ function LSXHelpers.BuildCharacterVisualBank()
 
     local childrenNode = templateNode:AppendChild(LSXHelpers.ChildrenNode())
 
-    return childrenNode
+    return childrenNode, regionNode
+end
+
+--- @return LSXNode, LSXNode -- childrenNode, regionNode
+function LSXHelpers.BuildVisualBank()
+    local saveNode = LSXHelpers.new()
+
+    local regionNode = saveNode:AppendChild(LSXNode.new("region", { id = "VisualBank" }))
+    local templateNode = regionNode:AppendChild(LSXNode.new("node", { id = "VisualBank" }))
+
+    local childrenNode = templateNode:AppendChild(LSXHelpers.ChildrenNode())
+
+    return childrenNode, regionNode
 end
 
 ---@param displayName string the handle of the translated string

@@ -110,6 +110,10 @@ function IsValidName(name)
     return true
 end
 
+function ValidateName(name)
+    
+end
+
 function TableMerge(dest, src)
     for k, v in pairs(src) do
         dest[k] = v
@@ -135,6 +139,13 @@ function TableContains(tbl, value)
         end
     end
     return false
+end
+
+function MergeArrays(arr1, arr2)
+    for _, v in ipairs(arr2) do
+        table.insert(arr1, v)
+    end
+    return arr1
 end
 
 function SplitBySemicolon(input, trimWhitespace)
@@ -302,6 +313,9 @@ function LightCToArray(arr)
     return result
 end
 
+--- @generic T
+--- @param o T
+--- @return T
 function DeepCopy(o)
     if type(o) ~= 'table' then
         return o
@@ -424,6 +438,37 @@ function SortedPairs(tbl, func)
     table.sort(keys, function(a, b)
         if func then
             return func(a, b) and true or false
+        else
+            return a < b
+        end
+    end)
+
+    local i = 0
+    return function()
+        i = i + 1
+        local key = keys[i]
+        if key then
+            return key, tbl[key]
+        end
+    end
+end
+
+--- @generic K, V
+--- @param tbl table<K, V>
+--- @param filterFunc fun(a:K, b:V):boolean
+--- @param sortFunc? fun(a:K, b:K):boolean
+--- @return fun(): (K, V)
+function FilteredPairs(tbl, filterFunc, sortFunc)
+    local keys = {}
+    for k in pairs(tbl) do
+        if filterFunc(k, tbl[k]) then
+            table.insert(keys, k)
+        end
+    end
+
+    table.sort(keys, function(a, b)
+        if sortFunc then
+            return sortFunc(a, b) and true or false
         else
             return a < b
         end

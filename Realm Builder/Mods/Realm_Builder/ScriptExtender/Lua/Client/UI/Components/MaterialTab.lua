@@ -402,12 +402,26 @@ function MaterialTab:UpdateUIState()
     end
 end
 
+function MaterialTab:HasChanges()
+    for key, _ in pairs(self.ParamNodeRefs) do
+        if self:HasChanged(key) then
+            return true
+        end
+    end
+
+    return false
+end
+
 ---@param popup ExtuiPopup
 function MaterialTab:SetupManagePopup(popup)
     local tt = popup:AddTable("ManageTable##" .. self.MaterialName, 1)
     tt.BordersInnerH = true
 
     local row = tt:AddRow()
+
+    local applyToOthersBtn = AddSelectableButton(row:AddCell(), "Apply To Other Materials##" .. self.MaterialName, function (sel)
+        self:ApplyToOthers()
+    end)
 
     local matMixerBtn = AddSelectableButton(row:AddCell(), "Open Material Mixer##" .. self.MaterialName, function (sel)
         local allParams = self.Editor.ParamSetProxy.Parameters
@@ -433,7 +447,7 @@ function MaterialTab:SetupManagePopup(popup)
     local btnExport = AddSelectableButton(row:AddCell(), "Export As Material##" .. self.MaterialName, function (sel)
         local uuid = Uuid_v4()
         local finalPath = defaultMatPath .. uuid .. ".lsx"
-        local save = ResourceHelpers.BuildMaterialResource(self.Editor.Parameters, self.Editor.Material, uuid)
+        local save = ResourceHelpers.BuildMaterialResource(self.Editor.Material, uuid, self.Editor.Parameters, self.ParentNodeName:gsub("%.[lL][sS][fF]$", ""))
         if save then
             Ext.IO.SaveFile(finalPath, save:Stringify())
         end
@@ -450,6 +464,22 @@ function MaterialTab:SetupManagePopup(popup)
         Ext.IO.SaveFile(finalPath, save:Stringify({ AutoFindRoot = true }))
     end)
 
+end
+
+function MaterialTab:BuildMaterialResourceNode(uuid, internalName)
+    local saveNode = LSXHelpers.BuildMaterialResource()
+    local materialNode = ResourceHelpers.BuildMaterialResourceNode(self.Editor.Parameters, self.Editor.Material, uuid, internalName)
+    saveNode:AppendChild(materialNode)
+
+    return saveNode
+end
+
+function MaterialTab:BuildMaterialPresetResourceNode(uuid, internalName)
+    local saveNode = LSXHelpers.BuildMaterialPresetBank()
+    local presetNode = ResourceHelpers.BuildMaterialPresetResourceNode(self.Editor.Parameters, uuid, internalName)
+    saveNode:AppendChild(presetNode)
+
+    return saveNode
 end
 
 function MaterialTab:ExportChanges()
@@ -509,6 +539,9 @@ end
 function MaterialTab:ExportPreset(defaultPath)
     local finalPath = defaultPath or ("Realm_Builder/Materials/Defaults/" .. GetLastPath(self.Editor.SourceFile))
     self.Editor:BuildMaterialPresetResource(finalPath)
+end
+
+function MaterialTab:ApplyToOthers()
 end
 
 function MaterialTab:SavePreset()
@@ -600,7 +633,7 @@ function MaterialMixerTab:SetParameter(name, value)
 end
 
 function MaterialMixerTab:ResetValue(name)
-    -- no-op
+    -- do nothing
 end
 
 function MaterialMixerTab:GetParameter(name)
@@ -659,7 +692,14 @@ function MaterialMixerTab:SetupManagePopup(popup)
     end)
 
     local btnExport = AddSelectableButton(row:AddCell(), "Export As Material Preset##" .. self.MaterialName, function (sel)
+        local save = LSXHelpers.BuildMaterialPresetBank()
 
+        local uuid = Uuid_v4()
+        local preset = ResourceHelpers.BuildMaterialPresetResourceNode(self.ParametersSetProxy.Parameters, uuid, "MaterialMixer_Preset")
+        save:AppendChild(preset)
+        local finalPath = "Realm_Builder/Materials/" .. uuid .. ".lsx"
+
+        Ext.IO.SaveFile(finalPath, save:Stringify({ AutoFindRoot = true }))
     end)
 
     local destroybtn = AddSelectableButton(row:AddCell(), "Destroy Mixer##" .. self.MaterialName, function (sel)

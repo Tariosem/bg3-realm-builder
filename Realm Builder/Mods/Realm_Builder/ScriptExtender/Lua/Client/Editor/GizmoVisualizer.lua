@@ -17,7 +17,7 @@
 --- @field HoverGizmoAxis fun(self: GizmoVisualizer, axis: string, guid: GUIDSTRING)
 --- @field ResetGizmoAxis fun(self: GizmoVisualizer, axis: string, guid: GUIDSTRING)
 --- @field VisualizeRotatePointer fun(self: GizmoVisualizer, guid: GUIDSTRING, axis: string)
---- @field UpdateScale fun(self: GizmoVisualizer, guid: GUIDSTRING): number
+--- @field UpdateScale fun(self: GizmoVisualizer, position: vec3): number
 --- @field SetLineFxColor fun(self: GizmoVisualizer, guid: GUIDSTRING, color: number[])
 --- @field SetLineLength fun(self: GizmoVisualizer, guid: GUIDSTRING, length: number, width: number?)
 --- @field new fun(): GizmoVisualizer
@@ -213,11 +213,11 @@ function GizmoVisualizer:VisualizeRotatePointer(guid, axis)
 end
 
 --- update internal scale based on camera distance
---- @param guid GUIDSTRING
-function GizmoVisualizer:UpdateScale(guid)
-    if not EntityExists(guid) then return 1.0 end
+
+--- @param position vec3
+--- @return number
+function GizmoVisualizer:UpdateScale(position)
     local k = self.GizmoScale or 0.1
-    local position = Vec3.new({CGetPosition(guid)})
     if position == Vec3.new({0,0,0}) then return 1.0 end
     local cam = GetCamera()
     if not cam then return 1.0 end

@@ -26,6 +26,7 @@ EntityStore = {
 --- @field VisualPreset string
 --- @field Visible boolean
 --- @field Gravity boolean
+--- @field DisableGravityUntilMoved boolean
 --- @field CanInteract boolean
 --- @field Movable boolean
 --- @field CanBeLooted boolean
@@ -36,12 +37,12 @@ EntityStore = {
 --- @field Rotation Quat?
 --- @field Scale Vec3?
 --- @field Icon string?
---- Character-specific fields
---- @field WanderConfig WanderConfig?
+--- @field OverrideVisualUuid string?
+--- @field OriginalVisualUuid string?
 --- @field UseCustomVisualParameters boolean?
 --- @field OverrideVisualParameters RB_ParameterSet?
---- @field OverrideCharacterVisualUuid string?
---- end
+--- @field WanderConfig WanderConfig? -- character only
+--- @field VisualObjectMaterialOverride RB_ObjectEdit? -- item only
 
 --- @class EntityStore
 --- @field AddEntity fun(self:EntityStore, guid:string, data:EntityData|ServerEntityData)
@@ -421,10 +422,24 @@ local uselessExportAttributes = {
     "Persistent",
 }
 
+local uselessSceneryAttributes = {
+    "CanInteract",
+    "Movable",
+    "Visible",
+    "Gravity",
+    "IsScenery",
+    "DisplayName",
+}
+
 --- @param entData EntityData
 function EntityStore:DeleteUselessExportAttributes(entData)
     for _, attr in pairs(uselessExportAttributes) do
         entData[attr] = nil
+    end
+    if entData.TemplateType == "scenery" then
+        for _, attr in pairs(uselessSceneryAttributes) do
+            entData[attr] = nil
+        end
     end
 end
 
@@ -436,27 +451,36 @@ function EntityStore:GetExportCopy(guids)
         if EntityDatas[guid] then
             local entity = Ext.Entity.Get(guid)
             if not entity then goto continue end
-            local data = DeepCopy(self:GetStoredData(guid))
-            local template = Ext.Template.GetTemplate(TakeTailTemplate(data.TemplateId)) --[[@as CharacterTemplate]]
+            local data = DeepCopy(self:GetStoredData(guid)) --[[@as EntityData]]
+            local template = Ext.Template.GetTemplate(TakeTailTemplate(data.TemplateId))
             self:DeleteUselessExportAttributes(data)
+
 
             data.Position = { CGetPosition(guid) }
             data.Rotation = { CGetRotation(guid) }
             data.Scale = { CGetScale(guid) }
 
             data.Scale = math.min(data.Scale[1], data.Scale[2], data.Scale[3])
-            data.Icon = template.Icon
+            data.Icon = template.TemplateType == "item" and template.Icon or "Item_Unknown"
             data.LevelName = entity.Level.LevelName
 
-            data.TemplateType = templateType(guid)
+            data.TemplateType = template.TemplateType
 
             local visualTab = VisualTab.FetchByGuid(guid)
             if data.TemplateType == "character" and template and visualTab then
-
-                data.OriginalCharacterVisualUuid = template.CharacterVisualResourceID
+                data.OriginalVisualUuid = template.CharacterVisualResourceID
                 data.UseCustomVisualParameters = true
                 data.OverrideVisualParameters = visualTab:ExportModifiedMaterialParams()
-                _D(data.OverrideVisualParameters)
+            elseif (data.TemplateType == "item" or data.TemplateType == "scenery") and template and visualTab then
+                local isVisual = Ext.Resource.Get(template.VisualTemplate, "Visual") 
+                if isVisual then -- currently only support VisualTemplate override for visual resource
+                    data.OriginalVisualUuid = template.VisualTemplate
+                    data.UseCustomVisualParameters = true
+                    data.VisualObjectMaterialOverride = visualTab:ExportObjectEdit()
+                    if not data.VisualObjectMaterialOverride then
+                        data.UseCustomVisualParameters = nil
+                    end
+                end
             end
 
             results[guid] = data

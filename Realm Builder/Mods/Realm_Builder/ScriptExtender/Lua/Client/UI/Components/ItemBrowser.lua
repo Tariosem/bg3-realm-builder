@@ -1,11 +1,11 @@
---- @class ItemIconBrowser : IconBrowser
-ItemIconBrowser = _Class("ItemIconBrowser", IconBrowser)
+--- @class ItemBrowser : IconBrowser
+ItemBrowser = _Class("ItemBrowser", IconBrowser)
 
-function ItemIconBrowser:GetConfig()
+function ItemBrowser:GetConfig()
     return CONFIG.ItemBrowser or {}
 end
 
-function ItemIconBrowser:SaveToConfig()
+function ItemBrowser:SaveToConfig()
     CONFIG.ItemBrowser.IconWidth = self.iconWidth
     CONFIG.ItemBrowser.IconPerColumn = self.iconPC
     CONFIG.ItemBrowser.ButtonBgColor = self.iconButtonBgColor
@@ -18,7 +18,7 @@ function ItemIconBrowser:SaveToConfig()
     SaveConfig("ItemsBrowser")
 end
 
-function ItemIconBrowser:TooltipChangeLogic()
+function ItemBrowser:TooltipChangeLogic()
     if self.iconTooltipName == "DisplayName" then
         self.iconTooltipName = "TemplateName"
         self.tooltipName.Label = GetLoca("Tooltip Name: Template Name")
@@ -34,7 +34,7 @@ end
 ---@param entry RB_Item
 ---@param cell ExtuiTableCell
 ---@return ExtuiImageButton|ExtuiStyledRenderable?
-function ItemIconBrowser:RenderIcon(entry, cell)
+function ItemBrowser:RenderIcon(entry, cell)
     if entry.Uuid == nil then
         Warning("[ItemIconBrowser] Icon with UUID: " .. tostring(entry.Uuid) .. " is missing Uuid field.")
         Warning(entry)
@@ -151,7 +151,7 @@ function ItemIconBrowser:RenderIcon(entry, cell)
 end
 
 --- @param entry RB_Item
-function ItemIconBrowser:SetupTemplatePreview(entry)
+function ItemBrowser:SetupTemplatePreview(entry)
 
     Timer:Ticks(15, function (timerID)
         local spawnPos, spawnRot = GetPickingHitPosAndRot()
@@ -205,7 +205,6 @@ function ItemIconBrowser:SetupTemplatePreview(entry)
             return
         end
         previewItem = response.Guid
-        TransformEditor:AddToBlacklist(previewItem)
 
         local rotatedirty = false
         local dirtyRotation = nil
@@ -294,7 +293,6 @@ function ItemIconBrowser:SetupTemplatePreview(entry)
                 NetChannel.Delete:SendToServer({ Guid = previewItem })
                 previewItem = nil
                 self.IsPreviewing = false
-                TransformEditor:RemoveFromBlacklist(previewItem)
                 return UNSUBSCRIBE_SYMBOL
             end
         end)
@@ -303,7 +301,7 @@ function ItemIconBrowser:SetupTemplatePreview(entry)
 
 end
 
-function ItemIconBrowser:RenderInfoPopup(popup, entry)
+function ItemBrowser:RenderInfoPopup(popup, entry)
     popup.UserData = popup.UserData or {}
     if popup.UserData.InfoRendered then return end
 
@@ -326,7 +324,7 @@ function ItemIconBrowser:RenderInfoPopup(popup, entry)
     popup.UserData.InfoRendered = true
 end
 
-function ItemIconBrowser:RenderAttrPopup(iconImage, cell, entry, popup)
+function ItemBrowser:RenderAttrPopup(iconImage, cell, entry, popup)
     local popupRendered = false
     local attributePopup = nil
 
@@ -452,7 +450,7 @@ function ItemIconBrowser:RenderAttrPopup(iconImage, cell, entry, popup)
     end
 end
 
-function ItemIconBrowser:RenderItemSpawnTab(popup, iconImage, entry)
+function ItemBrowser:RenderItemSpawnTab(popup, iconImage, entry)
     local spawnTab = popup
 
     local spawnButton = spawnTab:AddButton(GetLoca("Spawn"))
@@ -584,7 +582,7 @@ function ItemIconBrowser:RenderItemSpawnTab(popup, iconImage, entry)
     end
 end
 
-function ItemIconBrowser.Add(Lib, DisplayName)
-    local instance = ItemIconBrowser.new(Lib, DisplayName)
+function ItemBrowser.Add(Lib, DisplayName)
+    local instance = ItemBrowser.new(Lib, DisplayName)
     return instance
 end

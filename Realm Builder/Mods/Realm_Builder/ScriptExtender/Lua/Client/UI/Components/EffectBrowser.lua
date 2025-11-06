@@ -1,12 +1,12 @@
---- @class EffectIconBrowser : IconBrowser
-EffectIconBrowser = _Class("EffectIconBrowser", IconBrowser)
+--- @class EffectBrowser : IconBrowser
+EffectBrowser = _Class("EffectBrowser", IconBrowser)
 
 --- @class EffectIconsBrowser : IconsBrowser
-function EffectIconBrowser:GetConfig()
+function EffectBrowser:GetConfig()
     return CONFIG.EffectBrowser or {}
 end
 
-function EffectIconBrowser:SaveToConfig()
+function EffectBrowser:SaveToConfig()
     self.lastPosition = self.panel.LastPosition
     self.lastSize = self.panel.LastSize
     CONFIG.EffectBrowser.IconWidth = self.iconWidth
@@ -22,7 +22,7 @@ function EffectIconBrowser:SaveToConfig()
     SaveConfig("EffectsBrowser")
 end
 
-function EffectIconBrowser:TooltipChangeLogic()
+function EffectBrowser:TooltipChangeLogic()
     if self.iconTooltipName == "DisplayName" then
         self.iconTooltipName = "TemplateName"
         self.tooltipName.Label = GetLoca("Tooltip Name: Template Name")
@@ -34,7 +34,7 @@ end
 
 --- @param entry RB_Effect
 --- @param cell ExtuiTableCell
-function EffectIconBrowser:RenderIcon(entry, cell)
+function EffectBrowser:RenderIcon(entry, cell)
     if entry.Uuid == nil then
         Warning("[IconsBrowser] Icon with UUID: " .. tostring(entry.Uuid) .. " is missing Uuid field.")
         return nil
@@ -139,7 +139,7 @@ function EffectIconBrowser:RenderIcon(entry, cell)
     return iconImage
 end
 
-function EffectIconBrowser:RenderPlayEffectPopup(popup, entry, iconImage)
+function EffectBrowser:RenderPlayEffectPopup(popup, entry, iconImage)
     local playEffectButton = popup:AddButton(GetLoca("Play"))
     playEffectButton:Tooltip():AddText(GetLoca("For preview, some effects may not play correctly"))
     local infoButton = popup:AddButton(GetLoca("Info"))
@@ -223,7 +223,7 @@ function EffectIconBrowser:RenderPlayEffectPopup(popup, entry, iconImage)
     end
 end
 
-function EffectIconBrowser.Add(dataManager, searchData)
-    local instance = EffectIconBrowser.new(dataManager, searchData)
+function EffectBrowser.Add(dataManager, searchData)
+    local instance = EffectBrowser.new(dataManager, searchData)
     return instance
 end

@@ -1,60 +1,67 @@
 --- @class TransformEditor
 --- @field Gizmo Gizmo|nil
---- @field Target GUIDSTRING|GUIDSTRING[]|nil
+--- @field Target RB_MovableProxy[]|nil
 --- @field History HistoryManager
 --- @field Subscriptions table<string, RBSubscription>
 --- @field Debug boolean
 --- @field Select fun(self: TransformEditor, guid: GUIDSTRING|table<GUIDSTRING, any>)
 --- @field InitGizmo fun(self: TransformEditor)
 --- @field UpdateGizmo fun(self: TransformEditor)
-TransformEditor = {}
+--- @field new fun(): TransformEditor
+TransformEditor = _Class("TransformEditor")
 
-TransformEditor = {
-    Gizmo = nil,
-    Target = nil,
-    Debug = false,
-    StartTransforms = {},
-    Subscriptions = {},
-    Blacklist = {},
-    Disabled = false,
-}
+function TransformEditor:__init()
+    self.Target = nil
+    self.Gizmo = Gizmo.new(self)
+    self.Subscriptions = {}
+    self.Space = "World"
+    self.Disabled = false
+end
 
-local function checkIFSame(array, map)
-    if not map or not array then return false end
-    if #array ~= table.count(map) then return false end
-    for _,v in pairs(array) do
-        if not map[v] then return false end
+local function chekcIfSameSelection(selectionA, selectionB)
+    if not selectionA and not selectionB then return true end
+    if (not selectionA and selectionB) or (selectionA and not selectionB) then return false end
+    if #selectionA ~= #selectionB then return false end
+
+    local mapA = {}
+    for _,v in pairs(selectionA) do
+        mapA[v] = true
     end
+
+    for _,v in pairs(selectionB) do
+        if not mapA[v] then
+            return false
+        end
+    end
+
     return true
 end
 
---- @param selection table<GUIDSTRING, any>|GUIDSTRING|nil
+local function simpleUnique(t)
+    local map = {}
+    local result = {}
+    for _,v in pairs(t) do
+        if not map[v] then
+            map[v] = true
+            table.insert(result, v)
+        end
+    end
+    return result
+end
+
+--- @param selection RB_MovableProxy[]
 function TransformEditor:Select(selection, notRecordHistory)
     local oriSelection = self.Target
-    local oriSelectionMap = {}
-    for _,v in pairs(oriSelection or {}) do
-        oriSelectionMap[v] = true
-    end
-
     if self.IsDragging then return end
-    if not selection or selection == "" then
+    if not selection or #selection == 0 then
         self.Target = nil
         self:Clear()
         Debug("TransformEditor: Clear selection. No guid provided.")
         return
     end
-    if type(selection) == "string" then
-        selection = { [selection] = {} }
-    end
-    if not self.Gizmo or not self.Gizmo.Guid then self.Target = nil end
-    if checkIFSame(self.Target, selection) then return end
 
-    self.Target = {}
-    for guid,_ in pairs(selection) do
-        if self.Blacklist[guid] then goto continue end
-        table.insert(self.Target, guid)
-        ::continue::
-    end
+    if chekcIfSameSelection(selection, oriSelection) then return end
+    self.Target = simpleUnique(selection)
 
     self:HandleGizmo()
     self:RegisterEvents()
@@ -63,7 +70,7 @@ function TransformEditor:Select(selection, notRecordHistory)
     if not notRecordHistory then
         HistoryManager:PushCommand({
             Undo = function()
-                self:Select(oriSelectionMap or {}, true)
+                self:Select(oriSelection or {}, true)
             end,
             Redo = function()
                 self:Select(selection or {}, true)
@@ -72,62 +79,70 @@ function TransformEditor:Select(selection, notRecordHistory)
     end
 end
 
-function TransformEditor:AddToBlacklist(guid)
-    if not guid then return end
-    if not self.Blacklist then
-        self.Blacklist = {}
+function TransformEditor:AddTarget(proxy)
+    if not proxy then return end
+    local newSelection = self.Target or {}
+    for _,v in pairs(newSelection) do
+        if v == proxy then
+            return
+        end
     end
-    self.Blacklist[guid] = true
-end
-
-function TransformEditor:RemoveFromBlacklist(guid)
-    if not guid then return end
-    if not self.Blacklist then return end
-    self.Blacklist[guid] = nil
+    table.insert(newSelection, proxy)
+    self:Select(newSelection)
 end
 
 function TransformEditor:PopupNotify()
-    if not self.Target or #NormalizeGuidList(self.Target) == 0 then return end
-    local renderList = {}
-    for _,guid in pairs(NormalizeGuidList(self.Target) or {}) do
-        local icon = GetIcon(guid)
-        local name = GetDisplayNameFromGuid(guid)
-        if not name then name = GetDisplayNameForEntity(guid) or "Unknown" end
-        table.insert(renderList, {Icon=icon, Name=name})
-    end
 
     local notif = self.SelectionChangedNotif or Notification.new("Editor Selection Changed")
     self.SelectionChangedNotif = notif
     notif.Pivot = { 0.1 , 0.8 }
-    notif.FlickToDismiss = true
+    notif.ClickToDismiss = true
     notif.AnimDirection = "Vertical"
     notif.ChangeDirectionWhenFadeOut = true
     notif:Show("Selection Changed", function (panel)
-        for _,entry in pairs(renderList) do
-            panel:AddImage(entry.Icon, {32, 32})
-            local nameText = panel:AddText(entry.Name)
-            nameText.TextWrapPos = 900
-            nameText.SameLine = true
+        for _, proxy in pairs(self.Target or {}) do
+            proxy:Render(panel)
         end
     end)
 end
 
 function TransformEditor:HandleGizmo()
-    if not self.Target or #NormalizeGuidList(self.Target) == 0 then
+    if not self.Target or #self.Target == 0 then
         self:Clear()
         return
     end
     if not self.Gizmo then
         self.Gizmo = Gizmo.new(self)
+
     end
-    self.Gizmo:SetTarget(self.Target)
+
+    self.Gizmo.GetPivot = function(gizmo)
+        if not self.Target or #self.Target == 0 then
+            return Vec3.new(0,0,0), Quat.Identity()
+        end
+
+        local latestProxy = self.Target[#self.Target]
+        while not latestProxy:IsValid() do
+            table.remove(self.Target, #self.Target)
+            if #self.Target == 0 then
+                self:Clear()
+                return gizmo.PivotPosition, gizmo.PivotRotation
+            end
+            latestProxy = self.Target[#self.Target]
+        end
+
+        local avgPos = latestProxy:GetWorldTranslate() or Vec3.new(0,0,0)
+        local rot = self:GetPivotRotation() or Quat.Identity()
+
+        return avgPos, rot
+    end
+
+    self.Gizmo:Enable()
 end
 
 function TransformEditor:SetSpace(space)
     if Enums.TransformEditorSpace[space] then
-        if self.Gizmo then
-            self.Gizmo:SetSpace(space)
-        end
+        self.Space = space
     else
         Warning("TransformEditor:SetSpace: Invalid space '"..tostring(space))
     end
@@ -135,10 +150,7 @@ end
 
 function TransformEditor:Clear()
     self.Target = nil
-    self.StartTransforms = {}
-    if self.Gizmo then
-        self.Gizmo:SetTarget(self.Target)
-    end
+    self.Gizmo:Disable()
 end
 
 function TransformEditor:SetMode(mode)
@@ -149,6 +161,38 @@ function TransformEditor:SetMode(mode)
     elseif mode and mode == self.Gizmo.Mode and not self.IsDragging then
         self.Gizmo:StartDragging()
     end
+end
+
+function TransformEditor:GetPivotRotation()
+    local space = self.Space or "World"
+    local latestProxy = self.Target[#self.Target]
+    while not latestProxy:IsValid() do
+        table.remove(self.Target, #self.Target)
+        if #self.Target == 0 then
+            Debug("TransformEditor: GetPivotRotation no valid target selected")
+            return Quat.Identity()
+        end
+        latestProxy = self.Target[#self.Target]
+    end
+    local rot = Quat.Identity()
+    if not latestProxy then
+        Debug("TransformEditor: GetPivotRotation called but no target selected")
+        return rot
+    end
+    if space == "Local" then
+        rot = latestProxy:GetWorldRotation()
+    elseif space == "Parent" then
+        local parent = latestProxy:GetParent()
+        if parent then
+            rot = parent:GetWorldRotation()
+        else
+            Debug("TransformEditor: Parent space but no valid parent found")
+            rot = Quat.Identity()
+        end
+    elseif space == "View" then
+        rot = {GetCameraRotation()}
+    end
+    return Quat.new(rot)
 end
 
 function TransformEditor:RegisterEvents()
@@ -189,38 +233,6 @@ function TransformEditor:RegisterEvents()
         end
     end)
 
-    teMod:RegisterEvent("FollowTarget", function (e)
-        if not self.Target or #self.Target == 0 then return end
-        if e.Event ~= "KeyDown" or not e.Pressed then return end
-
-        if self.Gizmo and self.Target then
-            CameraFollow(self.Target)
-        end
-    end)
-
-    restrain(teMod:RegisterEvent("DeleteSelection", function (e)
-        if not self.Target or #self.Target == 0 then return end
-        if e.Event ~= "KeyDown" or not e.Pressed then return end
-
-        local guids = NormalizeGuidList(self.Target)
-        local props = {}
-        for _,guid in pairs(guids) do
-            if not EntityStore:GetStoredData(guid) then
-            else
-                table.insert(props, guid)
-            end
-        end
-        if #props == 0 then return end
-
-        ConfirmPopup:DangerConfirm(
-            string.format("Are you sure you want to delete the selected %d prop(s)?", #props),
-            function()
-                self:Clear()
-                NetChannel.Delete:SendToServer({ Guid = props })
-            end)
-        end)
-    )
-
     self.Subscriptions["ResetTransform"] = SubscribeKeyInput({}, function (e)
         if not self.Target or #self.Target == 0 then return end
         if self.IsDragging then return end
@@ -233,33 +245,32 @@ function TransformEditor:RegisterEvents()
         if e.Key == teMod:GetKeyByEvent("TranslateMode").Key then resetTransform.Translate = {CGetPosition(CGetHostCharacter())} end
         if e.Key == teMod:GetKeyByEvent("ScaleMode").Key then resetTransform.Scale = {1,1,1} end
 
-        Commands.SetTransform(self.Target, resetTransform)
+        for _,proxy in pairs(self.Target or {}) do
+            local newTransform = proxy:GetTransform()
+            for k,v in pairs(resetTransform) do
+                newTransform[k] = v
+            end
+            proxy:SetTransform(newTransform)
+        end
     end)
 
     restrain(teMod:RegisterEvent("DeleteAllGizmos", function (e)
         if e.Event ~= "KeyDown" then return end
-        NetChannel.ManageGizmo:RequestToServer({ Clear = true }, function (response)
-            self.Gizmo.Guid = nil
-        end)
+        if not self.Gizmo.Guid then
+            NetChannel.ManageGizmo:RequestToServer({ Clear = true }, function (response)
+                self.Gizmo.Guid = nil
+                self.Gizmo.Translate = nil
+                self.Gizmo.Rotate = nil
+                self.Gizmo.Scale = nil
+            end)
+        end
         self.Gizmo:DeleteItem()
+        self.Target = nil
     end))
 
-    local function GetRottt(space, guid)
-        local rot = Quat.Identity()
-        if space == "Local" then
-            rot = self.StartTransforms[guid].RotationQuat
-        elseif space == "Parent" then
-            local parent = EntityStore:GetBindParent(guid)
-            if parent and EntityExists(parent) then
-                rot = self.StartTransforms[parent] and self.StartTransforms[parent].RotationQuat or {CGetRotation(parent)}
-            else
-                Debug("TransformEditor: Parent space but no valid parent found")
-                rot = Quat.Identity()
-            end
-        elseif space == "View" then
-            rot = self.Gizmo.Picker.Rotation
-        end
-        return Quat.new(rot)
+    local GetRottt = function(gizmo)
+        local _,rot = gizmo:GetPickerTransform()
+        return rot
     end
 
     if not self.Gizmo then
@@ -268,8 +279,8 @@ function TransformEditor:RegisterEvents()
 
     self.Gizmo.OnDragStart = function(gizmo)
         self.IsDragging = true
-        for _,guid in pairs(NormalizeGuidList(self.Target) or {}) do
-            self.StartTransforms[guid] = EntityHelpers.SaveTransform(guid)
+        for _,proxy in pairs(self.Target or {}) do
+            proxy:SaveTransform()
         end
     end
 
@@ -297,12 +308,22 @@ function TransformEditor:RegisterEvents()
             end
         end
 
-        for cnt,guid in pairs(NormalizeGuidList(self.Target) or {}) do
-            local transform = self.StartTransforms[guid]
+        for cnt,proxy in pairs(self.Target or {}) do
+            local transform = proxy:GetSavedTransform()
             local newPointTransform = {
                 Translate = transform.Translate,
-                RotationQuat = GetRottt(gizmo.Space, guid)
+                RotationQuat = GetRottt(gizmo),
             }
+            if self.Space == "Local" then
+                newPointTransform.RotationQuat = transform.RotationQuat
+            elseif self.Space == "Parent" then
+                local parent = proxy:GetParent()
+                if parent and EntityExists(parent) then
+                    newPointTransform.RotationQuat = parent:GetSavedTransform().RotationQuat
+                else
+                    newPointTransform.RotationQuat = Quat.Identity()
+                end
+            end
 
             if transform and transform.Translate then
                 if self.PointVisualizations and self.PointVisualizations[cnt] then
@@ -378,9 +399,20 @@ function TransformEditor:RegisterEvents()
                 gizmo.Visualizer:SetLineFxColor(self.LineVisualizations[1], color)
             end
         end
-        for cnt,guid in pairs(NormalizeGuidList(self.Target) or {}) do
-            local transform = self.StartTransforms[guid]
-            local rot = GetRottt(gizmo.Space, guid)
+        for cnt,proxy in pairs(self.Target or {}) do
+            local transform = proxy:GetSavedTransform()
+            local rot = GetRottt(gizmo)
+            if self.Space == "Local" then
+                rot = Quat.new(transform.RotationQuat)
+            elseif self.Space == "Parent" then
+                local parent = proxy:GetParent()
+                if parent and EntityExists(parent) then
+                    rot = Quat.new(parent:GetSavedTransform().RotationQuat)
+                else
+                    rot = Quat.Identity()
+                end
+            end
+            if not rot then return end
             local vector = GLOBAL_COORDINATE[selectedAxis]
             local ray = Ray.new(transform.Translate, rot:Rotate(vector))
             if self.LineVisualizations[cnt] then
@@ -421,56 +453,55 @@ function TransformEditor:RegisterEvents()
     end
 
     self.Gizmo.OnDragTranslate = function(gizmo, delta)
-        local transforms = {}
-        for _, guid in pairs(NormalizeGuidList(self.Target) or {}) do
-            local newTransform = {}
-            local startTransform = self.StartTransforms[guid]
-            local finalDelta = delta
-            if gizmo.Space == "Local" then
+        if self.Space == "Local" or self.Space == "Parent" then
+            -- Convert delta from world space to local space
+            local rot = GetRottt(gizmo)
+            delta = rot:Inverse():Rotate(delta)
+        end
+        
+        for _,proxy in pairs(self.Target or {}) do
+            local startTransform = proxy:GetSavedTransform()
+            local finalDelta = Vec3.new(delta)
+            if self.Space == "Local" then
                 finalDelta = Quat.new(startTransform.RotationQuat):Rotate(delta)
-            elseif gizmo.Space == "Parent" then
-                local parent = EntityStore:GetBindParent(guid)
+            elseif self.Space == "Parent" then
+                local parent = proxy:GetParent()
                 if parent and EntityExists(parent) then
-                    local parentRot = Quat.new({CGetRotation(parent)}) or Quat.Identity()
+                    local parentRot = parent:GetSavedTransform().RotationQuat
                     finalDelta = parentRot:Rotate(delta)
                 else
                     Debug("TransformEditor: Parent space but no valid parent found")
                     finalDelta = {0,0,0}
                 end
             end
-            local newPos = Vec3.new(startTransform.Translate) + finalDelta
-            newTransform.Translate = newPos
+            local newPos = startTransform.Translate + finalDelta
 
-            transforms[guid] = newTransform
+            proxy:SetWorldTranslate(newPos)
         end
-        Commands.SetTransform(self.Target, transforms, true)
     end
 
     self.Gizmo.OnDragScale = function(gizmo, delta)
-        local transforms = {}
-
         local cameraMatrix = nil
-        if gizmo.Space == "View" then
+        if self.Space == "View" then
             cameraMatrix = Matrix.new(Ext.Math.QuatToMat4({GetCameraRotation()}))
         end
 
-        for _, guid in pairs(NormalizeGuidList(self.Target) or {}) do
-            local newTransform = {}
-            local startTransform = self.StartTransforms[guid]
+        for _, proxy in pairs(self.Target or {}) do
+            local startTransform = proxy:GetSavedTransform()
             local baseScale = startTransform.Scale or {1,1,1}
 
             local deltaWorld = Vec3.new(delta)
 
             local newScale = nil
-            if gizmo.Space == "World" or gizmo.Space == "View" or gizmo.Space == "Parent" then
+            if self.Space == "World" or self.Space == "View" or self.Space == "Parent" then
                 -- Convert world-space delta scaling into local-space scale factors
                 local R = Matrix.new(Ext.Math.QuatToMat4(startTransform.RotationQuat))
-                if gizmo.Space == "View" then
+                if self.Space == "View" then
                     R = cameraMatrix * R
-                elseif gizmo.Space == "Parent" then
-                    local parent = EntityStore:GetBindParent(guid)
+                elseif self.Space == "Parent" then
+                    local parent = proxy:GetParent()
                     if parent and EntityExists(parent) then
-                        local parentRot = Quat.new{CGetRotation(parent)} or Quat.Identity()
+                        local parentRot = parent:GetSavedTransform().RotationQuat
                         local parentMat = Matrix.new(Ext.Math.QuatToMat4(parentRot))
                         
                         R = parentMat:Inverse() * R
@@ -488,36 +519,40 @@ function TransformEditor:RegisterEvents()
                 local sz = S_local[3 + (3 - 1) * 4]
 
                 newScale = Vec3.new(
-                    baseScale.X * sx,
-                    baseScale.Y * sy,
-                    baseScale.Z * sz
+                    baseScale[1] * sx,
+                    baseScale[2] * sy,
+                    baseScale[3] * sz
                 )
             else
                 newScale = Vec3.new(baseScale) * deltaWorld
             end
 
-            newTransform.Scale = newScale
-            transforms[guid] = newTransform
+            proxy:SetWorldScale(newScale)
         end
-        Commands.SetTransform(self.Target, transforms, true)
     end
 
     self.Gizmo.OnDragRotate = function(gizmo, delta)
         local deltaAngle = delta.Angle or 0
-        local transforms = {}
-        for _, guid in pairs(NormalizeGuidList(self.Target) or {}) do
-            local newTransform = {}
-            local startTransform = self.StartTransforms[guid]
+        local deltaAxis = Vec3.new(delta.Axis or {0,0,0})
+
+        if self.Space == "Local" or self.Space == "Parent" then
+            -- Convert delta axis from world space to local space
+            local rot = GetRottt(gizmo)
+            deltaAxis = rot:Inverse():Rotate(deltaAxis)
+        end
+
+        for _, proxy in pairs(self.Target or {}) do
+            local startTransform = proxy:GetSavedTransform()
             local curRot = Quat.new(startTransform.RotationQuat) or Quat.Identity()
             local newRot = nil
-            local axis = delta.Axis or Vec3.new{0,0,0}
+            local axis = deltaAxis or Vec3.new{0,0,0}
             local angle = deltaAngle or 0
-            if gizmo.Space == "Local" then
+            if self.Space == "Local" then
                 axis = curRot:Rotate(axis)
-            elseif gizmo.Space == "Parent" then
-                local parent = EntityStore:GetBindParent(guid)
+            elseif self.Space == "Parent" then
+                local parent = proxy:GetParent()
                 if parent and EntityExists(parent) then
-                    local parentRot = Quat.new({CGetRotation(parent)}) or Quat.Identity()
+                    local parentRot = parent:GetSavedTransform().RotationQuat
                     axis = parentRot:Rotate(axis)
                 else
                     axis = Vec3.new{0,0,0}
@@ -532,51 +567,56 @@ function TransformEditor:RegisterEvents()
             end
             
             newRot = Quat.new(Ext.Math.QuatMul(deltaQuat, curRot))
-            newTransform.RotationQuat = newRot
 
-            transforms[guid] = newTransform
-            ::continue::
+            proxy:SetWorldRotation(newRot)
         end
-        Commands.SetTransform(self.Target, transforms, true)
     end
-    
 
-    self.Gizmo.OnDragEnd = function(gizmo)
+    self.Gizmo.OnDragEnd = function(gizmo, isCancelled)
         for _,v in pairs(self.LineVisualizations or {}) do
             gizmo.Visualizer:SetLineLength(v, 0)
         end
         for _,v in pairs(self.PointVisualizations or {}) do
             gizmo.Visualizer:HideGizmo(v)
         end
+        if isCancelled then 
+            self.IsDragging = false
+            return 
+        end
+
         local redoTransforms = {}
-        local undoTransforms = DeepCopy(self.StartTransforms)
+        local undoTransforms = {}
+        for _,proxy in pairs(self.Target or {}) do
+            undoTransforms[proxy] = proxy:GetSavedTransform()
+        end
         local changed = {}
-        for _,guid in pairs(NormalizeGuidList(self.Target) or {}) do
-            if not EntityExists(guid) then goto continue end
-            local save = EntityHelpers.SaveTransform(guid)
-            if EntityHelpers.EqualTransforms(save, self.StartTransforms[guid]) then
-                undoTransforms[guid] = nil
+        for _,proxy in pairs(self.Target or {}) do
+            local save = proxy:GetTransform()
+            if EntityHelpers.EqualTransforms(save, undoTransforms[proxy]) then
+                undoTransforms[proxy] = nil
             else
-                redoTransforms[guid] = save
-                table.insert(changed, guid)
+                redoTransforms[proxy] = save
+                table.insert(changed, proxy)
             end
-            ::continue::
         end
 
         if next(redoTransforms) then
             HistoryManager:PushCommand({
                 Undo = function()
-                    Commands.SetTransform(changed, undoTransforms, true)
+                    for _,proxy in pairs(changed) do
+                        local startTransform = undoTransforms[proxy]
+                        proxy:SetTransform(startTransform)
+                    end
                 end,
                 Redo = function()
-                    Commands.SetTransform(changed, redoTransforms, true)
+                    for _,proxy in pairs(changed) do
+                        local endTransform = redoTransforms[proxy]
+                        proxy:SetTransform(endTransform)
+                    end
                 end
             })
         end
 
-        self._accuDelta = nil
-        self._delta = nil
-        self.StartTransforms = {}
         self.IsDragging = false
     end
 end
@@ -595,3 +635,4 @@ function TransformEditor:ShowAndEnableGizmo()
     self.Disabled = false
 end
 
+RB_GLOBALS.TransformEditor = TransformEditor.new()

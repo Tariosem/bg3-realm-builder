@@ -220,13 +220,6 @@ end
 --- @field StoryItem boolean
 --- @field Rarity string
 
---- @class RB_Character
---- @field Uuid string
---- @field TemplateId string
---- @field TemplateName string
---- @field DisplayName string
---- @field Icon string
-
 --- @param template GameObjectTemplate
 --- @return RB_Item?
 function ItemManager:PopulateItem(template, statsObj)

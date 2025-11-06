@@ -104,7 +104,7 @@ end
 function GetIconForTemplateId(uuid)
     uuid = TakeTailTemplate(uuid)
     local template = Ext.ClientTemplate.GetTemplate(uuid)
-    local icon = template and template.Icon
+    local icon = template and template.TemplateType == "item" and template.Icon or nil
     if icon and icon ~= "" then
         if ICON_BLACKLIST[icon] then
             return "Item_Unknown"
@@ -112,16 +112,6 @@ function GetIconForTemplateId(uuid)
         return CheckIcon(icon, "Item_Unknown")
     end
     return "Item_Unknown"
-end
-
-function GetIconForTemplateName(templateName)
-    local uuid = RB_ItemManager.TemplateNameToUuid[templateName]
-    if uuid then
-        return GetIconForTemplateId(uuid)
-    else
-        Error("GetIconForTemplateName: No UUID found for template name: " .. templateName)
-        return "Item_Unknown"
-    end
 end
 
 function GetDisplayNameForEntity(entity)

@@ -8,8 +8,8 @@ Menu = _Class("Menu")
 --- @field entityMenu SceneMenu
 --- @field presetMenu PresetMenu
 --- @field styleMenu StyleMenu
---- @field itemBrowser ItemIconBrowser
---- @field effectBrowser EffectIconBrowser
+--- @field itemBrowser ItemBrowser
+--- @field effectBrowser EffectBrowser
 --- @field panel ExtuiWindowBase
 --- @field tabBar ExtuiTabBar
 --- @field FocusOnTab fun(self:RB_MainMenu, guid:string, doDetach:boolean|nil)
@@ -76,18 +76,23 @@ function Menu:Render()
     end)
 
     Timer:Ticks(7, function()
-        self.itemBrowser = ItemIconBrowser.new(RB_ItemManager, "Item - Browser")
+        self.itemBrowser = ItemBrowser.new(RB_ItemManager, "Item - Browser")
         self.itemBrowser:CreateCachedSort("DisplayName")
     end)
 
     Timer:Ticks(8, function()
-        self.effectBrowser = EffectIconBrowser.new(RB_MultiEffectManager, "Effect - Browser")
+        self.effectBrowser = EffectBrowser.new(RB_MultiEffectManager, "Effect - Browser")
         self.effectBrowser:CreateCachedSort("DisplayName")
     end)
 
     Timer:Ticks(9, function()
         self.characterBrowser = CharacterBrowser.new(RB_CharacterManager, "Character - Browser")
         self.characterBrowser:CreateCachedSort("DisplayName")
+    end)
+
+    Timer:Ticks(9, function()
+        self.sceneryBrowser = SceneryBrowser.new(RB_SceneryManager, "Scenery - Browser")
+        self.sceneryBrowser:CreateCachedSort("DisplayName")
     end)
 
     Timer:Ticks(9, function()

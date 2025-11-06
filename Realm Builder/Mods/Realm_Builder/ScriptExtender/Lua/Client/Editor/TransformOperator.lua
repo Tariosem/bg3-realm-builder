@@ -24,7 +24,7 @@ local keyToSpace = {
 }
 
 --- @class TransformOperator
---- @field Targets GUIDSTRING[]
+--- @field Targets RB_MovableProxy[]
 --- @field Mode TransformEditorMode
 --- @field Space TransformEditorSpace
 --- @field Num string
@@ -32,16 +32,16 @@ local keyToSpace = {
 --- @field new fun(targets: GUIDSTRING[]|GUIDSTRING, space:TransformEditorSpace?, mode:TransformEditorMode?, axis:table<'X'|'Y'|'Z', boolean>?): TransformOperator
 TransformOperator = _Class("TransformOperator")
 
---- @param guid GUIDSTRING
+--- @param proxy RB_MovableProxy
 --- @param space TransformEditorSpace
 --- @return table<'X'|'Y'|'Z', Vec3>
-function TransformOperator:GetAxesBySpace(guid, space)
-    if not self.AxesCache[guid] then self.AxesCache[guid] = {} end
-    if self.AxesCache[guid][space] then
-        return self.AxesCache[guid][space]
+function TransformOperator:GetAxesBySpace(proxy, space)
+    if not self.AxesCache[proxy] then self.AxesCache[proxy] = {} end
+    if self.AxesCache[proxy][space] then
+        return self.AxesCache[proxy][space]
     end
 
-    local rot = self.StartTransforms[guid] and self.StartTransforms[guid].RotationQuat or {CGetRotation(guid)}
+    local rot = proxy:GetSavedTransform().RotationQuat
     if space == "World" then
         return {
             X = GLOBAL_COORDINATE.X,
@@ -52,24 +52,24 @@ function TransformOperator:GetAxesBySpace(guid, space)
         local x = Ext.Math.QuatRotate(rot, GLOBAL_COORDINATE.X)
         local y = Ext.Math.QuatRotate(rot, GLOBAL_COORDINATE.Y)
         local z = Ext.Math.QuatRotate(rot, GLOBAL_COORDINATE.Z)
-        self.AxesCache[guid][space] = { X = x, Y = y, Z = z }
+        self.AxesCache[proxy][space] = { X = x, Y = y, Z = z }
     elseif space == "View" then
         local camRot = self.StartCameraTransform and self.StartCameraTransform.RotationQuat or {GetCameraRotation()}
         local x = Ext.Math.QuatRotate(camRot, GLOBAL_COORDINATE.X)
         local y = Ext.Math.QuatRotate(camRot, GLOBAL_COORDINATE.Y)
         local z = Ext.Math.QuatRotate(camRot, GLOBAL_COORDINATE.Z)
-        self.AxesCache[guid][space] = { X = x, Y = y, Z = z }
+        self.AxesCache[proxy][space] = { X = x, Y = y, Z = z }
     elseif space == "Parent" then
-        local parent = EntityStore:GetBindParent(guid)
+        local parent = proxy:GetParent()
         if parent and EntityExists(parent) then
-            local parentRot = self.StartTransforms[parent] and self.StartTransforms[parent].RotationQuat or {CGetRotation(parent)}
+            local parentRot = parent:GetSavedTransform().RotationQuat
             local x = Ext.Math.QuatRotate(parentRot, GLOBAL_COORDINATE.X)
             local y = Ext.Math.QuatRotate(parentRot, GLOBAL_COORDINATE.Y)
             local z = Ext.Math.QuatRotate(parentRot, GLOBAL_COORDINATE.Z)
-            self.AxesCache[guid][space] = { X = x, Y = y, Z = z }
+            self.AxesCache[proxy][space] = { X = x, Y = y, Z = z }
         else
-            Warning("Entity does not have a valid parent: "..tostring(guid))
-            self.AxesCache[guid][space] = {
+            Warning("Entity does not have a valid parent: "..tostring(proxy))
+            self.AxesCache[proxy][space] = {
                 X = GLOBAL_COORDINATE.X,
                 Y = GLOBAL_COORDINATE.Y,
                 Z = GLOBAL_COORDINATE.Z,
@@ -84,16 +84,15 @@ function TransformOperator:GetAxesBySpace(guid, space)
         }
     end
 
-    return self.AxesCache[guid][space]
+    return self.AxesCache[proxy][space]
 end
 
-function TransformOperator:__init(targets, space, mode, axis, startTransforms)
-    self.Targets = NormalizeGuidList(targets)
+function TransformOperator:__init(targets, space, mode, axis, ifInitStartTransforms)
+    self.Targets = targets
     self.Visualizer = GizmoVisualizer.new()
     self.Visualizer:UpdateScale(self.Targets[1])
     self.AxesCache = {}
-    self.StartTransforms = startTransforms or {}
-    self:InitStartTransforms()
+    self:InitStartTransforms(ifInitStartTransforms)
 
     self.Mode = mode or "Translate"
     self.Space = space or "Local"
@@ -110,28 +109,20 @@ function TransformOperator:__init(targets, space, mode, axis, startTransforms)
     self:Visualize()
 end
 
-function TransformOperator:InitStartTransforms()
-    self.StartTransforms = self.StartTransforms or {}
-    for _,guid in pairs(self.Targets) do
-        if EntityExists(guid) and not self.StartTransforms[guid] then
-            self.StartTransforms[guid] = {
-                Translate = {CGetPosition(guid)},
-                RotationQuat = {CGetRotation(guid)},
-                Scale = {CGetScale(guid)},
-            }
-        end
+function TransformOperator:InitStartTransforms(ifInit)
+    if not ifInit then return end
+    
+    for _,proxy in pairs(self.Targets) do
+        proxy:SaveTransform()
     end
+
     self.StartCameraTransform = {
         RotationQuat = {GetCameraRotation()},
     }
-    for _,guid in pairs(self.Targets) do
-        local parent = EntityStore:GetBindParent(guid)
-        if parent and EntityExists(parent) and not self.StartTransforms[parent] then
-            self.StartTransforms[parent] = {
-                Translate = {CGetPosition(parent)},
-                RotationQuat = {CGetRotation(parent)},
-                Scale = {CGetScale(parent)},
-            }
+    for _,proxy in pairs(self.Targets) do
+        local parent = proxy:GetParent()
+        if parent then
+            parent:SaveTransform()
         end
     end
 end
@@ -144,9 +135,9 @@ function TransformOperator:Visualize()
 
     local color = self.Visualizer.AxisLineColor[next(self.Axis)] or {1,1,0,1}
 
-    for _,guid in pairs(self.Targets) do
-        local axis = self:GetAxesBySpace(guid, self.Space)[next(self.Axis)]
-        local ray = Ray.new({CGetPosition(guid)}, axis)
+    for _,proxy in pairs(self.Targets) do
+        local axis = self:GetAxesBySpace(proxy, self.Space)[next(self.Axis)]
+        local ray = Ray.new(proxy:GetSavedTransform().Translate, axis)
 
         NetChannel.Visualize:RequestToServer({
             Type = "Line",
@@ -177,13 +168,13 @@ function TransformOperator:ChangeVisualization()
     local visualizations = {}
     local cnt = #self.Targets
     for _, viz in pairs(self.Visualizations) do
-        local guid = self.Targets[cnt]
+        local proxy = self.Targets[cnt]
         cnt = cnt - 1
         table.insert(visualizations, viz)
         self.Visualizer:SetLineFxColor(viz, self.Visualizer.AxisLineColor[next(self.Axis)] or {1,1,0,1})
         self.Visualizer:SetLineLength(viz, 20)
-        local axis = self:GetAxesBySpace(guid, self.Space)[next(self.Axis)]
-        local ray = Ray.new(self.StartTransforms[guid].Translate, axis)
+        local axis = self:GetAxesBySpace(proxy, self.Space)[next(self.Axis)]
+        local ray = Ray.new(proxy:GetSavedTransform().Translate, axis)
         local pos = ray:At(-100)
         local dir = DirectionToQuat( axis * -1 )
         local newTransform = {
@@ -192,7 +183,16 @@ function TransformOperator:ChangeVisualization()
         }
         transforms[viz] = newTransform
     end
-    Commands.SetTransform(visualizations, transforms, true)
+
+    local vizProxies = {}
+    for _,viz in pairs(visualizations) do
+        local proxy = MovableProxy.CreateByGuid(viz)
+        if proxy then
+            table.insert(vizProxies, proxy)
+        end
+    end
+
+    Commands.SetTransform(vizProxies, transforms, true)
 end
 
 function TransformOperator:SetAxis(axis, shiftDown)
@@ -295,24 +295,23 @@ function TransformOperator:Apply()
     local num = tonumber(self.Num) or EvalExpression(self.Num)
     if not num then return end
     if self.Negative then num = -num end
-    for _,guid in pairs(self.Targets) do
-        if not EntityExists(guid) then
-            Warning("Entity does not exist: "..tostring(guid))
-        else
-            local transform = {
-                Translate = self:ApplyTranslate(guid, num),
-                RotationQuat = self:ApplyRotate(guid, num),
-                Scale = self:ApplyScale(guid, num),
-            }
-            transforms[guid] = transform
-        end
+    for _,proxy in pairs(self.Targets) do
+        local transform = {
+            Translate = self:ApplyTranslate(proxy, num),
+            RotationQuat = self:ApplyRotate(proxy, num),
+            Scale = self:ApplyScale(proxy, num),
+        }
+        proxy:SetTransform(transform)
     end
-    Commands.SetTransform(self.Targets, transforms, true)
 end
 
-function TransformOperator:ApplyTranslate(guid, num)
-    if self.Mode ~= "Translate" then return self.StartTransforms[guid] and self.StartTransforms[guid].Translate or {CGetPosition(guid)} end
-    local axes = self:GetAxesBySpace(guid, self.Space)
+
+---@param proxy any
+---@param num any
+---@return Vec3
+function TransformOperator:ApplyTranslate(proxy, num)
+    if self.Mode ~= "Translate" then return proxy:GetSavedTransform().Translate end
+    local axes = self:GetAxesBySpace(proxy, self.Space)
     local dir = Vec3.new(0,0,0)
     for k,v in pairs(self.Axis) do
         if v and axes[k] then
@@ -321,29 +320,35 @@ function TransformOperator:ApplyTranslate(guid, num)
     end
     dir = Ext.Math.Normalize(dir)
     local moveVec = Ext.Math.Mul(dir, num)
-    local startPos = self.StartTransforms[guid] and self.StartTransforms[guid].Translate or {CGetPosition(guid)}
-    return Ext.Math.Add(startPos, moveVec)
+    local startPos = proxy:GetSavedTransform().Translate
+    return Ext.Math.Add(startPos, moveVec) --[[@as Vec3]]
 end
 
-function TransformOperator:ApplyRotate(guid, num)
-    if self.Mode ~= "Rotate" then return self.StartTransforms[guid] and self.StartTransforms[guid].RotationQuat or {CGetRotation(guid)} end
-    local axes = self:GetAxesBySpace(guid, self.Space)
+---@param proxy any
+---@param num any
+---@return Quat
+function TransformOperator:ApplyRotate(proxy, num)
+    if self.Mode ~= "Rotate" then return proxy:GetSavedTransform().RotationQuat end
+    local axes = self:GetAxesBySpace(proxy, self.Space)
     local axis = axes[next(self.Axis)]
     if not axis then
         Warning("No valid axis selected for rotation")
-        return {CGetRotation(guid)}
+        return proxy:GetSavedTransform().RotationQuat
     end
     local angle = math.rad(num)
     local rotQuat = Ext.Math.QuatRotateAxisAngle(Quat.Identity(), axis, angle)
-    local startRot = self.StartTransforms[guid] and self.StartTransforms[guid].RotationQuat or {CGetRotation(guid)}
+    local startRot = proxy:GetSavedTransform().RotationQuat
     local newRot = Ext.Math.QuatMul(rotQuat, startRot)
     return Ext.Math.QuatNormalize(newRot)
 end
 
-function TransformOperator:ApplyScale(guid, num)
-    if self.Mode ~= "Scale" then return self.StartTransforms[guid] and self.StartTransforms[guid].Scale or {CGetScale(guid)} end
+--- @param proxy any
+--- @param num any
+--- @return Vec3
+function TransformOperator:ApplyScale(proxy, num)
+    if self.Mode ~= "Scale" then return proxy:GetSavedTransform().Scale end
     local scaleFactor = num
-    local startScale = self.StartTransforms[guid] and self.StartTransforms[guid].Scale or {CGetScale(guid)}
+    local startScale = proxy:GetSavedTransform().Scale
     local newScale = {}
     for i=1,3 do
         if self.Axis[({"X","Y","Z"})[i]] then
@@ -357,29 +362,32 @@ end
 
 function TransformOperator:Confirm()
     local currentTransforms = {}
-    for _,guid in pairs(self.Targets) do
-        if EntityExists(guid) then
-            currentTransforms[guid] = {
-                Translate = {CGetPosition(guid)},
-                RotationQuat = {CGetRotation(guid)},
-                Scale = {CGetScale(guid)},
-            }
-        end
+    for _,proxy in pairs(self.Targets) do
+        currentTransforms[proxy] = proxy:GetTransform()
     end
-    local currenrTargets = NormalizeGuidList(self.Targets)
+    local startTransforms = {}
+    for _,proxy in pairs(self.Targets) do
+        startTransforms[proxy] = proxy:GetSavedTransform()
+    end
     
     HistoryManager:PushCommand({
         Undo = function()
-            Commands.SetTransform(currenrTargets, self.StartTransforms, true)
+            for proxy, transform in pairs(startTransforms) do
+                proxy:SetTransform(transform)
+            end
         end,
         Redo = function()
-            Commands.SetTransform(currenrTargets, currentTransforms, true)
+            for proxy, transform in pairs(currentTransforms) do
+                proxy:SetTransform(transform)
+            end
         end
     })
     NetChannel.Delete:SendToServer({ Guid = self.Visualizations }, function(response) end)
 end
 
 function TransformOperator:Cancel()
-    Commands.SetTransform(self.Targets, self.StartTransforms, true)
+    for _,proxy in pairs(self.Targets) do
+        proxy:RestoreTransform()
+    end
     NetChannel.Delete:SendToServer({ Guid = self.Visualizations }, function(response) end)
 end

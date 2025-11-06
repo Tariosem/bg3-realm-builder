@@ -1,5 +1,14 @@
+--- @class RB_Character
+--- @field Uuid string
+--- @field TemplateId string
+--- @field TemplateName string
+--- @field DisplayName string
+--- @field Icon string
+
+
 --- @class RB_CharacterManager : ManagerBase
---- @field Characters table<string, RB_Character> Mapping of character UUIDs to RB_Character objects
+--- @field Data table<string, RB_Character> Mapping of character UUIDs to RB_Character objects
+--- @field new fun():RB_CharacterManager
 CharacterManager = _Class("CharacterManager", ManagerBase)
 
 local raceCache = {}
@@ -241,7 +250,7 @@ function CharacterManager:PopulateCharacter(template)
         Uuid = template.Id,
         TemplateId = template.Name .. "_" .. template.Id,
         TemplateName = template.Name,
-        DisplayName = template.DisplayName:Get(),
+        DisplayName = template.DisplayName:Get() or "",
         Icon = "Item_Unknown",
     }
 

@@ -335,7 +335,7 @@ end
 ---@return Hit|nil, Hit[]|nil
 function Ray:IntersectEntity(entity)
     if type(entity) == "string" then
-        entity = Ext.Entity.Get(entity)
+        entity = Ext.Entity.Get(entity) --[[@as EntityHandle]]
     end
 
     local AABound = entity and entity.Visual and entity.Visual.Visual and entity.Visual.Visual.WorldBound

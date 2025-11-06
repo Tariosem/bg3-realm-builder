@@ -1122,6 +1122,12 @@ function MaterialPresetsMenu:__exportToMod(modPack, progressCallback)
         yieldyield()
     end
 
+    local function saveFile(path, string)
+        suc = Ext.IO.SaveFile(path, string)
+        if not suc then throwError("ExportToMod: Failed to save file at " .. path) end
+        yieldyield()
+    end
+
     local function completeAdvance(message)
         Debug("MaterialPresetsMenu: Export Complete: " ..
             tostring(progress) .. "% " .. (message and (" - " .. message) or ""))
@@ -1146,8 +1152,7 @@ function MaterialPresetsMenu:__exportToMod(modPack, progressCallback)
     local metaLsx = LSXHelpers.BuildModMeta(modUuid, displayModName, modInternalName, authorName, version, description)
     local mataFilePath = RealmPath.GetCCAModMetaPath(modInternalName)
 
-    suc = Ext.IO.SaveFile(mataFilePath, metaLsx:Stringify({ Indent = 4 }))
-    if not suc then throwError("ExportToMod: Failed to save mod meta file at " .. mataFilePath) end
+    saveFile(mataFilePath, metaLsx:Stringify({ Indent = 4 }))
     advance("Saved mod meta file.")
 
     --- build localization file first because CC presets need it
@@ -1163,8 +1168,7 @@ function MaterialPresetsMenu:__exportToMod(modPack, progressCallback)
 
     local locaFilePath = RealmPath.GetCCALocalizationPath(modInternalName, "English") -- currently assume English only
 
-    suc = Ext.IO.SaveFile(locaFilePath, locaLsx)
-    if not suc then throwError("ExportToMod: Failed to save localization file at " .. locaFilePath) end
+    saveFile(locaFilePath, locaLsx)
     advance("Saved localization file.")
 
     --- build material presets file first because CC presets need it
@@ -1203,8 +1207,7 @@ function MaterialPresetsMenu:__exportToMod(modPack, progressCallback)
             local presetType = def.ExportType
             local matPresetFile = RealmPath.GetCCAMaterialPresetsFile(presetType, modInternalName, folderName) --[[@as string]]
 
-            suc = Ext.IO.SaveFile(matPresetFile, bank:Stringify({ Indent = 4, AutoFindRoot = true }))
-            if not suc then throwError("ExportToMod: Failed to save material preset bank at " .. matPresetFile) end
+            saveFile(matPresetFile, bank:Stringify({ Indent = 4, AutoFindRoot = true }))
         end
         advance("Saving material preset banks...")
     end
@@ -1276,8 +1279,7 @@ function MaterialPresetsMenu:__exportToMod(modPack, progressCallback)
         if def:CountChildren() > 0 then
             local ccaFilePath = RealmPath.GetCCAPresetsFile(presetType, modInternalName) --[[@as string]]
 
-            suc = Ext.IO.SaveFile(ccaFilePath, def:Stringify({ Indent = 4, AutoFindRoot = true }))
-            if not suc then throwError("ExportToMod: Failed to save CCA presets definition at " .. ccaFilePath) end
+            saveFile(ccaFilePath, def:Stringify({ Indent = 4, AutoFindRoot = true }))
         end
         advance("Saving CCA presets definition...")
     end
@@ -1296,7 +1298,6 @@ function MaterialPresetsMenu:__exportToMod(modPack, progressCallback)
 
     suc = self:SaveModCacheRef()
     if not suc then throwError("ExportToMod: Failed to save CCA mod cache reference file.") end
-
     advance("Saved CCA mod cache reference file.")
 
     completeAdvance("Export complete !")

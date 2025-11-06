@@ -48,7 +48,6 @@ function SceneMenu:EntityDeleted(guids)
     self:UpdateList()
 end
 
-
 function SceneMenu:Render()
 
     if self.isAttach and self.parent then
@@ -109,7 +108,6 @@ function SceneMenu:RenderSideBar()
     local panel = self.mainPanel.SideBar
     local tree = EntityStore.Tree
 
-    local editor = TransformEditor
     local treeList = TreeList.new(panel, "PropsTree", tree, "Guid") --[[@as TreeList]]
 
     self.imageRefs = {}
@@ -128,7 +126,7 @@ function SceneMenu:RenderSideBar()
 
     treeList.OnSelect = function(sel, selected)
         local arr = {}
-        TransformEditor:Select(DeepCopy(selected))
+
         for guid, _ in pairs(selected) do
             table.insert(arr, guid)
         end
@@ -340,8 +338,13 @@ function SceneMenu:SetupSelectablePopup()
         for _, guid in ipairs(self.selectedGuids) do
             map[guid] = true
         end
+
+        local proxies = {}
+        for guid,_ in pairs(map) do
+            table.insert(proxies, MovableProxy.CreateByGuid(guid))
+        end
         
-        TransformEditor:Select(map)
+        RB_GLOBALS.TransformEditor:Select(proxies)
     end)
 
     local deleteButton = AddSelectableButton(row:AddCell(), GetLoca("Delete"), function()
@@ -349,6 +352,13 @@ function SceneMenu:SetupSelectablePopup()
         
         local deleteMes = ""
         local guids = NormalizeGuidList(self.selectedGuids)
+        for i=#guids,1,-1 do
+            local guid = guids[i]
+            local prop = EntityStore:GetStoredData(guid)
+            if not prop then
+                table.remove(guids, i)
+            end
+        end
         if #guids == 1 then
             deleteMes = string.format(GetLoca("Are you sure you want to delete '%s'?"), EntityStore[guids[1]].DisplayName or guids[1])
         else

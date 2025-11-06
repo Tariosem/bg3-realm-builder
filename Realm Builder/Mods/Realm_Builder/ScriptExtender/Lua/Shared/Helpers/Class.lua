@@ -6,6 +6,9 @@
 --- @field new fun(self:Class, ...):Class
 --- @field isInstance fun(self:Class, obj:any):boolean
 
+--- Creates a new class
+--- @param name any
+--- @param parent any
 function _Class(name, parent)
     local cls = {}
     cls.__name = name

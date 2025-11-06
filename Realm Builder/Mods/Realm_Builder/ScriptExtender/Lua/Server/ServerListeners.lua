@@ -1,30 +1,19 @@
-NetChannel.Spawn:SetHandler(function(data, userID)
+local readOnlyTemplateProperty = {
+    Id = true,
+    TemplateName = true,
+    ParentTemplateId = true,
+    TemplateHandle = true,
+    TemplateType = true,
+    Name = true,
+    Tags = true,
+    TemplateId = true,
+    DisplayName = true,
+    Icon = true,
+}
+
+local function spawnHandler(data)
     local template = data.TemplateId
-    local position = data.Position
-    local rotation = data.Rotation
-    local entInfo = data.EntInfo
-    local rtype = data.Type
-
-    if rtype == "Preview" then
-        local previewItem = PreviewTemplate(template, table.unpack(position), table.unpack(rotation), entInfo and entInfo.VisualPreset)
-        return
-    end
-
-    local newGuid = EntityManager:CreateAt(template, position[1], position[2], position[3], rotation[1], rotation[2], rotation[3], rotation[4])
-
-    if not newGuid then Warning("") return end
-
-    EntityManager:SetEntity(newGuid, entInfo or {})
-
-    entInfo.Visible = true
-    entInfo.Guid = newGuid
-    entInfo.TemplateId = template
-
-    NetChannel.Entities.Added:Broadcast({Entities = {entInfo}})
-end)
-
-NetChannel.Spawn:SetRequestHandler(function(data, userID)
-    local template = data.TemplateId
+    local spawnTemplate = template
     local position = data.Position
     local rotation = data.Rotation
     local entInfo = data.EntInfo
@@ -35,7 +24,20 @@ NetChannel.Spawn:SetRequestHandler(function(data, userID)
         return {Guid = previewItem, TemplateId = template}
     end
 
-    local newGuid = EntityManager:CreateAt(template, position[1], position[2], position[3], rotation[1], rotation[2], rotation[3], rotation[4])
+    local templateObj = Ext.Template.GetTemplate(TakeTailTemplate(template))
+    if templateObj.TemplateType == "scenery" then
+        local sceneryTemplate = templateObj --[[@as SceneryTemplate]]    
+        local helperATemplate = Ext.Template.GetTemplate(INVISIBLE_HELPER_A) --[[@as ItemTemplate]]
+
+        for k,v in pairs(sceneryTemplate) do
+            if readOnlyTemplateProperty[k] then goto continue end
+            helperATemplate[k] = v
+            ::continue::
+        end
+        spawnTemplate = helperATemplate.Name .. "-" .. helperATemplate.Id
+    end
+
+    local newGuid = EntityManager:CreateAt(spawnTemplate, position[1], position[2], position[3], rotation[1], rotation[2], rotation[3], rotation[4])
 
     if not newGuid then
         return {Guid = nil, TemplateId = template}
@@ -50,6 +52,14 @@ NetChannel.Spawn:SetRequestHandler(function(data, userID)
     NetChannel.Entities.Added:Broadcast({Entities = {entInfo}})
 
     return {Guid = newGuid, TemplateId = Osi.GetTemplate(newGuid)}
+end
+
+NetChannel.Spawn:SetHandler(function(data, userID)
+    spawnHandler(data)
+end)
+
+NetChannel.Spawn:SetRequestHandler(function(data, userID)
+    return spawnHandler(data)
 end)
 
 NetChannel.Duplicate:SetRequestHandler(function(data, user)
@@ -398,7 +408,7 @@ NetChannel.ManageGizmo:SetRequestHandler(function(data, userID)
         return { Clear = true }
     end
 
-    if not Enums.TransformEditorMode[data.GizmoType] then
+    if not Enums.TransformEditorMode[data.GizmoType] and data.GizmoType ~= "All" then
         return { Guid = nil }
     end
 
@@ -406,6 +416,23 @@ NetChannel.ManageGizmo:SetRequestHandler(function(data, userID)
     if #data.Position ~= 3 then
         data.Position = {0,0,0}
     end
+
+    if data.GizmoType == "All" then
+        local x, y, z = data.Position[1], data.Position[2], data.Position[3]
+        local translate = Osi.CreateAt(GIZMO_ITEM.Translate, x, y, z, 1, 0, "") --[[@as string]]
+        local rotate = Osi.CreateAt(GIZMO_ITEM.Rotate, x, y, z, 1, 0, "") --[[@as string]]
+        local scale = Osi.CreateAt(GIZMO_ITEM.Scale, x, y, z, 1, 0, "") --[[@as string]]
+        Osi.SetVisible(translate, 0)
+        Osi.SetVisible(rotate, 0)
+        Osi.SetVisible(scale, 0)
+        gizmoUserStack[tostring(userID)] = gizmoUserStack[tostring(userID)] or {}
+        table.insert(gizmoUserStack[tostring(userID)], translate)
+        table.insert(gizmoUserStack[tostring(userID)], rotate)
+        table.insert(gizmoUserStack[tostring(userID)], scale)
+        return { Translate = translate, Rotate = rotate, Scale = scale }
+    end
+
+
 
     local guid = Osi.CreateAt(GIZMO_ITEM[data.GizmoType], data.Position[1], data.Position[2], data.Position[3], 1, 0, "") --[[@as string]]
     Osi.SetVisible(guid, 0)

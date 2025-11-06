@@ -92,7 +92,7 @@ DEFAULT_KEYBINDS.BindUtility = {
 KEYBIND_MODULE_RENDER_ORDER = {
     "Generic",
     "TransformToolbar",
-    "TransformEditor",
+    "RB_GLOBALS.TransformEditor",
     "BindUtility",
 }
 

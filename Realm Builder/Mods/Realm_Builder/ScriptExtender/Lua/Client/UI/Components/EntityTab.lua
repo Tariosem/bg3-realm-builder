@@ -51,6 +51,8 @@ function EntityTab:__init(guid, templateId, parent, initAttach)
             nil
         )
     end
+
+
 end
 
 function EntityTab:Render()
@@ -260,7 +262,7 @@ function EntityTab:RenderMonitorTab()
     positionMonitor.OnChange = function(sel)
         local newPos = {sel.Value[1], sel.Value[2], sel.Value[3]}
 
-        Commands.SetTransform(self.guid, { Translate = newPos })
+        Commands.SetTransform(MovableProxy.CreateByGuid(self.guid), { Translate = newPos })
     end
     self.positionTimer = Timer:Every(1000, function()
         if not self.isValid then
@@ -302,7 +304,7 @@ function EntityTab:RenderMonitorTab()
         end
         local deltaQuat = Ext.Math.QuatFromEuler(delta)
         local finalQuat = Ext.Math.QuatMul(self.LastQuatRotation, deltaQuat)
-        Commands.SetTransform(self.guid, { RotationQuat = finalQuat })
+        Commands.SetTransform(MovableProxy.CreateByGuid(self.guid), { RotationQuat = finalQuat })
     end
 
     self.rotationTimer = Timer:Every(1000, function()

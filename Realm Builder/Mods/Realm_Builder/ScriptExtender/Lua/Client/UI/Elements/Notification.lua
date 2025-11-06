@@ -17,7 +17,8 @@
 --- @field Width integer|nil
 --- @field Height integer|nil
 --- @field Moveable boolean
---- @field FlickToDismiss boolean 
+--- @field FlickToDismiss boolean
+--- @field ClickToDismiss boolean
 --- @field FlickVelocityThreshold number Minimum velocity to trigger flick to dismiss
 --- @field ChangeDirectionWhenFadeOut boolean
 --- @field NeverShowAgain boolean
@@ -118,6 +119,12 @@ function Notification:BuildContent()
 
     self.MessageRenderFunc(panel)
     
+    if self.ClickToDismiss then
+        panel.OnClick = function()
+            self:Dismiss()
+        end
+    end
+
     if self.AutoResize == false then
         width = self.Width or width
         height = self.Height or height

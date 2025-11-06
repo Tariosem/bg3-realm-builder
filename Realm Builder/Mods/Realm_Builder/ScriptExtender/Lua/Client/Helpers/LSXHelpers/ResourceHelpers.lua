@@ -1,7 +1,7 @@
 local lsattrNode = LSXHelpers.AttrNode
 ResourceHelpers = {}
 
-local function createParameterAttrNodes(paramObj, overrideValue)
+local function createParameterAttrNodes(paramObj, overrideValue, parameterName)
     local attrs = {}
     for k, v in pairs(paramObj) do
         local valueType = LSXHelpers.LSValueType(v)
@@ -9,6 +9,9 @@ local function createParameterAttrNodes(paramObj, overrideValue)
             Warning("CustomMaterialProxy: Could not determine LSX value type for parameter '" ..
                 tostring(paramObj.ParameterName) .. "'. Skipping.")
             return nil
+        end
+        if k:find("Index") then
+            valueType = "int32"
         end
 
         local value = v
@@ -25,6 +28,14 @@ local function createParameterAttrNodes(paramObj, overrideValue)
 
         table.insert(attrs, attr)
     end
+
+    local otherAttrs = {
+        lsattrNode("GroupName", "FixedString", ""),
+        lsattrNode("ExportAsPreset", "bool", true),
+    }
+
+    MergeArrays(attrs, otherAttrs)
+
     return attrs
 end
 
@@ -61,7 +72,7 @@ local function createParameterNodes(matRes, parameters)
                     value = { value }
                 end
             end
-            local attrs = createParameterAttrNodes(param, value)
+            local attrs = createParameterAttrNodes(param, value, paramName)
             if not attrs then
                 Warning("CustomMaterialProxy: Could not create LSX attribute nodes for parameter '" ..
                     tostring(paramName) .. "'. Skipping parameter.")
@@ -77,35 +88,26 @@ end
 
 
 ---@param params RB_ParameterSet
----@param matName GUIDSTRING
----@param customName string
+---@param srcMat GUIDSTRING
+---@param uuid string
 ---@return LSXNode?
-function ResourceHelpers.BuildMaterialResource(params, matName, customName)
-    local root = LSXHelpers.new()
-    if not root then
-        Error("CustomMaterialProxy: Could not create LSXTableNode for export.")
-        return nil
-    end
-
-    local matRes = Ext.Resource.Get(matName, "Material") --[[@as ResourceMaterialResource]]
+function ResourceHelpers.BuildMaterialResource(srcMat, uuid, params, customName)
+    local matRes = Ext.Resource.Get(srcMat, "Material") --[[@as ResourceMaterialResource]]
     if not matRes then
         Error("CustomMaterialProxy: Could not find origin material resource for '" ..
-            tostring(matName) .. "'. Cannot export to LSX.")
+            tostring(srcMat) .. "'. Cannot export to LSX.")
         return nil
     end
 
-    local resNode = root:AppendChild(LSXNode.new("region", { id = "MaterialBank" }))
-        :AppendChild(LSXNode.new("node", { id = "MaterialBank" }))
-        :AppendChild(LSXNode.new("children"))
-        :AppendChild(LSXNode.new("node", { id = "Resource" }))
+    local resNode = LSXNode.new("node", { id = "Resource" })
 
     local sourceFile = LSXHelpers.GetPathAfterData(matRes.SourceFile or "")
     local baseAttr = {
-        lsattrNode("ID", "guid", customName or matName),
-        lsattrNode("Name", "LSString", "Custom Material"),
+        lsattrNode("ID", "FixedString", uuid or srcMat),
+        lsattrNode("Name", "LSString", customName or matRes.Name or "Material_" .. uuid),
         lsattrNode("SourceFile", "LSString", sourceFile),
-        lsattrNode("MaterialType", "uint8", matRes.MaterialType or 0),
-        lsattrNode("DiffusionProfileUUID", "FixedString", matRes.bUseDiffusionProfile or ""),
+        lsattrNode("MaterialType", "uint8", Ext.Types.GetTypeInfo("MaterialType").EnumValues[matRes.MaterialType] or 0),
+        lsattrNode("DiffusionProfileUUID", "FixedString", matRes.DiffusionProfileUUID or ""),
     }
     resNode:AppendChildren(baseAttr)
     resNode:SortChildren(function(a, b) return a:GetAttribute("id") < b:GetAttribute("id") end)
@@ -117,7 +119,7 @@ function ResourceHelpers.BuildMaterialResource(params, matName, customName)
         secondChildrenWrapper:AppendChildren(paramNodes)
     end
 
-    return root
+    return resNode
 end
 
 local function createPresetParamAttrNodes(parameterName, value)
@@ -342,78 +344,60 @@ end
 ---@param srcUuid string
 ---@param uuid string
 ---@param internalName string
----@param overrideObjectMat table<string, string> objectId -> matId
+---@param overrideObjectMat table<string, string> materialID -> overrideMaterialID
+---@return LSXNode
 function ResourceHelpers.BuildVisualResource(srcUuid, uuid, internalName, overrideObjectMat)
     local src = Ext.Resource.Get(srcUuid, "Visual") --[[@as ResourceVisualResource]]
 
     local resourceNode = LSXNode.new("node", { id = "Resource", })
 
     local attributes = {
-        LSXHelpers.AttrNode("ID", "FixedString", uuid),
-        LSXHelpers.AttrNode("Name", "LSString", internalName .. "_" .. uuid),
-        LSXHelpers.AttrNode("SourceFile", "LSString", LSXHelpers.GetPathAfterData(src.SourceFile or "")),
+        lsattrNode("ID", "FixedString", uuid),
+        lsattrNode("Name", "LSString", internalName .. "_" .. uuid),
+        lsattrNode("SourceFile", "LSString", LSXHelpers.GetPathAfterData(src.SourceFile or "")),
+        lsattrNode("AttachBone", "FixedString", src.AttachBone),
+        lsattrNode("BlueprintInstanceResourceID", "FixedString", src.BlueprintInstanceResourceID),
+        lsattrNode("BoundsMax", "fvec3", src.BoundsMax),
+        lsattrNode("BoundsMin", "fvec3", src.BoundsMin),
+        lsattrNode("HairPresetResourceId", "FixedString", src.HairPresetResourceId),
+        lsattrNode("HairType", "uint8", src.HairType),
+        lsattrNode("MaterialType", "uint8", Ext.Types.GetTypeInfo("MaterialType").EnumValues[src.MaterialType] or 0),
+        lsattrNode("NeedsSkeletonRemap", "bool", src.NeedsSkeletonRemap),
+        lsattrNode("RemapperSlotId", "FixedString", src.RemapperSlotId),
+        lsattrNode("ScalpMaterialId", "FixedString", src.ScalpMaterialId),
+        lsattrNode("SkeletonResource", "FixedString", src.SkeletonResource),
+        lsattrNode("SkeletonSlot", "FixedString", src.SkeletonSlot),
+        lsattrNode("Slot", "FixedString", src.Slot),
+        lsattrNode("SoftbodyResourceID", "FixedString", src.SoftbodyResourceID),
+        lsattrNode("SupportsVertexColorMask", "bool", src.SupportsVertexColorMask),
+        lsattrNode("Template", "FixedString", src.Template),
     }
+
+    if src.Cloth then
+        local clothAttrs = {
+            lsattrNode("ClothColliderResourceID", "FixedString", src.Cloth.ClothColliderResourceID),
+        }
+        MergeArrays(attributes, clothAttrs)
+    end
+
 
     resourceNode:AppendChildren(attributes)
     local childrenNode = resourceNode:AppendChild(LSXHelpers.ChildrenNode())
+
+    -- AnimationWaterfall
+    for _, aw in pairs(src.AnimationWaterfall) do
+        local awNode = childrenNode:AppendChild(LSXNode.new("node", { id = "AnimationWaterfall", }))
+        awNode:AppendChild(lsattrNode("Object", "FixedString", aw))
+    end
 
     -- Objects
     for _, obj in pairs(src.Objects) do
         local objNode = childrenNode:AppendChild(LSXNode.new("node", { id = "Objects", }))
         objNode:AppendChild(lsattrNode("ObjectID", "FixedString", obj.ObjectID))
         objNode:AppendChild(lsattrNode("LOD", "uint8", obj.LOD))
-        local matId = overrideObjectMat[obj.ObjectID] or obj.MaterialID
+        local matId = overrideObjectMat[obj.MaterialID] or obj.MaterialID
         objNode:AppendChild(lsattrNode("MaterialID", "FixedString", matId))
     end
 
     return resourceNode
 end
-
-
---[[
-<node id="Resource">
-	<attribute id="AttachBone" type="FixedString" value="" />
-	<attribute id="AttachmentSkeletonResource" type="FixedString" value="" />
-	<attribute id="BlueprintInstanceResourceID" type="FixedString" value="" />
-	<attribute id="BoundsMax" type="fvec3" value="1.4225477 2.2880502 1.4143094" />
-	<attribute id="BoundsMin" type="fvec3" value="-1.4225483 0.42886278 0.0118334945" />
-	<attribute id="ClothColliderResourceID" type="FixedString" value="" />
-	<attribute id="HairPresetResourceId" type="FixedString" value="" />
-	<attribute id="HairType" type="uint8" value="0" />
-	<attribute id="ID" type="FixedString" value="a3b75b3e-6ded-1034-2d5d-8f1be8720794" />
-	<attribute id="MaterialType" type="uint8" value="0" />
-	<attribute id="Name" type="LSString" value="CAMBION_F_NKD_Wing_A" />
-	<attribute id="NeedsSkeletonRemap" type="bool" value="False" />
-	<attribute id="RemapperSlotId" type="FixedString" value="" />
-	<attribute id="ScalpMaterialId" type="FixedString" value="" />
-	<attribute id="SkeletonResource" type="FixedString" value="" />
-	<attribute id="SkeletonSlot" type="FixedString" value="" />
-	<attribute id="Slot" type="FixedString" value="Unassigned" />
-	<attribute id="SoftbodyResourceID" type="FixedString" value="" />
-	<attribute id="SourceFile" type="LSString" value="Generated/Public/Shared/Assets/Characters/_Models/_Creatures/Cambion/_Female/Resources/CAMBION_F_NKD_Wing_A.GR2" />
-	<attribute id="SupportsVertexColorMask" type="bool" value="False" />
-	<attribute id="Template" type="FixedString" value="Generated/Public/Shared/Assets/Characters/_Models/_Creatures/Cambion/_Female/Resources/CAMBION_F_NKD_Wing_A.Dummy_Root.0" />
-	<attribute id="_OriginalFileVersion_" type="int64" value="144115207403209024" />
-	<children>
-		<node id="AnimationWaterfall">
-			<attribute id="Object" type="FixedString" value="" />
-		</node>
-		<node id="Base" />
-		<node id="ClothProxyMapping" />
-		<node id="Objects">
-			<attribute id="LOD" type="uint8" value="0" />
-			<attribute id="MaterialID" type="FixedString" value="9e2966c7-b61c-4bc1-bef1-a79cb5fde067" />
-			<attribute id="ObjectID" type="FixedString" value="CAMBION_F_NKD_Wing_A.CAMBION_F_NKD_Wing_A_Mesh.0" />
-		</node>
-		<node id="Objects">
-			<attribute id="LOD" type="uint8" value="1" />
-			<attribute id="MaterialID" type="FixedString" value="9e2966c7-b61c-4bc1-bef1-a79cb5fde067" />
-			<attribute id="ObjectID" type="FixedString" value="CAMBION_F_NKD_Wing_A.CAMBION_F_NKD_Wing_A_Mesh_LOD1.1" />
-		</node>
-		<node id="Objects">
-			<attribute id="LOD" type="uint8" value="2" />
-			<attribute id="MaterialID" type="FixedString" value="9e2966c7-b61c-4bc1-bef1-a79cb5fde067" />
-			<attribute id="ObjectID" type="FixedString" value="CAMBION_F_NKD_Wing_A.CAMBION_F_NKD_Wing_A_Mesh_LOD2.2" />
-		</node>
-	</children>
-</node>]]

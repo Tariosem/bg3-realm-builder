@@ -106,6 +106,16 @@ function GizmoPicker:UpdateParamsByScale()
     end
 end
 
+function GizmoPicker:SetTransform(pos, rot, scale)
+
+    self.Position = pos or self.Position
+    self.Rotation = rot or self.Rotation
+
+    self.Scale = scale or self.Scale
+
+    self.AABB = { Min = pos - { scale, scale, scale }, Max = pos + { scale, scale, scale } }    
+end
+
 --- @return Vec3|nil, Quat|nil
 function GizmoPicker:GetTransform()
     self:UpdateParamsByScale()
@@ -114,23 +124,16 @@ function GizmoPicker:GetTransform()
 end
 
 function GizmoPicker:GetAxes(origin, rotation)
-    local space = self.Gizmo.Space or "World"
     local axisX = GLOBAL_COORDINATE.X
     local axisY = GLOBAL_COORDINATE.Y
     local axisZ = GLOBAL_COORDINATE.Z
-    if space ~= "World" then
-        if not origin or not rotation then
-            origin, rotation = self:GetTransform()
-        end
-        if rotation then
-            axisX = rotation:Rotate(GLOBAL_COORDINATE.X)
-            axisY = rotation:Rotate(GLOBAL_COORDINATE.Y)
-            axisZ = rotation:Rotate(GLOBAL_COORDINATE.Z)
-        end
-    else
-        axisX = Vec3.new(axisX)
-        axisY = Vec3.new(axisY)
-        axisZ = Vec3.new(axisZ)
+    if not origin or not rotation then
+        origin, rotation = self:GetTransform()
+    end
+    if rotation then
+        axisX = rotation:Rotate(GLOBAL_COORDINATE.X)
+        axisY = rotation:Rotate(GLOBAL_COORDINATE.Y)
+        axisZ = rotation:Rotate(GLOBAL_COORDINATE.Z)
     end
     return {
         X = axisX,

@@ -352,6 +352,8 @@ function KeybindModule:__init(name)
             return nil
         end
     })
+
+
 end
 
 --- @class KeybindModule
@@ -373,6 +375,7 @@ end
 --- @field AddCondition fun(self:KeybindModule, eventName:string, condition:fun(e:SimplifiedInputEvent):boolean)
 --- @field AddModuleCondition fun(self:KeybindModule, condition:fun(e:SimplifiedInputEvent):boolean)
 --- @field TriggerEvent fun(self:KeybindModule, eventName:string, e:SimplifiedInputEvent)
+--- @field new fun(name:string):KeybindModule
 
 --- @param moduleName string
 --- @return KeybindModule

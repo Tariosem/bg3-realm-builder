@@ -34,6 +34,7 @@ local mapModLocalizationFile = mapModsPath .. "%s/Localization/%s/%s.xml"
 local mapCharacterVisualPath = mapModsPath .. "%s/Public/%s/Content/[PAK]_CharacterVisuals/%s.lsx"
 local mapCharacterPresetPath = mapModsPath .. "%s/Public/%s/Content/Assets/Characters/[PAK]_Character_Presets/%s.lsx"
 
+local mapItemRootTemplatePath = mapModsPath .. "%s/Public/%s/RootTemplates/%s.lsx"
 local mapItemVisualPath = mapModsPath .. "%s/Public/%s/Content/[PAK]_ItemVisuals/%s.lsx"
 local mapItemPresetPath = mapModsPath .. "%s/Public/%s/Content/Assets/Items/[PAK]_Item_Presets/%s.lsx"
 
@@ -175,6 +176,10 @@ end
 
 function RealmPath.GetCharacterPresetPath(modName, presetName)
     return string.format(mapCharacterPresetPath, modName, modName, presetName)
+end
+
+function RealmPath.GetItemRootTemplatePath(modName, templateName)
+    return string.format(mapItemRootTemplatePath, modName, modName, templateName)
 end
 
 function RealmPath.GetItemVisualPath(modName, visualName)

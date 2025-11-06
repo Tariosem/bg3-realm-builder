@@ -1,93 +1,36 @@
----@param guids GUIDSTRING[]
----@param transforms table<GUIDSTRING, {Translate: Vec3|nil, RotationQuat: Vec4|nil, Scale: Vec3|nil}>
-local function SetVisualTransform(guids, transforms)
-    local entities = {}
-
-    for _,guid in pairs(guids) do
-        if type(guid) ~= "string" or guid == "" then
-            Warning("TransformEditor: Invalid GUID provided: ", guid)
-            goto continue
-        end
-        local entity = Ext.Entity.Get(guid) --[[@as EntityHandle]]
-        if entity.PartyMember then
-            local dummy = GetDummyByUuid(guid)
-            if dummy and #dummy:GetAllComponentNames() ~= 0 then
-                entity = dummy
-            end
-        end
-
-        if entity then
-            entities[guid] = entity
-        else
-            Warning("TransformEditor: Entity not found: ", guid)
-        end
-        ::continue::
-    end
-
-    for guid,entity in pairs(entities) do
-        if not entity or not entity.Visual or not entity.Visual.Visual then return end
-        local transform = transforms[guid]
-        if not transform then
-            --Warning("TransformEditor: No transform provided for guid: "..tostring(guid))
-            return
-        end
-        local visual = entity.Visual.Visual
-        if transform.Translate then
-            visual:SetWorldTranslate(transform.Translate)
-        end
-        if transform.RotationQuat then
-            visual:SetWorldRotate(transform.RotationQuat)
-        end
-        if transform.Scale then
-            visual:SetWorldScale(transform.Scale)
-        end
-    end
-end
-
---- @param guids GUIDSTRING[]
---- @param transforms table<GUIDSTRING, {Translate: Vec3|nil, RotationQuat: Vec4|nil, Scale: Vec3|nil}>
-local function SetItemTransform(guids, transforms)
-    NetChannel.SetTransform:SendToServer({Guid=guids, Transforms = transforms})
-end
-
-
-local templateTypeHandler = {
-    Character = SetVisualTransform,
-    Item = SetItemTransform,
-    Unmapped = SetItemTransform,
-}
-
 --- @class Commands
---- @field SetTransform fun(guids: GUIDSTRING|GUIDSTRING[], transform: {Translate: Vec3|nil, RotationQuat: Vec4|nil, Scale: Vec3|nil}|table<GUIDSTRING, {Translate: Vec3|nil, RotationQuat: Vec4|nil, Scale: Vec3|nil}>, notRecordHistory: boolean|nil)
+--- @field SetTransform fun(proxies: RB_MovableProxy|RB_MovableProxy[], transform: {Translate: Vec3|nil, RotationQuat: Quat|nil, Scale: Vec3|nil}, notRecordHistory: boolean|nil)
 --- @field Bind fun(targets: GUIDSTRING|GUIDSTRING[], parent: GUIDSTRING)
 --- @field Unbind fun(targets: GUIDSTRING[])
 --- @field Snap fun(targets: GUIDSTRING|GUIDSTRING[], onlyRotation: boolean|nil, onlyPosition: boolean|nil)
 Commands = Commands or {}
 
---- @param guids GUIDSTRING|GUIDSTRING[]
---- @param transform {Translate: Vec3|nil, RotationQuat: Vec4|nil, Scale: Vec3|nil}|table<GUIDSTRING, {Translate: Vec3|nil, RotationQuat: Vec4|nil, Scale: Vec3|nil}>
+--- @param proxies RB_MovableProxy|RB_MovableProxy[]
 --- @param notRecordHistory boolean|nil
-function Commands.SetTransform(guids, transform, notRecordHistory)
-    guids = NormalizeGuidList(guids)
-    local groups = EntityHelpers.FilterUuidsByType(guids)
-    local originTransform = {}
-    for _,guid in pairs(guids) do
-        originTransform[guid] = EntityHelpers.SaveTransform(guid)
+function Commands.SetTransform(proxies, transform, notRecordHistory)
+    local redoTransforms = {}
+    local undoTransforms = {}
+    for _,proxy in pairs(proxies) do
+        undoTransforms[proxy] = proxy:GetTransform()
     end
 
     if transform.Translate or transform.RotationQuat or transform.Scale then
         local t = {}
-        for _,guid in pairs(guids) do
-            t[guid] = transform
+        for _,proxy in pairs(proxies) do
+            t[proxy] = transform
         end
-        transform = t
+        redoTransforms = t
     end
 
     local function doTransform(isReset)
-        for t, handler in pairs(templateTypeHandler) do
-            handler(groups[t], isReset and originTransform or transform)
+        for _,proxy in pairs(proxies) do
+            local targetTransform = isReset and undoTransforms[proxy] or redoTransforms[proxy]
+            if targetTransform then
+                proxy:SetTransform(targetTransform)
+            end
         end
     end
+
     doTransform()
     if not notRecordHistory then
         HistoryManager:PushCommand({
@@ -160,7 +103,15 @@ function Commands.SnapCommand(targets, onlyRotation, onlyPosition)
         end
     end
 
-    Commands.SetTransform(targets, targetPos)
+    local targetProxies = {}
+    for _,guid in ipairs(targets) do
+        local proxy = MovableProxy.CreateByGuid(guid)
+        if proxy then
+            table.insert(targetProxies, proxy)
+        end
+    end
+
+    Commands.SetTransform(targetProxies, targetPos)
 end
 
 ---@param template string
@@ -194,8 +145,13 @@ function Commands.DuplicateCommand(targets)
             newGuidsSet[newGuid] = true
         end
         Timer:Ticks(30, function (timerID)
-            TransformEditor:Select(newGuidsSet)
-            TransformEditor.Gizmo:StartDragging()     
+            local newProxies = {}
+            for newGuid,_ in pairs(newGuidsSet) do
+                table.insert(newProxies, MovableProxy.CreateByGuid(newGuid))
+            end
+
+            RB_GLOBALS.TransformEditor:Select(newProxies)
+            RB_GLOBALS.TransformEditor.Gizmo:StartDragging()     
         end)
         -- TODO: implement undo redo 
     end)

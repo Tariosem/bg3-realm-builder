@@ -30,7 +30,7 @@ function GetPickingGuid()
     local allPartyMembers = GetAllPartyMembers()
     local closestPartyMemberhit = nil
     for _, guid in ipairs(allPartyMembers) do
-        local member = GetDummyByUuid(guid) or Ext.Entity.Get(guid)
+        local member = GetDummyByUuid(guid) or Ext.Entity.Get(guid) --[[@as EntityHandle]]
 
         local hit = mouseRay:IntersectEntity(member)
         if hit and (not closestPartyMemberhit or hit:IsCloserThan(closestPartyMemberhit)) then
