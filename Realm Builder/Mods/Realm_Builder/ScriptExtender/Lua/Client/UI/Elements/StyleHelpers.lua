@@ -541,8 +541,24 @@ function DestroyAllChilds(parent)
     end
 end
 
-function AddStyleDebugWindow(extui)
-    local window = Ext.IMGUI.NewWindow("Style Debugger##" .. Uuid_v4())
+function TraverseAllChilds(parent, func)
+    if not parent then return end
+    if not parent.Children then
+        func(parent)
+        return
+    end
+    for _, child in ipairs(parent.Children) do
+        func(child)
+        local suc, children = pcall(function() return child.Children end)
+        if suc and children then
+            TraverseAllChilds(children, func)
+        end
+    end
+end
+
+function AddStyleDebugWindow(extui, symbol)
+    symbol = symbol or ""
+    local window = Ext.IMGUI.NewWindow("Style Debugger " .. symbol .. "##" .. Uuid_v4())
     window.Closeable = true
     window.OnClose = function()
         window:Destroy()
@@ -573,60 +589,6 @@ function AddStyleDebugWindow(extui)
             extui:SetStyle(styleName, i.Value[1], i.Value[2])
         end
     end
-end
-
-function RenderStickSlider(parent, label, onChange)
-    local decBtn = AddSliderStepButton(parent, "<", -1)
-    local slider = parent:AddSlider("", 0, -1, 1)
-    decBtn.UserData.Slider = slider
-    local incBtn = AddSliderStepButton(parent, ">", 1, slider)
-    slider.IDContext = "StickSlider_" .. label
-    local text = parent:AddText(label)
-    text.SameLine = true
-    decBtn.SameLine = true
-    slider.SameLine = true
-    incBtn.SameLine = true
-
-    slider.ItemWidth = 400 * SCALE_FACTOR
-    slider.OnChange = function(s)
-        local v = tonumber(s.Value[1])
-        if onChange then
-            onChange(v)
-        end
-        s.Value = {0, 0, 0, 0}
-    end
-
-    return slider, text
-end
-
-function RenderObjectNumberValueInput(parent, label, obj, field, min, max, incstep, decstep, onChange)
-    local decBtn = AddSliderStepButton(parent, "<", -(decstep or 1))
-    --- @type ExtuiInputScalar
-    local input = parent:AddInputScalar("", obj and obj[field] or 0)
-    decBtn.UserData.Slider = input
-    local incBtn = AddSliderStepButton(parent, ">", incstep, input)
-    input.IDContext = "ObjectNumberValueInput_" .. label
-    input.SameLine = true
-    incBtn.SameLine = true
-
-    input:Tooltip():AddText(label)
-
-    input.ItemWidth = 100 * SCALE_FACTOR
-    input.OnChange = function(i)
-        local v = tonumber(i.Value[1]) or 0
-        v = math.max(min or -math.huge, v)
-        v = math.min(max or math.huge, v)
-
-        if obj and field then
-            obj[field] = v
-        end
-        if onChange then
-            onChange(v)
-        end
-        i.Value = ToVec4(v)
-    end
-
-    return input, decBtn
 end
 
 ---@param parent ExtuiTreeParent
@@ -684,14 +646,66 @@ function AddSelectableButton(parent, label, onClick)
     return button
 end
 
+--- @class SelectionTableProxy : ExtuiTable
+--- @field AddSelectable fun(self: SelectionTableProxy, label: string, onClick: fun(selectable: ExtuiSelectable)): ExtuiSelectable
+
 ---@param parent ExtuiTreeParent
+---@return SelectionTableProxy
 function StyleHelpers.AddSelectionTable(parent)
     local tab = parent:AddTable("SelectionTable##" .. Uuid_v4(), 1) --[[@as ExtuiTable]]
     tab.BordersInnerH = true
 
     local row = tab:AddRow() --[[@as ExtuiTableRow]]
 
-    return tab, row
+    local tabProxy = {
+        AddSelectable = function(_, label, onClick)
+            local cell = row:AddCell()
+            local selectable = cell:AddSelectable(label)
+            selectable.OnClick = function(s)
+                s.Selected = false
+                if onClick then
+                    onClick(s)
+                end
+            end
+            return selectable
+        end
+    }
+
+    setmetatable(tabProxy, {
+        __index = function(_, k)
+            return tab[k]
+        end,
+        __newindex = function(_, k, v)
+            tab[k] = v
+        end
+    })
+
+    return tabProxy
+end
+
+---@param parent ExtuiTreeParent
+---@param contents table<string, string>
+---@return ExtuiTable
+function StyleHelpers.AddReadOnlyAttrTable(parent, contents)
+    local tab = parent:AddTable("ReadOnlyAttrTable##" .. Uuid_v4(), 2) --[[@as ExtuiTable]]
+    tab.BordersInner = true
+    tab.ColumnDefs[1] = { WidthFixed = true }
+    tab.ColumnDefs[2] = { Width = 900 * SCALE_FACTOR }
+
+    local row = tab:AddRow() --[[@as ExtuiTableRow]]
+    for name, value in SortedPairs(contents) do
+        local nameCell = row:AddCell()
+        nameCell:AddText(name)
+
+        local valueCell = row:AddCell()
+        local input = valueCell:AddInputText("", tostring(value))
+        input.Text = tostring(value)
+        input.IDContext = "ReadOnlyAttrInput##" .. name
+        input.ReadOnly = true
+        input.AutoSelectAll = true
+    end
+
+    return tab
 end
 
 function SetWarningBorder(extui)
@@ -732,20 +746,37 @@ function ApplyOkTooltipStyle(tooltip)
     tooltip:SetColor("WindowBg", HexToRGBA("FF222222"))
 end
 
+--- @param extui ExtuiStyledRenderable
+function ClearAllBorders(extui)
+    extui:SetColor("Text", HexToRGBA("FFFFFFFF"))
+    extui:SetColor("Border", HexToRGBA("00000000"))
+    extui:SetColor("Button", HexToRGBA("00000000"))
+    extui:SetColor("ButtonHovered", HexToRGBA("00000000"))
+    extui:SetColor("ButtonActive", HexToRGBA("00000000"))
+    extui:SetStyle("FrameBorderSize", 0)
+    extui:SetStyle("WindowBorderSize", 0)
+    extui:SetStyle("PopupBorderSize", 0)
+    extui:SetStyle("ChildBorderSize", 0)
+    extui:SetStyle("TabBorderSize", 0)
+end
+
 ---@param parent ExtuiTreeParent
 ---@param settings RB_Mod_ExportSetting
 ---@return function -- refresh function
 function RenderExportSettingPanel(parent, settings)
     local modNameText = parent:AddText("Mod Name:")
     local modNameInput = parent:AddInputText("##MaterialPresetModName")
+    local currentModInternalNameTooltip = modNameInput:Tooltip():AddText("Current Mod Internal Name:")
     modNameInput.Hint = "Enter Mod Name..."
     modNameInput:SetStyle("FrameBorderSize", 2)
 
     modNameInput.OnChange = Debounce(50, function()
-        if IsValidName(modNameInput.Text) then
+        if ValidateFolderName(modNameInput.Text) ~= 'Unnamed' then
+            currentModInternalNameTooltip.Label = "Current Mod Internal Name: " .. ValidateFolderName(modNameInput.Text)
             ClearWarningBorder(modNameInput)
             settings.ModName = modNameInput.Text
         else
+            currentModInternalNameTooltip.Label = "Current Mod Internal Name: Invalid Name"
             SetWarningBorder(modNameInput)
             settings.ModName = ""
             GuiAnim.PulseBorder(modNameInput, 2)
@@ -768,7 +799,7 @@ function RenderExportSettingPanel(parent, settings)
     authorNameInput.Hint = "Enter Author Name..."
     authorNameInput.OnChange = Debounce(50, function()
         local newName = authorNameInput.Text
-        if not IsValidName(newName) then
+        if newName == "" then
             SetWarningBorder(authorNameInput)
             settings.Author = ""
             GuiAnim.PulseBorder(authorNameInput, 2)

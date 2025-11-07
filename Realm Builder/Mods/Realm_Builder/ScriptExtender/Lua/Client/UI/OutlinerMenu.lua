@@ -108,8 +108,7 @@ function OutlinerMenu:RenderSideBar()
     local panel = self.mainPanel.SideBar
     local tree = EntityStore.Tree
 
-    local treeList = TreeList.new(panel, "PropsTree", tree, "Guid") --[[@as TreeList]]
-
+    local treeList = TreeList.new(panel, "Outliner", tree)
     self.imageRefs = {}
 
     treeList.OnDetach = function()
@@ -126,10 +125,12 @@ function OutlinerMenu:RenderSideBar()
 
     treeList.OnSelect = function(sel, selected)
         local arr = {}
-
+        local proxies = {}
         for guid, _ in pairs(selected) do
             table.insert(arr, guid)
+            table.insert(proxies, MovableProxy.CreateByGuid(guid))
         end
+        RB_GLOBALS.TransformEditor:Select(proxies)
         self.selectedGuids = arr
     end
 

@@ -348,7 +348,7 @@ function TemplateExportMenu:RenderTemplateEntry(cell, entData)
             local wanderConfigValueCell = wanderConfigRow:AddCell()
 
             local cached = {
-                Area = entData.WanderConfig and entData.WanderConfig.Area or 10,
+                Extents = entData.WanderConfig and entData.WanderConfig.Extents or {10, 5, 10},
                 WanderMin = entData.WanderConfig and entData.WanderConfig.WanderMin or 5,
                 WanderMax = entData.WanderConfig and entData.WanderConfig.WanderMax or 10,
                 SleepMin = entData.WanderConfig and entData.WanderConfig.SleepMin or 2,
@@ -358,6 +358,7 @@ function TemplateExportMenu:RenderTemplateEntry(cell, entData)
             local visualizeBtn = wanderConfigValueCell:AddButton("Visualize Wander Area")
             local configTab = wanderConfigValueCell:AddTable("Wander Config Table", 2)
             configTab.Borders = true
+            configTab.RowBg = true
             configTab.Visible = entData.WanderConfig ~= nil
             configTab.ColumnDefs[1] = { WidthFixed = true }
             configTab.ColumnDefs[2] = { WidthStretch = true }
@@ -374,18 +375,20 @@ function TemplateExportMenu:RenderTemplateEntry(cell, entData)
                     visualizeBtn.Visible = true
                 end
             end
+            editWanderButton:OnChange()
 
             visualizeBtn.SameLine = true
             visualizeBtn.OnClick = function()
                 local pos = Vec3.new(entData.Position)
-                local extents = Vec3.new(cached.Area, cached.Area, 5)
+                local extents = Vec3.new(cached.Extents)
                 local min = pos - extents
                 local max = pos + extents
 
                 NetChannel.Visualize:RequestToServer({
-                    Type = "Box",
-                    Min = min,
-                    Max = max,
+                    Type = "OBB",
+                    Position = pos,
+                    Rotation = entData.Rotation,
+                    HalfSizes = extents,
                     Duration = 5000,
                 }, function (response)
                     
@@ -399,9 +402,29 @@ function TemplateExportMenu:RenderTemplateEntry(cell, entData)
 
                 attrKeyCell:AddText(attrName .. ":")
 
-                local slider = AddSliderWithStep(attrValueCell, "##" .. attrName .. entData.Guid, defaultValue, 0, 120, 1)
-                slider.OnChange = function(sld)
-                    cached.WanderConfig[attrName] = sld.Value[1]
+                if type(defaultValue) == "table" then
+                    local slider = attrValueCell:AddSlider("##" .. attrName .. entData.Guid)
+                    slider.Components = #defaultValue
+                    slider.Value = ToVec4(defaultValue)
+                    slider.OnChange = function(sld)
+                        local newValue = {}
+                        local v = sld.Value
+                        for i = 1, #defaultValue do
+                            newValue[i] = v[i]
+                        end
+                        cached[attrName] = newValue
+                    end
+                    local resetBtn = attrValueCell:AddButton("Reset")
+                    resetBtn.SameLine = true
+                    resetBtn.OnClick = function()
+                        slider.Value = ToVec4(defaultValue)
+                        cached[attrName] = defaultValue
+                    end
+                else
+                    local slider = AddSliderWithStep(attrValueCell, "##" .. attrName .. entData.Guid, defaultValue, 0, 120, 1)
+                    slider.OnChange = function(sld)
+                        cached[attrName] = sld.Value[1]
+                    end
                 end
             end
         end
@@ -494,7 +517,7 @@ function TemplateExportMenu:__export(exportSettings, progressCallback)
         yield()
     end
 
-    local modInternalName = exportSettings.ModName:gsub("%s+", "_")
+    local modInternalName = ValidateFolderName(exportSettings.ModName)
     local modUuid = nil
     local modCache = RealmPath.GetMapModCachePath()
     local file = Ext.IO.LoadFile(modCache)
@@ -549,10 +572,12 @@ function TemplateExportMenu:__export(exportSettings, progressCallback)
     -- export custom visuals
 
     local intenalNameMap = {}
+    local templateNameCnt = {}
 
     for guid, entData in pairs(toBuildCustomVisuals) do
         local baseName = TrimTail(entData.TemplateId, 37)
-        intenalNameMap[guid] = modInternalName .. "_" .. baseName .. "_" .. guid
+        templateNameCnt[baseName] = (templateNameCnt[baseName] or 0) + 1
+        intenalNameMap[guid] = modInternalName .. "_" .. baseName .. "_" .. PadNumber(templateNameCnt[baseName], 3) 
     end
 
     for guid, entData in pairs(toBuildCustomVisuals) do
@@ -580,7 +605,7 @@ function TemplateExportMenu:__export(exportSettings, progressCallback)
             saveFile(visualPath, bank:Stringify({ AutoFindRoot = true }))
 
             entData.OverrideVisualUuid = overrideVisualID
-        elseif entData.TemplateType == "item" then
+        elseif entData.TemplateType == "item" or entData.TemplateType == "scenery" then
             local matOverrideMap = {}
 
             --- build material resource we need
@@ -613,10 +638,10 @@ function TemplateExportMenu:__export(exportSettings, progressCallback)
             --- build root template with visual override
             local overrideTemplateID = Uuid_v4()
             local overrideTemplateInternalName = internalName .. "_VisualTemplate"
-            local rootTemplate = LSXHelpers.BuildItemRootTemplate(entData.TemplateId, overrideTemplateID,
+            local rootTemplate = LSXHelpers.BuildRootTemplate(entData.TemplateId, overrideTemplateID,
                 overrideTemplateInternalName, { VisualTemplate = overrideVisualID })
 
-            local overrideTemplatePath = RealmPath.GetItemRootTemplatePath(modInternalName, overrideTemplateID)
+            local overrideTemplatePath = RealmPath.GetRootTemplatePath(modInternalName, overrideTemplateID)
             --- @diagnostic disable-next-line
             saveFile(overrideTemplatePath, rootTemplate:Stringify({ AutoFindRoot = true }))
 
@@ -628,19 +653,11 @@ function TemplateExportMenu:__export(exportSettings, progressCallback)
     end
 
     -- export templates
-    local templateNameCnt = {}
-    local function padNumber(num, size)
-        local s = tostring(num)
-        return string.format("%0" .. size .. "d", tonumber(s))
-    end
+    
     for guid, entData in pairs(toExport) do
-        local templateName = TrimTail(entData.TemplateId, 37)
-        templateNameCnt[templateName] = (templateNameCnt[templateName] or 0) + 1
-
         local levelName = entData.LevelName
 
-        local templateInternalName = modInternalName ..
-            "_" .. templateName .. "_" .. padNumber(templateNameCnt[templateName], 3)
+        local templateInternalName = intenalNameMap[guid]
         local templatePath = RealmPath.GetTemplatePath(modInternalName, levelName, guid, entData.TemplateType)
         if not templatePath then
             throwError("Failed to get template path for entity " .. guid)

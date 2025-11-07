@@ -4,6 +4,7 @@
 --- @field Rotate fun(self: Vec, axis: string, angle: number): Vec
 --- @field Dot fun(self: Vec, b: Vec): number
 --- @field Cross fun(self: Vec, b: Vec): Vec
+--- @field Sanitize fun(self: Vec, defaultVec: Vec?):Vec
 Vector = {}
 
 --- @class Vec3: Vec
@@ -64,13 +65,12 @@ function Vector:Dot(b) return Ext.Math.Dot(self, b) end
 function Vector:Cross(b) return Vector.new(Ext.Math.Cross(self, b)) end
 function Vector:Inverse() return Vector.new(Ext.Math.Inverse(self)) end
 
-function Vector:Sanitize(defaultVec)
+function Vector:Sanitize(defaultVec, limit)
     defaultVec = Vector.new(defaultVec or {0, 0, 0}, #self)
     for i = 1, #self do
         local v = self[i]
-        if type(v) ~= "number" or v ~= v or v == math.huge or v == -math.huge then
-            self = defaultVec
-            break
+        if type(v) ~= "number" or v ~= v or v == math.huge or v == -math.huge or (limit and (v > limit or v < -limit)) then
+            self[i] = defaultVec[i]
         end
     end
     return self

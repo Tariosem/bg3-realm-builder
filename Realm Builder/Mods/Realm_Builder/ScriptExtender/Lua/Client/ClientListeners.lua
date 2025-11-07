@@ -7,44 +7,27 @@ NetChannel.SetVisualTransform:SetHandler(function (data)
 
     for _, guid in pairs(toSet) do
         local transform = data.Transforms[guid]
-        if not transform then goto continue end
-        local entity = Ext.Entity.Get(guid)
-        if not entity then goto continue end
-        if entity.PartyMember then
-            local dummy = GetDummyByUuid(guid)
-            if dummy then
-                entity = dummy
-            end
-        end
-
-        local visual = VisualHelpers.GetEntityVisual(entity)
-        if not visual then goto continue end
-
-        if CIsCharacter(guid) then
-            if transform.Translate then
-                visual:SetWorldTranslate(transform.Translate)
-            end
-            if transform.RotationQuat then
-                visual:SetWorldRotate(transform.RotationQuat)
-            end
-            if transform.Scale then
-                visual:SetWorldScale(transform.Scale)
-            end
+        if not transform then 
+            Warning("SetVisualTransform: No transform data for guid: " .. guid)
             goto continue
         end
 
-        for _,obj in pairs(visual.ObjectDescs) do
-            local renderable = obj.Renderable
-            if transform.Translate then
-                renderable:SetWorldTranslate(transform.Translate)
-            end
-            if transform.RotationQuat then
-                renderable:SetWorldRotate(transform.RotationQuat)
-            end
-            if transform.Scale then
-                renderable:SetWorldScale(transform.Scale)
-            end
+        local visual = VisualHelpers.GetEntityVisual(guid)
+        if not visual then
+            Timer:Ticks(30, function()
+                local delayedVisual = VisualHelpers.GetEntityVisual(guid)
+                if delayedVisual then
+                    VisualHelpers.SetVisualTransform({guid}, {[guid] = transform})
+                else
+                    Warning("SetVisualTransform (delayed): No visual found for guid: " .. guid)
+                end
+            end)
+            Debug("SetVisualTransform: No visual found for guid: " .. guid .. ", retrying in 30 ticks.")
+            goto continue
         end
+
+        VisualHelpers.SetVisualTransform({guid}, {[guid] = transform})
+
         ::continue::
     end
 end)
@@ -62,6 +45,5 @@ NetChannel.ApplyVisualPreset:SetHandler(function(data, userID)
         Warning("ApplyVisualPreset: Preset not found for template " .. templateName .. " and preset name " .. presetName)
         return
     end
-    local modifiedParams = preset.ModifiedParams
-    VisualHelpers.ApplyVisualParams(guid, modifiedParams)
+    VisualHelpers.ApplyVisualParams(guid, preset)
 end)

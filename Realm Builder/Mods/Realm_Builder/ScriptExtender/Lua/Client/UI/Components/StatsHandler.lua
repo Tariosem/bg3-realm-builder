@@ -381,7 +381,7 @@ StatsBoostHandlers = {
 
     Tag = function(boost)
         local tag = boost.args[1] or "Unknown"
-        local tagRes = GetStatsObjByName(tag)
+        local tagRes = GetResourceByName(tag)
         local icon = CheckIcon(tagRes and tagRes.Icon or "Item_Unknown")
         local displayName = tagRes and tagRes.DisplayName:Get() or tag
         displayName = StripLSTags(displayName)
@@ -741,7 +741,7 @@ StatsConditionHandlers = {
     end,
     Tagged = function(args)
         --- @type ResourceTag?
-        local tagRes = GetStatsObjByName(args[1])
+        local tagRes = GetResourceByName(args[1])
         local icon = nil
         icon = CheckIcon(tagRes and tagRes.Icon or "Item_Unknown")
         local displayName = StripLSTags(tagRes and tagRes.DisplayName:Get() or args[1])

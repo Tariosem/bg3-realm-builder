@@ -1,5 +1,5 @@
 --- @class RB_MovableProxy
---- @field RestoredTransform Transform|nil
+--- @field RestoredTransform Transform
 --- @field SetWorldTranslate fun(self: RB_MovableProxy, position: Vec3)
 --- @field SetWorldRotation fun(self: RB_MovableProxy, rotation: Quat)
 --- @field SetWorldScale fun(self: RB_MovableProxy, scale: Vec3)
@@ -17,52 +17,6 @@
 --- @field IsValid fun(self: RB_MovableProxy):boolean
 --- @field Render fun(self: RB_MovableProxy, parent: ExtuiTreeParent)
 MovableProxy = _Class("RB_MovableProxy")
-
----@param guids GUIDSTRING[]
----@param transforms table<GUIDSTRING, {Translate: Vec3|nil, RotationQuat: Vec4|nil, Scale: Vec3|nil}>
-local function SetVisualTransform(guids, transforms)
-    local entities = {}
-
-    for _,guid in pairs(guids) do
-        if type(guid) ~= "string" or guid == "" then
-            
-            goto continue
-        end
-        local entity = Ext.Entity.Get(guid) --[[@as EntityHandle]]
-        if entity.PartyMember then
-            local dummy = GetDummyByUuid(guid)
-            if dummy and #dummy:GetAllComponentNames() ~= 0 then
-                entity = dummy
-            end
-        end
-
-        if entity then
-            entities[guid] = entity
-        else
-            Warning("TransformEditor: Entity not found: ", guid)
-        end
-        ::continue::
-    end
-
-    for guid,entity in pairs(entities) do
-        if not entity or not entity.Visual or not entity.Visual.Visual then return end
-        local transform = transforms[guid]
-        if not transform then
-            --Warning("TransformEditor: No transform provided for guid: "..tostring(guid))
-            return
-        end
-        local visual = entity.Visual.Visual
-        if transform.Translate then
-            visual:SetWorldTranslate(transform.Translate)
-        end
-        if transform.RotationQuat then
-            visual:SetWorldRotate(transform.RotationQuat)
-        end
-        if transform.Scale then
-            visual:SetWorldScale(transform.Scale)
-        end
-    end
-end
 
 --- @param guids GUIDSTRING[]
 --- @param transforms table<GUIDSTRING, {Translate: Vec3|nil, RotationQuat: Vec4|nil, Scale: Vec3|nil}>
@@ -202,7 +156,7 @@ end
 function CharacterMovableProxy:SetTransform(transform)
     local transforms = {}
     transforms[self.Guid] = transform
-    SetVisualTransform({self.Guid}, transforms)
+    VisualHelpers.SetVisualTransform({self.Guid}, transforms)
 end
 
 CharacterMovableProxy.GetParent = ItemMovableProxy.GetParent
@@ -243,6 +197,16 @@ end
 
 function SceneryMovableProxy:IsValid()
     return #self.Entity:GetAllComponentNames() > 0
+end
+
+function SceneryMovableProxy:Render(parent)
+    local template = Ext.Resource.Get(self.Entity.Scenery.Visual, "Visual") --[[@as ResourceVisualResource|ResourceEffectResource]]
+
+    parent:AddText("Scenery: " .. SplitByString(GetLastPath(template.Template), ".")[1])
+    local uuid = parent:AddText("(" .. self.Entity.Scenery.Uuid .. ")")
+    uuid.SameLine = true
+    uuid:SetColor("Text", {0.5,0.5,0.5,0.6})
+    uuid.Font = "Tiny"
 end
 
 --- @class RB_RenderableMovableProxy : RB_MovableProxy

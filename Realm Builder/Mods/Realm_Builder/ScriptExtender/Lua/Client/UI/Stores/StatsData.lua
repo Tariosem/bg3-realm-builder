@@ -121,7 +121,7 @@ function GetEffectInfo(effectUuid)
 end
 
 local unknownNames = {}
-function GetStatsObjByName(name)
+function GetResourceByName(name)
 
     if not StatsObjectInit then
         InitEffectStats()
@@ -135,33 +135,21 @@ function GetStatsObjByName(name)
 
     if not StatsNameToUuid[name] and not unknownNames[name] then
         unknownNames[name] = true
-        Debug("Unknown stats name:", name)
-        return GetStatsObjByOther(name)
+        Debug("Unknown resource name:", name)
+        return nil
     end
 
     local savedEntry = StatsNameToUuid[name]
     if not savedEntry then
         unknownNames[name] = true
-        Debug("Unknown stats name:", name)
-        return GetStatsObjByOther(name)
+        Debug("Unknown resource name:", name)
+        return nil
     end
-    local statsObj = nil
-    if savedEntry.Type == "Tag" and name ~= "POISONED" then
-        statsObj = Ext.StaticData.Get(savedEntry.Uuid, savedEntry.Type)
-    else
-        statsObj = Ext.Stats.Get(savedEntry.Uuid)
-    end
+    local resourceObj = nil
+    resourceObj = Ext.StaticData.Get(savedEntry.Uuid, savedEntry.Type)
 
-    return statsObj, savedEntry.Type
-end
 
-function GetStatsObjByOther(name)
-    local statsObj = Ext.Stats.Get(name)
-    if statsObj then
-        return statsObj, "Unknown"
-    end
-
-    return nil 
+    return resourceObj, savedEntry.Type
 end
 
 function GetEffectAnimation(any)

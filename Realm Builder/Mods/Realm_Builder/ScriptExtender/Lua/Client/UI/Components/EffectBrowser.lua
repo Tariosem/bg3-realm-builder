@@ -40,8 +40,8 @@ function EffectBrowser:RenderIcon(entry, cell)
         return nil
     end
 
-    local popup = cell:AddPopup("IconPopup")
-    local rPopup = cell:AddPopup("SpawnPopup")
+    local popup = nil
+    local rPopup = nil
 
     local iconImage = nil
 
@@ -63,6 +63,19 @@ function EffectBrowser:RenderIcon(entry, cell)
     end
     
     iconImage.OnClick = function()
+        if not popup then
+            popup = cell:AddPopup("IconPopup")
+            popup.IDContext = entry.Uuid .. "Popup" .. Uuid_v4()
+
+            local attrs = {
+                Uuid = entry.Uuid,
+                DisplayName = entry.DisplayName,
+                TemplateName = entry.TemplateName,
+                Icon = entry.Icon,
+            }
+
+            StyleHelpers.AddReadOnlyAttrTable(popup, attrs)
+        end
         popup:Open()
 
         if self.iconToName then
@@ -71,11 +84,18 @@ function EffectBrowser:RenderIcon(entry, cell)
     end
 
     iconImage.OnRightClick = function()
+        if not rPopup then
+            rPopup = cell:AddPopup("SpawnPopup")
+            rPopup.IDContext = entry.Uuid .. "SpawnPopup" .. Uuid_v4()
+            
+            self:RenderCustomizationTab(rPopup, entry)
+            self:RenderPlayEffectPopup(function() return rPopup end, entry, iconImage)
+        end
         rPopup:Open()
     end
 
-    popup.IDContext = entry.Uuid .. "Popup" .. Uuid_v4()
-    rPopup.IDContext = entry.Uuid .. "SpawnPopup" .. Uuid_v4()
+    popup = popup or nil
+    rPopup = rPopup or nil
     
     iconImage.UserData = iconImage.UserData or {}
     iconImage.UserData.Popups = { popup, rPopup }
@@ -115,40 +135,13 @@ function EffectBrowser:RenderIcon(entry, cell)
 
     addTooltipNote()
 
-    ----------------------------------------------
-    ---------- LEFT CLICK POPUP START ------------
-    ----------------------------------------------
-
-     --#region Left Popup
-
-    AddPrefixInput(popup, "Icon" .. " :", entry.Icon, true)
-    AddPrefixInput(popup, "Display Name" .. " :", entry.DisplayName, true)
-    AddPrefixInput(popup, "TemplateName" .. " :", entry.TemplateName, true)
-    AddPrefixInput(popup, "Uuid" .. " :", entry.Uuid, true)
-
-    --#endregion Left Popup
-
-    ----------------------------------------------
-    ---------- LEFT CLICK POPUP END --------------
-    ----------------------------------------------
-
-    self:RenderCustomizationTab(rPopup, entry)
-
-    self:RenderPlayEffectPopup(rPopup, entry, iconImage)
-
     return iconImage
 end
 
-function EffectBrowser:RenderPlayEffectPopup(popup, entry, iconImage)
-    local playEffectButton = popup:AddButton(GetLoca("Play"))
-    playEffectButton:Tooltip():AddText(GetLoca("For preview, some effects may not play correctly"))
-    local infoButton = popup:AddButton(GetLoca("Info"))
-
-    infoButton.SameLine = true
-
-    ApplyConfirmButtonStyle(playEffectButton)
-
-    ApplyInfoButtonStyle(infoButton)
+function EffectBrowser:RenderPlayEffectPopup(getPopupFunc, entry, iconImage)
+    local initialized = false
+    local playEffectButton = nil
+    local infoButton = nil
 
     local function previewEffect(guid)
         local effectsData = {}
@@ -184,11 +177,24 @@ function EffectBrowser:RenderPlayEffectPopup(popup, entry, iconImage)
         end
         local data = effectsData
         NetChannel.PlayEffect:SendToServer(data)
-
     end
+
+    local popup = getPopupFunc()
+    playEffectButton = popup:AddButton(GetLoca("Play"))
+    playEffectButton:Tooltip():AddText(GetLoca("For preview, some effects may not play correctly"))
+    infoButton = popup:AddButton(GetLoca("Info"))
+
+    infoButton.SameLine = true
+
+    ApplyConfirmButtonStyle(playEffectButton)
+    ApplyInfoButtonStyle(infoButton)
 
     playEffectButton.OnClick = function()
         previewEffect(self.selectedGuid or CGetHostCharacter())
+    end
+
+    infoButton.OnClick = function()
+        EffectTab:Add(entry.Uuid, nil, entry.TemplateName)
     end
 
     iconImage.CanDrag = true
@@ -216,10 +222,6 @@ function EffectBrowser:RenderPlayEffectPopup(popup, entry, iconImage)
                 previewEffect(pick)
             end
         end)
-    end
-
-    infoButton.OnClick = function()
-        EffectTab:Add(entry.Uuid, nil, entry.TemplateName)
     end
 end
 

@@ -216,7 +216,7 @@ function LSXHelpers.BuildTemplate(guid, entData, internalName, displayNameHandle
         local triggerName = internalName .. "_WanderTrigger"
         local anubisName = triggerName .. "_" .. wanderTriggerUuid
 
-        local triggerNode = LSXHelpers.BuildBoxTrigger(pos, { wanderParams.Area or 5, wanderParams.Area or 5, 3 },
+        local triggerNode = LSXHelpers.BuildBoxTrigger(pos, rot, wanderParams.Extents or {10,5,10},
             curLevel, triggerName, wanderTriggerUuid)
 
         local anubisAttr, anubisParams = AnubisHelpers.BuildWanderParams(
@@ -235,7 +235,7 @@ function LSXHelpers.BuildTemplate(guid, entData, internalName, displayNameHandle
 end
 
 
-function LSXHelpers.BuildItemRootTemplate(srcUuid, uuid, internalName, override)
+function LSXHelpers.BuildRootTemplate(srcUuid, uuid, internalName, override)
     srcUuid = TakeTailTemplate(srcUuid)
     override = override or {}
     local templateRegion = LSXHelpers.BuildTemplatesRegionNode()
@@ -515,7 +515,7 @@ end
 ---@param levelName string
 ---@param name string
 ---@return LSXNode
-function LSXHelpers.BuildBoxTrigger(pos, extents, levelName, name, uuid)
+function LSXHelpers.BuildBoxTrigger(pos, rot, extents, levelName, name, uuid)
     local templateNode = LSXHelpers.BuildTemplatesRegionNode()
     local triggerNode = templateNode:AppendChild(LSXNode.new("node", { id = "GameObjects" }))
 
@@ -542,7 +542,7 @@ function LSXHelpers.BuildBoxTrigger(pos, extents, levelName, name, uuid)
         :AppendChild(LSXNode.new("node", { id = "Transform" }))
         :AppendChildren({
             lsattrNode("Position", "fvec3", pos),
-            lsattrNode("RotationQuat", "fvec4", { 0, 0, 0, 1 }),
+            lsattrNode("RotationQuat", "fvec4", rot),
             lsattrNode("Scale", "float", 1),
         })
 

@@ -120,9 +120,14 @@ function Notification:BuildContent()
     self.MessageRenderFunc(panel)
     
     if self.ClickToDismiss then
-        panel.OnClick = function()
-            self:Dismiss()
-        end
+        TraverseAllChilds(panel, function(child)
+            local childOnClick = child.OnClick or function() end
+            child.OnClick = function()
+                childOnClick()
+                self:Dismiss()
+                child.OnClick = nil
+            end
+        end)       
     end
 
     if self.AutoResize == false then

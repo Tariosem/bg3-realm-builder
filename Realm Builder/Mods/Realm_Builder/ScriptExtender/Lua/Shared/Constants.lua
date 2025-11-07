@@ -32,7 +32,17 @@ for axis,texture in pairs(GIZMO_TEXTURE) do
     GIZMO_TEXTURE_TO_AXIS[texture] = axis
 end
 
+INVISIBLE_HELPER_SCENERY = "3d4e8434-f972-4080-8602-66b12e2949f2"
+
 LOOP_SIGN = "cff964c0-eb22-e3a3-d112-130c0aa0c10f"
+
+RB_ICONS = {}
+RB_ICONS.Character = "RB_CHARACTER_ICON"
+RB_ICONS.Scenery = "RB_SCENERY_ICON"
+RB_ICONS.Character_Fill = "RB_CHARACTER_ICON_FILL"
+RB_ICONS.Scenery_Fill = "RB_SCENERY_ICON_FILL"
+RB_ICONS.Tree_Expanded = "RB_TREE_EXPANDED"
+RB_ICONS.Tree_Collapsed = "RB_TREE_COLLAPSED"
 
 --- vanilla resources
 WARNING_ICON = "PassiveFeature_Generic_Threat"
@@ -42,8 +52,6 @@ RB_PROP_HIGHLIGHT_FX = "db2affb3-57a7-76f9-9315-d1783cdfc576"
 RB_PROP_FIRE_FX = "175786f6-1c13-3051-1001-3cf62d2819aa"
 RB_PROP_BIND_VISUALIZATION_FX = "3af9c664-d864-cbcd-e6b1-11ea99e307df" -- Loop beam effect VFX_Beams_Underdark_Arcane_Turret_Beam_01
 RB_PROP_BIND_VISUALIZATION_FX_RED = "3e3032d5-dd5c-a9e1-a77c-64273e97a7ce"  -- VFX_Debug_Beam_01
-
-INVISIBLE_HELPER_A = "4cc75168-a81e-4a5c-85cd-1bab8d7bb641"
 
 VANILLA_MODULES = {
     Shared = true,
@@ -98,7 +106,7 @@ HIGHLIGHT_COLOR = HexToRGBA("FFFED999")
 DEBUFF_COLOR = HexToRGBA("FFFF4C4C")
 BORDER_COLOR = HexToRGBA("FFFFA43C")
 
-SUBTITLE_COLOR = HexToRGBA("FFA57E00")
+SUBTITLE_COLOR = HexToRGBA("B7939393")
 
 for damageType,color in pairs(DAMAGE_TYPES_COLOR) do
     DAMAGE_TYPES_COLOR[damageType:lower()] = color

@@ -53,8 +53,8 @@ function CharacterBrowser:RenderIcon(entry, cell)
         return nil
     end
 
-    local popup = cell:AddPopup("IconPopup")
-    local rPopup = cell:AddPopup("SpawnPopup")
+    local popup = nil
+    local rPopup = nil
 
     local iconImage = nil
     if not self.iconToName then
@@ -78,20 +78,36 @@ function CharacterBrowser:RenderIcon(entry, cell)
         iconImage = button
     end
 
-    local st = rPopup:AddTable("SpawnTable", 1)
-    st.BordersInnerH = true
-    local spwanRow = st:AddRow()
-
-    spwanRow:AddCell():AddSelectable("Spawn##" .. entry.Uuid).OnClick = function(sel)
-        sel.Selected = false
-        local target = self.selectedGuid or CGetHostCharacter()
-        local pos = {CGetPosition(target)}
-        local rot = {CGetRotation(target)}
-
-        Commands.SpawnCommand(entry.TemplateId, pos, rot)
+    iconImage.OnClick = function()
+        if not popup then
+            popup = cell:AddPopup(GetLoca("Character Template Details"))
+            popup.IDContext = entry.Uuid .. "Popup" .. Uuid_v4()
+            local attrs = {
+                Uuid = entry.Uuid,
+                DisplayName = entry.DisplayName,
+                TemplateName = entry.TemplateName,
+                Icon = entry.Icon,
+                TemplateId = entry.TemplateId,
+            }
+            StyleHelpers.AddReadOnlyAttrTable(popup, attrs)
+        end
+        popup:Open()
     end
 
-    iconImage.OnClick = function()
+    iconImage.OnRightClick = function()
+        if not rPopup then
+            rPopup = cell:AddPopup(GetLoca("Character Template Preview"))
+            rPopup.IDContext = entry.Uuid .. "RPopup" .. Uuid_v4()
+            local actTab = StyleHelpers.AddSelectionTable(rPopup, "Actions")
+            actTab:AddSelectable(GetLoca("Spawn Character"), function()
+                local selected = self.selectedGuid or CGetHostCharacter()
+                if not selected then return end
+                local spawnPos = {CGetPosition(selected)}
+                local spawnRot = {CGetRotation(selected)}
+                if not spawnPos or not spawnRot then return end
+                Commands.SpawnCommand(entry.TemplateId, spawnPos, spawnRot)
+            end)
+        end
         rPopup:Open()
     end
 

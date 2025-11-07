@@ -14,7 +14,7 @@ function OsirisHelpers.Propify(guids)
     end
 end
 
-function OsirisHelpers.DrawLine(startPos, endPos, width)
+function OsirisHelpers.DrawLine(startPos, endPos, width, user)
     if #startPos ~= 3 or #endPos ~= 3 then
         return
     end
@@ -24,23 +24,29 @@ function OsirisHelpers.DrawLine(startPos, endPos, width)
     local toScale = length / 10
 
     local fxHandle = Osi.CreateAt(RB_BEAM_ITEM_FX, 0, 0, 0, 1, 0, "") --[[@as string]]
-
-    Osi.SetVisible(fxHandle, 0)
+    TeleportTo(fxHandle, startPos[1], startPos[2], startPos[3])
+    RotateTo(fxHandle, table.unpack(DirectionToQuat(dir)))
     Timer:Ticks(10, function (timerID)
         if not EntityExists(fxHandle) then return end
-        
-        TeleportTo(fxHandle, startPos[1], startPos[2], startPos[3])
-        RotateTo(fxHandle, table.unpack(DirectionToQuat(dir)))
 
+        -- hide on other clients
         NetChannel.SetVisualTransform:Broadcast({
+            Guid = fxHandle,
+            Transforms = {
+                [fxHandle] = {
+                    Scale = {0, 0, 0},
+                }
+            }
+        })
+
+        NetChannel.SetVisualTransform:SendToClient({
             Guid = fxHandle,
             Transforms = {
                 [fxHandle] = {
                     Scale = {1 * (width or 1) , 1 * (width or 1), toScale},
                 }
             }
-        })
-        Osi.SetVisible(fxHandle, 1)
+        }, user)
     end)
 
     return fxHandle
@@ -55,7 +61,7 @@ local edges = {
 ---@param min Vec3
 ---@param max Vec3
 ---@return GUIDSTRING[] spawned
-function OsirisHelpers.DrawBox(min, max, LineThickness)
+function OsirisHelpers.DrawBox(min, max, LineThickness, user)
     local spawned = {}
     local corners = {
         {min[1], min[2], min[3]},
@@ -69,7 +75,7 @@ function OsirisHelpers.DrawBox(min, max, LineThickness)
     }
     
     for _, edge in ipairs(edges) do
-        local handle = OsirisHelpers.DrawLine(corners[edge[1]], corners[edge[2]], LineThickness)
+        local handle = OsirisHelpers.DrawLine(corners[edge[1]], corners[edge[2]], LineThickness, user)
         table.insert(spawned, handle)
     end
 
@@ -80,7 +86,7 @@ end
 --- @param halfSizes Vec3
 --- @param rotation Quat
 --- @return GUIDSTRING[] spawned
-function OsirisHelpers.DrawOrientedBox(center, halfSizes, rotation, LineThickness)
+function OsirisHelpers.DrawOrientedBox(center, halfSizes, rotation, LineThickness, user)
     local spawned = {}
     local localCorners = {
         { -halfSizes[1], -halfSizes[2], -halfSizes[3] },
@@ -105,7 +111,7 @@ function OsirisHelpers.DrawOrientedBox(center, halfSizes, rotation, LineThicknes
     end
 
     for _, edge in ipairs(edges) do
-        local handle = OsirisHelpers.DrawLine(worldCorners[edge[1]], worldCorners[edge[2]], LineThickness)
+        local handle = OsirisHelpers.DrawLine(worldCorners[edge[1]], worldCorners[edge[2]], LineThickness, user)
         table.insert(spawned, handle)
     end
 

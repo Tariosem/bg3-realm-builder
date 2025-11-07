@@ -530,7 +530,7 @@ function VisualTab:RenderAttachmentSection()
             end
 
 
-            local keyName = gr2FileName .. "." .. modelName .. "." .. tostring(attIndex) .. "." .. tostring(descIndex)
+            local keyName = gr2FileName .. "::" .. modelName .. "::" .. tostring(attIndex) .. "::" .. tostring(descIndex)
 
             local function appltToOthers()
                 local matTab = self.Materials[keyName]
@@ -611,7 +611,7 @@ function VisualTab:RenderObjectEditor()
 
         --- @return MaterialParametersSet|nil
 
-        local keyName = meshName .. "::" .. tostring(descIndex)
+        local keyName = meshName .. "::" .. tostring(descIndex) 
 
         local function appltToOthers()
             local matTab = self.Materials[keyName]
@@ -1319,8 +1319,11 @@ function VisualTab:RenderTransformSliders(parent, descIndex, attachIndex, modelN
         local renderableFunc = function()
             return VisualHelpers.GetRenderable(self.guid, descIndex, attachIndex)
         end
+        local startScale = VisualHelpers.GetRenderableScale(self.guid, descIndex, attachIndex)
         local proxy = RenderableMovableProxy.new(renderableFunc)
         RB_GLOBALS.TransformEditor:Select({proxy})
+        self.StartScale = self.StartScale or {}
+        table.insert(self.StartScale, { AttachIndex = attachIndex, DescIndex = descIndex, Scale = startScale })
     end
 end
 
@@ -1374,6 +1377,21 @@ function VisualTab:Save(name, overwrite)
         if hasChanges then
             Mats[key] = params
         end
+    end
+
+    for _, startScaleData in ipairs(self.StartScale or {}) do
+        local currentScale = VisualHelpers.GetAttachmentScale(self.guid, startScaleData.DescIndex, startScaleData.AttachIndex)
+        if EqualArrays(currentScale, startScaleData.Scale) then
+            goto continue
+        end
+        local attachKey = "Transform::" .. startScaleData.DescIndex .. "::" .. (startScaleData.AttachIndex or 0) .. "::Scale"
+        self.modifiedParams[attachKey] = {
+            Type = "Scale",
+            DescIndex = startScaleData.DescIndex,
+            AttachIndex = startScaleData.AttachIndex,
+            Value = currentScale
+        }
+        ::continue::
     end
 
     oriFile[saveName] = {
@@ -1677,9 +1695,10 @@ function VisualTab:CheckVisual()
 end
 
 --- merge all modified material params from all materials in this tab
---- @return RB_ParameterSet
+--- @return RB_ParameterSet?
 function VisualTab:ExportModifiedMaterialParams()
     local exportedParams = {} --[[@as RB_ParameterSet ]]
+    local hasChanges = false
     for key, mat in pairs(self.Materials) do
         local params = mat:ExportChanges()
 
@@ -1690,10 +1709,15 @@ function VisualTab:ExportModifiedMaterialParams()
             for paramName, value in pairs(paramSet) do
                 if not exportedParams[typeRef][paramName] then
                     exportedParams[typeRef][paramName] = value
+                    hasChanges = true
                 end
             end
         end
         
+    end
+
+    if not hasChanges then
+        return nil
     end
 
     return exportedParams

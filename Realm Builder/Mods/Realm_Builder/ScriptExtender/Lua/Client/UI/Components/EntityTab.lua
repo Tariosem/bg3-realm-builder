@@ -219,8 +219,27 @@ function EntityTab:RenderTabBar()
     self.tabBar = self.lowerTab:AddTabBar("EntityTabTabBar")
 end
 
+local function debugEntity(guid)
+    local template = EntityStore:GetStoredData(guid).TemplateId
+    local templateObj = Ext.Template.GetTemplate(TakeTailTemplate(template))
+
+    local visualTemplate = templateObj and templateObj.VisualTemplate or nil
+
+    if visualTemplate then
+        _D(Ext.Resource.Get(visualTemplate, "Effect"))
+    else
+        Warning("No visual template found for entity with GUID: " .. guid)
+    end
+
+end
+
 function EntityTab:RenderMonitorTab()
     local monitorTab = self.tabBar:AddTabItem("Monitor")
+
+    local debugBtn = monitorTab:AddButton(GetLoca("Debug Entity"))
+    debugBtn.OnClick = function()
+        debugEntity(self.guid)
+    end
 
     local templateIdText = AddReadOnlyInput(monitorTab, "TemplateId" .. ": ", TakeTailTemplate(self.templateId), true)
 

@@ -106,9 +106,11 @@ function TransformToolbar:RegisterKeyInputEvents()
     ttMod:RegisterEvent("MoveToCursor", function (e)
         if e.Event ~= "KeyDown" then return end
 
-        local targets = RB_GLOBALS.RB_GLOBALS.TransformEditor.Target
+        local targets = RB_GLOBALS.TransformEditor.Target or {}
         local pos, rot = GetPickingHitPosAndRot()
+        if not pos then return end
 
+        Debug("Moving to position: " .. tostring(pos))
         Commands.SetTransform(targets, {Translate = pos, RotationQuat = rot})
     end)
 
@@ -543,15 +545,15 @@ function TransformToolbar:RenderOtherConfigOptions(panel)
     tips:SetColor("Text", HexToRGBA("FFFFAA00"))
 end
 
-function TransformToolbar:SetupOperator(mode, space, axis, startTransforms)
+function TransformToolbar:SetupOperator(mode, space, axis)
     if not RB_GLOBALS.TransformEditor.Target or #RB_GLOBALS.TransformEditor.Target == 0 or self.isInputing then return end
     RB_GLOBALS.TransformEditor.Disabled = true
     RB_GLOBALS.TransformEditor:HideAndDisableGizmo()
-    local targets = NormalizeGuidList(RB_GLOBALS.TransformEditor.Target)
+    local targets = RB_GLOBALS.TransformEditor.Target --[[@as RB_MovableProxy[] ]]
     self.isInputing = true
     if not self.Operator then
         if mode == "Scale" then axis = {X = true, Y = true, Z = true} end
-        self.Operator = TransformOperator.new(targets, space, mode, axis, startTransforms)
+        self.Operator = TransformOperator.new(targets, space, mode, axis)
     end
     
     local inputSub = SubscribeKeyAndMouse(function (e)

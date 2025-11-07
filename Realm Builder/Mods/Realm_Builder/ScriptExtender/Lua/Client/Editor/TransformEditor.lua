@@ -56,7 +56,6 @@ function TransformEditor:Select(selection, notRecordHistory)
     if not selection or #selection == 0 then
         self.Target = nil
         self:Clear()
-        Debug("TransformEditor: Clear selection. No guid provided.")
         return
     end
 
@@ -195,9 +194,11 @@ function TransformEditor:GetPivotRotation()
     return Quat.new(rot)
 end
 
+local registered = false
+
 function TransformEditor:RegisterEvents()
-    if self.Registered then return end
-    self.Registered = true
+    if registered then return end
+    registered = true
 
     local function restrain(t)
         t:AddCondition(function(e)
@@ -231,6 +232,18 @@ function TransformEditor:RegisterEvents()
         if e.Event == "KeyDown" then
             self:SetMode("Scale")
         end
+    end)
+
+    teMod:RegisterEvent("FollowTarget", function (e)
+        if not self.Target or #self.Target == 0 then return end
+        if self.IsDragging then return end
+
+        local avgPos = Vec3.new(0,0,0)
+        for _,proxy in pairs(self.Target or {}) do
+            avgPos = avgPos + proxy:GetWorldTranslate()
+        end
+        avgPos = avgPos / #self.Target
+        CameraMoveToPosition({avgPos.X, avgPos.Y, avgPos.Z})
     end)
 
     self.Subscriptions["ResetTransform"] = SubscribeKeyInput({}, function (e)
@@ -268,13 +281,17 @@ function TransformEditor:RegisterEvents()
         self.Target = nil
     end))
 
+    self:SetupGizmo()
+end
+
+function TransformEditor:SetupGizmo()
+    if not self.Gizmo then
+        self.Gizmo = Gizmo.new(self)
+    end
+
     local GetRottt = function(gizmo)
         local _,rot = gizmo:GetPickerTransform()
         return rot
-    end
-
-    if not self.Gizmo then
-        self.Gizmo = Gizmo.new(self)
     end
 
     self.Gizmo.OnDragStart = function(gizmo)

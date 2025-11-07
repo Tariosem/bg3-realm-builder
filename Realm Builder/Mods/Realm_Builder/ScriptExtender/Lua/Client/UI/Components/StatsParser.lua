@@ -466,7 +466,7 @@ function StatsParser:ParsePassives(passives)
 
     local splitPass = SplitBySemicolon(passives or "")
     for _, pass in ipairs(splitPass) do
-        local statsObj = GetStatsObjByName(pass) --[[@as PassiveData]]
+        local statsObj = Ext.Stats.Get(pass) --[[@as PassiveData]]
         if statsObj then
             local desc = statsObj.Description
             local descRef = statsObj.DescriptionRef

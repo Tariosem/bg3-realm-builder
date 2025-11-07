@@ -220,7 +220,7 @@ end
 --- @field StoryItem boolean
 --- @field Rarity string
 
---- @param template GameObjectTemplate
+--- @param template ItemTemplate
 --- @return RB_Item?
 function ItemManager:PopulateItem(template, statsObj)
     if not template then return nil end

@@ -25,9 +25,10 @@ local function spawnHandler(data)
     end
 
     local templateObj = Ext.Template.GetTemplate(TakeTailTemplate(template))
-    if templateObj.TemplateType == "scenery" then
+    if templateObj.TemplateType == "scenery" or templateObj.TemplateType == "tileConstruction" then
+        entInfo.IsScenery = true
         local sceneryTemplate = templateObj --[[@as SceneryTemplate]]    
-        local helperATemplate = Ext.Template.GetTemplate(INVISIBLE_HELPER_A) --[[@as ItemTemplate]]
+        local helperATemplate = Ext.Template.GetTemplate(INVISIBLE_HELPER_SCENERY) --[[@as ItemTemplate]]
 
         for k,v in pairs(sceneryTemplate) do
             if readOnlyTemplateProperty[k] then goto continue end
@@ -35,6 +36,8 @@ local function spawnHandler(data)
             ::continue::
         end
         spawnTemplate = helperATemplate.Name .. "-" .. helperATemplate.Id
+    elseif templateObj.TemplateType == "prefab" then
+        
     end
 
     local newGuid = EntityManager:CreateAt(spawnTemplate, position[1], position[2], position[3], rotation[1], rotation[2], rotation[3], rotation[4])
@@ -306,8 +309,6 @@ NetChannel.Visualize:SetRequestHandler(function(data, userID)
     local entityHandles = {}
     if data.Type == "Point" then
         local pos = data.Position
-
-
         local pointEntity = Osi.CreateAt(RB_PROP_AXIS_FX, pos[1], pos[2], pos[3], 1, 0, "") --[[@as string]]
         table.insert(entityHandles, pointEntity)
         if data.Rotation then
@@ -323,12 +324,12 @@ NetChannel.Visualize:SetRequestHandler(function(data, userID)
     elseif data.Type == "Line" then
         local startPos = data.Position
         local endPos = data.EndPosition
-        local handle = OsirisHelpers.DrawLine(startPos, endPos, data.Width)
+        local handle = OsirisHelpers.DrawLine(startPos, endPos, data.Width, userID)
         table.insert(entityHandles, handle)
     elseif data.Type == "Box" then
-        entityHandles = OsirisHelpers.DrawBox(data.Min, data.Max, data.Width)
+        entityHandles = OsirisHelpers.DrawBox(data.Min, data.Max, data.Width, userID)
     elseif data.Type == "OBB" then
-        entityHandles = OsirisHelpers.DrawOrientedBox(data.Position, data.HalfSizes, data.Rotation, data.Width)
+        entityHandles = OsirisHelpers.DrawOrientedBox(data.Position, data.HalfSizes, data.Rotation, data.Width, userID)
     elseif data.Type == "Clear" then
         local existing = spawnedVisualizations[userID]
         for _,e in pairs(existing) do
@@ -417,25 +418,14 @@ NetChannel.ManageGizmo:SetRequestHandler(function(data, userID)
         data.Position = {0,0,0}
     end
 
-    if data.GizmoType == "All" then
-        local x, y, z = data.Position[1], data.Position[2], data.Position[3]
-        local translate = Osi.CreateAt(GIZMO_ITEM.Translate, x, y, z, 1, 0, "") --[[@as string]]
-        local rotate = Osi.CreateAt(GIZMO_ITEM.Rotate, x, y, z, 1, 0, "") --[[@as string]]
-        local scale = Osi.CreateAt(GIZMO_ITEM.Scale, x, y, z, 1, 0, "") --[[@as string]]
-        Osi.SetVisible(translate, 0)
-        Osi.SetVisible(rotate, 0)
-        Osi.SetVisible(scale, 0)
-        gizmoUserStack[tostring(userID)] = gizmoUserStack[tostring(userID)] or {}
-        table.insert(gizmoUserStack[tostring(userID)], translate)
-        table.insert(gizmoUserStack[tostring(userID)], rotate)
-        table.insert(gizmoUserStack[tostring(userID)], scale)
-        return { Translate = translate, Rotate = rotate, Scale = scale }
-    end
-
-
-
     local guid = Osi.CreateAt(GIZMO_ITEM[data.GizmoType], data.Position[1], data.Position[2], data.Position[3], 1, 0, "") --[[@as string]]
     Osi.SetVisible(guid, 0)
+
+    Timer:Ticks(30, function (timerID)
+        NetChannel.SetVisualTransform:Broadcast({Guid = guid, Transforms = {
+            [guid] = { Scale = {0, 0, 0} }
+        }})
+    end)
 
     gizmoUserStack[tostring(userID)] = gizmoUserStack[tostring(userID)] or {}
     table.insert(gizmoUserStack[tostring(userID)], guid)

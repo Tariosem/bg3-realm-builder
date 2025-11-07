@@ -29,7 +29,7 @@ local keyToSpace = {
 --- @field Space TransformEditorSpace
 --- @field Num string
 --- @field Axis table<'X'|'Y'|'Z', boolean>
---- @field new fun(targets: GUIDSTRING[]|GUIDSTRING, space:TransformEditorSpace?, mode:TransformEditorMode?, axis:table<'X'|'Y'|'Z', boolean>?): TransformOperator
+--- @field new fun(targets: RB_MovableProxy, space:TransformEditorSpace?, mode:TransformEditorMode?, axis:table<'X'|'Y'|'Z', boolean>?): TransformOperator
 TransformOperator = _Class("TransformOperator")
 
 --- @param proxy RB_MovableProxy
@@ -90,7 +90,7 @@ end
 function TransformOperator:__init(targets, space, mode, axis, ifInitStartTransforms)
     self.Targets = targets
     self.Visualizer = GizmoVisualizer.new()
-    self.Visualizer:UpdateScale(self.Targets[1])
+    self.Visualizer:UpdateScale(self.Targets[1]:GetWorldTranslate())
     self.AxesCache = {}
     self:InitStartTransforms(ifInitStartTransforms)
 
@@ -110,7 +110,7 @@ function TransformOperator:__init(targets, space, mode, axis, ifInitStartTransfo
 end
 
 function TransformOperator:InitStartTransforms(ifInit)
-    if not ifInit then return end
+    if ifInit then return end
     
     for _,proxy in pairs(self.Targets) do
         proxy:SaveTransform()

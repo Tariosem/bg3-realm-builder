@@ -41,8 +41,7 @@ function ItemBrowser:RenderIcon(entry, cell)
         return nil
     end
 
-    local popup = cell:AddPopup("IconPopup")
-    local lazyRenders = {}
+    local popup = nil
     local spawnPopup = nil
     local attributePopup = nil
 
@@ -78,8 +77,6 @@ function ItemBrowser:RenderIcon(entry, cell)
 
     iconImage.CanDrag = true
     iconImage.DragDropType = "ForItemPreview"
-
-    popup.IDContext = entry.Uuid .. "Popup" .. Uuid_v4()
 
     iconImage.UserData = iconImage.UserData or {}
 
@@ -138,13 +135,23 @@ function ItemBrowser:RenderIcon(entry, cell)
 
 
     iconImage.OnClick = function()
+        if not popup then
+            popup = cell:AddPopup("IconPopup")
+            popup.IDContext = entry.Uuid .. "Popup" .. Uuid_v4()
+        end
         self:RenderInfoPopup(popup, entry)
         popup:Open()
     end
 
     
     if entry.DefaultBoosts or entry.Passives or entry.Boosts or entry.BoostsOnEquipMainHand or entry.BoostsOnEquipOffHand then
-        self:RenderAttrPopup(iconImage, cell, entry, popup)
+        self:RenderAttrPopup(iconImage, cell, entry, function()
+            if not popup then
+                popup = cell:AddPopup("IconPopup")
+                popup.IDContext = entry.Uuid .. "Popup" .. Uuid_v4()
+            end
+            return popup
+        end)
     end
 
     return iconImage
@@ -301,10 +308,10 @@ function ItemBrowser:SetupTemplatePreview(entry)
 
 end
 
+--- @param popup ExtuiPopup
 function ItemBrowser:RenderInfoPopup(popup, entry)
     popup.UserData = popup.UserData or {}
     if popup.UserData.InfoRendered then return end
-
     local infoFields = {
         Icon = entry.Icon,
         DisplayName = entry.DisplayName,
@@ -313,18 +320,15 @@ function ItemBrowser:RenderInfoPopup(popup, entry)
         Mod = entry.Mod,
         ModAuthor = entry.ModAuthor,
     }
+    if infoFields.Mod == "" then infoFields.Mod = nil end
+    if infoFields.ModAuthor == "" then infoFields.ModAuthor = nil end
 
-    for field, value in pairs(infoFields) do
-        if value and value ~= "" then
-
-            AddPrefixInput(popup, field .. " :", value, true)
-        end
-    end
+    StyleHelpers.AddReadOnlyAttrTable(popup, infoFields)
 
     popup.UserData.InfoRendered = true
 end
 
-function ItemBrowser:RenderAttrPopup(iconImage, cell, entry, popup)
+function ItemBrowser:RenderAttrPopup(iconImage, cell, entry, getPopupFunc)
     local popupRendered = false
     local attributePopup = nil
 
@@ -345,6 +349,9 @@ function ItemBrowser:RenderAttrPopup(iconImage, cell, entry, popup)
         return title
     end
 
+    -- Store original OnClick if any
+    local originalOnClick = iconImage.OnClick
+
     iconImage.OnClick = function()
         if self.iconToName then
             iconImage.Selected = false
@@ -354,6 +361,9 @@ function ItemBrowser:RenderAttrPopup(iconImage, cell, entry, popup)
             attributePopup:Open()
             return
         end
+        
+        -- Lazy create popup
+        local popup = getPopupFunc()
         attributePopup = cell:AddPopup("AttributesPopup##" .. entry.Uuid)
 
         local popupBtn = popup:AddButton(GetLoca("Infos"))
@@ -452,7 +462,6 @@ end
 
 function ItemBrowser:RenderItemSpawnTab(popup, iconImage, entry)
     local spawnTab = popup
-
     local spawnButton = spawnTab:AddButton(GetLoca("Spawn"))
 
     local function spawnHandle(isPreview)
@@ -580,6 +589,7 @@ function ItemBrowser:RenderItemSpawnTab(popup, iconImage, entry)
         countInput.Value = ToVec4(countInput.Value[1] + 5)
         checkValue()
     end
+
 end
 
 function ItemBrowser.Add(Lib, DisplayName)

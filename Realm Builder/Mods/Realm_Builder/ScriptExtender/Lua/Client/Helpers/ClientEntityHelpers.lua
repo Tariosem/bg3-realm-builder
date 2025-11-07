@@ -5,9 +5,9 @@ local specialGuids = {
 local defaultIcon = "Item_Unknown"
 local ECMODLoaded = Ext.Mod.IsModLoaded("5b5ad5b6-ce37-4a63-8dea-a1fee4cee156")
 local FocusAddonLoaded = Ext.Mod.IsModLoaded("ff8b5278-f929-45d1-9a51-7efa609620c4")
-local defautlCharacterIcon = ECMODLoaded and "EC_Portrait_Generic" or FocusAddonLoaded and "FOCUSLODESTONES_Lodestone_Generic" or "Spell_Enchantment_HoldPerson"
+local defautlCharacterIcon = RB_ICONS.Character
 local originIconPrefix = ECMODLoaded and "EC_Portrait_" or FocusAddonLoaded and "FOCUSLODESTONES_Lodestone_" or nil
-local defaultPartyMemberIcon = "Skill_Fighter_Rally"
+local defaultPartyMemberIcon = RB_ICONS.Character_Fill
 local windowForCheckIcon = GLOBAL_DEBUG_WINDOW
 
 function CheckIcon(icon, fallback)
@@ -38,13 +38,18 @@ function GetIcon(guid)
         return specialGuids[CameraSymbol]
     end
 
+    local stored = EntityStore:GetStoredData(guid)
+    if stored and stored.Icon then
+        return CheckIcon(stored.Icon, defaultIcon)
+    end
+
     if not Ext.Entity.Get(guid) then
         return defaultIcon
     end
 
     local entity = UuidToHandle(guid)
     -- Hijack easycheat and focus addon icons for characters XD
-    if entity and entity.IsCharacter then
+    if CIsCharacter(guid) then
         local icon = IsPartyMember(guid) and defaultPartyMemberIcon or defautlCharacterIcon
         if originIconPrefix and entity.Origin then
             local origin = entity.Origin.Origin
@@ -55,6 +60,10 @@ function GetIcon(guid)
             end
         end
         return icon
+    end
+
+    if entity.Scenery then
+        return RB_ICONS.Scenery_Fill
     end
 
     if entity.Icon then
@@ -145,3 +154,4 @@ function GetTemplateNameForGuid(guid)
     end
     return template.Name
 end
+

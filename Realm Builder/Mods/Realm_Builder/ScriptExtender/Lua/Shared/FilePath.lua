@@ -178,7 +178,7 @@ function RealmPath.GetCharacterPresetPath(modName, presetName)
     return string.format(mapCharacterPresetPath, modName, modName, presetName)
 end
 
-function RealmPath.GetItemRootTemplatePath(modName, templateName)
+function RealmPath.GetRootTemplatePath(modName, templateName)
     return string.format(mapItemRootTemplatePath, modName, modName, templateName)
 end
 

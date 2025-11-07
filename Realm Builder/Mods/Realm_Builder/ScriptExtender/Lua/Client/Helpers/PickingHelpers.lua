@@ -72,7 +72,10 @@ function GetPickingHitPosAndRot(picker)
     local pos = picker.Inner.SceneryPosition
     local normal = picker.Inner.SceneryNormal
     local rot = DirectionToQuat(normal, nil, "Y")
-    return Vec3.new(pos), Quat.new(rot)
+
+    local host = CGetHostCharacter()
+    local sanitizedPos = Vec3.new(pos):Sanitize({CGetPosition(host)}) --[[@as Vec3]]
+    return sanitizedPos, rot
 end
 
 function CalcNDC(x, y, screenW, screenH)
@@ -164,7 +167,7 @@ end
 --- @param cameraHandle EntityHandle?
 --- @param screenW number?
 --- @param screenH number?
---- @return Vec2|nil
+--- @return Vec2
 function WorldToScreenPoint(worldPos, cameraHandle, screenW, screenH)
     if not screenW or not screenH then
         screenW, screenH = GetScreenSize()
@@ -191,7 +194,7 @@ function WorldToScreenPoint(worldPos, cameraHandle, screenW, screenH)
     local clipPos = viewProj * worldPos4
 
     if clipPos.w == 0 then
-        return nil
+        return {0, 0}
     end
 
     local ndcPos = clipPos / clipPos.w

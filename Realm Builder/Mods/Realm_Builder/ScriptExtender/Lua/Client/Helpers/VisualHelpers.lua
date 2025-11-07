@@ -78,17 +78,28 @@ function VisualHelpers.GetVisualRotation(handle)
     return rotation[1], rotation[2], rotation[3], rotation[4]
 end
 
----@param handle any
----@return nil
----@return nil
----@return nil
+---@param handle EntityHandle|GUIDSTRING
+---@return number?
+---@return number?
+---@return number?
 function VisualHelpers.GetVisualScale(handle)
-    local entity = handle
-    local visual = VisualHelpers.GetEntityVisual(entity)
+    local visual = VisualHelpers.GetEntityVisual(handle)
     if not visual or not visual.WorldTransform then
         return nil, nil, nil
     end
     local scale = visual.WorldTransform.Scale
+    if not scale or #scale < 3 then
+        return nil, nil, nil
+    end
+    return scale[1], scale[2], scale[3]
+end
+
+function VisualHelpers.GetRenderableScale(handle, descIndex, attachIndex)
+    local renderable = VisualHelpers.GetRenderable(handle, descIndex, attachIndex)
+    if not renderable or not renderable.WorldTransform then
+        return nil, nil, nil
+    end
+    local scale = renderable.WorldTransform.Scale
     if not scale or #scale < 3 then
         return nil, nil, nil
     end
@@ -137,6 +148,66 @@ function VisualHelpers.GetVisualTransform(handle)
     transform.Scale = visual.WorldTransform.Scale
     return transform
 end
+
+---@param guids GUIDSTRING[]
+---@param transforms table<GUIDSTRING, Transform>
+function VisualHelpers.SetVisualTransform(guids, transforms)
+    local visuals = {} --[[@as table<GUIDSTRING, Visual>]]
+
+    for _,guid in pairs(guids) do
+        if type(guid) ~= "string" or guid == "" then
+            
+            goto continue
+        end
+        local visual = VisualHelpers.GetEntityVisual(guid)
+        if visual then
+            visuals[guid] = visual
+        else
+            Warning("TransformEditor: Entity not found: ", guid)
+        end
+        ::continue::
+    end
+
+
+    for guid,visual in pairs(visuals) do
+        if CIsCharacter(guid) then
+            local transform = transforms[guid]
+            if not transform then
+                --Warning("TransformEditor: No transform provided for guid: "..tostring(guid))
+                return
+            end
+            if transform.Translate then
+                visual:SetWorldTranslate(transform.Translate)
+            end
+            if transform.RotationQuat then
+                visual:SetWorldRotate(transform.RotationQuat)
+            end
+            if transform.Scale then
+                visual:SetWorldScale(transform.Scale)
+            end
+        else
+            local transform = transforms[guid]
+            local objs = visual.ObjectDescs --[[@as VisualObjectDesc[] ]]
+            for _,obj in pairs(objs) do
+                local renderable = obj.Renderable
+                if not renderable or not renderable.WorldTransform then
+                    goto continue
+                end
+                if transform.Translate then
+                    renderable.WorldTransform.Translate = transform.Translate
+                end
+                if transform.RotationQuat then
+                    renderable.WorldTransform.RotationQuat = transform.RotationQuat
+                end
+                if transform.Scale then
+                    renderable.WorldTransform.Scale = transform.Scale
+                end
+                ::continue::
+            end
+        end
+    end
+end
+
 
 function VisualHelpers.GetEntityAABB(handle)
     local entity = handle
@@ -194,18 +265,22 @@ function VisualHelpers.ChangeABCDFrames(frames, a, b, c, d)
 end
 
 --- @param guid string
---- @param modifiedParams table
+--- @param preset table
 --- @param retryCnt number?
-function VisualHelpers.ApplyVisualParams(guid, modifiedParams, retryCnt)
-    if not guid or not modifiedParams then return end
+function VisualHelpers.ApplyVisualParams(guid, preset, retryCnt)
+    if not guid or not preset then
+        Warning("ApplyVisualParams: Invalid parameters.")
+        return
+    end
     
     retryCnt = retryCnt or 0
+    local isCharacter = CIsCharacter(guid)
 
     local liveEntity = UuidToHandle(guid)
     if not liveEntity or not liveEntity.Visual then
         if not liveEntity and retryCnt < 1 then
             Timer:After(500, function()
-                VisualHelpers.ApplyVisualParams(guid, modifiedParams, retryCnt+1)
+                VisualHelpers.ApplyVisualParams(guid, preset, retryCnt+1)
             end)
         else
             Error("Visual not found for GUID: " .. tostring(guid))
@@ -263,16 +338,32 @@ function VisualHelpers.ApplyVisualParams(guid, modifiedParams, retryCnt)
         end,
     }
 
-    for _, value in pairs(modifiedParams) do
+    for _, value in pairs(preset.ModifiedParams) do
         local handler = handlers[value.Type]
         if handler then
             handler(value, liveEntity)
         else
         end
     end
+
+    for key, matParam in pairs(preset.Materials) do
+        local parsed = SplitByString(key, "::")
+        local descIndex, attachIndex = tonumber(parsed[#parsed]), tonumber(parsed[#parsed-1])
+        local mat = isCharacter and VisualHelpers.GetActiveMaterial(liveEntity, descIndex, attachIndex) or VisualHelpers.GetMaterial(liveEntity, descIndex, attachIndex)
+        if not mat then return false end
+
+        for i,params in pairs(matParam) do
+            i = tonumber(i) --[[@as number]]
+            for paramName, value in pairs(params) do
+                local applyValue = #value == 1 and value[1] or value
+                mat[PropTypeToFunc[#value]](mat, paramName, applyValue)
+            end
+        end
+
+    end
 end
 
---- @param entity EntityHandle
+--- @param entity EntityHandle|GUIDSTRING
 --- @param descIndex number
 --- @param attachIndex number|nil
 --- @return RenderableObject|nil
@@ -301,6 +392,11 @@ end
 function VisualHelpers.GetMaterial(entity, descIndex, attachIndex)
     local renderable = VisualHelpers.GetRenderable(entity, descIndex, attachIndex)
     return renderable and renderable.ActiveMaterial and renderable.ActiveMaterial.Material
+end
+
+function VisualHelpers.GetActiveMaterial(entity, descIndex, attachIndex)
+    local renderable = VisualHelpers.GetRenderable(entity, descIndex, attachIndex)
+    return renderable and renderable.ActiveMaterial
 end
 
 function VisualHelpers.GetEffectComponent(entity, compIndex)

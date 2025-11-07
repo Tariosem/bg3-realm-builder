@@ -358,7 +358,7 @@ function CGetScale(guid)
     end
 
     if Ext.IsClient() then
-        return VisualHelpers.GetVisualScale(entity)
+        return VisualHelpers.GetVisualScale(guid)
     end
 
     local scale = entity.Transform.Transform.Scale

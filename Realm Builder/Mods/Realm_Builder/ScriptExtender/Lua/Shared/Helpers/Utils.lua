@@ -110,8 +110,21 @@ function IsValidName(name)
     return true
 end
 
-function ValidateName(name)
-    
+---@param name any
+---@return string|'Unnamed'
+function ValidateFolderName(name)
+    if type(name) ~= "string" then
+        return "Unnamed"
+    end
+
+    local safe = name:gsub('[\\/:*?"<>|]', "")
+    safe = safe:match("^%s*(.-)%s*$")
+    if safe == "" then
+        return "Unnamed"
+    end
+
+    safe = safe:gsub("%s+", "_")
+    return safe
 end
 
 function TableMerge(dest, src)
@@ -169,6 +182,9 @@ function SplitBySemicolon(input, trimWhitespace)
     return tokens
 end
 
+--- @param input string
+--- @param trimWhitespace true
+--- @return string[]
 function SplitByComma(input, trimWhitespace)
     if type(input) ~= "string" then
         return {}
@@ -178,6 +194,32 @@ function SplitByComma(input, trimWhitespace)
     local tokens = {}
 
     for token in input:gmatch("[^,]+") do
+        if trimWhitespace then
+            token = token:match("^%s*(.-)%s*$")
+        end
+
+        if token ~= "" then
+            table.insert(tokens, token)
+        end
+    end
+
+    return tokens
+end
+
+--- @param input string
+--- @param separator string
+--- @param trimWhitespace boolean?
+--- @return string[]
+function SplitByString(input, separator, trimWhitespace)
+    if type(input) ~= "string" or type(separator) ~= "string" then
+        return {}
+    end
+
+    trimWhitespace = trimWhitespace ~= false
+    local tokens = {}
+    local pattern = "([^" .. separator .. "]+)"
+
+    for token in input:gmatch(pattern) do
         if trimWhitespace then
             token = token:match("^%s*(.-)%s*$")
         end
@@ -375,6 +417,11 @@ end
 
 function ToLowerAlphaOnly(obj)
     return string.lower(obj):gsub("[^a-z]", "")
+end
+
+function PadNumber(num, size)
+    local s = tostring(num)
+    return string.format("%0" .. size .. "d", tonumber(s))
 end
 
 function Contains(obj, substr, caseSensitive)

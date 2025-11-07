@@ -144,9 +144,11 @@ local function PopulateAllTemplates()
         ::continue::
     end
 
+    local debug = false
     local raw = Ext.ClientTemplate.GetAllRootTemplates()
     for uuid, object in pairs(raw) do
         if object.TemplateType == "item" and not RB_ItemManager.Data[uuid] then
+            object = object --[[@as ItemTemplate]]
             RB_ItemManager.Data[object.Id] = RB_ItemManager:PopulateItem(object)
             RB_ItemManager.UuidToTemplateName[object.Id] = object.Name
             RB_ItemManager.TemplateNameToUuid[object.Name] = object.Id
@@ -159,7 +161,10 @@ local function PopulateAllTemplates()
             object = object --[[@as SceneryTemplate]]
             RB_SceneryManager:PopulateScenery(object)
             sceneryCnt = sceneryCnt + 1
+        elseif object.TemplateType == "trigger" then
+            
         end
+        ::continue::
     end
 
     RB_CharacterManager.populated = true

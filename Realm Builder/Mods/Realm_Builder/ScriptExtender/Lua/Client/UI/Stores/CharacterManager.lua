@@ -251,7 +251,7 @@ function CharacterManager:PopulateCharacter(template)
         TemplateId = template.Name .. "_" .. template.Id,
         TemplateName = template.Name,
         DisplayName = template.DisplayName:Get() or "",
-        Icon = "Item_Unknown",
+        Icon = template.Icon or "",
     }
 
     if not self.Data[template.Id].DisplayName or self.Data[template.Id].DisplayName == "" then

@@ -1,21 +1,22 @@
 local materialProxies = {}
 
+--- @alias ParamterName string
 --- @alias RB_ParamType integer -- 1=Scalar, 2=Vector2, 3=Vector3, 4=Vector4
---- @alias RB_ParameterSet table< RB_ParamType, table<string, number[]> > 
+--- @alias RB_ParameterSet table< RB_ParamType, table<ParamterName, number[]> > 
 
 --- @class MaterialProxy
 --- @field Material GUIDSTRING
 --- @field TypeRefs table<string, RB_ParamType> Mapping of property name to type
---- @field IndexRefs table<RB_ParamType, table<string, number>> Mapping of type to property name to index in resource
---- @field BaseValues table<number, table<string, number[]>> Mapping of type to property name to base value
+--- @field IndexRefs table<RB_ParamType, table<ParamterName, number>> Mapping of type to property name to index in resource
+--- @field BaseValues RB_ParameterSet Mapping of type to property name to base value
 --- @field Parameters RB_ParameterSet
 --- @field new fun(materialName: GUIDSTRING): MaterialProxy|nil
 --- @field GetResource fun(self): ResourceMaterialResource
 --- @field GetParameter fun(self, paramName: string): number[]|?
---- @field SetProperty fun(self, paramName: string, value: number[]): boolean
+--- @field SetParameter fun(self, paramName: string, value: number[]): boolean
 --- @field GetValue fun(self, paramName: string): number[]|nil
 --- @field GetBaseValue fun(self, paramName: string): number[]|nil
---- @field ResetProperty fun(self, paramName: string): boolean
+--- @field ResetParameter fun(self, paramName: string): boolean
 --- @field ResetAll fun(self)
 --- @field ResetToBaseValues fun(self)
 MaterialProxy = {}
@@ -49,7 +50,7 @@ PropTypeToField = {
     [4] = "VectorParameters",
 }
 
-PropTypeToLSXValueType = {
+PropTypeToLSValueType = {
     [1] = "float",
     [2] = "fvec2",
     [3] = "fvec3",

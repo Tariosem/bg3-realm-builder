@@ -192,6 +192,10 @@ end
 function EntityStore:AddEntity(guid, data)
     EntityDatas[guid] = data
 
+    if data.IsScenery then
+        data.Icon = RB_ICONS.Scenery
+    end
+
     self:RegisterDisplayName(data.DisplayName or GetDisplayNameForTemplateId(data.TemplateId), guid)
         
     if not self.Tree:Find(guid) then
@@ -238,7 +242,6 @@ function EntityStore:GetStoredData(guid)
         data.Movable = entity.CanMove and true or false
         data.CanBeLooted = entity.CanBeLooted and true or false
         
-
         if CIsCharacter(guid) then
             data.Gravity = nil
             data.CanBeLooted = nil
@@ -429,6 +432,7 @@ local uselessSceneryAttributes = {
     "Gravity",
     "IsScenery",
     "DisplayName",
+    "IsScenery",
 }
 
 --- @param entData EntityData
@@ -452,7 +456,9 @@ function EntityStore:GetExportCopy(guids)
             local entity = Ext.Entity.Get(guid)
             if not entity then goto continue end
             local data = DeepCopy(self:GetStoredData(guid)) --[[@as EntityData]]
+            results[guid] = data
             local template = Ext.Template.GetTemplate(TakeTailTemplate(data.TemplateId))
+            data.TemplateType = template.TemplateType
             self:DeleteUselessExportAttributes(data)
 
 
@@ -464,26 +470,33 @@ function EntityStore:GetExportCopy(guids)
             data.Icon = template.TemplateType == "item" and template.Icon or "Item_Unknown"
             data.LevelName = entity.Level.LevelName
 
-            data.TemplateType = template.TemplateType
-
+        
             local visualTab = VisualTab.FetchByGuid(guid)
             if data.TemplateType == "character" and template and visualTab then
+                data.OverrideVisualParameters = visualTab:ExportModifiedMaterialParams()
+    
+                if not next(data.OverrideVisualParameters or {}) then
+                    data.OverrideVisualParameters = nil
+                    goto continue
+                end
                 data.OriginalVisualUuid = template.CharacterVisualResourceID
                 data.UseCustomVisualParameters = true
-                data.OverrideVisualParameters = visualTab:ExportModifiedMaterialParams()
             elseif (data.TemplateType == "item" or data.TemplateType == "scenery") and template and visualTab then
                 local isVisual = Ext.Resource.Get(template.VisualTemplate, "Visual") 
                 if isVisual then -- currently only support VisualTemplate override for visual resource
+                    data.VisualObjectMaterialOverride = visualTab:ExportObjectEdit()
+                    if not next(data.VisualObjectMaterialOverride or {}) then
+                        data.VisualObjectMaterialOverride = nil
+                        goto continue
+                    end
                     data.OriginalVisualUuid = template.VisualTemplate
                     data.UseCustomVisualParameters = true
-                    data.VisualObjectMaterialOverride = visualTab:ExportObjectEdit()
+                    
                     if not data.VisualObjectMaterialOverride then
                         data.UseCustomVisualParameters = nil
                     end
                 end
             end
-
-            results[guid] = data
 
             ::continue::
         end

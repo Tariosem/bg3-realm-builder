@@ -257,6 +257,7 @@ function NearbyCombo:RenderIcons()
         local icon = GetIcon(entry.Guid)
         local displayName = entry.DisplayName
 
+        local inventoryPopup = nil
         local cell = IsCamera(entry.Guid) and characterRow:AddCell() or CIsCharacter(entry.Guid) and characterRow:AddCell() or itemsRow:AddCell()
         self.cellRefs[displayName] = cell
         cell.IDContext = self.combo.IDContext .. "Cell" .. entry.Guid
@@ -275,9 +276,21 @@ function NearbyCombo:RenderIcons()
             end
         end
         imageBtn.OnRightClick = function (btn)
-            CameraFollow(entry.Guid)
+            CameraMoveToEntity(entry.Guid)
+            if inventoryPopup == nil then
+                --inventoryPopup = cell:AddPopup("InventoryPopup")
+                --inventoryPopup.IDContext = cell.IDContext .. "InventoryPopup"
+                --self:RenderInventory(inventoryPopup, entry.Guid)
+            end
+            --inventoryPopup:Open()
         end
     end
 end
 
 function NearbyCombo:OnChange(Guid, displayName)end
+
+function NearbyCombo:RenderInventory(cell, guid)
+    local entity = UuidToHandle(guid)
+
+    -- To do
+end

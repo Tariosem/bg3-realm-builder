@@ -45,12 +45,14 @@ local allAvailableBrowsers = {
     {Key = "character", Label = "Character Browser"},
     {Key = "scenery", Label = "Scenery Browser"},
 }
+table.sort(allAvailableBrowsers, function(a,b) return a.Label < b.Label end)
 
 for _, browser in pairs(allAvailableBrowsers) do
     browserMenu:AddButton(browser.Label).OnClick = function()
         ToggleBrowser(browser.Key)
     end
 end
+allAvailableBrowsers = nil
 
 MCM.Keybinding.SetCallback("key_toggle_main_window", function()
     toggleMainWindow()

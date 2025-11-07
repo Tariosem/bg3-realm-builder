@@ -1055,7 +1055,7 @@ function MaterialPresetsMenu:__exportToMod(modPack, progressCallback)
     end
 
     local displayModName = modPack.ModName or "Unnamed Mod"
-    local modInternalName = modPack.ModName:gsub("%s+", "_")
+    local modInternalName = ValidateFolderName(displayModName)
     local authorName = modPack.Author
     local description = modPack.Description
     local version = modPack.Version

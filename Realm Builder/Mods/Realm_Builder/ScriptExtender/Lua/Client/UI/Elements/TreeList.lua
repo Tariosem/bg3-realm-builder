@@ -13,6 +13,8 @@
 --- @field label string
 --- @field items any[]
 --- @field keyField string
+--- @field ExpandAll fun(self:TreeList, key:any)
+--- @field CollapseAll fun(self:TreeList, key:any)
 --- @field RenderLeaf fun(self:TreeList, key:any, node:ExtuiTableCell):ExtuiSelectable
 --- @field RenderTree fun(self:TreeList, key:any, node:ExtuiTableCell):ExtuiSelectable
 --- @field SetUpLeaf fun(self:TreeList, selectable:ExtuiSelectable, key:any, item:any)
@@ -30,7 +32,7 @@
 --- @field OnDetach fun(self:TreeList)
 --- @field MultiSelect boolean
 --- @field GroupSelect boolean
---- @field new fun(parent:ExtuiTreeParent, label:string, tree:TreeTable, keyField:string, opts:table?):TreeList
+--- @field new fun(parent:ExtuiTreeParent, label:string, tree:TreeTable, opts:table?):TreeList
 TreeList = _Class("TreeList")
 
 function TreeList:__init(parent, label, tree)
@@ -302,6 +304,7 @@ function TreeList:RenderList()
     self.rootTable.UserData.Row = row
     self:ApplyTreeTableStyle(self.rootTable)
 
+    self.arrowRefs = {}
     self.treeRefs = {}
     self.leafRefs = {}
     self.nodeRefs = {}
@@ -358,7 +361,13 @@ function TreeList:RenderList()
                 leafCnt = leafCnt + 1
                 cell.Visible = false
             else
+                local arrowReserved = indent:AddGroup("##ArrowReserved")
+                arrowReserved.IDContext = "TreeList" .. self.label .. "ArrowReserved" .. tostring(key)
+                local icon = self.collapsedTree[key] and RB_ICONS.Tree_Collapsed or RB_ICONS.Tree_Expanded
+                local arrowImage = arrowReserved:AddImage(icon, IMAGESIZE.TINY)
                 local ele = self:RenderTree(key, indent)
+                ele.SameLine = true
+                self.arrowRefs[key] = arrowReserved
                 self.treeRefs[key] = ele
                 self.nodeRefs[key] = cell
                 cell.Visible = false
@@ -376,6 +385,9 @@ function TreeList:RenderList()
     end
     for key,ele in pairs(self.leafRefs) do
         self:SetUpLeaf(ele, key, self.tree:Find(key))
+    end
+    for key,arrow in pairs(self.arrowRefs) do
+        self:SetupArrow(arrow, key)
     end
 
     self:IterativeShow(TreeTable.GetRootKey())
@@ -452,9 +464,10 @@ local emptyFunc = function() end
 ---@param selectable ExtuiSelectable
 ---@param key any
 function TreeList:SetUpLeaf(selectable, key)
-
     selectable.CanDrag = true
     selectable.DragDropType = "TreeList" .. self.label
+
+    selectable.SpanAllColumns = true
 
     selectable.UserData = selectable.UserData or {}
     selectable.UserData.Key = key
@@ -570,6 +583,8 @@ function TreeList:SetUpTree(tree, key)
     tree.UserData.Key = key
     tree.UserData.IsTree = true
 
+    tree.SpanAllColumns = true
+
     local parent = self.tree:GetParentKey(key)
 
     local userOnDragStart = tree.OnDragStart or emptyFunc
@@ -585,7 +600,6 @@ function TreeList:SetUpTree(tree, key)
     local userDragDrop = tree.OnDragDrop or emptyFunc
     tree.OnDragDrop = function(sel, drop)
         local dropped = drop.UserData or {}
-
         if dropped.Key then
             self:OnDragDrop(dropped.Key, key)
         end
@@ -594,11 +608,11 @@ function TreeList:SetUpTree(tree, key)
 
     local userLabel = tree.Label
     local toggleLabel = function()
-        if self.collapsedTree[key] then
-            tree.Label = "[+] " .. userLabel
-        else
-            tree.Label = "[-] " .. userLabel
-        end
+        local reserved = self.arrowRefs[key]
+        DestroyAllChilds(reserved)
+        local icon = self.collapsedTree[key] and RB_ICONS.Tree_Collapsed or RB_ICONS.Tree_Expanded
+        local arrowImage = reserved:AddImage(icon, IMAGESIZE.SMALL)
+        arrowImage:SetColor("Button", {0,0,0,0})
     end
 
     local updateLabel = function()
@@ -661,6 +675,20 @@ function TreeList:SetUpTree(tree, key)
 
     toggleLabel()
 
+    local function collapse()
+        self.collapsedTree[key] = true
+        self:IterativeHide(key)
+        toggleLabel()
+    end
+
+    local function expand()
+        self.collapsedTree[key] = nil
+        self:IterativeShow(key)
+        toggleLabel()
+    end
+
+    tree.UserData.Collapse = collapse
+    tree.UserData.Expand = expand
     tree.UserData.UpdateLabel = toggleLabel
     tree.UserData.SetLabel = updateLabel
 
@@ -686,6 +714,25 @@ function TreeList:SetUpTree(tree, key)
             end
         end
     })
+end
+
+function TreeList:SetupArrow(arrow, key)
+    local show = false
+
+    if self.collapsedTree[key] then
+        show = true
+    end
+
+    arrow.OnRightClick = function()
+        self.collapsedTree[key] = not self.collapsedTree[key]
+        if show then
+            self:ExpandAll(key)
+        else
+            self:CollapseAll(key)
+        end
+
+        show = not show
+    end
 end
 
 function TreeList:OnRenameInput(key, newName) end
@@ -759,33 +806,22 @@ function TreeList:ExpandAll(key)
 
     self.collapsedTree = self.collapsedTree or {}
 
-    local childStack = {}
+    
     self.collapsedTree[key] = nil
-    self.treeRefs[key].UserData.UpdateLabel()
-    self.nodeRefs[key].Visible = true
+    self.treeRefs[key].UserData.Expand()
 
-    local root = self.tree:Find(key)
-    for childKey,_ in pairs(root or {}) do
-        if not self.tree:IsLeaf(childKey) then
-            self.collapsedTree[childKey] = nil
-            table.insert(childStack, childKey)
-            self.treeRefs[childKey].UserData.UpdateLabel()
-        end
-        self.nodeRefs[childKey].Visible = true
-    end
-
+    local childStack = {}
+    table.insert(childStack, key)
+    
     while #childStack > 0 do
         local current = table.remove(childStack)
-        self.nodeRefs[current].Visible = true
         local node = self.tree:Find(current)
         if node and not self.tree:IsLeaf(current) then
             for childKey,_ in pairs(node) do
                 if not self.tree:IsLeaf(childKey) then
-                    self.collapsedTree[childKey] = nil
                     table.insert(childStack, childKey)
-                    self.treeRefs[childKey].UserData.UpdateLabel()
+                    self.treeRefs[childKey].UserData.Expand()
                 end
-                self.nodeRefs[childKey].Visible = true
             end
         end
     end
@@ -796,33 +832,21 @@ function TreeList:CollapseAll(key)
 
     self.collapsedTree = self.collapsedTree or {}
 
-    local childStack = {}
-    self.collapsedTree[key] = true
-    self.treeRefs[key].UserData.UpdateLabel()
-    self.nodeRefs[key].Visible = false
+    self.collapsedTree[key] = nil
+    self.treeRefs[key].UserData.Expand()
 
-    local root = self.tree:Find(key)
-    for childKey,_ in pairs(root or {}) do
-        if not self.tree:IsLeaf(childKey) then
-            self.collapsedTree[childKey] = true
-            table.insert(childStack, childKey)
-            self.treeRefs[childKey].UserData.UpdateLabel()
-        end
-        self.nodeRefs[childKey].Visible = false
-    end
+    local childStack = {}
+    table.insert(childStack, key)
 
     while #childStack > 0 do
         local current = table.remove(childStack)
-        self.nodeRefs[current].Visible = false
         local node = self.tree:Find(current)
         if node and not self.tree:IsLeaf(current) then
             for childKey,_ in pairs(node) do
                 if not self.tree:IsLeaf(childKey) then
-                    self.collapsedTree[childKey] = true
                     table.insert(childStack, childKey)
-                    self.treeRefs[childKey].UserData.UpdateLabel()
+                    self.treeRefs[childKey].UserData.Collapse()
                 end
-                self.nodeRefs[childKey].Visible = false
             end
         end
     end
