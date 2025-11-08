@@ -3,17 +3,20 @@ local ENTTAB_HEIGHT = 1200 * SCALE_FACTOR
 
 EntityTab = _Class("ItemTab")
 
+local copiedTransform = {
+
+}
+
 ---@class EntityTab
 ---@field guid string
 ---@field templateId string
 ---@field templateName string
 ---@field displayName string
 ---@field isVisible boolean
----@field parent ExtuiTabBar|nil
+---@field parent ExtuiTreeParent
 ---@field panel ExtuiWindowBase|ExtuiTabItem
 ---@field isAttach boolean
 ---@field isWindow boolean
----@field persistent boolean
 
 ---@param guid string
 ---@param templateId string
@@ -51,8 +54,6 @@ function EntityTab:__init(guid, templateId, parent, initAttach)
             nil
         )
     end
-
-
 end
 
 function EntityTab:Render()
@@ -73,150 +74,14 @@ function EntityTab:Render()
         self:OnDetach()
     end
 
-    self:RenderProfile()
-    self:RenderMainEditor()
     self:RenderTabBar()
     self:RenderMonitorTab()
     self:RenderFilterTab()
     self:RenderVisualTab()
 end
 
-function EntityTab:RenderProfile()
-
-    local profileHeader = self.panel
-
-    self.profile = AddLeftAlignTable(profileHeader)
-    self.profile.ColumnDefs[1] = { WidthFixed = true, Width = 168 * SCALE_FACTOR }
-
-    self.profileRow = self.profile:AddRow()
-    self.IconContainer = self.profileRow:AddCell()
-    self.Icon = self.IconContainer:AddImageButton(self.guid, GetIcon(self.guid), Vec2.new(168, 168) * SCALE_FACTOR)
-    self.Icon:SetColor("Button", ToVec4(0))
-    self.Icon.Tint = EntityStore[self.guid] and EntityStore[self.guid].IconTintColor or {1,1,1,1}
-
-    self.IdsContainer = self.profileRow:AddCell()
-
-    local topRightTable = AddRightAlighTable(self.IdsContainer)
-    local row = topRightTable:AddRow()
-    local left = row:AddCell()
-    local right = row:AddCell()
-
-    self.displayNameButton = left:AddButton(GetLoca("Display Name"))
-    self.displayNameButton:Tooltip():AddText(GetLoca("Change how this prop's name is displayed in the UI"))
-
-    self.displayNameInput = left:AddInputText("", self.displayName)
-    self.displayNameInput.SameLine = true
-
-    self.displayNameInputKeySub = SubscribeKeyInput({ Key = "RETURN" }, function()
-        if self.displayNameButton and IsFocused(self.displayNameInput) then
-            self.displayNameButton:OnClick()
-        end
-    end)
-
-    self.displayNameButton.OnClick = function(Input)
-        local text = self.displayNameInput.Text
-        if text and text ~= "" then
-            self.displayName = EntityStore:RegisterDisplayName(text, self.guid, self.displayName)
-            self.displayNameInput.Text = self.displayName
-            self.visualTab.displayName = self.displayName
-            if not self.isWindow then
-                self.panel.Label = self.displayName
-            end
-            EntityStore[self.guid].DisplayName = self.displayName
-            self:RequestUpdate()
-            self:Refresh()
-            if self.visualTab.isWindow then
-                self.visualTab:Refresh()
-            end
-            self:Focus()
-        else
-            self.displayNameInput.Text = self.displayName
-        end
-    end
-
-
-    self.detachButton = nil
-
-    if self.parent and self.isAttach then
-        self.detachButton = right:AddButton(GetLoca("Detach"))
-    else
-        self.detachButton = right:AddButton(GetLoca("Attach"))
-    end
-
-    self.detachButton.OnClick = function()
-        self.isAttach = not self.isAttach
-        self.isVisible = true
-        self:Refresh()
-    end
-    
-    if self.isWindow then
-        self.panel.OnClose = self.detachButton.OnClick
-    end
-
-    self.detachButton:Tooltip():AddText(GetLoca("Right click to collapse the tab"))
-
-    self.detachButton.OnRightClick = function()
-        self:Collapsed()
-    end
-end
-
-function EntityTab:RenderMainEditor()
-
-    self.mainEditor = self.IdsContainer
-
-    self.persistentCheck = self.mainEditor:AddCheckbox(GetLoca("Lock"), self.persistent or false)
-    self.persistentCheck:Tooltip():AddText(GetLoca("Won't be deleted when delete all."))
-    self.persistentCheck.OnChange = function()
-        local data = {
-            Guid = self.guid,
-            Attributes = {
-                Persistent = self.persistentCheck.Checked
-            }
-        }
-        NetChannel.SetAttributes:SendToServer(data)
-        self.deleteButton.Disabled = data.Attributes.Persistent
-        self.persistent = self.persistentCheck.Checked
-    end
-    
-    self.deleteButton = self.mainEditor:AddButton(GetLoca("Delete"))
-    ApplyDangerButtonStyle(self.deleteButton)
-    self.deleteButton.OnClick = function()
-        ConfirmPopup:DangerConfirm(
-            GetLoca("Are you sure you want to delete") .. " " .. self.displayName .. "?",
-            function()
-                Commands.DeleteCommand(self.guid)
-            end)
-    end
-
-    if self.persistent then
-        self.deleteButton.Disabled = true
-    end
-
-
-    self.duplicateButton = self.mainEditor:AddButton(GetLoca("Duplicate"))
-    self.duplicateButton.OnClick = function()
-        Commands.DuplicateCommand(self.guid)
-    end
-
-    self.addToFavoritesButton = self.mainEditor:AddButton(GetLoca("Add to Favorites"))
-    self.addToFavoritesButton:Tooltip():AddText(GetLoca("Add a 'Favorite' tag to its template"))
-    self.addToFavoritesButton.OnClick = function()
-        local uuid = GetTemplateId(self.guid)
-        if uuid and uuid ~= "" then
-            RB_ItemManager:AddTagToData(uuid, "Favorite")
-        else
-            Warning("[EntityTab] Cannot add to favorites, no template ID found for GUID: " .. self.guid)
-        end
-        self:OnChange(true)
-    end
-
-    self.duplicateButton.SameLine = true
-    self.addToFavoritesButton.SameLine = true
-end
-
 function EntityTab:RenderTabBar()
-    self.lowerTab = self.panel:AddChildWindow("EntityTabLower")
-    self.tabBar = self.lowerTab:AddTabBar("EntityTabTabBar")
+    self.tabBar = self.panel:AddTabBar("EntityTabTabBar")
 end
 
 local function debugEntity(guid)
@@ -241,15 +106,21 @@ function EntityTab:RenderMonitorTab()
         debugEntity(self.guid)
     end
 
-    local templateIdText = AddReadOnlyInput(monitorTab, "TemplateId" .. ": ", TakeTailTemplate(self.templateId), true)
+    local attrs = {
+        TemplateId = self.templateId,
+        Guid = self.guid,
+        TemplateName = self.templateName,
+    }
 
-    if #self.templateId > 36 then
-        local templateNameText = AddReadOnlyInput(monitorTab, GetLoca("Template Name") .. ": ", self.templateName, true)
-    end
+    local attrTable = StyleHelpers.AddReadOnlyAttrTable(monitorTab, attrs)
 
-    self.guidText = AddReadOnlyInput(monitorTab, "Guid" .. ": ", self.guid, true)
+    local levelLine = {attrTable:AddNewLine()}
 
-    self.levelTextMonitor = AddReadOnlyInput(monitorTab, GetLoca("Level") .. ": ", "N/A", true)
+    levelLine[1]:AddText(GetLoca("Level") .. ":")
+    self.levelTextMonitor = levelLine[2]:AddInputText("") --[[@as ExtuiInputText]]
+    self.levelTextMonitor.ReadOnly = true
+    self.levelTextMonitor.AutoSelectAll = true
+    self.levelTextMonitor.Text = self.LastLevel or "N/A"
 
     self.levelTimer = Timer:Every(2000, function()
         if not self.isValid then
@@ -275,13 +146,31 @@ function EntityTab:RenderMonitorTab()
         end
     end)
 
-    local positionMonitor = monitorTab:AddInputScalar(GetLoca("Position"))
+
+    local posLine = {attrTable:AddNewLine()}
+    local copyPastePosBtn = posLine[1]:AddButton("Position")
+    copyPastePosBtn.IDContext = self.guid .. "_CopyPastePosBtn"
+    copyPastePosBtn:Tooltip():AddText(GetLoca("Click to copy position, Right-Click to paste position"))
+    local positionMonitor = posLine[2]:AddInputScalar("")
+    positionMonitor.IDContext = self.guid .. "_PositionMonitor"
     positionMonitor.Components = 3
+    positionMonitor.Value = self.LastTranslation or {0,0,0,0}
+
+    copyPastePosBtn.OnClick = function()
+        local pos = {CGetPosition(self.guid)}
+        if pos and #pos == 3 then
+            copiedTransform.Translate = {pos[1], pos[2], pos[3]}
+        end
+    end
+    copyPastePosBtn.OnRightClick = function()
+        if copiedTransform.Translate then
+            Commands.SetTransform({MovableProxy.CreateByGuid(self.guid)}, { Translate = copiedTransform.Translate })
+        end
+    end
 
     positionMonitor.OnChange = function(sel)
         local newPos = {sel.Value[1], sel.Value[2], sel.Value[3]}
-
-        Commands.SetTransform(MovableProxy.CreateByGuid(self.guid), { Translate = newPos })
+        Commands.SetTransform({MovableProxy.CreateByGuid(self.guid)}, { Translate = newPos })
     end
     self.positionTimer = Timer:Every(1000, function()
         if not self.isValid then
@@ -311,8 +200,26 @@ function EntityTab:RenderMonitorTab()
         end
     end)
 
-    local rotationMonitor = monitorTab:AddInputScalar(GetLoca("Rotation"))
+    local quatLine = {attrTable:AddNewLine()}
+    local copyPasteRotationBtn = quatLine[1]:AddButton("Rotation")
+    copyPasteRotationBtn.IDContext = self.guid .. "_CopyPasteRotationBtn"
+    copyPasteRotationBtn:Tooltip():AddText(GetLoca("Click to copy rotation, Right-Click to paste rotation"))
+    copyPasteRotationBtn.OnClick = function()
+        local quat = {GetQuatRotation(self.guid)}
+        if quat and #quat == 4 then
+            copiedTransform.RotationQuat = {quat[1], quat[2], quat[3], quat[4]}
+        end
+    end
+    copyPasteRotationBtn.OnRightClick = function()
+        if copiedTransform.RotationQuat then
+            Commands.SetTransform({MovableProxy.CreateByGuid(self.guid)}, { RotationQuat = copiedTransform.RotationQuat })
+        end
+    end
+
+    local rotationMonitor = quatLine[2]:AddInputScalar("")
+    rotationMonitor.IDContext = self.guid .. "_RotationMonitor"
     rotationMonitor.Components = 3
+    rotationMonitor.Value = self.LastRotation or {0,0,0,0}
 
     rotationMonitor.OnChange = function(sel)
         local delta = {sel.Value[1], sel.Value[2], sel.Value[3]}
@@ -323,7 +230,7 @@ function EntityTab:RenderMonitorTab()
         end
         local deltaQuat = Ext.Math.QuatFromEuler(delta)
         local finalQuat = Ext.Math.QuatMul(self.LastQuatRotation, deltaQuat)
-        Commands.SetTransform(MovableProxy.CreateByGuid(self.guid), { RotationQuat = finalQuat })
+        Commands.SetTransform({MovableProxy.CreateByGuid(self.guid)}, { RotationQuat = finalQuat })
     end
 
     self.rotationTimer = Timer:Every(1000, function()
@@ -373,9 +280,9 @@ function EntityTab:RenderMonitorTab()
 
     self.monitorTimers = { self.positionTimer, self.rotationTimer, self.levelTimer }
 
+
     local releasePropBtn = monitorTab:AddButton(GetLoca("Release Prop"))
     releasePropBtn:Tooltip():AddText(GetLoca("Release the prop so it won't be tracked by Realm Builder anymore."))
-    releasePropBtn.SameLine = true
 
     releasePropBtn.OnClick = function()
         ConfirmPopup:DangerConfirm(
@@ -518,7 +425,6 @@ function EntityTab:UpdateFilterTab()
 
     self.iconTintColorEdit.Color = entInfo.IconTintColor or {1,1,1,1}
     local tintColor = entInfo.IconTintColor or {1,1,1,1}
-    self.Icon.Tint = tintColor
 
     if self.visualTab and self.visualTab.isVisible and self.visualTab.isWindow then
         self.visualTab.symbol.Tint = tintColor
@@ -531,23 +437,18 @@ end
 
 function EntityTab:RenderVisualTab()
 
-    self.detachButton.Disabled = true
-
     if not self.visualTab then
         Timer:After(500, function ()
             self.visualTab = VisualTab:Add(self.guid, self.displayName, self.tabBar, self.templateName)
-            self.detachButton.Disabled = false
         end)
     elseif self.visualTab and self.visualTab.isWindow then
         self.visualTab.parent = self.tabBar
         if self.visualTab.panel then
             self.visualTab.panel.Open = true
         end
-        self.detachButton.Disabled = false
     elseif self.visualTab then
         self.visualTab.parent = self.tabBar
         self.visualTab:Refresh()
-        self.detachButton.Disabled = false
     end
 
     self.visualTab.OnDetach = function()
@@ -612,6 +513,11 @@ function EntityTab:Collapsed()
         self.levelTimer = nil
     end
 
+    if self.copySub then
+        self.copySub:Unsubscribe()
+        self.copySub = nil
+    end
+
     if self.displayNameInputKeySub then
         self.displayNameInputKeySub:Unsubscribe()
         self.displayNameInputKeySub = nil
@@ -645,20 +551,6 @@ function EntityTab:Destroy()
 
     if self.panel then
         self:Collapsed()
-    end
-
-    self.Tags = {}
-    self.Group = ""
-    self.Note = ""
-
-    if self.replaceSub then
-        self.replaceSub:Unsubscribe()
-        self.replaceSub = nil
-    end
-
-    if self.presisSub then
-        self.persisSub:Unsubscribe()
-        self.persisSub = nil
     end
 
     self.isValid = false
@@ -724,7 +616,7 @@ function EntityTab:Add(guid, templateId, parent, opts, iconTintColor)
 end
 
 function EntityTab:OnChange() end
-function EntityTab:RequestUpdate() end
+
 
 function EntityTab:OnAttach() end
 function EntityTab:OnDetach() end

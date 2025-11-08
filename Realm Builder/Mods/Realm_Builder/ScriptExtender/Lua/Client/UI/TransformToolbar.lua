@@ -7,6 +7,10 @@ TransformToolbar = _Class("TransformToolbar")
 function TransformToolbar:__init()
     self.Subscriptions = {}
     self.Selecting = {}
+    self.Ignore = {
+        Character = false,
+        Scenery = false,
+    }
     self.isInputing = false
     self:RegisterKeyInputEvents()
 end
@@ -19,8 +23,12 @@ function TransformToolbar:RegisterKeyInputEvents()
         local guid = GetPickingGuid()
         local entity = GetPickingEntity()
 
-        if entity and entity.Scenery then
+        if entity and entity.Scenery and not self.Ignore["Scenery"] then
             RB_GLOBALS.TransformEditor:Select({SceneryMovableProxy.new(entity.Scenery)})
+            return
+        end
+
+        if CIsCharacter(guid) and self.Ignore["Character"] then
             return
         end
 
@@ -30,11 +38,14 @@ function TransformToolbar:RegisterKeyInputEvents()
 
                 local proxies = {}
                 for selGuid,_ in pairs(self.Selecting) do
+
                     table.insert(proxies, MovableProxy.CreateByGuid(selGuid))
                 end
 
                 RB_GLOBALS.TransformEditor:Select(proxies)
             else
+
+
                 RB_GLOBALS.TransformEditor:Select({MovableProxy.CreateByGuid(guid)})
             end
         else
@@ -379,7 +390,12 @@ function TransformToolbar:SetupBoxSelect()
 
             local proxies = {}
             for selGuid,_ in pairs(self.Selecting) do
+                if CIsCharacter(selGuid) and self.Ignore["Character"] then
+                    goto continue
+                end
+
                 table.insert(proxies, MovableProxy.CreateByGuid(selGuid))
+                ::continue::
             end
 
             RB_GLOBALS.TransformEditor:Select(proxies)
@@ -507,6 +523,18 @@ function TransformToolbar:RenderConfigMenu()
     closeSel.OnClick = function()
         panel.Open = false
         closeSel.Selected = true
+    end
+
+    local ignoreScenerySel = panel:AddCheckbox("Ignore Scenery When Selecting")
+    ignoreScenerySel.Checked = self.Ignore["Scenery"] or false
+    ignoreScenerySel.OnChange = function (e)
+        self.Ignore["Scenery"] = e.Checked
+    end
+
+    local ignoreCharacterSel = panel:AddCheckbox("Ignore Characters When Selecting")
+    ignoreCharacterSel.Checked = self.Ignore["Character"] or false
+    ignoreCharacterSel.OnChange = function (e)
+        self.Ignore["Character"] = e.Checked
     end
 
     self:RenderOtherConfigOptions(panel)

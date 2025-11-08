@@ -38,8 +38,6 @@ function Menu:RegisterEvents()
             self.editorMenu:Toggle()
         end
     end)
-
-
 end
 
 function Menu:Render()
@@ -47,6 +45,7 @@ function Menu:Render()
     self.panel.Closeable = true
 
     self.tabBar = self.panel:AddTabBar("TabBar")
+    self.tabBar.Reorderable = true
     local now = Ext.Timer.MonotonicTime()
     Timer:Ticks(1, function()
         self.styleMenu = StyleMenu:Add(self.tabBar)
@@ -181,20 +180,6 @@ function Menu:Add()
     local menu = Menu.new()
     menu:Render()
     return menu
-end
-
----@param guid string
----@param doDetach? boolean
-function Menu:FocusOnTab(guid, doDetach)
-    local entityTab = self.entityMenu.entityTabs[guid]
-    if entityTab then
-        entityTab:Focus()
-        if doDetach and not entityTab.isWindow then
-            entityTab.detachButton:OnClick()
-        end
-    else
-        Warning("No prop tab found for GUID: " .. tostring(guid))
-    end
 end
 
 --- @type RB_MainMenu

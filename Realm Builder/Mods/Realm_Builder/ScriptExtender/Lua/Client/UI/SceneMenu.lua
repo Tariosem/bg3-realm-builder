@@ -889,7 +889,7 @@ function SceneMenu:RenderPresetObjectInfo(parent, entInfo, presetName, presetTyp
             fpos = pos
             frot = rot
         else
-            fpos, frot = GetLocalRelativeTransform(parent, pos, rot)
+            fpos, frot = GetLocalRelativeTransformFromGuid(parent, pos, rot)
         end
 
         if not fpos or not frot then

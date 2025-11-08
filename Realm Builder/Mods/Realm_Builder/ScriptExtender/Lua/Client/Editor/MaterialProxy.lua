@@ -319,6 +319,31 @@ function ParametersSetProxy:SetParameter(paramName, value)
     return true
 end
 
+function ParametersSetProxy:SetDefaultParameter(paramName, value)
+    local typeRef = #value
+    if not typeRef or typeRef < 1 or typeRef > 4 then
+        return false
+    end
+
+    local existingType = self.TypeRefs[paramName]
+
+    -- New parameter, skipping
+    if not existingType then
+        return false
+    end
+
+    -- Type mismatch
+    if existingType and existingType ~= typeRef then
+        return false
+    end
+
+    -- Set value
+    self.Parameters[typeRef][paramName] = value
+    return true
+
+end
+
+
 --- @param paramSet RB_ParameterSet
 function ParametersSetProxy:Merge(paramSet)
     for paramType, params in pairs(paramSet) do

@@ -9,7 +9,20 @@ local readOnlyTemplateProperty = {
     TemplateId = true,
     DisplayName = true,
     Icon = true,
+    ConstructionBend = true,
+    TileSet = true,
+    Tiles = true,
+    field_100 = true,
+    field_108 = true,
 }
+
+local function copyTemplateProperties(fromTemplate, toTemplate)
+    for k,v in pairs(fromTemplate) do
+        if not readOnlyTemplateProperty[k] then 
+            toTemplate[k] = v
+        end
+    end
+end
 
 local function spawnHandler(data)
     local template = data.TemplateId
@@ -25,16 +38,12 @@ local function spawnHandler(data)
     end
 
     local templateObj = Ext.Template.GetTemplate(TakeTailTemplate(template))
-    if templateObj.TemplateType == "scenery" or templateObj.TemplateType == "tileConstruction" then
+    if templateObj.TemplateType == "scenery" or templateObj.TemplateType == "TileConstruction" then
         entInfo.IsScenery = true
-        local sceneryTemplate = templateObj --[[@as SceneryTemplate]]    
+        local sceneryTemplate = templateObj --[[@as SceneryTemplate|ConstructionTemplate]]  
         local helperATemplate = Ext.Template.GetTemplate(INVISIBLE_HELPER_SCENERY) --[[@as ItemTemplate]]
 
-        for k,v in pairs(sceneryTemplate) do
-            if readOnlyTemplateProperty[k] then goto continue end
-            helperATemplate[k] = v
-            ::continue::
-        end
+        copyTemplateProperties(sceneryTemplate, helperATemplate)
         spawnTemplate = helperATemplate.Name .. "-" .. helperATemplate.Id
     elseif templateObj.TemplateType == "prefab" then
         
@@ -222,7 +231,7 @@ NetChannel.Replicate:SetHandler(function (data, userID)
     
 end)
 
-NetChannel.SpawnPreset:SetHandler(function(data, userID)
+local function createPresetObject(data, userID, thread)
     if IsCamera(data.Parent) then data.Parent = data.Parent .. userID end
     local preset = data.PresetData
 
@@ -244,17 +253,51 @@ NetChannel.SpawnPreset:SetHandler(function(data, userID)
     end
 
     local spawneds = preset.Spawned
+    local pivotPos = {CGetPosition(data.Parent)}
+    local pivotRot = {CGetRotation(data.Parent)}
+    local pivotTransform = {
+        Translate = pivotPos,
+        RotationQuat = pivotRot,
+        Scale = {1,1,1},
+    }
 
+    local lastTemplateId = nil
     for savedguid, ent in pairs(spawneds) do
         if not ent.TemplateId then
             goto continue
         end
         local templateId = ent.TemplateId
+
+        local yielded = false
+        local templateObj = Ext.Template.GetTemplate(TakeTailTemplate(templateId))
+        if templateObj.TemplateType == "scenery" or templateObj.TemplateType == "TileConstruction" then
+            local sceneryTemplate = templateObj --[[@as SceneryTemplate]]
+            local helperATemplate = Ext.Template.GetTemplate(INVISIBLE_HELPER_SCENERY) --[[@as ItemTemplate]]
+            for k,v in pairs(sceneryTemplate) do
+                if not readOnlyTemplateProperty[k] then
+                    helperATemplate[k] = v
+                end
+            end
+            yielded = lastTemplateId ~= templateId
+            lastTemplateId = templateId
+            templateId = helperATemplate.Name .. "-" .. helperATemplate.Id
+
+            if yielded then
+                Timer:Ticks(30, function (timerID)
+                        local suc, err = coroutine.resume(thread)
+                        if not suc then
+                            Error("SpawnPreset: Coroutine error: " .. tostring(err))
+                        end
+                    end)
+                coroutine.yield() -- Wait for it to take effect
+            end
+        end
+
         local x, y, z = ent.Position[1] or nil, ent.Position[2] or nil, ent.Position[3] or nil
         local p, yaw, r, w = ent.Rotation[1] or 0, ent.Rotation[2] or 0, ent.Rotation[3] or 0, ent.Rotation[4] or 1
 
         if presetType == "Relative" then
-            local pos, rot = GetLocalRelativeTransform(data.Parent, {x, y, z}, {p, yaw, r, w})
+            local pos, rot = GetLocalRelativeTransform(pivotTransform, {x, y, z}, {p, yaw, r, w})
             if pos and rot then
                 x, y, z = pos[1], pos[2], pos[3]
                 p, yaw, r, w = rot[1], rot[2], rot[3], rot[4]
@@ -286,6 +329,17 @@ NetChannel.SpawnPreset:SetHandler(function(data, userID)
         else
             Warning("SpawnPreset: Failed to create prop with templateId: " .. tostring(templateId))
         end
+
+        if yielded then
+            Timer:Ticks(30, function (timerID)
+                    local suc, err = coroutine.resume(thread)
+                    if not suc then
+                        Error("SpawnPreset: Coroutine error: " .. tostring(err))
+                    end
+                end)
+            coroutine.yield() -- Wait for it to take effect
+        end
+
         ::continue::
     end
 
@@ -298,6 +352,14 @@ NetChannel.SpawnPreset:SetHandler(function(data, userID)
         SetCameraPosition(data.Parent, nil)
         SetCameraRotation(data.Parent, nil)
     end
+end
+
+NetChannel.SpawnPreset:SetHandler(function(data, userID)
+    local thread
+    thread = coroutine.create(function ()
+        createPresetObject(data, userID, thread)
+    end)
+    coroutine.resume(thread)
 end)
 
 local spawnedVisualizations = {}

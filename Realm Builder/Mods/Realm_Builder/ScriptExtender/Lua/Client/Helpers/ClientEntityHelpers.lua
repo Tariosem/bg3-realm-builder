@@ -44,6 +44,12 @@ function GetIcon(guid)
     end
 
     if not Ext.Entity.Get(guid) then
+        local stored = EntityStore:GetStoredData(guid)
+        if stored and stored.TemplateId then
+            local icon = GetIconForTemplateId(stored.TemplateId)
+            return CheckIcon(icon, defaultIcon)
+        end
+
         return defaultIcon
     end
 
@@ -136,6 +142,7 @@ end
 function GetDisplayNameForTemplateId(uuid)
     uuid = TakeTailTemplate(uuid)
     local template = Ext.Template.GetTemplate(uuid)
+    if template.TemplateType == "TileConstruction" then return template.Name end
     local transalatedString = template.DisplayName.Handle.Handle
     local translated = Ext.Loca.GetTranslatedString(transalatedString)
     if not translated or translated == "" or translated == transalatedString or translated == "Object" then

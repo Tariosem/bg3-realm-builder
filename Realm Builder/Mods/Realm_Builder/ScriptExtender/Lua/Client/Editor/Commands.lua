@@ -5,7 +5,7 @@
 --- @field Snap fun(targets: GUIDSTRING|GUIDSTRING[], onlyRotation: boolean|nil, onlyPosition: boolean|nil)
 Commands = Commands or {}
 
---- @param proxies RB_MovableProxy|RB_MovableProxy[]
+--- @param proxies RB_MovableProxy[]
 --- @param notRecordHistory boolean|nil
 function Commands.SetTransform(proxies, transform, notRecordHistory)
     local redoTransforms = {}

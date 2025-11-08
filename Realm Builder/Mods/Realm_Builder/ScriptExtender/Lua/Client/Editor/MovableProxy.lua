@@ -45,6 +45,13 @@ end
 function MovableProxy:GetTransform()
     if self.__getTransform then
         local transform = self:__getTransform()
+        if not transform then
+            return {
+                Translate = Vec3.new(0,0,0),
+                RotationQuat = Quat.new(0,0,0,1),
+                Scale = Vec3.new(1,1,1)
+            }
+        end
         return {
             Translate = Vec3.new(transform.Translate),
             RotationQuat = Quat.new(transform.RotationQuat),

@@ -34,12 +34,11 @@ function IconBrowser:__init(dataManager, DisplayName)
 
     self.iconButtonBgColor = config and config.ButtonBgColor or nil
     self.iconWidth = config and config.IconWidth or 75 * SCALE_FACTOR
-    self.iconPC = config and config.IconPerColumn or 18
+    self.iconPC = config and config.IconPerColumn or 10
     self.iconPR = config and config.IconPerRow or 10
     self.cellsPadding = config and config.CellsPadding or { 10 * SCALE_FACTOR, 10 * SCALE_FACTOR }
     self.browserWidth = self.iconPR * self.iconWidth + 20
     self.browserHeight = self.iconPC * self.iconWidth + 20
-    self.stickToRight = not (config and config.StickToRight == false)
     self.lastPosition = config.LastPosition or { screenWidth * 0.6, screenHeight * 0.15 }
     self.lastSize = config.LastSize or { self.browserWidth * 1.5, self.browserHeight * 1.5 }
     self.browserBackgroundColor = config and config.BackgroundColor or HexToRGBA("2D1F1F1F")
@@ -78,10 +77,6 @@ function IconBrowser:Render()
     self:RenderMiscMenu()
     self:RenderBrowserBase()
     
-
-    if self.stickToRight then
-        self.StickFunc(true)
-    end
     self.isVisible = true
 
     self:SetupInputSubs()
@@ -175,7 +170,6 @@ function IconBrowser:RenderUiConfigMenu()
     local cellsPadding = self.cellsPadding
     local iconWidth = self.iconWidth
     self.saveToConfig = self.uiParamMenu:AddButton(GetLoca("Save To Config"))
-    local stickToRight = self.uiParamMenu:AddCheckbox(GetLoca("Stick to Right"), self.stickToRight)
     local iconSizeSlider = SafeAddSliderInt(self.uiParamMenu, GetLoca("Image Size"), iconWidth, 20, 200)
     local browserWidthSlider = SafeAddSliderInt(self.uiParamMenu, GetLoca("Image Per Row"), imagePerRow, 2, 20)
     local browserHeightSlider = SafeAddSliderInt(self.uiParamMenu, GetLoca("Image Per Column"), imagePerCol, 4, 30)
@@ -187,7 +181,6 @@ function IconBrowser:RenderUiConfigMenu()
     local browserBackgroundColorEdit = self.uiParamMenu:AddColorEdit(GetLoca("Browser Background Color"))
     browserBackgroundColorEdit.Color = self.browserBackgroundColor or HexToRGBA("2D1F1F1F")
 
-
     local function getEstimatedTopBarHeight()
         local panelHeight = self.panel.LastSize[2]
         local iconsHeight = self.iconsWindow and self.iconsWindow.LastSize[2] or 300 * SCALE_FACTOR
@@ -198,48 +191,6 @@ function IconBrowser:RenderUiConfigMenu()
         self.lastPosition = self.panel.LastPosition
         self.lastSize = self.panel.LastSize
         self:SaveToConfig()
-    end
-
-    local littleOffset = 10 * SCALE_FACTOR
-    local postionBefore = { self.panel.LastPosition[1], self.panel.LastPosition[2] }
-    local sizeBefore = { self.panel.LastSize[1], self.panel.LastSize[2] }
-
-    self.StickFunc = function(bool)
-        self.stickToRight = bool
-        if self.stickToRight then
-            local screenWidth, screenHeight = GetScreenSize()
-            postionBefore = self.panel.LastPosition
-            sizeBefore = self.panel.LastSize
-            local iconsHeight = screenHeight - getEstimatedTopBarHeight()
-            if iconsHeight == screenHeight then
-                iconsHeight = screenHeight - 240 * SCALE_FACTOR
-            end
-            local finalIS = self.iconWidth
-            local finalIP = self.cellsPadding[2]
-            local finalIPC = self.iconPC or math.max(1, math.floor(iconsHeight / (finalIS + finalIP + 20 * SCALE_FACTOR)))
-            cellsPaddingSlider:OnChange()
-            browserHeightSlider.Value = ToVec4(finalIPC)
-            browserHeightSlider:OnChange()
-            browserWidthSlider:OnChange()
-            self.panel:SetPos({ screenWidth - self.browserWidth * 1.2 , -littleOffset })
-            self.panel:SetSize({ self.browserWidth * 1.2 , math.min(self.browserHeight * 1.2, screenHeight + littleOffset) })
-        else
-            if postionBefore[1] == 0 and postionBefore[2] == 0 then
-                postionBefore = self.panel.LastPosition
-            end
-            if sizeBefore[1] == 0 and sizeBefore[2] == 0 then
-                sizeBefore = self.panel.LastSize
-            end
-
-            self.panel:SetPos(postionBefore)
-            self.panel:SetSize(sizeBefore)
-        end
-        self.panel.NoMove = self.stickToRight
-        stickToRight.Checked = self.stickToRight
-    end
-
-    stickToRight.OnChange = function()
-        self.StickFunc(stickToRight.Checked)
     end
 
     iconSizeSlider.OnChange = function(value)
@@ -263,13 +214,9 @@ function IconBrowser:RenderUiConfigMenu()
         self.iconPR = ImagePerLine
         local browserWidth = ImagePerLine * ( self.iconWidth + self.cellsPadding[1] ) + 20 * SCALE_FACTOR
         self.browserWidth = browserWidth
-        if self.stickToRight then
-            local screenWidth, _ = GetScreenSize()
-            self.panel:SetPos({ screenWidth - browserWidth * 1.2 , -littleOffset })
-            self.panel:SetSize({ browserWidth * 1.2 , screenHeight + littleOffset })
-        else
-            self.panel:SetSize({ browserWidth * 1.2, self.browserHeight * 1.2 })
-        end
+
+        self.panel:SetSize({ browserWidth * 1.2, self.browserHeight * 1.2 })
+
         self.iconsContainer.Columns = ImagePerLine
         self:SetPage(1)
     end
@@ -280,13 +227,12 @@ function IconBrowser:RenderUiConfigMenu()
             ImagePerColumn = 1
         end
         self.iconPC = ImagePerColumn
-        self.browserHeight = self.iconPC * (self.iconWidth + self.cellsPadding[2]) + 40 * SCALE_FACTOR + getEstimatedTopBarHeight()
-        if self.stickToRight then
-            local _, screenHeight = GetScreenSize()
-            self.panel:SetSize({ self.browserWidth * 1.2, math.min(screenHeight + 10 * SCALE_FACTOR, self.browserHeight * 1.2) })
+        if self.iconToName then
+            self.browserHeight = self.iconPC * (48 * SCALE_FACTOR + self.cellsPadding[2]) + 40 * SCALE_FACTOR + getEstimatedTopBarHeight()
         else
-            self.panel:SetSize({ self.browserWidth * 1.2, self.browserHeight * 1.2 })
+            self.browserHeight = self.iconPC * (self.iconWidth + self.cellsPadding[2]) + 40 * SCALE_FACTOR + getEstimatedTopBarHeight()
         end
+        self.panel:SetSize({ self.browserWidth * 1.2, self.browserHeight * 1.2 })
         self:SetPage(1)
     end
 

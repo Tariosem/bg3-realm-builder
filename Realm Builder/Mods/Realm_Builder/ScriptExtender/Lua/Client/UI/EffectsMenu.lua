@@ -29,7 +29,7 @@ function EffectsMenu:Render()
         self.panel = self.parent:AddTabItem(GetLoca("Effects"))
         self.isWindow = false
     else
-        self.panel = RegisterWindow("generic", "", GetLoca("Effects Menu"), self)
+        self.panel = RegisterWindow("generic", GetLoca("Effects"), "Effects Menu", self)
         self.panel:SetSize({EFFECTSMENU_WIDTH, EFFECTSMENU_HEIGHT})
         self.isWindow = true
     end

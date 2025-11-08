@@ -36,13 +36,16 @@ end
 function MaterialTab:Render(parent)
     local sourceFileName = self.ParentNodeName
     parent = parent or self.Parent
+    self.panel = parent:AddGroup("MaterialEditorPanel##" .. self.MaterialName .. Uuid_v4())
+    local panel = self.panel
     local uuid = Uuid_v4()
-    local parentNode = parent:AddSelectable("[-] " .. sourceFileName .. "##" .. self.MaterialName .. uuid) --[[@as ExtuiSelectable ]]
-    local group = parent:AddGroup("MaterialEditorGroup##" .. self.MaterialName) -- Tree is weird with drag-and-drop, so use a Selectable + Group to simulate a collapsible tree node
+    local parentNode = panel:AddSelectable("[-] " .. sourceFileName .. "##" .. self.MaterialName .. uuid) --[[@as ExtuiSelectable ]]
+    local group = panel:AddGroup("MaterialEditorGroup##" .. self.MaterialName) -- Tree is weird with drag-and-drop, so use a Selectable + Group to simulate a collapsible tree node
     local groupIndent = AddIndent(group, 10)
     group.Visible = true
 
-    local managePopup = group:AddPopup("Manage##" .. self.MaterialName)
+    local managePopup = parent:AddPopup("Manage##" .. self.MaterialName)
+    self.ContextMenu = managePopup
     self:SetupManagePopup(managePopup)
 
     parentNode.CanDrag = true
@@ -255,12 +258,22 @@ function MaterialTab:Render(parent)
     return parentNode, group
 end
 
+function MaterialTab:ShowContextMenu()
+    if self.ContextMenu then
+        self.ContextMenu:Open()
+    end
+end
+
 function MaterialTab:ClearRefs()
     self.ParamNodeRefs = {}
     self.ParamTypeNodeRefs = {}
     self.UpdateFuncs = {}
     self.ResetFuncs = {}
     self.ParamTableRefs = {}
+    if self.copySub then
+        self.copySub:Unsubscribe()
+        self.copySub = nil
+    end
 end
 
 --- @param node ExtuiTreeParent
@@ -384,7 +397,7 @@ function MaterialTab:ResetAll()
 end
 
 function MaterialTab:ResetValue(name)
-    local resetValue = self.Editor:ResetParameter(name)
+    self.Editor:ResetParameter(name)
 end
 
 function MaterialTab:UpdateUIState()
@@ -414,16 +427,25 @@ end
 
 ---@param popup ExtuiPopup
 function MaterialTab:SetupManagePopup(popup)
-    local tt = popup:AddTable("ManageTable##" .. self.MaterialName, 1)
-    tt.BordersInnerH = true
+    local contextMenu = StyleHelpers.AddContextMenu(popup)
 
-    local row = tt:AddRow()
-
-    local applyToOthersBtn = AddSelectableButton(row:AddCell(), "Apply To Other Materials##" .. self.MaterialName, function (sel)
+    contextMenu:AddItem("Apply To Other Materials##" .. self.MaterialName, function (sel)
         self:ApplyToOthers()
+    end, "Ctrl A")
+
+    self.copySub = SubscribeKeyInput({}, function (e)
+        local ok, focus = pcall(function ()
+            return self.panel.Visible
+        end)
+        if not ok then return UNSUBSCRIBE_SYMBOL end
+        if not focus then return end
+
+        if e.Key == "A" and (e.Modifiers == "LCtrl" or e.Modifiers == "RCtrl") then
+            self:ApplyToOthers()
+        end
     end)
 
-    local matMixerBtn = AddSelectableButton(row:AddCell(), "Open Material Mixer##" .. self.MaterialName, function (sel)
+    contextMenu:AddItem("Open Material Mixer##" .. self.MaterialName, function (sel)
         local allParams = self.Editor.ParamSetProxy.Parameters
         local mixerParams = {}
         for paramType, typeParams in pairs(allParams) do
@@ -437,33 +459,29 @@ function MaterialTab:SetupManagePopup(popup)
         mixerTab:Render()
     end)
 
-    local btnReset = AddSelectableButton(row:AddCell(), "Reset All##" .. self.MaterialName, function (sel)
+    contextMenu:AddItem("Reset All##" .. self.MaterialName, function (sel)
         self:ResetAll()
-    end)
-    btnReset.DontClosePopups = true
+    end).DontClosePopups = true
 
-    local defaultMatPath = "Realm_Builder/Materials/"
-
-    local btnExport = AddSelectableButton(row:AddCell(), "Export As Material##" .. self.MaterialName, function (sel)
+    contextMenu:AddItem("Export As Material##" .. self.MaterialName, function (sel)
         local uuid = Uuid_v4()
-        local finalPath = defaultMatPath .. uuid .. ".lsx"
+        local finalPath = "Realm_Builder/Materials/" .. uuid .. ".lsx"
         local save = ResourceHelpers.BuildMaterialResource(self.Editor.Material, uuid, self.Editor.Parameters, self.ParentNodeName:gsub("%.[lL][sS][fF]$", ""))
         if save then
             Ext.IO.SaveFile(finalPath, save:Stringify())
         end
     end)
 
-    local btnExportAsPreset = AddSelectableButton(row:AddCell(), "Export As Preset##" .. self.MaterialName, function (sel)
+    contextMenu:AddItem("Export As Preset##" .. self.MaterialName, function (sel)
         local save = LSXHelpers.BuildMaterialPresetBank()
 
         local uuid = Uuid_v4()
         local preset = ResourceHelpers.BuildMaterialPresetResourceNode(self.Editor.Parameters, uuid, self.ParentNodeName:gsub("%.[lL][sS][fF]$", "") .. "_Preset")
         save:AppendChild(preset)
-        local finalPath = defaultMatPath .. uuid .. ".lsx"
+        local finalPath = "Realm_Builder/Materials/" .. uuid .. ".lsx"
 
         Ext.IO.SaveFile(finalPath, save:Stringify({ AutoFindRoot = true }))
     end)
-
 end
 
 function MaterialTab:BuildMaterialResourceNode(uuid, internalName)
@@ -676,35 +694,16 @@ end
 
 function MaterialMixerTab:SetupManagePopup(popup)
 
-    local tt = popup:AddTable("ManageTable##" .. self.MaterialName, 1)
-    tt.BordersInnerH = true
+    local contextMenu = StyleHelpers.AddContextMenu(popup)
 
-    local row = tt:AddRow()
-
-    local btnReset = AddSelectableButton(row:AddCell(), "Clear All##" .. self.MaterialName, function (sel)
-        self.ParametersSetProxy.Parameters = {
-            [1] = {},
-            [2] = {},
-            [3] = {},
-            [4] = {}
-        }
-        self:Render()
-    end)
-
-    local btnExport = AddSelectableButton(row:AddCell(), "Export As Material Preset##" .. self.MaterialName, function (sel)
+    contextMenu:AddItem("Export As Preset##" .. self.MaterialName, function (sel)
         local save = LSXHelpers.BuildMaterialPresetBank()
-
         local uuid = Uuid_v4()
         local preset = ResourceHelpers.BuildMaterialPresetResourceNode(self.ParametersSetProxy.Parameters, uuid, "MaterialMixer_Preset")
         save:AppendChild(preset)
         local finalPath = "Realm_Builder/Materials/" .. uuid .. ".lsx"
 
         Ext.IO.SaveFile(finalPath, save:Stringify({ AutoFindRoot = true }))
-    end)
-
-    local destroybtn = AddSelectableButton(row:AddCell(), "Destroy Mixer##" .. self.MaterialName, function (sel)
-        DeleteWindow(self.Parent)
-    end)
-    
+    end)    
 end
 

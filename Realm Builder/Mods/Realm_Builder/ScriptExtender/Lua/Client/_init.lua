@@ -118,6 +118,7 @@ local function PopulateAllTemplates()
     local itemCnt = 0
     local characterCnt = 0
     local sceneryCnt = 0
+    local constructionsCnt = 0
 
     local allWeaponStats = Ext.Stats.GetStats("Weapon")
     for _, statsId in pairs(allWeaponStats) do
@@ -161,8 +162,10 @@ local function PopulateAllTemplates()
             object = object --[[@as SceneryTemplate]]
             RB_SceneryManager:PopulateScenery(object)
             sceneryCnt = sceneryCnt + 1
-        elseif object.TemplateType == "trigger" then
-            
+        elseif object.TemplateType == "TileConstruction" then
+            object = object --[[@as ConstructionTemplate]]
+            RB_SceneryManager:PopulateConstruction(object)
+            constructionsCnt = constructionsCnt + 1
         end
         ::continue::
     end
@@ -170,13 +173,13 @@ local function PopulateAllTemplates()
     RB_CharacterManager.populated = true
     RB_ItemManager.populated = true
     RB_ItemManager.modCache = {}
-    return itemCnt, characterCnt, sceneryCnt
+    return itemCnt, characterCnt, sceneryCnt, constructionsCnt
 end
 
 
 local function Realm_Builder_Population()
     local now = Ext.Timer:MonotonicTime()
-    local itemCnt, characterCnt, sceneryCnt = PopulateAllTemplates()
+    local itemCnt, characterCnt, sceneryCnt, contructionCnt = PopulateAllTemplates()
     local itemsFinished = Ext.Timer:MonotonicTime()
     local effectCnt = RB_MultiEffectManager:PopulateAllEffects()
     local effectsFinished = Ext.Timer:MonotonicTime()
@@ -185,6 +188,7 @@ local function Realm_Builder_Population()
         RPrintPurple("  - " .. itemCnt .. " items populated.")
         RPrintPurple("  - " .. characterCnt .. " characters populated.")
         RPrintPurple("  - " .. sceneryCnt .. " scenery populated.")
+        RPrintPurple("  - " .. contructionCnt .. " TileConstructions populated.")
         RPrintPurple("[Realm Builder] Populating Effects took " .. (effectsFinished - itemsFinished) .. " ms for " .. effectCnt .. " effects")
     end
 end

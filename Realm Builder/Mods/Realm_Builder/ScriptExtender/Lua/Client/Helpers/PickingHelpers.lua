@@ -85,6 +85,36 @@ function CalcNDC(x, y, screenW, screenH)
 end
 
 --[[
+    Converts a 2D screen-space coordinate into a 3D world-space coordinate.
+
+    Similar to glm::unProjectZO, but only for a single depth value.
+]]
+local function Unproject(screenX, screenY, screenZ, viewMatrix, projMatrix, screenW, screenH)
+    local ndcX, ndcY = CalcNDC(screenX, screenY, screenW, screenH)
+    local clipPos = Vec4.new({ndcX, ndcY, screenZ, 1.0})
+
+    local invProj = Matrix.new(projMatrix):Inverse()
+    local invView = Matrix.new(viewMatrix):Inverse()
+
+    -- (A * B)^-1 = B^-1 * A^-1
+    local inverse = invView * invProj
+
+    local worldPos4 = inverse * clipPos
+    worldPos4 = worldPos4 / worldPos4.w
+
+    local worldPos = Vec3.new({worldPos4.x, worldPos4.y, worldPos4.z})
+    return worldPos
+end
+
+function UnprojectNear(screenX, screenY, viewMatrix, projMatrix, screenW, screenH)
+    return Unproject(screenX, screenY, 0.0, viewMatrix, projMatrix, screenW, screenH)
+end
+
+function UnprojectFar(screenX, screenY, viewMatrix, projMatrix, screenW, screenH)
+    return Unproject(screenX, screenY, 1.0, viewMatrix, projMatrix, screenW, screenH)
+end
+
+--[[
     Converts a 2D screen-space coordinate into a world-space ray.
 
     Conceptually similar to the following glm code:
@@ -159,6 +189,8 @@ function ScreenToWorldRay(cameraHandle, mouseX, mouseY, screenW, screenH)
 
     return ray
 end
+
+
 
 --[[
     Converts a 3D world-space coordinate into a 2D screen-space coordinate.

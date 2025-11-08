@@ -7,8 +7,8 @@ function SceneryBrowser:SubclassInit()
     local config = self:GetConfig()
 
     self.iconToName = true
-    self.iconPR = config.IconPerRow or 2
-    self.iconPC = config.IconPerColumn or 25
+    self.iconPR = config.IconPerRow or 1
+    self.iconPC = config.IconPerColumn or 20
     self.iconWidth = config.IconWidth or 600
 
     self.iconButtonBgColor = config.ButtonBgColor or HexToRGBA("FF615238")
@@ -32,7 +32,6 @@ function SceneryBrowser:SaveToConfig()
     CONFIG.SceneryBrowser.autoSave = self.autoSave
     CONFIG.SceneryBrowser.ButtonBgColor = self.iconButtonBgColor
     CONFIG.SceneryBrowser.BackgroundColor = self.browserBackgroundColor
-    CONFIG.SceneryBrowser.StickToRight = self.stickToRight
     CONFIG.SceneryBrowser.LastPosition = self.lastPosition
     CONFIG.SceneryBrowser.LastSize = self.lastSize
     SaveConfig("SceneryBrowser")
@@ -101,8 +100,8 @@ function SceneryBrowser:RenderIcon(entry, cell)
         if not rPopup then
             rPopup = cell:AddPopup(GetLoca("Preview Scenery"))
             rPopup.IDContext = entry.Uuid .. "RPopup" .. Uuid_v4()
-            local actTab = StyleHelpers.AddSelectionTable(rPopup, "Actions")
-            actTab:AddSelectable(GetLoca("Spawn Scenery"), function()
+            local actTab = StyleHelpers.AddContextMenu(rPopup, "Actions")
+            actTab:AddItem(GetLoca("Spawn Scenery"), function()
                 local selected = self.selectedGuid or CGetHostCharacter()
                 if not selected then return end
                 local spawnPos = {CGetPosition(selected)}
@@ -115,7 +114,7 @@ function SceneryBrowser:RenderIcon(entry, cell)
     end
 
     iconImage.CanDrag = true
-    iconImage.DragDropType = "RB_CharacterTemplate"
+    iconImage.DragDropType = "RB_SceneryTemplate"
 
     iconImage.OnDragStart = function(sel)
         sel.DragPreview:AddText(entry[self.iconTooltipName] or "Unknown")

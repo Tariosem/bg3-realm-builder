@@ -51,6 +51,16 @@ function MaterialEditor:__init(originMaterial, matSrc, paramsSrc, materialPreset
 
 end
 
+function MaterialEditor:SetDefaultParameters(params)
+    for ptype,paramsTable in pairs(params) do
+        for paramName,value in pairs(paramsTable) do
+            self.ParamSetProxy:SetDefaultParameter(paramName, value)
+        end
+    end
+
+    return true
+end
+
 --- this function return a value for a given parameter name
 --- it first checks the local changes, then preset, then original material proxy
 ---@param paramName string

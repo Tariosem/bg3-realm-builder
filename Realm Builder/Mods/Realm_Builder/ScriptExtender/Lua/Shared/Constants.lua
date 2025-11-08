@@ -33,16 +33,19 @@ for axis,texture in pairs(GIZMO_TEXTURE) do
 end
 
 INVISIBLE_HELPER_SCENERY = "3d4e8434-f972-4080-8602-66b12e2949f2"
+INVISIBLE_HELPER_PREVIEW = "9e28abea-a971-4aae-ab97-c161ed663c99"
 
-LOOP_SIGN = "cff964c0-eb22-e3a3-d112-130c0aa0c10f"
 
 RB_ICONS = {}
-RB_ICONS.Character = "RB_CHARACTER_ICON"
-RB_ICONS.Scenery = "RB_SCENERY_ICON"
-RB_ICONS.Character_Fill = "RB_CHARACTER_ICON_FILL"
-RB_ICONS.Scenery_Fill = "RB_SCENERY_ICON_FILL"
-RB_ICONS.Tree_Expanded = "RB_TREE_EXPANDED"
-RB_ICONS.Tree_Collapsed = "RB_TREE_COLLAPSED"
+RB_ICONS.Character = "RB_Character_Icon"
+RB_ICONS.Scenery = "RB_Scenery_Icon"
+RB_ICONS.Character_Fill = "RB_Character_Icon_Fill"
+RB_ICONS.Scenery_Fill = "RB_Scenery_Icon_Fill"
+RB_ICONS.Tree_Expanded = "RB_Tree_Expanded_Icon"
+RB_ICONS.Tree_Collapsed = "RB_Tree_Collapsed_Icon"
+RB_ICONS.Tree_Child = "RB_Tree_Child_Icon"
+RB_ICONS.Collection = "RB_Collection_Icon"
+RB_ICONS.Collection_Fill = "RB_Collection_Icon_Fill"
 
 --- vanilla resources
 WARNING_ICON = "PassiveFeature_Generic_Threat"

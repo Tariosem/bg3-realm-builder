@@ -143,10 +143,25 @@ local function excludeModfiers(modifs)
 end
 
 --- @param callback fun(e: SimplifiedInputEvent): any
+--- @param filterKey Keybinding?
 --- @return RBSubscription
-function SubscribeKeyAndMouse(callback)
+function SubscribeKeyAndMouse(callback, filterKey)
     local isCalling = false
     local subs = {}
+    local filterIdentifier = nil
+    if filterKey then
+        filterIdentifier = Keybinding.new(filterKey.Key, filterKey.Modifiers or {}):CreateIdentifier()
+    end
+
+    local function checkKeyBinding(e)
+        if not filterKey then
+            return true
+        end
+
+        local eventIdentifier = Keybinding.new(e.Key, e.Modifiers or {}):CreateIdentifier()
+        return eventIdentifier == filterIdentifier
+    end
+
     subs.Key = SubscribeKeyInput({}, function(e)
         if isCalling then return end
         isCalling = true
@@ -159,6 +174,11 @@ function SubscribeKeyAndMouse(callback)
             Modifiers = modifs,
             Repeat = e.Repeat,
         }
+        if not checkKeyBinding(event) then
+            isCalling = false
+            return
+        end
+        
         local returnValue = callback(event)
         isCalling = false
         if returnValue == UNSUBSCRIBE_SYMBOL then
@@ -177,6 +197,10 @@ function SubscribeKeyAndMouse(callback)
             Pressed = e.Pressed,
             Repeat = e.Clicks > 1,
         }
+        if not checkKeyBinding(event) then
+            isCalling = false
+            return
+        end
         local returnValue = callback(event)
         isCalling = false
         if returnValue == UNSUBSCRIBE_SYMBOL then

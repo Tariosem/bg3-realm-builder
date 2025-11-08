@@ -7,8 +7,8 @@ function CharacterBrowser:SubclassInit()
     local config = self:GetConfig()
 
     self.iconToName = true
-    self.iconPR = config.IconPerRow or 2
-    self.iconPC = config.IconPerColumn or 25
+    self.iconPR = config.IconPerRow or 1
+    self.iconPC = config.IconPerColumn or 20
     self.iconWidth = config.IconWidth or 600
 
     self.iconButtonBgColor = config.ButtonBgColor or HexToRGBA("FF615238")
@@ -28,7 +28,6 @@ function CharacterBrowser:SaveToConfig()
     CONFIG.CharacterBrowser.autoSave = self.autoSave
     CONFIG.CharacterBrowser.ButtonBgColor = self.iconButtonBgColor
     CONFIG.CharacterBrowser.BackgroundColor = self.browserBackgroundColor
-    CONFIG.CharacterBrowser.StickToRight = self.stickToRight
     CONFIG.CharacterBrowser.LastPosition = self.lastPosition
     CONFIG.CharacterBrowser.LastSize = self.lastSize
     SaveConfig("CharacterBrowser")
@@ -98,8 +97,8 @@ function CharacterBrowser:RenderIcon(entry, cell)
         if not rPopup then
             rPopup = cell:AddPopup(GetLoca("Character Template Preview"))
             rPopup.IDContext = entry.Uuid .. "RPopup" .. Uuid_v4()
-            local actTab = StyleHelpers.AddSelectionTable(rPopup, "Actions")
-            actTab:AddSelectable(GetLoca("Spawn Character"), function()
+            local actTab = StyleHelpers.AddContextMenu(rPopup, "Actions")
+            actTab:AddItem(GetLoca("Spawn Character"), function()
                 local selected = self.selectedGuid or CGetHostCharacter()
                 if not selected then return end
                 local spawnPos = {CGetPosition(selected)}

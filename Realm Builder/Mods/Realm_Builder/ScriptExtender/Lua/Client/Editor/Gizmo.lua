@@ -306,6 +306,7 @@ function Gizmo:CreateItem()
             })
             return UNSUBSCRIBE_SYMBOL
         end)
+
     end)
 end
 
@@ -735,6 +736,14 @@ function Gizmo:Visualize(guid)
     if not EntityExists(guid) then return end
     local pos = self.PivotPosition
     self.Visualizer:UpdateScale(pos)
+
+    for _,mode in pairs({ "Translate", "Rotate", "Scale" }) do
+        if not self.Mode == mode then
+            local gizmoGuid = self[mode]
+            self.Visualizer:HideGizmo(gizmoGuid)
+        end
+    end
+
     if self.SelectedAxis then
         for axis, _ in pairs(self.SelectedAxis) do
             self.Visualizer:HighLightGizmoAxis(axis, guid)

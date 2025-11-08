@@ -548,3 +548,100 @@ function LSXHelpers.BuildBoxTrigger(pos, rot, extents, levelName, name, uuid)
 
     return templateNode
 end
+
+--- @class SplienNode : Transform
+--- @field FOV number
+--- @field Speed number
+--- @field NodeDelay number
+--- @field CloseEnoughDistance number
+--- @field IsStraightPath boolean
+
+--- @param node Transform
+local function buildSplineNode(node)
+    local splineNode = LSXNode.new("node", { id = "Spline" })
+
+    local attrs = {
+        lsattrNode("FOV", "float", node.FOV or 60.0),
+        lsattrNode("Speed", "float", node.Speed or 1.0),
+        lsattrNode("NodeDelay", "float", node.NodeDelay or 0.0),
+        lsattrNode("CloseEnoughDistance", "float", node.CloseEnoughDistance or 3.5),
+    }
+
+    splineNode:AppendChild(LSXHelpers.ChildrenNode())
+        :AppendChild(LSXNode.new("node", { id = "Position" }))
+        :AppendChildren({
+            lsattrNode("Position", "fvec3", node.Translate),
+            lsattrNode("RotationQuat", "fvec4", node.RotationQuat or {0,0,0,1}),
+            lsattrNode("Scale", "float", node.Scale or 1.0),
+        })
+
+    splineNode:AppendChildren(attrs)
+
+    return splineNode
+end
+
+--- @param origin SplienNode
+--- @param nodes SplienNode[]
+--- @param levelName string
+--- @param name string
+--- @param uuid GUIDSTRING
+--- @return LSXNode
+function LSXHelpers.BuidlPatrolSpline(origin, nodes, levelName, name, uuid)
+    local templateNode = LSXHelpers.BuildTemplatesRegionNode()
+    local splineNode = templateNode:AppendChild(LSXNode.new("node", { id = "GameObjects" }))
+
+    local baseAttr = {
+        lsattrNode("MapKey", "FixedString", uuid),
+        lsattrNode("Flag", "int32", 1),
+        lsattrNode("LevelName", "FixedString", levelName),
+        lsattrNode("Name", "LSString", name),
+        lsattrNode("TemplateName", "FixedString", "bd0fad2c-fb16-443a-89c7-b45b462782c8"), -- PatrolSpline template
+        lsattrNode("Type", "FixedString", "Spline"),
+        lsattrNode("IsStraightPath", "bool", origin.IsStraightPath or false),    
+    }
+
+    splineNode:AppendChildren(baseAttr)
+
+    local children = splineNode:AppendChild(LSXHelpers.ChildrenNode())
+
+    local transformNode = children:AppendChild(LSXNode.new("node", { id = "Transform" }))
+    transformNode:AppendChildren({
+        lsattrNode("Position", "fvec3", origin.Translate),
+        lsattrNode("RotationQuat", "fvec4", origin.RotationQuat or {0,0,0,1}),
+        lsattrNode("Scale", "float", origin.Scale or 1.0),
+    })
+
+    local LayerList = children:AppendChild(LSXHelpers.BuildLayerListNode(levelName))
+
+    local splineNodesNode = children:AppendChild(LSXNode.new("node", { id = "Splines" }))
+    local splineChildren = splineNodesNode:AppendChild(LSXHelpers.ChildrenNode())
+    for _, node in ipairs(nodes) do
+        splineChildren:AppendChild(buildSplineNode(node))
+    end
+
+    return templateNode
+end
+
+--- @param srcUuid GUIDSTRING
+--- @param uuid GUIDSTRING
+--- @param internalName string
+--- @param modfiedParams LightTemplate
+function LSXHelpers.BuildLightTemplate(srcUuid, uuid, internalName, modfiedParams)
+    local templateNode = LSXHelpers.BuildTemplatesRegionNode()
+    local lightNode = templateNode:AppendChild(LSXNode.new("node", { id = "GameObjects" }))
+
+    local baseAttr = {
+        lsattrNode("MapKey", "FixedString", uuid),
+        lsattrNode("Name", "LSString", internalName),
+        lsattrNode("TemplateName", "FixedString", srcUuid),
+        lsattrNode("Type", "FixedString", "light"),
+        lsattrNode("ParentTemplateId", "FixedString", srcUuid),
+    }
+
+    lightNode:AppendChildren(baseAttr)
+    for paramId, paramValue in pairs(modfiedParams) do
+        lightNode:InsertChild(LSXHelpers.AttrNode(paramId, LSXHelpers.LSValueType(paramValue), paramValue), 1)
+    end
+
+    return lightNode
+end

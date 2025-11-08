@@ -12,9 +12,11 @@ Keybinding = _Class("Keybinding")
 function Keybinding:__init(key, modifiers)
     self.Key = key
     self.Modifiers = modifiers or {}
+    self.Identifier = self:CreateIdentifier()
 end
 
 function Keybinding:CreateIdentifier()
+    if self.Identifier then return self.Identifier end
     if #self.Modifiers == 0 then
         return self.Key
     end

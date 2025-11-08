@@ -106,7 +106,7 @@ function ResourceHelpers.BuildMaterialResource(srcMat, uuid, params, customName)
         lsattrNode("ID", "FixedString", uuid or srcMat),
         lsattrNode("Name", "LSString", customName or matRes.Name or "Material_" .. uuid),
         lsattrNode("SourceFile", "LSString", sourceFile),
-        lsattrNode("MaterialType", "uint8", Ext.Types.GetTypeInfo("MaterialType").EnumValues[matRes.MaterialType] or 0),
+        lsattrNode("MaterialType", "uint8", matRes.MaterialType.Value or 0),
         lsattrNode("DiffusionProfileUUID", "FixedString", matRes.DiffusionProfileUUID or ""),
     }
     resNode:AppendChildren(baseAttr)

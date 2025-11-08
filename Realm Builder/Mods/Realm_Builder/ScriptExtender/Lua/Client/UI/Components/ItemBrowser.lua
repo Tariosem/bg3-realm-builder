@@ -12,7 +12,6 @@ function ItemBrowser:SaveToConfig()
     CONFIG.ItemBrowser.BackgroundColor = self.browserBackgroundColor
     CONFIG.ItemBrowser.IconPerRow = self.iconPR
     CONFIG.ItemBrowser.CellsPadding = self.cellsPadding
-    CONFIG.ItemBrowser.StickToRight = self.stickToRight
     CONFIG.ItemBrowser.LastPosition = self.lastPosition
     CONFIG.ItemBrowser.LastSize = self.lastSize
     SaveConfig("ItemsBrowser")

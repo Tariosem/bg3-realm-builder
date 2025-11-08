@@ -1,5 +1,8 @@
 --- @class OutlinerMenu
 --- @field entityTabs table<string, EntityTab>
+--- @field focus string -- currently focused tab guid
+--- @field hotKeySubs table<string, RBSubscription>
+--- @field hoveringKey string|nil
 --- @field CollectionPopup ExtuiPopup
 --- @field EntityPopup ExtuiPopup
 OutlinerMenu = _Class("EntityMenu")
@@ -15,6 +18,8 @@ function OutlinerMenu:__init(parent)
     self.isVisible = false
     self.isWindow = false
     self.isValid = true
+    self.hoveringKey = nil
+    self.hotKeySubs = {}
     self.selectedGuids = {}
 
     self.entityTabs = {}
@@ -49,43 +54,68 @@ function OutlinerMenu:EntityDeleted(guids)
 end
 
 function OutlinerMenu:Render()
-
     if self.isAttach and self.parent then
         self.panel = self.parent:AddTabItem(GetLoca("Outliner"))
         self.isWindow = false
     else
-        self.panel = RegisterWindow("generic", "", "Props Menu", self)
+        self.panel = RegisterWindow("generic", "Outliner", "Outliner", self)
+        self.panel.Closeable = true
+        self.panel.OnClose = function()
+            self:ToggleDetach()
+        end
         self.isWindow = true
     end
 
     self:RenderMenu()
-
-    self.mainPanel = AddCollapsingTable(self.panel)
-    self.mainPanel.ToggleButton.Visible = false
-    self.mainPanel.Table.BordersInnerV = true
-
     self:RenderSideBar()
     self:RenderMainArea()
+end
+
+function OutlinerMenu:ToggleDetach()
+    self.isAttach = not self.isAttach
+    self.imageRefs = {}
+
+    for _,sub in pairs(self.hotKeySubs) do
+        sub:Unsubscribe()
+    end
+    self.hoveringKey = nil
+
+    self:Collapse()
+    self:Render()
+
+    for guid,tab in pairs(self.entityTabs) do
+        tab.parent = self.mainArea
+        if self.focus == guid then
+            tab:Refresh()
+        end
+    end
 end
 
 function OutlinerMenu:RenderMenu()
     if self.isWindow then
         self.mainMenu = self.panel:AddMainMenu()
         self.debugMenu = self.mainMenu:AddMenu(GetLoca("Debug"))
+        self.detachButton = self.mainMenu:AddMenu(GetLoca("Detach"))
     else
         local menuTable = self.panel:AddTable("PropsMenuMainMenuTable", 6)
         local menuRow = menuTable:AddRow()
         local debugCell = menuRow:AddCell()
+        local detachCell = menuRow:AddCell()
 
         local debugOpenButton = debugCell:AddSelectable(GetLoca("Debug"))
+        local detachButton = detachCell:AddSelectable(GetLoca("Detach"))
 
         self.debugMenu = debugCell:AddPopup("DebugMenu") --[[@as ExtuiPopup]]
-
+        self.detachButton = detachButton
         debugOpenButton.OnClick = function()
             --- @diagnostic disable-next-line: param-type-mismatch
             self.debugMenu:Open()
             debugOpenButton.Selected = false
         end
+    end
+
+    self.detachButton.OnClick = function()
+        self:ToggleDetach()
     end
 
     local bfDeleteAllOpe = function()
@@ -105,23 +135,12 @@ function OutlinerMenu:RenderMenu()
 end
 
 function OutlinerMenu:RenderSideBar()
-    local panel = self.mainPanel.SideBar
+    local panel = self.panel:AddGroup("OutlinerTreeView")
     local tree = EntityStore.Tree
 
-    local treeList = TreeList.new(panel, "Outliner", tree)
+    local treeList = self.propTreeList or TreeList.new(panel, "Outliner", tree)
+    treeList.parent = panel
     self.imageRefs = {}
-
-    treeList.OnDetach = function()
-        self.CollectionPopup = nil
-        self.EntityPopup = nil
-        self.mainPanel.SetSideBarWidth(0)
-    end
-
-    treeList.OnAttach = function()
-        self.CollectionPopup = nil
-        self.EntityPopup = nil
-        self.mainPanel.SetSideBarWidth(200 * SCALE_FACTOR)
-    end
 
     treeList.OnSelect = function(sel, selected)
         local arr = {}
@@ -150,9 +169,18 @@ function OutlinerMenu:RenderSideBar()
         local icon = GetIcon(propData.Guid)
 
         local image = node:AddImageButton(propData.Guid, icon, {36, 36}) --[[@as ExtuiImageButton]]
+        image.SameLine = true
 
         local selectable = node:AddSelectable(displayName .. "##" .. key) --[[@as ExtuiSelectable]]
         self:SetupLeaf(selectable, key, node)
+
+        selectable.OnHoverEnter = function()
+            self.hoveringKey = key
+        end
+
+        selectable.OnHoverLeave = function()
+            self.hoveringKey = nil
+        end
     
         self.imageRefs[key] = image
         image.Tint = propData.IconTintColor or {1,1,1,1}
@@ -189,6 +217,14 @@ function OutlinerMenu:RenderSideBar()
         local treeSelectable = node:AddSelectable(key) --[[@as ExtuiSelectable]]
 
         local popup = node:AddPopup("TreeRightClickPopup" .. key)
+
+        treeSelectable.OnHoverEnter = function()
+            self.hoveringKey = key
+        end
+
+        treeSelectable.OnHoverLeave = function()
+            self.hoveringKey = nil
+        end
 
         self:SetupTree(treeSelectable, key, node)
 
@@ -240,12 +276,6 @@ function OutlinerMenu:RenderSideBar()
             local originalDisplayName = isEntity.DisplayName
             local actualName = EntityStore:RegisterDisplayName(newName, key, originalDisplayName)
             selectable.Label = actualName
-            if self.entityTabs[key] then
-                local tab = self.entityTabs[key]
-                if tab.isVisible then
-                    tab:Refresh()
-                end
-            end
         else
             tree:Rename(key, newName)
         end
@@ -253,7 +283,10 @@ function OutlinerMenu:RenderSideBar()
 
     treeList:Render()
 
-    self.propTreeList = treeList   
+    self.propTreeList = treeList
+
+    self:SetupSelectablePopup()
+    self:SetupCollectionSelectablePopup()
 end
 
 function OutlinerMenu:SetupLeaf(sel, key, node)
@@ -327,12 +360,9 @@ function OutlinerMenu:SetupSelectablePopup()
     self.EntityPopup = self.propTreeList.panel:AddPopup("PropRightClickPopup") --[[@as ExtuiPopup]]
     local tree = EntityStore.Tree
 
-    local ttable = self.EntityPopup:AddTable("PropRightClickPopupTable", 1) --[[@as ExtuiTable]]
-    ttable.BordersInnerH = true
+    local contextMenu = StyleHelpers.AddContextMenu(self.EntityPopup)
 
-    local row = ttable:AddRow() --[[@as ExtuiTableRow]]
-
-    local selectInTransformEditor = AddSelectableButton(row:AddCell(), GetLoca("Select"), function()
+    local function select()
         if not(self.selectedGuids and #self.selectedGuids > 0) then return end
 
         local map = {}
@@ -346,9 +376,9 @@ function OutlinerMenu:SetupSelectablePopup()
         end
         
         RB_GLOBALS.TransformEditor:Select(proxies)
-    end)
+    end
 
-    local deleteButton = AddSelectableButton(row:AddCell(), GetLoca("Delete"), function()
+    local function delete()
         if not(self.selectedGuids and #self.selectedGuids > 0) then return end
         
         local deleteMes = ""
@@ -371,10 +401,9 @@ function OutlinerMenu:SetupSelectablePopup()
                 NetChannel.Delete:SendToServer({ Guid = guids })
             end
         )
-    end)
-    ApplyDangerSelectableStyle(deleteButton)
+    end
 
-    local hideButton = AddSelectableButton(row:AddCell(), GetLoca("Hide/Show"), function()
+    local function hideAndShow()
         if not(self.selectedGuids and #self.selectedGuids > 0) then return end
 
         for _, guid in ipairs(self.selectedGuids) do
@@ -391,10 +420,14 @@ function OutlinerMenu:SetupSelectablePopup()
             prop.Visible = not prop.Visible
             ::continue::
         end
-        self:UpdateList()
-    end)
+        for _, guid in ipairs(self.selectedGuids) do
+            if self.imageRefs and self.imageRefs[guid] and self.imageRefs[guid].UserData and self.imageRefs[guid].UserData.UpdateAlpha then
+                self.imageRefs[guid].UserData.UpdateAlpha()
+            end
+        end
+    end
 
-    local groupButton = AddSelectableButton(row:AddCell(), GetLoca("Group"), function()
+    local function group()
         if not(self.selectedGuids and #self.selectedGuids > 0) then return end
         local baseName = GetLoca("New Collection")
         local name = baseName
@@ -410,10 +443,63 @@ function OutlinerMenu:SetupSelectablePopup()
         self.propTreeList:ClearSelection()
         self.selectedGuids = {}
         self:UpdateList()
-    
-    end)
+    end
 
-    self.EntityPopup:Open()
+    --- @type RB_ContextItem[]
+    local context = {
+        {
+            Label = GetLoca("Select"),
+            OnClick = select,
+            Hint = "Enter",
+            HotKey = {
+                Key = "RETURN",
+            }
+        },
+        {
+            Label = GetLoca("Hide/Show"),
+            OnClick = hideAndShow,
+            Hint = "Ctrl H",
+            HotKey = {
+                Key = "H",
+                Modifiers = {"CTRL"}
+            }
+        },
+        {
+            Label = GetLoca("Group into Collection"),
+            OnClick = group,
+            Hint = "Ctrl G",
+            HotKey = {
+                Key = "G",
+                Modifiers = {"CTRL"}
+            }
+        },
+        {
+            Label = GetLoca("Delete"),
+            OnClick = delete,
+            Hint = "Del",
+            Danger = true,
+            HotKey = {
+                Key = "DEL",
+            }
+        },
+    }
+
+    for _, item in ipairs(context) do
+        local selectable = contextMenu:AddItem(item.Label, item.OnClick, item.Hint)
+        if item.Danger then
+            ApplyDangerSelectableStyle(selectable)
+        end
+
+        if item.HotKey then
+            self.hotKeySubs[item.Label] = SubscribeKeyAndMouse(function (e)
+                local focus = self.hoveringKey ~= nil
+                if not focus then return end
+                if not e.Pressed then return end
+
+                item.OnClick(selectable)
+            end, item.HotKey)
+        end
+    end
 end
 
 function OutlinerMenu:SetupCollectionSelectablePopup()
@@ -422,12 +508,10 @@ function OutlinerMenu:SetupCollectionSelectablePopup()
     self.CollectionPopup = self.propTreeList.panel:AddPopup("CollectionRightClickPopup") --[[@as ExtuiPopup]]
     local tree = EntityStore.Tree
 
-    local ttable = self.CollectionPopup:AddTable("CollectionRightClickPopupTable", 1) --[[@as ExtuiTable]]
-    ttable.BordersInnerH = true
-
-    local row = ttable:AddRow() --[[@as ExtuiTableRow]]
+    local contextMenu = StyleHelpers.AddContextMenu(self.CollectionPopup)
 
     local function collectChildGuids(node, guids)
+        if not node then return guids end
         for childKey,v in pairs(node) do
             if tree:IsLeaf(childKey) then
                 table.insert(guids, childKey)
@@ -441,8 +525,8 @@ function OutlinerMenu:SetupCollectionSelectablePopup()
         return guids
     end
 
-    local hideShowBtn = AddSelectableButton(row:AddCell(), GetLoca("Hide/Show Collection"), function()
-        local targetKey = self.selectedTree
+    local function hideAndShow()
+        local targetKey = self.selectedTree or self.hoveringKey
         if not targetKey or tree:IsLeaf(targetKey) then return end
 
         local root = tree:Find(targetKey)
@@ -464,11 +548,11 @@ function OutlinerMenu:SetupCollectionSelectablePopup()
         self.propTreeList:ClearSelection()
         self.selectedGuids = {}
         self:UpdateList()
-    end)
+    end
 
-    local deleteButton = AddSelectableButton(row:AddCell(), GetLoca("Delete Collection"), function()
+    local function deleteCollection()
         -- Deleting a collection only deletes the grouping, not the entities within
-        local targetKey = self.selectedTree
+        local targetKey = self.selectedTree or self.hoveringKey
         if not targetKey or tree:IsLeaf(targetKey) then return end
 
         tree:RemoveButKeepChildren(targetKey)
@@ -476,11 +560,10 @@ function OutlinerMenu:SetupCollectionSelectablePopup()
         self.propTreeList:ClearSelection()
         self.selectedGuids = {}
         self:UpdateList()
-    end)
-    ApplyDangerSelectableStyle(deleteButton)
+    end
 
-    local exportBtn = AddSelectableButton(row:AddCell(), GetLoca("Export Collection LSX"), function()
-        local targetKey = self.selectedTree
+    local function openExportMenu()
+        local targetKey = self.selectedTree or self.hoveringKey
         if not targetKey or tree:IsLeaf(targetKey) then return end
 
         local childs = tree:Find(targetKey)
@@ -488,13 +571,54 @@ function OutlinerMenu:SetupCollectionSelectablePopup()
 
         local copy = EntityStore:GetExportCopy(guids)
         TemplateExportMenu.new(copy)
-    end)
+    end
 
-    self.CollectionPopup:Open()
+    --- @type RB_ContextItem[]
+    local context = {
+        {
+            Label = GetLoca("Hide/Show All in Collection"),
+            OnClick = hideAndShow,
+            Hint = "Ctrl H",
+            HotKey = {
+                Key = "H",
+                Modifiers = {"CTRL"}
+            }
+        },
+        {
+            Label = GetLoca("Delete Collection"),
+            OnClick = deleteCollection,
+            Hint = "Del",
+            Danger = true,
+            HotKey = {
+                Key = "DEL",
+            }
+        },
+        {
+            Label = GetLoca("Export Collection"),
+            OnClick = openExportMenu,
+        },
+    }
+
+    for _, item in ipairs(context) do
+        local selectable = contextMenu:AddItem(item.Label, item.OnClick, item.Hint)
+        if item.Danger then
+            ApplyDangerSelectableStyle(selectable)
+        end
+
+        if item.HotKey then
+            self.hotKeySubs[item.Label] = SubscribeKeyAndMouse(function (e)
+                local focus = self.hoveringKey ~= nil
+                if not focus then return end
+                if not e.Pressed then return end
+
+                item.OnClick(selectable)
+            end, item.HotKey)
+        end
+    end
 end
 
 function OutlinerMenu:RenderMainArea()
-    local panel = self.mainPanel.MainArea
+    local panel = self.panel:AddGroup("OutlinerMainArea")
 
     self.mainArea = panel
 end
@@ -511,10 +635,6 @@ function OutlinerMenu:CreateEntityTab(ent, opts)
     end
 
     if entityTab then
-        entityTab.RequestUpdate = function()
-            self:UpdateList()
-        end
-
         entityTab.OnChange = function()
             if not entityTab.isValid then return end
 
@@ -524,8 +644,8 @@ function OutlinerMenu:CreateEntityTab(ent, opts)
         end
 
         entityTab.OnAttach = function()
-            if self.presentingProp and self.presentingProp ~= ent.Guid and self.entityTabs[self.presentingProp] then
-                local tab = self.entityTabs[self.presentingProp]
+            if self.focus and self.focus ~= ent.Guid and self.entityTabs[self.focus] then
+                local tab = self.entityTabs[self.focus]
                 tab.isAttach = false
                 if not tab.isWindow then
                     tab:Collapsed()
@@ -542,14 +662,14 @@ end
 
 function OutlinerMenu:FocusTab(guid, doDetach)
     local entityTab = self.entityTabs[guid]
-    if guid == self.presentingProp and entityTab.isVisible == false then
-        self.presentingProp = nil
+    if guid == self.focus and entityTab.isVisible == false then
+        self.focus = nil
     end
-    if guid == self.presentingProp and not doDetach then
+    if guid == self.focus and not doDetach then
         return
     end
-    if self.presentingProp and self.entityTabs[self.presentingProp] then
-        local tab = self.entityTabs[self.presentingProp]
+    if self.focus and self.entityTabs[self.focus] then
+        local tab = self.entityTabs[self.focus]
         tab.isAttach = false
         if not tab.isWindow then
             tab:Collapsed()
@@ -564,7 +684,7 @@ function OutlinerMenu:FocusTab(guid, doDetach)
         else
             entityTab:Refresh()
         end
-        self.presentingProp = guid
+        self.focus = guid
     end
 end
 
@@ -584,6 +704,7 @@ function OutlinerMenu:FocusEntityVisualTab(guid)
 end
 
 function OutlinerMenu:UpdateList()
+    self.imageRefs = {}
     self.propTreeList:RenderList()
 end
 
@@ -592,6 +713,30 @@ function OutlinerMenu:UpdateSelectableAlpha(guid)
         local image = self.imageRefs[guid]
         image.UserData.UpdateAlpha()
     end
+end
+
+function OutlinerMenu:Collapse()
+    if self.propTreeList then
+        self.propTreeList:Collapsed()
+    end
+
+    if self.focus and self.entityTabs[self.focus] then
+        local tab = self.entityTabs[self.focus]
+        if not tab.isWindow then
+            tab:Collapsed()
+        end
+    end
+
+    if self.isWindow and self.panel then
+        DeleteWindow(self.panel)
+        self.panel = nil
+        self.isVisible = false
+    elseif self.panel then
+        self.panel:Destroy()
+        self.panel = nil
+        self.isVisible = false
+    end
+
 end
 
 function OutlinerMenu:Add(parent)

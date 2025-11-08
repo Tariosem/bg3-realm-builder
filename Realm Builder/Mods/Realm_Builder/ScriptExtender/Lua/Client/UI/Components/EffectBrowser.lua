@@ -16,7 +16,6 @@ function EffectBrowser:SaveToConfig()
     CONFIG.EffectBrowser.autoSave = self.autoSave
     CONFIG.EffectBrowser.ButtonBgColor = self.iconButtonBgColor
     CONFIG.EffectBrowser.BackgroundColor = self.browserBackgroundColor
-    CONFIG.EffectBrowser.StickToRight = self.stickToRight
     CONFIG.EffectBrowser.LastPosition = self.lastPosition
     CONFIG.EffectBrowser.LastSize = self.lastSize
     SaveConfig("EffectsBrowser")

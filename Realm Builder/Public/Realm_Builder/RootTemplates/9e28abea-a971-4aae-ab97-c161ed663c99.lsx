@@ -5,8 +5,8 @@
 		<node id="Templates">
 			<children>
 				<node id="GameObjects">
-					<attribute id="MapKey" type="FixedString" value="3d4e8434-f972-4080-8602-66b12e2949f2" />
-					<attribute id="Name" type="LSString" value="RB_Helper_Invisible_Scenery" />
+					<attribute id="MapKey" type="FixedString" value="9e28abea-a971-4aae-ab97-c161ed663c99" />
+					<attribute id="Name" type="LSString" value="RB_Helper_Invisible_Preview" />
 					<attribute id="LevelName" type="FixedString" value="" />
 					<attribute id="Type" type="FixedString" value="item" />
 					<attribute id="ParentTemplateId" type="FixedString" value="06f96d65-0ee5-4ed5-a30a-92a3bfe3f708" />

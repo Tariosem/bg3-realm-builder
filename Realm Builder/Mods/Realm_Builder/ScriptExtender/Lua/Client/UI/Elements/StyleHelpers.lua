@@ -646,21 +646,45 @@ function AddSelectableButton(parent, label, onClick)
     return button
 end
 
---- @class SelectionTableProxy : ExtuiTable
---- @field AddSelectable fun(self: SelectionTableProxy, label: string, onClick: fun(selectable: ExtuiSelectable)): ExtuiSelectable
+--- @class RB_ContextMenu : ExtuiTable
+--- @field AddItem fun(self: RB_ContextMenu, label: string, onClick: fun(selectable: ExtuiSelectable), hint: string?): ExtuiSelectable
+--- @field AddMenu fun(self: RB_ContextMenu, label: string): RB_ContextMenu
+
+--- @class RB_ContextItem
+--- @field Label string
+--- @field OnClick fun(selectable: ExtuiSelectable)
+--- @field Hint string?
+--- @field HotKey Keybinding
 
 ---@param parent ExtuiTreeParent
----@return SelectionTableProxy
-function StyleHelpers.AddSelectionTable(parent)
+---@return RB_ContextMenu
+function StyleHelpers.AddContextMenu(parent)
     local tab = parent:AddTable("SelectionTable##" .. Uuid_v4(), 1) --[[@as ExtuiTable]]
     tab.BordersInnerH = true
+    tab.ColumnDefs[1] = { WidthStretch = true }
 
     local row = tab:AddRow() --[[@as ExtuiTableRow]]
 
     local tabProxy = {
-        AddSelectable = function(_, label, onClick)
-            local cell = row:AddCell()
-            local selectable = cell:AddSelectable(label)
+        AddItem = function(_, label, onClick, hint)
+            local innerCell = row:AddCell()
+            local innerTable = innerCell:AddTable("InnerTable##" .. Uuid_v4(), 2) --[[@as ExtuiTable]]
+            innerTable.ColumnDefs[1] = { WidthStretch = true }
+            innerTable.ColumnDefs[2] = { WidthFixed = true , Width = 80 * SCALE_FACTOR }
+            innerTable.ColumnDefs[3] = { WidthFixed = true }
+            local innerRow = innerTable:AddRow() --[[@as ExtuiTableRow]]
+            local cell = innerRow:AddCell()
+            local spacer = innerRow:AddCell()
+            local hintCell = innerRow:AddCell()
+            if hint and hint ~= "" then
+                local text = hintCell:AddText(hint)
+                text:SetStyle("Alpha", 0.6)
+                text:SetColor("Text", HexToRGBA("FFAAAAAA"))
+                text.Font = "Tiny"
+            end
+            local selectable = cell:AddSelectable(label) --[[@as ExtuiSelectable]]
+            selectable.Font = "Medium"
+            selectable.SpanAllColumns = true
             selectable.OnClick = function(s)
                 s.Selected = false
                 if onClick then
@@ -668,6 +692,11 @@ function StyleHelpers.AddSelectionTable(parent)
                 end
             end
             return selectable
+        end,
+        AddMenu = function (_, label)
+            local cell = row:AddCell()
+            local menu = cell:AddMenu(label)
+            return StyleHelpers.AddContextMenu(menu)
         end
     }
 
@@ -683,9 +712,12 @@ function StyleHelpers.AddSelectionTable(parent)
     return tabProxy
 end
 
+--- @class AttrTableProxy : ExtuiTable
+--- @field AddNewLine fun(self: AttrTableProxy): ExtuiTableCell, ExtuiTableCell
+
 ---@param parent ExtuiTreeParent
 ---@param contents table<string, string>
----@return ExtuiTable
+---@return AttrTableProxy
 function StyleHelpers.AddReadOnlyAttrTable(parent, contents)
     local tab = parent:AddTable("ReadOnlyAttrTable##" .. Uuid_v4(), 2) --[[@as ExtuiTable]]
     tab.BordersInner = true
@@ -705,7 +737,22 @@ function StyleHelpers.AddReadOnlyAttrTable(parent, contents)
         input.AutoSelectAll = true
     end
 
-    return tab
+    local tabProxy = {
+        AddNewLine = function()
+            return row:AddCell(), row:AddCell()
+        end
+    }
+    
+    setmetatable(tabProxy, {
+        __index = function(_, k)
+            return tab[k]
+        end,
+        __newindex = function(_, k, v)
+            tab[k] = v
+        end
+    })
+
+    return tabProxy
 end
 
 function SetWarningBorder(extui)

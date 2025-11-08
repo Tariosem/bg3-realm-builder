@@ -256,12 +256,158 @@ end
 -- From https://github.com/AtilioA/BG3-MCM/blob/main/Mod%20Configuration%20Menu/Mods/BG3MCM/ScriptExtender/Lua/Shared/Helpers/Keybindings/KeyPresentationMapping.lua
 
 
-Enums.SimplifiedInputCode = Enums.SDLScanCode
-Enums.SimplifiedInputCode.LMB = "LMB"
-Enums.SimplifiedInputCode.MMB = "MMB"
-Enums.SimplifiedInputCode.RMB = "RMB"
+--- @enum SimplifiedInputCode
+Enums.SimplifiedInputCode = {
+    -- Modifiers
+    LALT           = "LALT",
+    RALT           = "RALT",
+    LCTRL          = "LCTRL",
+    RCTRL          = "RCTRL",
+    LSHIFT         = "LSHIFT",
+    RSHIFT         = "RSHIFT",
+    LGUI           = "LGUI",
+    RGUI           = "RGUI",
+    CAPSLOCK       = "CAPSLOCK",
+    NUMLOCKCLEAR   = "NUMLOCKCLEAR",
+    SCROLLLOCK     = "SCROLLLOCK",
 
---- @enum SimplifiedInputCode 
+    -- Directional / Navigation
+    LEFT           = "LEFT",
+    RIGHT          = "RIGHT",
+    UP             = "UP",
+    DOWN           = "DOWN",
+    HOME           = "HOME",
+    END            = "END",
+
+    PAGEUP         = "PAGEUP",
+    PAGEDOWN       = "PAGEDOWN",
+    INSERT         = "INSERT",
+    DELETE         = "DELETE",
+    DEL            = "DEL",
+
+    -- Function Keys
+    F1             = "F1",
+    F2             = "F2",
+    F3             = "F3",
+    F4             = "F4",
+    F5             = "F5",
+    F6             = "F6",
+    F7             = "F7",
+    F8             = "F8",
+    F9             = "F9",
+    F10            = "F10",
+    F11            = "F11",
+    F12            = "F12",
+    F13            = "F13",
+    F14            = "F14",
+    F15            = "F15",
+    F16            = "F16",
+    F17            = "F17",
+    F18            = "F18",
+    F19            = "F19",
+    F20            = "F20",
+    F21            = "F21",
+    F22            = "F22",
+    F23            = "F23",
+    F24            = "F24",
+
+    -- Alphanumeric Keys
+    A              = "A",
+    B              = "B",
+    C              = "C",
+    D              = "D",
+    E              = "E",
+    F              = "F",
+    G              = "G",
+    H              = "H",
+    I              = "I",
+    J              = "J",
+    K              = "K",
+    L              = "L",
+    M              = "M",
+    N              = "N",
+    O              = "O",
+    P              = "P",
+    Q              = "Q",
+    R              = "R",
+    S              = "S",
+    T              = "T",
+    U              = "U",
+    V              = "V",
+    W              = "W",
+    X              = "X",
+    Y              = "Y",
+    Z              = "Z",
+
+    -- Punctuation and Symbols
+    BACKSLASH      = "BACKSLASH",
+    COMMA          = "COMMA",
+    PERIOD         = "PERIOD",
+    MINUS          = "MINUS",
+    EQUALS         = "EQUALS",
+    SEMICOLON      = "SEMICOLON",
+    APOSTROPHE     = "APOSTROPHE",
+    LEFTBRACKET    = "LEFTBRACKET",
+    RIGHTBRACKET   = "RIGHTBRACKET",
+    GRAVE          = "GRAVE",
+    SLASH          = "SLASH",
+    NONUSBACKSLASH = "NONUSBACKSLASH",
+
+    -- Numbers
+    NUM_0          = "NUM_0",
+    NUM_1          = "NUM_1",
+    NUM_2          = "NUM_2",
+    NUM_3          = "NUM_3",
+    NUM_4          = "NUM_4",
+    NUM_5          = "NUM_5",
+    NUM_6          = "NUM_6",
+    NUM_7          = "NUM_7",
+    NUM_8          = "NUM_8",
+    NUM_9          = "NUM_9",
+
+    -- Special Keys
+    RETURN         = "RETURN",
+    ESCAPE         = "ESCAPE",
+    SPACE          = "SPACE",
+    TAB            = "TAB",
+    BACKSPACE      = "BACKSPACE",
+    PRINTSCREEN    = "PRINTSCREEN",
+    PAUSE          = "PAUSE",
+    APPLICATION    = "APPLICATION",
+
+    -- Some AC keys (Application Control keys)
+    AC_BACK        = "AC_BACK",
+    AC_BOOKMARKS   = "AC_BOOKMARKS",
+    AC_FORWARD     = "AC_FORWARD",
+    AC_HOME        = "AC_HOME",
+    AC_REFRESH     = "AC_REFRESH",
+    AC_SEARCH      = "AC_SEARCH",
+    AC_STOP        = "AC_STOP",
+
+    -- Keypad keys (commonly prefixed with KP_)
+    KP_0           = "KP_0",
+    KP_1           = "KP_1",
+    KP_2           = "KP_2",
+    KP_3           = "KP_3",
+    KP_4           = "KP_4",
+    KP_5           = "KP_5",
+    KP_6           = "KP_6",
+    KP_7           = "KP_7",
+    KP_8           = "KP_8",
+    KP_9           = "KP_9",
+    KP_ENTER       = "KP_ENTER",
+    KP_PLUS        = "KP_PLUS",
+    KP_MINUS       = "KP_MINUS",
+    KP_MULTIPLY    = "KP_MULTIPLY",
+    KP_DIVIDE      = "KP_DIVIDE",
+    KP_PERIOD      = "KP_PERIOD",
+    KP_EQUALS      = "KP_EQUALS",
+
+    LMB            = "LMB",
+    RMB            = "RMB",
+    MMB            = "MMB",
+}
+
 Enums.InputCodeToPresentation = {
     -- Modifiers
     LALT           = "Left Alt",

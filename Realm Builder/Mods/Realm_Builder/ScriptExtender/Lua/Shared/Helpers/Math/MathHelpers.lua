@@ -223,7 +223,7 @@ end
 --- @param rotOffset number[]
 --- @return Vec3|nil finalPosition
 --- @return Quat|nil finalRotation
-function GetLocalRelativeTransform(parentUuid, posOffset, rotOffset)
+function GetLocalRelativeTransformFromGuid(parentUuid, posOffset, rotOffset)
     if not parentUuid then
         Error("Missing parent UUID")
         return nil, nil
@@ -231,6 +231,31 @@ function GetLocalRelativeTransform(parentUuid, posOffset, rotOffset)
 
     local px, py, pz = CGetPosition(parentUuid)
     local pqx, pqy, pqz, pqw = GetQuatRotation(parentUuid)
+
+    if not px or not py or not pz or not pqx or not pqy or not pqz or not pqw then
+        --Error("Failed to get parent position or rotation")
+        return nil, nil
+    end
+
+    return GetLocalRelativeTransform(
+        {
+            Translate = {px, py, pz},
+            RotationQuat = {pqx, pqy, pqz, pqw},
+            Scale = {1,1,1},
+        },
+        posOffset,
+        rotOffset
+    )
+end
+
+--- @param transfrom Transform
+--- @param posOffset Vec3
+--- @param rotOffset Quat
+--- @return Vec3|nil finalPosition
+--- @return Quat|nil finalRotation
+function GetLocalRelativeTransform(transfrom, posOffset, rotOffset)
+    local px, py, pz = transfrom.Translate[1], transfrom.Translate[2], transfrom.Translate[3]
+    local pqx, pqy, pqz, pqw = transfrom.RotationQuat[1], transfrom.RotationQuat[2], transfrom.RotationQuat[3], transfrom.RotationQuat[4]
 
     if not px or not py or not pz or not pqx or not pqy or not pqz or not pqw then
         --Error("Failed to get parent position or rotation")

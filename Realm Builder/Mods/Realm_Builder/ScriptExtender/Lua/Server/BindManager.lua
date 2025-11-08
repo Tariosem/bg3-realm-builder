@@ -226,7 +226,7 @@ function BindManager:HandleNotFollowParent(child, parent, store)
 end
 
 function BindManager:HandleFollowParent(child, parent, store)
-    local finalPos, finalRot = GetLocalRelativeTransform(parent, store.RelativePosition, store.RelativeRotation)
+    local finalPos, finalRot = GetLocalRelativeTransformFromGuid(parent, store.RelativePosition, store.RelativeRotation)
     
     if not finalPos or not finalRot then
         return false

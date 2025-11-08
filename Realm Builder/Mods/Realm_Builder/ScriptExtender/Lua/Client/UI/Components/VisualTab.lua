@@ -63,7 +63,7 @@ function VisualTab:__init(guid, displayName, parent, templateName)
 
     if not templateName then
         NetChannel.GetTemplate:RequestToServer({Guid = self.guid}, function (response)
-            if response.Success and response.Template then
+            if response.Template then
                 if IsUuid(TakeTail(response.Template, 36)) then
                     response.Template = TrimTail(response.Template, 37)
                 end
@@ -298,6 +298,7 @@ function VisualTab:RenderPresetsCell()
 
     resetAllButton.OnClick = function ()
         Timer:Ticks(10, function ()
+            local entity = Ext.Entity.Get(self.guid) --[[@as EntityHandle]]
             local isChara = CIsCharacter(self.guid)
 
             for key, matTab in pairs(self.Materials) do
@@ -310,12 +311,14 @@ function VisualTab:RenderPresetsCell()
                 matTab:UpdateUIState()
             end
 
-            NetChannel.Replicate:SendToServer({
-                Guid = self.guid,
-                Field = "GameObjectVisual",
-            })
+            if isChara then
+                NetChannel.Replicate:SendToServer({
+                    Guid = self.guid,
+                    Field = "GameObjectVisual",
+                })
+            end
 
-            if not CIsCharacter(self.guid) then
+            if not isChara then
                 for key, func in pairs(self.resetFuncs) do
                     func()
                 end
@@ -409,6 +412,7 @@ function VisualTab:RenderAttachmentSection()
         self.attachmentsHeader = self.panel:AddCollapsingHeader(GetLoca("Attachments"))
     end
 
+    local overrideCharacterParams = {} --[[@as RB_ParameterSet]]
     if CIsCharacter(self.guid) and (entity.CharacterCreationAppearance or entity.AppearanceOverride) then
         local cca = entity.CharacterCreationAppearance or entity.AppearanceOverride.Visual or {}
         local ccaPresetgroup = self.attachmentsHeader:AddTree(GetLoca("Character Creation Material Presets"))
@@ -419,23 +423,41 @@ function VisualTab:RenderAttachmentSection()
             EyeColor = cca.EyeColor,
             LeftEyeColor = cca.SecondEyeColor,
         }
+        local colorTypes = {
+            SkinColor = "CharacterCreationSkinColor",
+            HairColor = "CharacterCreationHairColor",
+            EyeColor = "CharacterCreationEyeColor",
+            LeftEyeColor = "CharacterCreationEyeColor",
+        }
+        local colorOrder = {
+            "EyeColor",
+            "LeftEyeColor",
+            "HairColor",
+            "SkinColor",
+        }
 
-        ccaPresetgroup.OnHoverEnter = function()
+        for _,colorIndex in ipairs(colorOrder) do
+            local colorType = colorIndex
+            local resUuid = allColors[colorType]
+            if not resUuid or resUuid == GUID_NULL then goto continue end
+            local res = Ext.StaticData.Get(resUuid, colorTypes[colorType]) --[[@as ResourceCharacterCreationColor]]
+            local matPresetRes = MaterialPresetProxy.new(res.MaterialPresetUUID)
+            if not matPresetRes then goto continue end
+            for ptype, params in pairs(matPresetRes.Parameters) do
+                for paramName, value in pairs(params) do
+                    if colorIndex == "LeftEyeColor" then
+                        paramName = paramName .. "_L"
+                    end
+                    overrideCharacterParams[ptype] = overrideCharacterParams[ptype] or {}
+                    if not overrideCharacterParams[ptype][paramName] then
+                        overrideCharacterParams[ptype][paramName] = value
+                    end
+                end
+            end
+            ::continue::
+        end
 
-            local colorTypes = {
-                SkinColor = "CharacterCreationSkinColor",
-                HairColor = "CharacterCreationHairColor",
-                EyeColor = "CharacterCreationEyeColor",
-                LeftEyeColor = "CharacterCreationEyeColor",
-            }
-
-            local colorOrder = {
-                "EyeColor",
-                "LeftEyeColor",
-                "HairColor",
-                "SkinColor",
-            }
-            
+        ccaPresetgroup.OnHoverEnter = function() 
             local twoColTable = ccaPresetgroup:AddTable("CCAPresetsTable", 2)
             local row = twoColTable:AddRow()
             for _, ctype in ipairs(colorOrder) do
@@ -451,6 +473,7 @@ function VisualTab:RenderAttachmentSection()
                 ::continue::
             end
 
+        
             ccaPresetgroup.OnHoverEnter = nil
         end
 
@@ -473,24 +496,6 @@ function VisualTab:RenderAttachmentSection()
             local modelName = obj.Renderable and obj.Renderable.Model and obj.Renderable.Model.Name or "Unknown Model"
             local objToggle = attachNode:AddSelectable("[+] " .. modelName .. "##" .. tostring(attIndex) .. "_" .. tostring(descIndex))
             local objNode = AddIndent(attachNode):AddGroup("ObjectDescGroup##" .. tostring(attIndex) .. "_" .. tostring(descIndex))
-            objNode.Visible = false
-
-            objToggle.OnClick = function (sel)
-                objToggle.Selected = false
-                objNode.Visible = not objNode.Visible
-
-                sel.Label = (objNode.Visible and "[-] " or "[+] ") .. modelName .. "##" .. tostring(attIndex) .. "_" .. tostring(descIndex)
-            end
-
-            local utilisPopup = attachNode:AddPopup(GetLoca("Utilities") .. "##UtilisPopup" .. tostring(attIndex) .. "_" .. tostring(descIndex))
-
-            local utilisTable = utilisPopup:AddTable("UtilitiesTable", 1)
-            local utilisRow = utilisTable:AddRow()
-            utilisTable.BordersInnerH = true
-
-            objToggle.OnRightClick = function ()
-                utilisPopup:Open()
-            end
 
             local matName = obj.Renderable.ActiveMaterial.Material.Name
             local function getliveMat()
@@ -529,7 +534,6 @@ function VisualTab:RenderAttachmentSection()
                 return mat.Material.Parameters
             end
 
-
             local keyName = gr2FileName .. "::" .. modelName .. "::" .. tostring(attIndex) .. "::" .. tostring(descIndex)
 
             local function appltToOthers()
@@ -546,12 +550,26 @@ function VisualTab:RenderAttachmentSection()
             materialTab.Editor.Instance = getliveMat
             materialTab.Editor.ParamsSrc = getliveParams
             materialTab.Editor.ParamSetProxy = ParametersSetProxy.new(getliveParams()) --[[@as ParametersSetProxy]]
+            materialTab.Editor:SetDefaultParameters(overrideCharacterParams)
+
+            objToggle.OnClick = function (sel)
+                objToggle.Selected = false
+                materialTab.panel.Visible = not materialTab.panel.Visible
+                
+                sel.Label = (materialTab.panel.Visible and "[-] " or "[+] ") .. modelName .. "##" .. tostring(attIndex) .. "_" .. tostring(descIndex)
+            end
+
+            objToggle.OnRightClick = function()
+                objToggle.OnHoverEnter()
+                materialTab:ShowContextMenu()
+            end
 
             objToggle.OnHoverEnter = function ()
                 materialTab:Render()
                 materialTab:UpdateUIState()
-                self:RenderTransformSliders(objNode, descIndex, attIndex, modelName)
-                objToggle.OnHoverEnter = nil
+                materialTab.panel.Visible = false
+                self:RenderTransformSliders(materialTab.panel, descIndex, attIndex, modelName)
+                objToggle.OnHoverEnter = function () end
             end
 
             self.Materials[keyName] = materialTab
@@ -1677,6 +1695,10 @@ function VisualTab:Destroy()
     end
 
     self.isValid = false
+
+    if visualTabCache[self.guid] == self then
+        visualTabCache[self.guid] = nil
+    end
 end
 
 function VisualTab:CheckVisual()

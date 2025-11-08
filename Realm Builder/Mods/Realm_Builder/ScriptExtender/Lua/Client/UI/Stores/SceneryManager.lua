@@ -29,3 +29,16 @@ function SceneryManager:PopulateScenery(template)
         end
     end
 end
+
+function SceneryManager:PopulateConstruction(template)
+    self.Data[template.Id] = {
+        Uuid = template.Id,
+        TemplateId = template.Name .. "_" .. template.Id,
+        TemplateName = template.Name,
+        VisualTemplate = template.VisualTemplate,
+        DisplayName = template.Name,
+        Icon = "Item_Unknown",
+    }
+
+    self:AddTagToData(template.Id, "Construction")
+end
