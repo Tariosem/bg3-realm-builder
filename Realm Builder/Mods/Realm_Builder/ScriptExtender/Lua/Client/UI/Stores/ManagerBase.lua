@@ -1,6 +1,4 @@
 --- @class RB_CategorizableObject
---- @field Group string
---- @field Tags string[]
 --- @field Note string
 
 --- @class ManagerBase
@@ -15,6 +13,10 @@
 --- @field populated boolean
 --- @field tagIcons table<string, string>
 --- @field tagTree TreeTable
+--- @field tagMap table<string, table<string, boolean>>
+--- @field groupMap table<string, table<string, boolean>>
+--- @field groupCount table<string, number>
+--- @field tagCount table<string, number>
 ManagerBase = _Class("ManagerBase")
 
 function ManagerBase:__init()
@@ -22,6 +24,13 @@ function ManagerBase:__init()
 
     self.tagIcons = {}
     self.tagTree = TreeTable.new()
+
+    self.tagMap = {}
+    self.groupMap = {}
+    self.groupCount = {}
+    self.tagCount = {}
+
+    self.customizationData = {}
 
     if self.HardCodeHierachy then
         self:HardCodeHierachy()
@@ -38,25 +47,45 @@ function ManagerBase:ChangeDataGroup(uuid, group)
         return
     end
 
-    local originalGroup = self.Data[uuid].Group
+    local originalGroup = nil
+    for groupName, uuids in pairs(self.groupMap) do
+        if uuids[uuid] then
+            originalGroup = groupName
+            break
+        end
+    end
 
-    self.Data[uuid].Group = group
+    if group == "" then
+        group = nil
+    end
+
+    if group ~= group then
+        group = nil
+    end
 
     if self.groupCount then
-        self.groupCount[originalGroup] = (self.groupCount[originalGroup] or 1) - 1
-        self.groupCount[group] = (self.groupCount[group] or 0) + 1
-    end
-    if self.groupMap then
-        if originalGroup and self.groupMap[originalGroup] then
-            for i, id in ipairs(self.groupMap[originalGroup]) do
-                if id == uuid then
-                    table.remove(self.groupMap[originalGroup], i)
-                    break
-                end
-            end
+        if originalGroup then
+            self.groupCount[originalGroup] = (self.groupCount[originalGroup] or 1) - 1
         end
-        self.groupMap[group] = self.groupMap[group] or {}
-        table.insert(self.groupMap[group], uuid)
+        if group then
+            self.groupCount[group] = (self.groupCount[group] or 0) + 1
+        end
+    end
+
+    if self.groupMap then
+        if originalGroup then
+            self.groupMap[originalGroup] = self.groupMap[originalGroup] or {}
+            self.groupMap[originalGroup][uuid] = nil
+        end
+        if group then
+            self.groupMap[group] = self.groupMap[group] or {}
+            self.groupMap[group][uuid] = true
+        end
+    end
+    
+    if self.populated then
+        self.customizationData[uuid] = self.customizationData[uuid] or {}
+        self.customizationData[uuid].Group = group
     end
 end
 
@@ -68,51 +97,30 @@ function ManagerBase:ChangeDataNote(uuid, note)
         return
     end
     self.Data[uuid].Note = note
+
+    if self.populated then
+        self.customizationData[uuid] = self.customizationData[uuid] or {}
+        self.customizationData[uuid].Note = note
+    end
+
 end
 
 ---@return table<string, number> groupCount
 ---@return table<string, number> tagCount
----@return table<string, string[]> groupMap
----@return table<string, string[]> tagMap
+---@return table<string, table<string, boolean>> groupMap
+---@return table<string, table<string, boolean>> tagMap
 function ManagerBase:CountGroupsAndTags(guid)
     if self.CheckHostValidEquipmentVisual then
         self:CheckHostValidEquipmentVisual(guid)
     end
-    if self.groupCount and self.tagCount and self.groupMap and self.tagMap then
-        return self.groupCount, self.tagCount, self.groupMap, self.tagMap
+    self:UpdateTagTree()
+    return self.groupCount, self.tagCount, self.groupMap, self.tagMap
+end
+
+function ManagerBase:UpdateTagTree()
+    for tag, count in pairs(self.tagCount) do
+        self.tagTree:SetLeafValue(tag, count)
     end
-    local groupCount = {}
-    local tagCount = {}
-    local groupMap = {}
-    local tagMap = {}
-
-    for uuid, entry in pairs(self.Data) do
-        if entry.Group and entry.Group ~= "" then
-            groupCount[entry.Group] = (groupCount[entry.Group] or 0) + 1
-            groupMap[entry.Group] = groupMap[entry.Group] or {}
-            groupMap[entry.Group][#groupMap[entry.Group] + 1] = uuid
-        end
-        if entry.Tags then
-            for _, tag in ipairs(entry.Tags) do
-                if tag ~= "" then
-                    tagCount[tag] = (tagCount[tag] or 0) + 1
-                    tagMap[tag] = tagMap[tag] or {}
-                    tagMap[tag][#tagMap[tag] + 1] = uuid
-                end
-            end
-        end
-    end
-
-    for tag, cnt in pairs(tagCount) do
-        self.tagTree:SetLeafValue(tag, cnt)
-    end
-
-    self.groupCount = groupCount
-    self.tagCount = tagCount
-    self.groupMap = groupMap
-    self.tagMap = tagMap
-
-    return groupCount, tagCount, groupMap, tagMap
 end
 
 function ManagerBase:AddTagToData(uuid, tag)
@@ -122,28 +130,18 @@ function ManagerBase:AddTagToData(uuid, tag)
         return
     end
 
-
     if not uuid or uuid == "" then
         return
     end
-    if not self.Data[uuid] then
-        return
-    end
-    if not self.Data[uuid].Tags then
-        self.Data[uuid].Tags = {}
-    end
-    if not table.contains(self.Data[uuid].Tags, tag) then
-        table.insert(self.Data[uuid].Tags, tag)
-    else
-    end
 
-    if self.tagCount then
-        self.tagCount[tag] = (self.tagCount[tag] or 0) + 1
-        self.tagTree:SetLeafValue(tag, self.tagCount[tag])
-    end
-    if self.tagMap then
-        self.tagMap[tag] = self.tagMap[tag] or {}
-        table.insert(self.tagMap[tag], uuid)
+    self.tagCount[tag] = (self.tagCount[tag] or 0) + 1
+    self.tagMap[tag] = self.tagMap[tag] or {}
+    self.tagMap[tag][uuid] = true
+
+    if self.populated then
+        self.customizationData[uuid] = self.customizationData[uuid] or {}
+        self.customizationData[uuid].Tags = self.customizationData[uuid].Tags or {}
+        table.insert(self.customizationData[uuid].Tags, tag)
     end
 end
 
@@ -156,25 +154,178 @@ function ManagerBase:RemoveTagFromData(uuid, tag)
     if not self.Data[uuid] then
         return
     end
-    if not self.Data[uuid].Tags then
-        return
-    end
-    for i, t in ipairs(self.Data[uuid].Tags) do
-        if t == tag then
-            table.remove(self.Data[uuid].Tags, i)
-            return
-        end
-    end
 
     if self.tagCount and self.tagCount[tag] then
         self.tagCount[tag] = math.max((self.tagCount[tag] or 1) - 1, 0)
-        self.tagTree:SetLeafValue(tag, self.tagCount[tag])
     end
+
     if self.tagMap and self.tagMap[tag] then
-        for i, id in ipairs(self.tagMap[tag]) do
-            if id == uuid then
-                table.remove(self.tagMap[tag], i)
+        self.tagMap[tag][uuid] = nil
+        if not next(self.tagMap[tag]) then
+            self.tagMap[tag] = nil
+            self.tagCount[tag] = nil
+            self.tagTree:Remove(tag)
+        end
+    end
+
+    if self.populated and self.customizationData[uuid] and self.customizationData[uuid].Tags then
+        for i, existingTag in ipairs(self.customizationData[uuid].Tags) do
+            if existingTag == tag then
+                table.remove(self.customizationData[uuid].Tags, i)
                 break
+            end
+        end
+    end
+end
+
+--- @class RB_FilterSetting
+--- @field IncludeTags string[]
+--- @field ExcludeTags string[]
+--- @field MatchAllTags boolean
+--- @field IncludeGroups string[]
+--- @field ExcludeGroups string[]
+--- @field NoteText string
+--- @field SearchField string[]
+--- @field Keywords string[]
+
+--- @param Set RB_FilterSetting
+--- @return table<string, table>
+function ManagerBase:Filter(Set)
+    local candidates = {}
+
+    local IncludeTags = Set.IncludeTags or {}
+    local ExcludeTags = Set.ExcludeTags or {}
+    local IncludeGroups = Set.IncludeGroups or {}
+    local ExcludeGroups = Set.ExcludeGroups or {}
+    local NoteText = Set.NoteText or ""
+    local SearchField = Set.SearchField or {}
+    local Keywords = Set.Keywords or {}
+    local MatchAllTags = Set.MatchAllTags or false
+
+    if #IncludeTags == 0 and #ExcludeTags == 0 and #IncludeGroups == 0 and #ExcludeGroups == 0 and NoteText == "" and #Keywords == 0 then
+        return self.Data
+    end
+
+    if #IncludeTags > 0 then
+        for _, tag in ipairs(IncludeTags) do
+            local tagMap = self.tagMap[tag] or {}
+            for uuid, _ in pairs(tagMap) do
+                candidates[uuid] = (candidates[uuid] or 0) + 1
+            end
+        end
+
+        if MatchAllTags then
+            for uuid, count in pairs(candidates) do
+                if count < #IncludeTags then
+                    candidates[uuid] = nil
+                end
+            end
+        end
+    else
+        for uuid, _ in pairs(self.Data) do
+            candidates[uuid] = true
+        end
+    end
+
+    if #ExcludeTags > 0 then
+        for _, tag in ipairs(ExcludeTags) do
+            local tagMap = self.tagMap[tag] or {}
+            for uuid, _ in pairs(tagMap) do
+                candidates[uuid] = nil
+            end
+        end
+    end
+
+    if #IncludeGroups > 0 then
+        local groupCandidates = {}
+        for _, group in ipairs(IncludeGroups) do
+            local groupMap = self.groupMap[group] or {}
+            for uuid, _ in pairs(groupMap) do
+                groupCandidates[uuid] = true
+            end
+        end
+
+        if next(candidates) then
+            for uuid in pairs(candidates) do
+                if not groupCandidates[uuid] then
+                    candidates[uuid] = nil
+                end
+            end
+        else
+            candidates = groupCandidates
+        end
+    end
+
+    if #ExcludeGroups > 0 then
+        for _, group in ipairs(ExcludeGroups) do
+            local groupMap = self.groupMap[group] or {}
+            for uuid, _ in pairs(groupMap) do
+                candidates[uuid] = nil
+            end
+        end
+    end
+
+    for uuid, _ in pairs(candidates) do
+        local entry = self.Data[uuid]
+        if NoteText ~= "" then
+            if not entry.Note or entry.Note:lower():find(NoteText:lower()) == nil then
+                candidates[uuid] = nil
+            end
+        end
+
+        if #Keywords > 0 then
+            for i, keyword in ipairs(Keywords) do
+                Keywords[i] = keyword:lower()
+            end
+            local text = ""
+            for _, field in ipairs(SearchField) do
+                local value = entry[field]
+                if value and type(value) == "string" then
+                    text = text .. " " .. value:lower()
+                end
+            end
+
+            for _, keyword in ipairs(Keywords) do
+                if not text:find(keyword, 1, true) then
+                    candidates[uuid] = nil
+                    break
+                end
+            end
+        end
+    end
+
+    local results = {}
+    for uuid, _ in pairs(candidates) do
+        results[uuid] = self.Data[uuid]
+    end
+
+    return results
+end
+
+
+function ManagerBase:ExportCustomizations()
+    return self.customizationData
+end
+
+function ManagerBase:ImportCustomizations(data)
+    if not data then
+        return
+    end
+
+    for uuid, customData in pairs(data) do
+        self.customizationData[uuid] = customData
+    end
+
+    for uuid, customData in pairs(self.customizationData) do
+        if customData.Group then
+            self:ChangeDataGroup(uuid, customData.Group)
+        end
+        if customData.Note then
+            self:ChangeDataNote(uuid, customData.Note)
+        end
+        if customData.Tags then
+            for _, tag in ipairs(customData.Tags) do
+                self:AddTagToData(uuid, tag)
             end
         end
     end

@@ -60,6 +60,11 @@ end
 ---@param build string|number
 ---@return string
 function BuildVersionString(major, minor, revision, build)
+    major = tonumber(major) or 0
+    minor = tonumber(minor) or 0
+    revision = tonumber(revision) or 0
+    build = tonumber(build) or 0
+
     return string.format("%d.%d.%d.%d", major, minor, revision, build)
 end
 
@@ -255,6 +260,7 @@ function StartWith(obj, prefix)
 end
 
 function CountMap(map)
+    map = map or {}
     local count = 0
     for _, _ in pairs(map) do
         count = count + 1
@@ -587,104 +593,6 @@ function Levenshtein(s, t, thereshold)
         prevRow, curRow = curRow, prevRow
     end
     return prevRow[n]
-end
-
---- @class RB_FilterOptions
---- @field CaseSensitive boolean?
---- @field Fuzzy boolean?
---- @field MatchAll boolean?
---- @field MinFuzzyLength integer?
---- @field FuzzyThreshold integer?
-
-local function ValidateFilterOptions(opts)
-    if type(opts) == "table" then
-        opts.CaseSensitive = opts.CaseSensitive or false
-        opts.Fuzzy = opts.Fuzzy or false
-        opts.MatchAll = opts.MatchAll or false
-        opts.MinFuzzyLength = opts.MinFuzzyLength or 3
-        opts.FuzzyThreshold = opts.FuzzyThreshold or 12
-        return opts
-    end
-
-    return {
-        CaseSensitive = false,
-        Fuzzy = false,
-        MatchAll = false,
-        MinFuzzyLength = 3,
-        FuzzyThreshold = 12,
-    }
-end
-
---- God it's brutal out here
---- @param keywords string|table
---- @param items table
---- @param fields table
---- @param options RB_FilterOptions
---- @param candidates? any[]
---- @return table filteredCandidates
-function Filter(keywords, items, fields, options, candidates)
-    if not keywords or (type(keywords) ~= "string" and type(keywords) ~= "table") then
-        return candidates or {}
-    end
-    local now = Ext.Timer.MonotonicTime()
-    local words = type(keywords) == "string" and { keywords } or keywords --[[@as table]]
-    local lower = not options.CaseSensitive
-
-    if lower then
-        for i, word in ipairs(words) do
-            words[i] = word:lower()
-        end
-    end
-
-    if not candidates then
-        candidates = {}
-        for k, _ in pairs(items) do
-            candidates[k] = true
-        end
-    end
-
-    options = ValidateFilterOptions(options)
-
-    for candidate in pairs(candidates) do
-        local entry = items[candidate]
-
-        if entry then
-            local matched = options.MatchAll and true or false
-            for _, word in ipairs(words) do
-                local wordToMatch = word
-                local found = false
-                for _, field in ipairs(fields) do
-                    local val = entry[field]
-                    if val then
-                        local text = lower and val:lower() or val
-                        if options.Fuzzy and #word >= options.MinFuzzyLength then
-                            if Levenshtein(wordToMatch, text, options.FuzzyThreshold) <= options.FuzzyThreshold then
-                                found = true
-                                break
-                            end
-                        else
-                            if string.find(text, wordToMatch, 1, true) then
-                                found = true
-                                break
-                            end
-                        end
-                    end
-                end
-                if options.MatchAll and not found then
-                    matched = false
-                    break
-                elseif not options.MatchAll and found then
-                    matched = true
-                    break
-                end
-            end
-            if not matched then
-                candidates[candidate] = nil
-            end
-        end
-    end
-    --Debug("Filter took " .. tostring(Ext.Timer.MonotonicTime() - now) .. " ms, found " .. CountMap(candidates) .. " results")
-    return candidates
 end
 
 function IsCamera(object)

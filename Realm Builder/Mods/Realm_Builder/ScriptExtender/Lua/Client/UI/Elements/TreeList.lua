@@ -429,14 +429,14 @@ function TreeList:SetSelected(key, selected)
 end
 
 function TreeList:ClearSelection(notCallback)
-    for k, v in pairs(self.selectedItems) do
-        self:ToggleSelected(k, false)
-    end
+    self.selectedItems = {}
     for k, ele in pairs(self.leafRefs) do
         ele.Selected = false
         ele.Highlight = false
     end
-    self.selectedItems = {}
+    for k, ele in pairs(self.treeRefs) do
+        ele.Highlight = false
+    end
     if not notCallback then
         self:OnSelect(self.selectedItems)
     end
@@ -545,6 +545,9 @@ function TreeList:SetUpLeaf(selectable, key)
                 self.leafRefs[self.lastSelectedKey].Highlight = false
             end
             self.lastSelectedKey = key
+            if parent and self.treeRefs[parent] and parent ~= TreeTable.GetRootKey() then
+                self.treeRefs[parent].Highlight = true
+            end
         end
 
         
@@ -745,6 +748,12 @@ function TreeList:SetupRenameInput(key, userLabel)
     local input = node:AddInputText("", userLabel) --[[@type ExtuiInputText?]]
     input.IDContext = "TreeList" .. self.label .. "RenameInput"
     input.SameLine = true
+    input.SizeHint = { #userLabel * 16 + 32, IMAGESIZE.SMALL[2] }
+
+    input.OnChange = function(e)
+        if not input then return end
+        input.SizeHint = { #input.Text * 16 + 32, IMAGESIZE.SMALL[2] }
+    end
 
     local function rerender()
         selec.Visible = true

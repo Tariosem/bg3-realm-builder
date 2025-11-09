@@ -73,9 +73,13 @@ function GetPickingHitPosAndRot(picker)
     local normal = picker.Inner.SceneryNormal
     local rot = DirectionToQuat(normal, nil, "Y")
 
-    local host = CGetHostCharacter()
-    local sanitizedPos = Vec3.new(pos):Sanitize({CGetPosition(host)}) --[[@as Vec3]]
-    return sanitizedPos, rot
+    pos = Vec3.new(pos) --[[@as Vec3]]
+
+    if not pos:IsSanitized() then
+        return nil, nil
+    end
+
+    return pos, rot
 end
 
 function CalcNDC(x, y, screenW, screenH)

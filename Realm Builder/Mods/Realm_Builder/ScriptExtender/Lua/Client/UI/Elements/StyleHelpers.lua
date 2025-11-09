@@ -54,6 +54,7 @@ function AddSliderWithStep(parent, IDContext, defaultValue, min, max, step, isIn
 
     slider.UserData = {}
     local ud = slider.UserData
+    ud.IsInteger = isInteger
     ud.StepInput = stepInput
     ud.DecreButton = decreButton
     ud.IncreButton = increButton
@@ -156,14 +157,27 @@ function AddSliderStepButton(parent, label, step, slider, direction)
         
         local dir = direction == "<" and "<" or ">"
         local factor = 10.0
+
+        if s.UserData.IsInteger then
+            factor = 10
+        end
+
         if dir == ">" then
             local newMin = Vec4.new(s.Min) * factor
             local newMax = Vec4.new(s.Max) * factor
+            if s.UserData.IsInteger then
+                newMin = Vec4.new(math.floor(newMin[1]), math.floor(newMin[2]), math.floor(newMin[3]), math.floor(newMin[4]))
+                newMax = Vec4.new(math.floor(newMax[1]), math.floor(newMax[2]), math.floor(newMax[3]), math.floor(newMax[4]))
+            end
             s.Min = newMin
             s.Max = newMax
         else
             local newMin = Vec4.new(s.Min) / factor
             local newMax = Vec4.new(s.Max) / factor
+            if s.UserData.IsInteger then
+                newMin = Vec4.new(math.floor(newMin[1]), math.floor(newMin[2]), math.floor(newMin[3]), math.floor(newMin[4]))
+                newMax = Vec4.new(math.floor(newMax[1]), math.floor(newMax[2]), math.floor(newMax[3]), math.floor(newMax[4]))
+            end
             s.Min = newMin
             s.Max = newMax
         end

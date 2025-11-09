@@ -142,7 +142,6 @@ function ItemBrowser:RenderIcon(entry, cell)
         popup:Open()
     end
 
-    
     if entry.DefaultBoosts or entry.Passives or entry.Boosts or entry.BoostsOnEquipMainHand or entry.BoostsOnEquipOffHand then
         self:RenderAttrPopup(iconImage, cell, entry, function()
             if not popup then
@@ -158,8 +157,7 @@ end
 
 --- @param entry RB_Item
 function ItemBrowser:SetupTemplatePreview(entry)
-
-    Timer:Ticks(15, function (timerID)
+    Timer:Ticks(20, function (timerID)
         local spawnPos, spawnRot = GetPickingHitPosAndRot()
         if not spawnPos or not spawnRot then return end
         Commands.SpawnCommand(entry.TemplateId, spawnPos, spawnRot)
@@ -308,6 +306,7 @@ function ItemBrowser:SetupTemplatePreview(entry)
 end
 
 --- @param popup ExtuiPopup
+--- @param entry RB_Item
 function ItemBrowser:RenderInfoPopup(popup, entry)
     popup.UserData = popup.UserData or {}
     if popup.UserData.InfoRendered then return end
@@ -318,6 +317,7 @@ function ItemBrowser:RenderInfoPopup(popup, entry)
         TemplateName = entry.TemplateName,
         Mod = entry.Mod,
         ModAuthor = entry.ModAuthor,
+        StatsName = entry.StatsName,
     }
     if infoFields.Mod == "" then infoFields.Mod = nil end
     if infoFields.ModAuthor == "" then infoFields.ModAuthor = nil end

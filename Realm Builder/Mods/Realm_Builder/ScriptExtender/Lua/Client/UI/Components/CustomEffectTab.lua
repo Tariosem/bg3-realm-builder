@@ -102,7 +102,7 @@ function CustomEffectTab:RenderProfile()
         local ok, focus = pcall(function() return IsFocused(self.descInput) end)
         if not ok then return UNSUBSCRIBE_SYMBOL end
         if focus then
-            self.descButton.OnClick()
+            self.descButton:OnClick()
         end
     end)
 

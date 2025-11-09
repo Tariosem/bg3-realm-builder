@@ -272,7 +272,7 @@ function MovableProxy.CreateByGuid(guid)
     elseif CIsItem(guid) then
         proxy = ItemMovableProxy.new(guid)
     else
-        Warning("MovableProxy: Unsupported entity type for guid: "..tostring(guid))
+        proxy = ItemMovableProxy.new(guid)
     end
     movabelCache[guid] = proxy
     return proxy

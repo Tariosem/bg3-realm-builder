@@ -3,9 +3,11 @@
 --- @field focus string -- currently focused tab guid
 --- @field hotKeySubs table<string, RBSubscription>
 --- @field hoveringKey string|nil
---- @field CollectionPopup ExtuiPopup
---- @field EntityPopup ExtuiPopup
+--- @field CollectionContextMenu ExtuiPopup
+--- @field EntityContextMenu ExtuiPopup
 OutlinerMenu = _Class("EntityMenu")
+
+local copiedTemplates = {}
 
 function OutlinerMenu:__init(parent)
     self.parent = parent
@@ -355,12 +357,12 @@ function OutlinerMenu:GroupLogic(from, target)
 end
 
 function OutlinerMenu:SetupSelectablePopup()
-    if self.EntityPopup then self.EntityPopup:Open() return end
+    if self.EntityContextMenu then self.EntityContextMenu:Open() return end
 
-    self.EntityPopup = self.propTreeList.panel:AddPopup("PropRightClickPopup") --[[@as ExtuiPopup]]
+    self.EntityContextMenu = self.propTreeList.panel:AddPopup("PropRightClickPopup") --[[@as ExtuiPopup]]
     local tree = EntityStore.Tree
 
-    local contextMenu = StyleHelpers.AddContextMenu(self.EntityPopup)
+    local contextMenu = StyleHelpers.AddContextMenu(self.EntityContextMenu)
 
     local function select()
         if not(self.selectedGuids and #self.selectedGuids > 0) then return end
@@ -503,12 +505,12 @@ function OutlinerMenu:SetupSelectablePopup()
 end
 
 function OutlinerMenu:SetupCollectionSelectablePopup()
-    if self.CollectionPopup then self.CollectionPopup:Open() return end
+    if self.CollectionContextMenu then self.CollectionContextMenu:Open() return end
 
-    self.CollectionPopup = self.propTreeList.panel:AddPopup("CollectionRightClickPopup") --[[@as ExtuiPopup]]
+    self.CollectionContextMenu = self.propTreeList.panel:AddPopup("CollectionRightClickPopup") --[[@as ExtuiPopup]]
     local tree = EntityStore.Tree
 
-    local contextMenu = StyleHelpers.AddContextMenu(self.CollectionPopup)
+    local contextMenu = StyleHelpers.AddContextMenu(self.CollectionContextMenu)
 
     local function collectChildGuids(node, guids)
         if not node then return guids end
@@ -572,6 +574,8 @@ function OutlinerMenu:SetupCollectionSelectablePopup()
         local copy = EntityStore:GetExportCopy(guids)
         TemplateExportMenu.new(copy)
     end
+
+    
 
     --- @type RB_ContextItem[]
     local context = {
@@ -719,6 +723,9 @@ function OutlinerMenu:Collapse()
     if self.propTreeList then
         self.propTreeList:Collapsed()
     end
+
+    self.EntityContextMenu = nil
+    self.CollectionContextMenu = nil
 
     if self.focus and self.entityTabs[self.focus] then
         local tab = self.entityTabs[self.focus]

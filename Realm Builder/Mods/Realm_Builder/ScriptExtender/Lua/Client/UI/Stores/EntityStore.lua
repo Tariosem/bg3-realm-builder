@@ -433,6 +433,7 @@ local uselessSceneryAttributes = {
     "IsScenery",
     "DisplayName",
     "IsScenery",
+    "CanBeLooted",
 }
 
 --- @param entData EntityData

@@ -121,14 +121,20 @@ function TransformToolbar:RegisterKeyInputEvents()
         local pos, rot = GetPickingHitPosAndRot()
         if not pos then return end
 
-        Debug("Moving to position: " .. tostring(pos))
         Commands.SetTransform(targets, {Translate = pos, RotationQuat = rot})
     end)
 
     ttMod:RegisterEvent("Duplicate", function (e)
         if e.Event ~= "KeyDown" then return end
 
-        self:DuplicateSelection()
+        local targets = {}
+        for _,proxy in pairs(RB_GLOBALS.TransformEditor.Target) do
+            if proxy.Guid then
+                table.insert(targets, proxy.Guid)
+            end
+        end
+
+        Commands.DuplicateCommand(targets)
     end)
 
     ttMod:RegisterEvent("OpenVisualTab", function (e)
@@ -218,7 +224,12 @@ function TransformToolbar:RegisterKeyInputEvents()
         mod:RegisterEvent(eventName, function (e)
             if e.Event ~= "KeyDown" then return end
             if not RB_GLOBALS.TransformEditor.Target or #RB_GLOBALS.TransformEditor.Target == 0 then return end
-            local targets = NormalizeGuidList(RB_GLOBALS.TransformEditor.Target)
+            local targets = {}
+            for _,proxy in pairs(RB_GLOBALS.TransformEditor.Target) do
+                if proxy.Guid then
+                    table.insert(targets, proxy.Guid)
+                end
+            end
             local paramsOn = { Guid = targets , Attributes = {} , Type = "SetAttributes"}
             local paramsOff = { Guid = targets , Attributes = {} , Type = "SetAttributes"}
             paramsOn.Attributes[field] = valueOn
@@ -402,11 +413,6 @@ function TransformToolbar:SetupBoxSelect()
 
         end
     end)
-end
-
-function TransformToolbar:DuplicateSelection()
-    local targets = {}
-    Commands.DuplicateCommand(targets)
 end
 
 function TransformToolbar:Render()

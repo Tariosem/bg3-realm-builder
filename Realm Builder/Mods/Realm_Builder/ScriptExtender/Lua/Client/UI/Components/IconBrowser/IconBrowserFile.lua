@@ -1,57 +1,3 @@
-function IconBrowser:SaveLibChanges(uuid, field, value, isdelete)
-    local isDelete = isdelete or false
-
-    if not self.changedLib[uuid] then
-        self.changedLib[uuid] = {}
-        self.changedLib[uuid].TemplateName = self.searchData[uuid].TemplateName or ""
-    end
-    self.changedLib[uuid].TemplateName = self.searchData[uuid].TemplateName or ""
-
-    local originalField = self.searchData[uuid] and self.searchData[uuid][field]
-    local isArrayField = type(originalField) == "table"
-
-    if not isDelete then
-        if isArrayField then
-            if self.changedLib[uuid][field] == nil then
-                self.changedLib[uuid][field] = {}
-            end
-
-            if type(self.changedLib[uuid][field]) ~= "table" then
-                self.changedLib[uuid][field] = {}
-            end
-
-            if not table.contains(self.changedLib[uuid][field], value) then
-                table.insert(self.changedLib[uuid][field], value)
-            end
-        else
-            self.changedLib[uuid][field] = value
-        end
-    else
-        if isArrayField then
-            if self.changedLib[uuid][field] and type(self.changedLib[uuid][field]) == "table" then
-                local index = table.indexOf(self.changedLib[uuid][field], value)
-                if index then
-                    table.remove(self.changedLib[uuid][field], index)
-
-                    if #self.changedLib[uuid][field] == 0 then
-                        self.changedLib[uuid][field] = nil
-                    end
-                end
-            end
-        else
-            self.changedLib[uuid][field] = nil
-        end
-    end
-
-    if next(self.changedLib[uuid]) == nil then
-        self.changedLib[uuid] = nil
-    end
-
-    if self.autoSave then
-        self:SaveChanges()
-    end
-end
-
 function IconBrowser:SaveTagHierarchy()
     if not self.dataManager.tagTree then
         Error("No tag hierarchy to save.")
@@ -85,12 +31,7 @@ function IconBrowser:SaveTagHierarchy()
 end
 
 function IconBrowser:SaveChanges()
-    if next(self.changedLib) == nil then
-        Info("No changes to save.")
-        return
-    end
-
-    local data = self.changedLib
+    local data = self.dataManager:ExportCustomizations()
 
     if not data or type(data) ~= "table" then
         Error("No changes to save.")
@@ -134,30 +75,8 @@ function IconBrowser:LoadChanges()
         return
     end
 
-    self.changedLib = changes.Customizations or {}
-
-    for uuid, fields in pairs(self.changedLib) do
-
-        for field, value in pairs(fields) do
-            self.searchData[uuid] = self.searchData[uuid] or {}
-            if type(self.searchData[uuid][field]) == "table" then
-                if type(value) == "table" then
-                    for _, v in ipairs(value) do
-                        if not table.contains(self.searchData[uuid][field], v) then
-                            table.insert(self.searchData[uuid][field], v)
-                        end
-                    end
-                else
-                    if not table.contains(self.searchData[uuid][field], value) then
-                        table.insert(self.searchData[uuid][field], value)
-                    end
-                end
-            else
-                self.searchData[uuid][field] = value
-            end
-        end
-
-        ::continue::
+    if changes.Customizations then
+        self.dataManager:ImportCustomizations(changes.Customizations)
     end
 
     if changes.TagHierarchy then

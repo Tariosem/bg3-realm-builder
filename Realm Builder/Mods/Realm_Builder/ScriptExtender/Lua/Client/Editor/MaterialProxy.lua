@@ -30,6 +30,7 @@ MaterialPresetProxy.__index = MaterialPresetProxy
 setmetatable(MaterialPresetProxy, {__index = MaterialProxy})
 
 --- @class ParametersSetProxy : MaterialProxy
+--- @field RemoveParameter fun(self, paramName: string): boolean
 --- @field new fun(paramSetName: MaterialParametersSet?): ParametersSetProxy|nil
 ParametersSetProxy = {}
 ParametersSetProxy.__index = ParametersSetProxy
@@ -341,6 +342,17 @@ function ParametersSetProxy:SetDefaultParameter(paramName, value)
     self.Parameters[typeRef][paramName] = value
     return true
 
+end
+
+function ParametersSetProxy:RemoveParameter(paramName)
+    local typeRef = self.TypeRefs[paramName]
+    if not typeRef then
+        return false
+    end
+
+    self.Parameters[typeRef][paramName] = nil
+    self.TypeRefs[paramName] = nil
+    return true
 end
 
 

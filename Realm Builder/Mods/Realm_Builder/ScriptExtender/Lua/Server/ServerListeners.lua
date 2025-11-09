@@ -29,7 +29,7 @@ local function spawnHandler(data)
     local spawnTemplate = template
     local position = data.Position
     local rotation = data.Rotation
-    local entInfo = data.EntInfo
+    local entInfo = data.EntInfo or {}
     local rtype = data.Type
 
     if rtype == "Preview" then
@@ -98,7 +98,7 @@ NetChannel.Duplicate:SetRequestHandler(function(data, user)
     return {GuidToTemplateId = guidToTemplateId, NewGuids = newGuids}
 end)
 
-NetChannel.Delete:SetHandler(function(data, userID)
+local deleteHandler = function(data)
     local guids = NormalizeGuidList(data.Guid)
     for _,guid in pairs(guids) do
         if EntityManager.TaggedEntities[guid] then
@@ -114,6 +114,15 @@ NetChannel.Delete:SetHandler(function(data, userID)
     elseif data.Type == "DeleteByTemplateId" and data.TemplateId then
         EntityManager:DeleteEntityByTemplateId(data.TemplateId)
     end
+end
+
+NetChannel.Delete:SetHandler(function(data, userID)
+    deleteHandler(data)
+end)
+
+NetChannel.Delete:SetRequestHandler(function(data, userID)
+    deleteHandler(data)
+    return {}
 end)
 
 NetChannel.AddItem:SetHandler(function(data)
@@ -121,11 +130,15 @@ NetChannel.AddItem:SetHandler(function(data)
 end)
 
 NetChannel.GetTemplate:SetRequestHandler(function(data, userID)
-    local guid = data.Guid
+    local guid = NormalizeGuidList(data.Guid)
 
-    local template = Osi.GetTemplate(guid)
+    local map = {}
+    for _,g in pairs(guid) do
+        local template = Osi.GetTemplate(g)
+        map[g] = template
+    end
 
-    return {Template = template}
+    return {GuidToTemplateId = map}
 end)
 
 NetChannel.SpawnPreview:SetRequestHandler(function(data, userID)
@@ -231,7 +244,7 @@ NetChannel.Replicate:SetHandler(function (data, userID)
     
 end)
 
-local function createPresetObject(data, userID, thread)
+local function createPresetObject(data, userID)
     if IsCamera(data.Parent) then data.Parent = data.Parent .. userID end
     local preset = data.PresetData
 
@@ -261,14 +274,12 @@ local function createPresetObject(data, userID, thread)
         Scale = {1,1,1},
     }
 
-    local lastTemplateId = nil
     for savedguid, ent in pairs(spawneds) do
         if not ent.TemplateId then
             goto continue
         end
         local templateId = ent.TemplateId
 
-        local yielded = false
         local templateObj = Ext.Template.GetTemplate(TakeTailTemplate(templateId))
         if templateObj.TemplateType == "scenery" or templateObj.TemplateType == "TileConstruction" then
             local sceneryTemplate = templateObj --[[@as SceneryTemplate]]
@@ -278,19 +289,7 @@ local function createPresetObject(data, userID, thread)
                     helperATemplate[k] = v
                 end
             end
-            yielded = lastTemplateId ~= templateId
-            lastTemplateId = templateId
             templateId = helperATemplate.Name .. "-" .. helperATemplate.Id
-
-            if yielded then
-                Timer:Ticks(30, function (timerID)
-                        local suc, err = coroutine.resume(thread)
-                        if not suc then
-                            Error("SpawnPreset: Coroutine error: " .. tostring(err))
-                        end
-                    end)
-                coroutine.yield() -- Wait for it to take effect
-            end
         end
 
         local x, y, z = ent.Position[1] or nil, ent.Position[2] or nil, ent.Position[3] or nil
@@ -330,15 +329,6 @@ local function createPresetObject(data, userID, thread)
             Warning("SpawnPreset: Failed to create prop with templateId: " .. tostring(templateId))
         end
 
-        if yielded then
-            Timer:Ticks(30, function (timerID)
-                    local suc, err = coroutine.resume(thread)
-                    if not suc then
-                        Error("SpawnPreset: Coroutine error: " .. tostring(err))
-                    end
-                end)
-            coroutine.yield() -- Wait for it to take effect
-        end
 
         ::continue::
     end
@@ -356,9 +346,8 @@ end
 
 NetChannel.SpawnPreset:SetHandler(function(data, userID)
     local thread
-    thread = coroutine.create(function ()
         createPresetObject(data, userID, thread)
-    end)
+
     coroutine.resume(thread)
 end)
 

@@ -221,8 +221,6 @@ function IconBrowser:RenderTagsFilter()
             goto continue
         end
         if next(children) == nil then
-            tagTree:Remove(parent)
-            self:SaveTagHierarchy()
             goto continue
         end
         if self.dataManager.tagIcons[parent] then
@@ -572,9 +570,8 @@ function IconBrowser:AddGroupFilter()
     end
 
     self.groupFilter = self.groupFilter or
-    self.topMenuBar:AddMenu("Groups filter >")                                        --self.groupFilterContainer:AddButton(GetLoca("Groups filter >"))
-    self.groupPopup = self.groupFilter                                                --self.groupFilterContainer:AddPopup("GroupsPopup")
-
+    self.topMenuBar:AddMenu("Groups filter >")
+    self.groupPopup = self.groupFilter
 
     self.groupFilterElements = {}
     if allGroups and next(allGroups) == nil then
@@ -595,41 +592,54 @@ function IconBrowser:AddGroupFilter()
         if self.selectedGroups[group] then
             selection.Selected = true
         end
-
-        local cancelExcludeButton = self.groupPopup:AddButton(" X ")
-        cancelExcludeButton.Visible = self.excludeGroups[group] or false
-        cancelExcludeButton.SameLine = true
-        cancelExcludeButton.IDContext = group .. "X"
         selection.DontClosePopups = true
         selection.AllowItemOverlap = true
 
-        local function RightClickHandler()
+        local function ExcludeHandler()
             self.excludeGroups[group] = true
-            selection.SelectableDisabled = true
-            cancelExcludeButton.Visible = true
-            self:Search()
+            SetAlphaByBool(selection, false)
+        end
+
+        local function IncludeHandler()
+            self.selectedGroups[group] = true
+            selection.Selected = true
+        end
+
+        local function unexcludeHandler()
+            self.excludeGroups[group] = nil
+            SetAlphaByBool(selection, true)
+        end
+
+        local function unincludeHandler()
+            self.selectedGroups[group] = nil
+            selection.Selected = false
         end
 
         selection.OnClick = function()
+            selection.Selected = false
             if self.selectedGroups[group] then
-                self.selectedGroups[group] = nil
-                selection.OnRightClick = RightClickHandler
+                unincludeHandler()
+            elseif self.excludeGroups[group] then
+                unexcludeHandler()
             else
-                self.selectedGroups[group] = true
-                selection.OnRightClick = nil
+                IncludeHandler()
             end
             self:Search()
         end
-        selection.OnRightClick = RightClickHandler
 
-        cancelExcludeButton.OnClick = function()
-            self.excludeGroups[group] = nil
-            selection.SelectableDisabled = false
-            cancelExcludeButton.Visible = false
+        selection.OnRightClick = function()
+            selection.Selected = false
+            if self.excludeGroups[group] then
+                unexcludeHandler()
+            elseif self.selectedGroups[group] then
+                unincludeHandler()
+            else
+                ExcludeHandler()
+            end
             self:Search()
         end
+
         table.insert(self.groupFilterElements, selection)
-        table.insert(self.groupFilterElements, cancelExcludeButton)
     end
 end
 
@@ -649,106 +659,36 @@ function IconBrowser:Search()
     end
 
     local searchText, noteText, fields = self:GetSearchCriteria()
-    local browserData = self.searchData
-    local candidates = {}
-    for uuid, _ in pairs(browserData) do
-        candidates[uuid] = true
+    local includeTagsArray = {}
+    for tag, _ in pairs(self.selectedTags) do
+        table.insert(includeTagsArray, tag)
+    end
+    local excludeTagsArray = {}
+    for tag, _ in pairs(self.excludeTags) do
+        table.insert(excludeTagsArray, tag)
     end
 
-    --Debug("Initial candidates count: " .. CountMap(candidates))
-    --Debug("Excluding tags:", self.excludeTags)
-    if next(self.excludeTags) ~= nil then
-        for tag, _ in pairs(self.excludeTags) do
-            local uuids = self.tagsMap[tag] or {}
-            for _, uuid in ipairs(uuids) do
-                candidates[uuid] = nil
-            end
-        end
-    end
-    --Debug("After exclude tags, candidates count: " .. CountMap(candidates))
-
-    if next(self.excludeGroups) ~= nil then
-        for group in pairs(self.excludeGroups) do
-            local uuids = self.groupMap[group] or {}
-            for _, uuid in ipairs(uuids) do
-                candidates[uuid] = nil
-            end
-        end
-    end
-    --Debug("After exclude groups, candidates count: " .. CountMap(candidates))
-
-    local function checkTags(entry, tagSet, matchAll)
-        if not entry.Tags then return not matchAll end
-        if matchAll then
-            for tag in pairs(tagSet) do
-                local found = false
-                for _, t in ipairs(entry.Tags) do
-                    if t == tag then
-                        found = true
-                        break
-                    end
-                end
-                if not found then return false end
-            end
-            return true
-        else
-            for _, t in ipairs(entry.Tags) do
-                if tagSet[t] then return true end
-            end
-            return false
-        end
+    local includeGroupsArray = {}
+    for group, _ in pairs(self.selectedGroups) do
+        table.insert(includeGroupsArray, group)
     end
 
-    if next(self.selectedTags) ~= nil then
-        for uuid in pairs(candidates) do
-            local entry = self.searchData[uuid]
-            if not checkTags(entry, self.selectedTags, self.matchAllTags) then
-                candidates[uuid] = nil
-            end
-        end
-    end
-    --Debug("After include tags, candidates count: " .. CountMap(candidates))
-
-    if next(self.selectedGroups) ~= nil then
-        for uuid in pairs(candidates) do
-            local entry = browserData[uuid]
-            if not self.selectedGroups[entry.Group] then
-                candidates[uuid] = nil
-            end
-        end
-    end
-    --Debug("After include groups, candidates count: " .. CountMap(candidates))
-
-    --- @type RB_FilterOptions
-    local filterOpts = {
-        CaseSensitive = false,
-        --Fuzzy = self.fuzzySearch,
-    }
-
-    if noteText and noteText ~= "" then
-        candidates = Filter(noteText, browserData, { "Note" }, filterOpts, candidates)
-    end
-    --Debug("After note filter, candidates count: " .. CountMap(candidates))
-
-    --Debug("Filtering with search text:", searchText)
-    if searchText and searchText ~= "" then
-        local tokens = SplitBySpace(searchText)
-        for _, token in ipairs(tokens) do
-            if token ~= "" then
-                candidates = Filter(token, browserData, fields, filterOpts, candidates)
-            end
-        end
-    end
-    --Debug("After search text filter, candidates count: " .. CountMap(candidates))
-
-    self.searchResult = self:CandidatesToMap(candidates)
-
-
-    if CountMap(self.searchResult) == 0 then
-        --return
+    local excludeGroupsArray = {}
+    for group, _ in pairs(self.excludeGroups) do
+        table.insert(excludeGroupsArray, group)
     end
 
-    --Info("Search results count:", #self.searchResult)
+    self.searchResult = self.dataManager:Filter({
+        IncludeTags = includeTagsArray,
+        ExcludeTags = excludeTagsArray,
+        IncludeGroups = includeGroupsArray,
+        ExcludeGroups = excludeGroupsArray,
+        NoteText = noteText,
+        SearchField = fields,
+        Keywords = searchText ~= "" and SplitBySpace(searchText) or {},
+        MatchAllTags = self.matchAllTags
+    })
+
     --Debug("Search completed in " .. tostring(Ext.Timer.MonotonicTime() - now) .. " ms.")
     --Debug("Found " .. CountMap(self.searchResult) .. " matching entries.")
     self:RenderIcons()

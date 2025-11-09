@@ -210,7 +210,7 @@ function MaterialPresetsMenu:SetupWorkspace(parent, ccaModPack, notRenderImport)
                 progressBar.Value = progress / 100
                 progressBar.Overlay = message or ""
 
-                if progress == 100 then
+                if progress >= 100 then
                     refreshImport()
                     parent.Disabled = false -- re-enable UI after export
                 end
@@ -293,10 +293,16 @@ end
 function MaterialPresetsMenu:RenderFolderPanel(presetTab, presetHeaders, exportSettings)
     local presetRows = {}
     local openedFolders = {}
+    local newFolderRow = nil
+
     local rerender
     function rerender()
         for _, row in pairs(presetRows or {}) do
             row:Destroy()
+        end
+        if newFolderRow then
+            newFolderRow:Destroy()
+            newFolderRow = nil
         end
         presetRows = {}
         for k, header in pairs(presetHeaders or {}) do
@@ -312,19 +318,13 @@ function MaterialPresetsMenu:RenderFolderPanel(presetTab, presetHeaders, exportS
         for _, folderName in pairs(sorted) do
             local folderRow
             folderRow = self:RenderFolderRow(presetTab, folderName, openedFolders, presetHeaders, exportSettings, refreshFolderList, function ()
-                for i, row in pairs(presetRows) do
-                    if row == folderRow then
-                        row:Destroy()
-                        table.remove(presetRows, i)
-                        break
-                    end
-                end
+                presetRows[folderName]:Destroy()
+                presetRows[folderName] = nil
             end)
-            table.insert(presetRows, folderRow)
+            presetRows[folderName] = folderRow
         end
 
-        local newFolderRow = presetTab:AddRow()
-        table.insert(presetRows, newFolderRow)
+        newFolderRow = presetTab:AddRow()
         local newFolderCell = newFolderRow:AddCell()
         local createFolderBtn = newFolderCell:AddButton("+ New Folder##CreateMaterialPresetFolderBtn")
 
@@ -345,6 +345,14 @@ function MaterialPresetsMenu:RenderFolderPanel(presetTab, presetHeaders, exportS
     return rerender
 end
 
+--- @param presetTab ExtuiTable
+--- @param folderName string
+--- @param openedFolders table<string, boolean>
+--- @param presetHeaders table<string, ExtuiColorEdit>
+--- @param exportSettings CCMod_Pack
+--- @param refreshFolderList table<string, fun()>
+--- @param onDelete fun()
+--- @return ExtuiTableRow
 function MaterialPresetsMenu:RenderFolderRow(presetTab, folderName, openedFolders, presetHeaders, exportSettings, refreshFolderList, onDelete)
     local folderObj = exportSettings.Folders[folderName]
     local folderRow = presetTab:AddRow()
@@ -482,6 +490,8 @@ function MaterialPresetsMenu:RenderFolderRow(presetTab, folderName, openedFolder
     self:RenderFolderManagePopup(folderManagePopup, folderName, folderHeader, exportSettings)
     refreshFolder = self:RenderFolder(folderTable, folderObj, exportSettings.MaterialPresets, folderName)
     refreshFolderList[folderName] = refreshFolder
+
+    return folderRow
 end
 
 function MaterialPresetsMenu:LoadSaveFromCache()
@@ -536,7 +546,7 @@ function MaterialPresetsMenu:RenderImportSection(parent, exportSettings, onImpor
     local function renderVersionTable(group, modName, versions)
         local sortedVersions = {}
 
-        for version, _ in pairs(versions) do
+        for version,_ in pairs(versions) do
             table.insert(sortedVersions, version)
         end
 
@@ -582,7 +592,9 @@ function MaterialPresetsMenu:RenderImportSection(parent, exportSettings, onImpor
         local selectRow = selectTable:AddRow()
 
         local importBtnCell = selectRow:AddCell()
-        local importBtn = AddSelectableButton(importBtnCell, "Import##ImportCCAModVersionBtn_" .. modName .. "_" .. version, import)
+        local importBtn = AddSelectableButton(importBtnCell, "Import##ImportCCAModVersionBtn_" .. modName .. "_" .. version, function ()
+            import(modName, version)
+        end)
         importBtn:Tooltip():SetStyle("WindowBorderSize", 2)
         importBtn:Tooltip():SetColor("Border", HexToRGBA("FFFF0000"))
         importBtn:Tooltip():AddText("CAUTION:"):SetColor("Text", HexToRGBA("FFFF0000"))
@@ -602,7 +614,7 @@ function MaterialPresetsMenu:RenderImportSection(parent, exportSettings, onImpor
         local openInAnotherEditorBtn = AddSelectableButton(openInAnotherEditorBtnCell, "Open in Another Editor##OpenInCCACCMVersionBtn_" .. modName .. "_" .. version, function ()
             local ccaModPack = self:ImportFromFile(modName, version)
             if not ccaModPack then
-                self.cachedMods[modName][version] = nil
+                self.cachedMods[modName].Cache[version] = nil
                 self:SaveModCacheRef()
                 refreshCached()
                 Warning("Failed to import CCA mod pack for mod " .. modName .. " version " .. version)
@@ -627,6 +639,7 @@ function MaterialPresetsMenu:RenderImportSection(parent, exportSettings, onImpor
         local cache = nil
 
         cache = self.cachedMods
+        _D(cache)
 
         if not cache then
             cache = {}
@@ -644,7 +657,7 @@ function MaterialPresetsMenu:RenderImportSection(parent, exportSettings, onImpor
         table.sort(sortedModNames)
 
         for _, modName in ipairs(sortedModNames) do
-            local versions = cache[modName]
+            local versions = cache[modName].Versions
             local modNameSel = parent:AddSelectable((openedTrees[modName] and "[-]" or "[+]") .. modName .. "##ImportCCAMod_" .. modName) --[[@as ExtuiSelectable]]
             local group = AddIndent(parent:AddGroup("ImportCCAModGroup_" .. modName))
             group.Visible = openedTrees[modName] or false
@@ -1147,6 +1160,7 @@ function MaterialPresetsMenu:__exportToMod(modPack, progressCallback)
 
     -- prefer reusing the existing ModuleUUID, so the game recognizes this as the same mod.
     local modUuid = existUuid and existUuid or Uuid_v4()
+    modPack.ModuleUUID = modUuid
 
     --- build mod meta.lsx first
     local metaLsx = LSXHelpers.BuildModMeta(modUuid, displayModName, modInternalName, authorName, version, description)
@@ -1319,6 +1333,10 @@ function MaterialPresetsMenu:SaveModCache(modPack)
     local versionStr = type(version) == "table" and BuildVersionString(version[1], version[2], version[3], version[4]) or
         tostring(version)
     self.cachedMods[modInternalName].Cache[versionStr] = cacheFile
+    self.cachedMods[modInternalName].Versions = self.cachedMods[modInternalName].Versions or {}
+    self.cachedMods[modInternalName].Versions[versionStr] = {
+        MaterialPresetCount = CountMap(cacheFile.MaterialPresets or {}),
+    }
 
     return Ext.IO.SaveFile(filePath, jsonStr)
 end
@@ -1332,7 +1350,9 @@ function MaterialPresetsMenu:SaveModCacheRef(modUuid)
             Versions = versions,
         }
         for version, cache in pairs(modCache.Cache) do
-            table.insert(versions, version)
+            versions[version] = {
+                MaterialPresetCount = CountMap(cache.MaterialPresets or {}),
+            }
         end
     end
 

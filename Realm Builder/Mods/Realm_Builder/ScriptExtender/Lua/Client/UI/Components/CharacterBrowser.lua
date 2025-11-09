@@ -7,7 +7,7 @@ function CharacterBrowser:SubclassInit()
     local config = self:GetConfig()
 
     self.iconToName = true
-    self.iconPR = config.IconPerRow or 1
+    self.iconPR = config.IconPerRow or 2
     self.iconPC = config.IconPerColumn or 20
     self.iconWidth = config.IconWidth or 600
 
@@ -97,6 +97,7 @@ function CharacterBrowser:RenderIcon(entry, cell)
         if not rPopup then
             rPopup = cell:AddPopup(GetLoca("Character Template Preview"))
             rPopup.IDContext = entry.Uuid .. "RPopup" .. Uuid_v4()
+            self:RenderCustomizationTab(rPopup, entry)
             local actTab = StyleHelpers.AddContextMenu(rPopup, "Actions")
             actTab:AddItem(GetLoca("Spawn Character"), function()
                 local selected = self.selectedGuid or CGetHostCharacter()

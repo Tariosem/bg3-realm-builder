@@ -28,6 +28,8 @@ NetChannel.ManageEntity = Ext.Net.CreateChannel(ModuleUUID, "ManageEntity")
 
 NetChannel.AddItem = Ext.Net.CreateChannel(ModuleUUID, "AddItem")
 
+--- @class GetTemplateChannel : NetChannel
+--- @field RequestToServer fun(channel:self , data: {Guid: GUIDSTRING[]|GUIDSTRING}, callback: fun(response: {GuidToTemplateId: table<GUIDSTRING, string>}))
 NetChannel.GetTemplate = Ext.Net.CreateChannel(ModuleUUID, "GetTemplate")
 
 NetChannel.Replicate = Ext.Net.CreateChannel(ModuleUUID, "Replicate")

@@ -360,6 +360,10 @@ end
 
 --- return a list of keys from root to the specified key
 function TreeTable:GetPath(key, excludeSelf, excludeRoot)
+    if not self:Find(key) then
+        --Debug("Key '" .. tostring(key) .. "' not found.")
+        return {}
+    end
     local path = {}
     local currentKey = key
     local visited = {}
@@ -955,7 +959,7 @@ end
 
 function TreeTable.FromTableStatic(tbl)
     local tree = TreeTable.new()
-    tree:FromTable(tbl)
+    tree:FromTable(tbl or {})
     return tree
 end
 

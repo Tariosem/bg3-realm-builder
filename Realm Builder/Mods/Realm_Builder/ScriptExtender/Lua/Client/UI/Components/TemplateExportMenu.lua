@@ -209,7 +209,7 @@ end
 --- @param entData EntityData
 function TemplateExportMenu:RenderTemplateEntry(cell, entData)
     local icon = cell:AddImageButton("##" .. entData.Guid .. "icon", CheckIcon(entData.Icon), IMAGESIZE.SMALL)
-    local header = cell:AddTree(entData.DisplayName or "Unnamed")
+    local header = cell:AddTree(entData.DisplayName or entData.TemplateId)
     local attrTable = header:AddTable("Attributes", 2)
     header.SameLine = true
 

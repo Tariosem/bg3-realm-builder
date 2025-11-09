@@ -10,6 +10,7 @@ SCENEMENU_HEIGHT = 1200 * SCALE_FACTOR
 --- @field Description string|nil
 --- @field Highlight boolean|nil
 --- @field HighlightColor Vec4|nil
+--- @field Spawned table<GUIDSTRING, EntityData>
 
 --- @class SceneMenu
 --- @field presets table<string, SceneData>
@@ -351,21 +352,14 @@ function SceneMenu:LoadPreset(name, isPreview, force)
         return nil
     end
 
-    local data = {
-        Name = name,
-        Parent = self.GetSelectedObject(),
-        PresetData = self.presets[name],
-    }
+    local data = DeepCopy(self.presets[name])
     if isPreview then
-        data.Type = "Preview"
-    else
-        data.Type = "Load"
+        data.SpawnType = "Preview"
     end
-    if IsCamera(data.Parent) then
-        data.Position = {CGetPosition(data.Parent)}
-        data.Rotation = {GetQuatRotation(data.Parent)}
-    end
-    NetChannel.SpawnPreset:SendToServer(data)
+    data.Position = {CGetPosition(self:GetSelectedObject())}
+    data.Rotation = {GetQuatRotation(self:GetSelectedObject())}
+
+    Commands.SpawnPreset(data)
 
     return nil
 end

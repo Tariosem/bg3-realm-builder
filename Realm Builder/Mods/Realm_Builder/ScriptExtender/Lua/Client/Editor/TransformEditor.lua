@@ -4,7 +4,10 @@
 --- @field History HistoryManager
 --- @field Subscriptions table<string, RBSubscription>
 --- @field Debug boolean
---- @field Select fun(self: TransformEditor, guid: GUIDSTRING|table<GUIDSTRING, any>)
+--- @field Select fun(self: TransformEditor, selection: RB_MovableProxy[], notRecordHistory:boolean|nil)
+--- @field AddTarget fun(self: TransformEditor, proxy: RB_MovableProxy)
+--- @field Clear fun(self: TransformEditor)
+--- @field SetMode fun(self: TransformEditor, mode: "Translate"|"Rotate"|"Scale")
 --- @field InitGizmo fun(self: TransformEditor)
 --- @field UpdateGizmo fun(self: TransformEditor)
 --- @field new fun(): TransformEditor
@@ -151,6 +154,7 @@ function TransformEditor:Clear()
     self.Target = nil
     self.Gizmo:Disable()
 end
+
 
 function TransformEditor:SetMode(mode)
     if not Enums.TransformEditorMode[mode] then return end

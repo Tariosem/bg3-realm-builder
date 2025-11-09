@@ -41,12 +41,11 @@ function IconBrowser:__init(dataManager, DisplayName)
     self.browserHeight = self.iconPC * self.iconWidth + 20
     self.lastPosition = config.LastPosition or { screenWidth * 0.6, screenHeight * 0.15 }
     self.lastSize = config.LastSize or { self.browserWidth * 1.5, self.browserHeight * 1.5 }
-    self.browserBackgroundColor = config and config.BackgroundColor or HexToRGBA("2D1F1F1F")
+    self.browserBackgroundColor = config and config.BackgroundColor or HexToRGBA("A8353535")
 
     self.selectedGuid = nil
 
     self.autoSave = not (config and config.autoSave == false)
-    self.changedLib = {}
 
     self.updateTagsFn = {}
     self.isValid = true
@@ -115,12 +114,10 @@ function IconBrowser:SetupInputSubs()
             local entry = self.searchData[self.hoveredEntry]
             if entry then
                 self.dataManager:AddTagToData(entry.Uuid, tag)
-                self.updateTagsFn[entry.Uuid]()
-                self:AddTagsFilter()
-                if self.changedLib[entry.Uuid] == nil then
-                    self.changedLib[entry.Uuid] = {}
+                if self.updateTagsFn[entry.Uuid] then
+                    self.updateTagsFn[entry.Uuid]()
                 end
-                self:SaveLibChanges(entry.Uuid, "Tags", tag)
+                self:AddTagsFilter()
             end
         end
     end)
@@ -453,12 +450,6 @@ end
 function IconBrowser:RenderBrowserBase()
     self.browser = self.panel:AddChildWindow("Browser")
 
-    --- @type ExtuiText
-    local tip = self.browser:AddText(GetLoca("Tips: Use '<' and '>' to switch pages. Hover an icon and press 'F' to add a 'Favotite' tag"))
-    tip:SetColor("Text", HexToRGBA("E7FFFFFF"))
-    tip.TextWrapPos = 1200 * SCALE_FACTOR
-    tip.OnClick = function(e) e:Destroy() end
-
     self.pageTopTable = self.browser:AddTable("IconsBrowserTable", 2)
 
     self.pageTopTable.ColumnDefs[1] = { WidthStretch = true }
@@ -750,37 +741,88 @@ function IconBrowser:IconSetup(iconImage, entry)
     iconImage.IDContext = "IconImage_" .. entry.Uuid
 end
 
+--- @param popup ExtuiTreeParent
+--- @param entry any
 function IconBrowser:RenderCustomizationTab(popup, entry)
     local filterTab = popup
+    local custom = self.dataManager.customizationData[entry.Uuid] or {}
 
-    local noteInput = filterTab:AddInputText(GetLoca("Note"))
+    local noteInput = filterTab:AddInputText(GetLoca("Note")) 
 
-    noteInput.Text = entry.Note or ""
+    noteInput.Text = custom.Note or ""
 
-    noteInput.OnChange = function(text)
+    local noteDebounceFunc = Debounce(1000, function(text)
         self.tempDisableSearch = true
+
+        custom = self.dataManager.customizationData[entry.Uuid] or {}
         local newNote = text.Text
-        self.dataManager:ChangeDataNote(entry.Uuid, newNote)
-        if newNote == "" then
-            self:SaveLibChanges(entry.Uuid, "Note", "")
+
+        if newNote == custom.Note then
+            self.tempDisableSearch = false
             return
         end
-        self:SaveLibChanges(entry.Uuid, "Note", newNote)
+
+        if newNote == nil then
+            newNote = ""
+        end
+
+        if newNote ~= newNote then
+            newNote = ""
+        end
+
+        self.dataManager:ChangeDataNote(entry.Uuid, newNote)
         self.tempDisableSearch = false
+    end)
+
+    local computeSizeAndSet = function()
+        local newText = noteInput.Text
+        local splitted = SplitByString(newText, "\n")
+        local longest = 0
+        for _, line in ipairs(splitted) do
+            if #line > longest then
+                longest = #line
+            end
+        end
+
+        local width = math.max(150 * SCALE_FACTOR, longest * 32 * SCALE_FACTOR + 48)
+        local height = math.max(50 * SCALE_FACTOR, (#splitted * 48 * SCALE_FACTOR) + 32)
+
+        noteInput.SizeHint = { width, height }
     end
+
+    noteInput.Multiline = true
+    noteInput.OnChange = function()
+        computeSizeAndSet()
+        noteDebounceFunc(noteInput)
+    end
+    computeSizeAndSet()
 
     local groupInput = filterTab:AddInputText(GetLoca("Group"))
 
-    groupInput.Text = self.searchData[entry.Uuid].Group or ""
+    groupInput.Text = custom.Group or ""
 
-    groupInput.OnChange = function(text)
+    groupInput.OnChange = Debounce(1000, function(text)
         self.tempDisableSearch = true
         local newGroup = text.Text
+
+        custom = self.dataManager.customizationData[entry.Uuid] or {}
+        if newGroup == custom.Group then
+            self.tempDisableSearch = false
+            return
+        end
+
+        if newGroup == nil then
+            newGroup = ""
+        end
+
+        if newGroup ~= newGroup then
+            newGroup = ""
+        end
+
         self.dataManager:ChangeDataGroup(entry.Uuid, newGroup)
         self:AddGroupFilter()
-        self:SaveLibChanges(entry.Uuid, "Group", newGroup)
         self.tempDisableSearch = false
-    end
+    end)
 
     local tagsInput = filterTab:AddInputText(GetLoca("Tags"))
 
@@ -791,7 +833,6 @@ function IconBrowser:RenderCustomizationTab(popup, entry)
     tagsRemoveButton:Tooltip():AddText(GetLoca("Remove Tag"))
 
     local tagsPrefix = filterTab:AddText(GetLoca("Tags") .. ":")
-
     local allTags = filterTab:AddText(">")
 
     tagsPrefix.SameLine = true
@@ -799,7 +840,9 @@ function IconBrowser:RenderCustomizationTab(popup, entry)
     allTags.SameLine = true
 
     local function updateTags()
-        local tags = self.searchData[entry.Uuid].Tags or {}
+        custom = self.dataManager.customizationData[entry.Uuid] 
+        local tags = custom and custom.Tags or {}
+        tags = DeepCopy(tags)
         for _, tag in ipairs(tags) do
             if not tag or tag == "" then
                 table.remove(tags, _)
@@ -810,9 +853,6 @@ function IconBrowser:RenderCustomizationTab(popup, entry)
         else
             local tagText = table.concat(tags, ", ")
             allTags.Label = tagText
-            --if leftPopupTagDisplay then
-            --    leftPopupTagDisplay.Text = tagText
-            --end
         end
     end
 
@@ -836,10 +876,6 @@ function IconBrowser:RenderCustomizationTab(popup, entry)
             tagsInput.Text = ""
             updateTags()
             self:AddTagsFilter()
-            if self.changedLib[entry.Uuid] == nil then
-                self.changedLib[entry.Uuid] = {}
-            end
-            self:SaveLibChanges(entry.Uuid, "Tags", tag)
         else
             updateTags()
             self:AddTagsFilter()
@@ -857,7 +893,6 @@ function IconBrowser:RenderCustomizationTab(popup, entry)
             tagsRemoveButton.Disabled = true
             updateTags()
             self:AddTagsFilter()
-            self:SaveLibChanges(entry.Uuid, "Tags", tag, true)
         else
             --Warning("[EntityTab] Cannot remove empty tag for GUID: " .. icon.guid)
         end

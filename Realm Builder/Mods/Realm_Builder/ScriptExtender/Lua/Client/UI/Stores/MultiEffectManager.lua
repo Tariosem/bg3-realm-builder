@@ -24,8 +24,6 @@ end
 --- @field Repeat number
 --- @field isMultiEffect boolean
 --- @field Note string
---- @field Group string
---- @field Tags string[]
 
 function MultiEffectManager:PopulateMultiEffectInfo(uuid)
     local raw = Ext.StaticData.Get(uuid, "MultiEffectInfo")
@@ -40,9 +38,8 @@ function MultiEffectManager:PopulateMultiEffectInfo(uuid)
         isMultiEffect = true,
         isLoop = false,
         Note = "",
-        Group = "",
-        Tags = {"Multi-Effect"},
     }
+    self:AddTagToData(uuid, "Multi-Effect")
 
     local unnamedCount = 0
 
@@ -66,8 +63,6 @@ function MultiEffectManager:PopulateMultiEffectInfo(uuid)
                 isMultiEffect = false,
                 isLoop = false,
                 Note = "",
-                Group = "",
-                Tags = {},
             }
 
             if entry.TargetBone ~= "" then
@@ -103,8 +98,6 @@ function MultiEffectManager:PopulateEffect(res)
         Repeat = 1,
         isMultiEffect = false,
         Note = "",
-        Group = "",
-        Tags = {},
     }
     return entry
 end
@@ -148,7 +141,7 @@ function MultiEffectManager:PopulateAllEffects()
             entry.Icon = isValidIcon(effectInfo.Icon) and effectInfo.Icon or nil
             entry.DisplayName = effectInfo.DisplayName
             if effectInfo.Type ~= "" then
-                table.insert(entry.Tags, effectInfo.Type)
+                self:AddTagToData(uuid, effectInfo.Type)
             end
 
             local isLoop = effectInfo.Type == "PrepareEffect" or effectInfo.Type == "StatusEffect" or false
@@ -174,7 +167,7 @@ function MultiEffectManager:PopulateAllEffects()
     for uuid, entry in pairs(self.Data) do
         if not isValidIcon(entry.Icon) then
             entry.Icon = "Item_Unknown"
-            table.insert(entry.Tags, "Unknown Icon")
+            self:AddTagToData(uuid, "Unknown Icon")
         end
         if entry.DisplayName == '<LSTag Type="Image" Info="SoftWarning"/> Add <b>Elf</b> Tag.' then
             entry.DisplayName = entry.TemplateName

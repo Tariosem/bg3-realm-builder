@@ -9,6 +9,10 @@ function ItemManager:__init()
     self.TemplateNameToUuid = {}
     self.UuidToTemplateName = {}
     self.dynamicTags = {}
+    -- store tags as a map: tag -> { [uuid] = true }
+    self.tagMap = {}
+    -- maintain tag counts incrementally
+    self.tagCount = {}
     self:HardCodeHierachy()
 end
 
@@ -28,8 +32,10 @@ end
 function ItemManager:CheckHostValidEquipmentVisual(guid)
     if self.lastPartyMember == guid and self.lastDynamicTag then return end
 
-    for uuid, _ in pairs(self.__cacheTempTags or {}) do
-        self:RemoveTagFromData(uuid, self.lastDynamicTag)
+    if self.lastDynamicTag then
+        self.tagMap[self.lastDynamicTag] = nil
+        self.tagCount[self.lastDynamicTag] = nil
+        self.tagTree:Remove(self.lastDynamicTag)
     end
 
     local entity = guid and UuidToHandle(guid) or _C()
@@ -54,10 +60,11 @@ function ItemManager:CheckHostValidEquipmentVisual(guid)
     end
     local cnt = 0
     for uuid, _ in pairs(data) do
-        self:AddTagToData(uuid, dynamicTag)
+        local tag = dynamicTag
+        self.tagCount[tag] = (self.tagCount[tag] or 0) + 1
+        self.tagMap[tag] = self.tagMap[tag] or {}
+        self.tagMap[tag][uuid] = true
         cnt = cnt + 1
-        self.__cacheTempTags = self.__cacheTempTags or {}
-        self.__cacheTempTags[uuid] = self.__cacheTempTags[uuid] or {}
     end
 end
 
@@ -198,6 +205,8 @@ function ItemManager:HardCodeHierachy()
     self.tagIcons["Poison"] = "Item_GRN_Poison_vial_B"
     self.tagIcons["Potion"] = "Item_CONS_Potion_Healing_A"
     self.tagIcons["Scroll"] = "Item_LOOT_SCROLL_Counterspell"
+
+    tree:Reparent("ArmorType", "Armor")
 end
 
 --- @class RB_Item
@@ -214,13 +223,11 @@ end
 --- @field ModAuthor string
 --- @field ModVersion vec4
 --- @field Note string
---- @field Group string
---- @field Tags any[]
 --- @field CanBePickedUp boolean
 --- @field StoryItem boolean
 --- @field Rarity string
 
---- @param template ItemTemplate
+--- @param template GameObjectTemplate
 --- @return RB_Item?
 function ItemManager:PopulateItem(template, statsObj)
     if not template then return nil end
@@ -241,15 +248,12 @@ function ItemManager:PopulateItem(template, statsObj)
         ModAuthor = "",
         ModVersion = { 0, 0, 0, 0 },
         Note = "",
-        Group = "",
         CanBePickedUp = template.CanBePickedUp and true or false,
         StoryItem = template.StoryItem and true or false,
         Rarity = "",
-        Tags = {},
     }
-    local tags = entry.Tags
-    --- @type StatsObject
-    statsObj = statsObj or Ext.Stats.Get(template.Stats)
+
+    statsObj = statsObj or Ext.Stats.Get(template.Stats) --[[@as StatsObject]]
     if statsObj then
         self:CategorizeItem(entry, statsObj, templateName)
     else
@@ -268,11 +272,11 @@ function ItemManager:PopulateItem(template, statsObj)
         entry.Icon = "Item_Unknown"
     end
     if entry.Icon == "Item_Unknown" then
-        tags[#tags + 1] = "Unknown Icon"
+        self:AddTagToData(entry.Uuid, "Unknown Icon")
     end
 
     if entry.Icon == "Item_BLD_Village_House_Door_A_Wood_Scenery_B" then
-        tags[#tags + 1] = "Destruction"
+        self:AddTagToData(entry.Uuid, "Destruction")
     end
 
     if ITEM_BLACKLIST[entry.TemplateId] then
@@ -280,7 +284,7 @@ function ItemManager:PopulateItem(template, statsObj)
     end
 
     if template.StoryItem then
-        tags[#tags + 1] = "Story Item"
+        self:AddTagToData(entry.Uuid, "Story Item")
     end
 
     if template.Equipment and template.Equipment.Visuals then
@@ -292,33 +296,33 @@ function ItemManager:PopulateItem(template, statsObj)
     return entry
 end
 
-local function categorize_equipment(statsObj, templateName, tags)
+local function categorize_equipment(manager, statsObj, templateName, uuid)
     if EQUIPMENTS_HAS_ARMORTYPE[statsObj.Slot] and statsObj.ArmorType ~= "None" then
-        tags[#tags+1] = statsObj.ArmorType
+        manager:AddTagToData(uuid, statsObj.ArmorType)
     end
     local profGroup = statsObj["Proficiency Group"]
     if profGroup and next(profGroup) then
         for _, prof in pairs(profGroup) do
             if prof ~= "MartialWeapons" and prof ~= "SimpleWeapons" then
-                tags[#tags+1] = prof
+                manager:AddTagToData(uuid, prof)
             end
         end
         if EQUIPMENTS_HAS_ARMORTYPE[statsObj.Slot] then
-            tags[#tags+1] = statsObj.Slot
+            manager:AddTagToData(uuid, statsObj.Slot)
         end
     else
-        tags[#tags+1] = statsObj.Slot
+        manager:AddTagToData(uuid, statsObj.Slot)
     end
 end
 
-local function categorize_consumable(statsObj, tags)
+local function categorize_consumable(manager, statsObj, uuid)
     local useType = statsObj.ItemUseType
     if useType == "Consumable" then
-        tags[#tags+1] = "Drink"
+        manager:AddTagToData(uuid, "Drink")
     elseif useType == "None" then
-        tags[#tags+1] = "Food"
+        manager:AddTagToData(uuid, "Food")
     else
-        tags[#tags+1] = useType
+        manager:AddTagToData(uuid, useType)
     end
 end
 
@@ -329,26 +333,26 @@ local magical_lookup = {
     Poison = "Poison",
 }
 
-local function categorize_magical(statsObj, templateName, tags)
+local function categorize_magical(manager, statsObj, templateName, uuid)
     local objCat = statsObj.ObjectCategory
     for prefix, tag in pairs(magical_lookup) do
         if objCat:find(prefix, 1, true) == 1 then
-            tags[#tags+1] = tag
+            manager:AddTagToData(uuid, tag)
             return
         end
     end
     if objCat == "Poison" or templateName:find("CONS_Poison", 1, true) == 1 or templateName:find("GRN_Poison", 1, true) == 1 then
-        tags[#tags+1] = "Poison"
+        manager:AddTagToData(uuid, "Poison")
     elseif objCat == "" then
-        tags[#tags+1] = "Magical"
+        manager:AddTagToData(uuid, "Magical")
     else
-        tags[#tags+1] = objCat
+        manager:AddTagToData(uuid, objCat)
     end
 end
 
-local function categorize_alchemy(statsObj, templateName, tags)
+local function categorize_alchemy(manager, statsObj, templateName, uuid)
     if statsObj.Name:find("ALCH", 1, true) == 1 or templateName:find("CONS_Herb", 1, true) == 1 then
-        tags[#tags+1] = "Alchemy"
+        manager:AddTagToData(uuid, "Alchemy")
         return true
     end
     return false
@@ -357,7 +361,6 @@ end
 -- switch switch and switch
 function ItemManager:CategorizeItem(entry, statsObj, templateName)
     entry.ModId = statsObj.ModId
-    local tags = entry.Tags
     local modInfo = self.modCache[entry.ModId] or Ext.Mod.GetMod(entry.ModId)
     if modInfo then
         entry.Mod = modInfo.Info.Name or ""
@@ -369,6 +372,7 @@ function ItemManager:CategorizeItem(entry, statsObj, templateName)
     end
 
     entry.StatsName = statsObj.Name
+    if entry.StatsName == "MinorIllusion" then return end -- like wtf
     if statsObj.Rarity and statsObj.Rarity ~= "" then
         entry.Rarity = statsObj.Rarity
     end
@@ -376,14 +380,15 @@ function ItemManager:CategorizeItem(entry, statsObj, templateName)
     if statsObj.InventoryTab and statsObj.InventoryTab ~= "" then
         local tab = statsObj.InventoryTab
         if tab == "Equipment" then
-            categorize_equipment(statsObj, templateName, tags)
+            categorize_equipment(self, statsObj, templateName, entry.Uuid)
         elseif tab == "Consumable" then
-            categorize_consumable(statsObj, tags)
+            categorize_consumable(self, statsObj, entry.Uuid)
         elseif tab == "Magical" then
-            categorize_magical(statsObj, templateName, tags)
-        elseif categorize_alchemy(statsObj, templateName, tags) then
+            categorize_magical(self, statsObj, templateName, entry.Uuid)
+        elseif categorize_alchemy(self, statsObj, templateName, entry.Uuid) then
+            -- categorized as alchemy inside helper
         else
-            tags[#tags+1] = tab
+            self:AddTagToData(entry.Uuid, tab)
         end
     end
     self.modCache[entry.ModId] = modInfo
@@ -452,8 +457,8 @@ function ItemManager:PopulateArmor(statsObj, statsId)
     baseEntry.Passives["On Equip"] = statsObj.PassivesOnEquip
 
     if statsObj.Slot == "MusicalInstrument" and statsObj.InstrumentType ~= "None" then
-        baseEntry.Tags[#baseEntry.Tags + 1] = statsObj.InstrumentType
-
+        --- @diagnostic disable-next-line
+        self:AddTagToData(baseEntry.Uuid, statsObj.InstrumentType)
     end
 
     local debugFunc = function(passiveName)

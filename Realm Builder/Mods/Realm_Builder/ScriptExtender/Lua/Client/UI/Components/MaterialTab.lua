@@ -145,6 +145,7 @@ function MaterialTab:Render(parent)
             typeNode.Selected = false
             typeGroup.Visible = not typeGroup.Visible
             typeNode.Label = (typeGroup.Visible and "[-] " or "[+] ") .. propType .. "##" .. self.MaterialName
+            self.cachedExpandedState[paramType] = typeGroup.Visible
         end
 
         typeNode.OnRightClick = function (sel)
@@ -161,12 +162,14 @@ function MaterialTab:Render(parent)
         paramTable.BordersOuter = true
         paramTable.RowBg = true
         for _,propertyName in ipairs(propNames) do
-            local tab = paramRow:AddCell():AddTable("PropertyTable##" .. self.MaterialName .. propertyName, 3)
+            local rowCell = paramRow:AddCell()
+            local tab = rowCell:AddTable("PropertyTable##" .. self.MaterialName .. propertyName, 3)
             tab.ColumnDefs[1] = { WidthFixed = true }
             tab.ColumnDefs[2] = { WidthStretch = true }
             tab.ColumnDefs[3] = { WidthFixed = true }
             local row = tab:AddRow()
-            local propNode = row:AddCell():AddSelectable(propertyName .. "##" .. self.MaterialName) --[[@as ExtuiSelectable ]]
+            local propCell = row:AddCell()
+            local propNode = propCell:AddSelectable(propertyName .. "##" .. self.MaterialName) --[[@as ExtuiSelectable ]]
             self.ParamNodeRefs[propertyName] = propNode
             self.ParamTableRefs[propertyName] = tab
             row:AddCell() -- Spacer
@@ -175,9 +178,9 @@ function MaterialTab:Render(parent)
             local sliders, colorPicker
 
             local paramValue = self:GetParameter(propertyName)
-            
+
             propNode.OnHoverEnter = function ()
-                sliders, colorPicker = self:RenderProperty(paramgroup, propertyName, paramValue)
+                sliders, colorPicker = self:RenderProperty(paramgroup, propertyName, paramValue, rowCell)
                 propNode.OnHoverEnter = function()
                     propNode.Highlight = self:HasChanged(propertyName) and true or false
                     typeNode.Highlight = self:HasChangeInType(paramType)
@@ -279,7 +282,7 @@ end
 --- @param node ExtuiTreeParent
 --- @param propertyName string
 --- @param propertyValue number[]
-function MaterialTab:RenderProperty(node, propertyName, propertyValue)
+function MaterialTab:RenderProperty(node, propertyName, propertyValue, propRow)
     local sliders = {} --[[@type ExtuiSliderScalar[] ]]
     local colorPicker = nil
     if type(propertyValue) == "number" then
@@ -627,6 +630,24 @@ function MaterialMixerTab:Render(parent)
             self:SetParameter(paramName, newValue)
         end
     end
+end
+
+function MaterialMixerTab:RenderProperty(node, propertyName, propertyValue, propRow)
+    local sliders, picker = MaterialTab.RenderProperty(self, node, propertyName, propertyValue, propRow)
+
+    local removeBtn = node:AddButton("[X]##" .. self.MaterialName .. propertyName)
+    removeBtn.OnClick = function (sel)
+        self.ParametersSetProxy:RemoveParameter(propertyName)
+        propRow:Destroy()
+        self.ParamNodeRefs[propertyName] = nil
+        self.UpdateFuncs[propertyName] = nil
+        self.ResetFuncs[propertyName] = nil
+        self:UpdateUIState()
+    end
+
+    removeBtn.SameLine = true
+
+    return sliders, picker
 end
 
 function MaterialMixerTab:GetAllParameterNames()

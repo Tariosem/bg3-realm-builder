@@ -172,6 +172,7 @@ local function PopulateAllTemplates()
 
     RB_CharacterManager.populated = true
     RB_ItemManager.populated = true
+    RB_SceneryManager.populated = true
     RB_ItemManager.modCache = {}
     return itemCnt, characterCnt, sceneryCnt, constructionsCnt
 end

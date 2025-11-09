@@ -223,25 +223,13 @@ end
 
 ---@param entity EntityHandle|GUIDSTRING
 function VisualHelpers.VisualizeAABB(entity)
-    if type(entity) == "string" then
-        if IsCamera(entity) then return end
-        entity = Ext.Entity.Get(entity) --[[@as EntityHandle]]
-    end
-
-    if entity.PartyMember then
-        local dummy = GetDummyByUuid(HandleToUuid(entity))
-        if dummy and dummy.Visual and dummy.Visual.Visual then
-            entity = dummy
-        end
-    end
-
     local visual = VisualHelpers.GetEntityVisual(entity)
     if not visual or not visual.WorldTransform then
         return
     end
     local aabb = visual.WorldBound
     if not aabb then return end
-    NetChannel.VisualizeAABB:SendToServer({Guid = HandleToUuid(entity), Min = aabb.Min, Max = aabb.Max})
+    NetChannel.VisualizeAABB:SendToServer({Min = aabb.Min, Max = aabb.Max})
 end
 
 function VisualHelpers.ChangeFrames(frames, value, isColor)
