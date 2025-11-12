@@ -84,6 +84,17 @@ end
 ---@return number?
 function VisualHelpers.GetVisualScale(handle)
     local visual = VisualHelpers.GetEntityVisual(handle)
+
+    if CIsItem(handle) then
+        local renderable = VisualHelpers.GetRenderable(handle, 1)
+        if renderable and renderable.WorldTransform then
+            local scale = renderable.WorldTransform.Scale
+            if scale and #scale >= 3 then
+                return scale[1], scale[2], scale[3]
+            end
+        end
+    end
+
     if not visual or not visual.WorldTransform then
         return nil, nil, nil
     end

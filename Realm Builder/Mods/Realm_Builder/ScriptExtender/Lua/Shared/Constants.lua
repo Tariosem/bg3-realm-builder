@@ -41,11 +41,27 @@ RB_ICONS.Character = "RB_Character_Icon"
 RB_ICONS.Scenery = "RB_Scenery_Icon"
 RB_ICONS.Character_Fill = "RB_Character_Icon_Fill"
 RB_ICONS.Scenery_Fill = "RB_Scenery_Icon_Fill"
+RB_ICONS.Character_Standing = "RB_Character_Standing_Icon"
 RB_ICONS.Tree_Expanded = "RB_Tree_Expanded_Icon"
 RB_ICONS.Tree_Collapsed = "RB_Tree_Collapsed_Icon"
 RB_ICONS.Tree_Child = "RB_Tree_Child_Icon"
 RB_ICONS.Collection = "RB_Collection_Icon"
 RB_ICONS.Collection_Fill = "RB_Collection_Icon_Fill"
+
+RB_ICONS.Gear = "RB_Gear_Icon"
+RB_ICONS.Gear_Fill = "RB_Gear_Icon_Fill"
+RB_ICONS.X_Square = "RB_X_Square_Icon"
+RB_ICONS.Sliders = "RB_Sliders_Icon"
+RB_ICONS.Copy = "RB_Copy_Icon"
+RB_ICONS.Crop = "RB_Crop_Icon"
+RB_ICONS.Clipboard = "RB_Clipboard_Icon"
+
+RB_ICONS.Eye = "RB_Eye_Icon"
+RB_ICONS.Eye_Slash = "RB_Eye_Slash_Icon"
+
+RB_ICONS.Warning = "RB_Warning_Icon"
+RB_ICONS.Exclamation = "RB_Exclamation_Icon"
+RB_ICONS.Plus_Square = "RB_Plus_Square_Icon"
 
 --- vanilla resources
 WARNING_ICON = "PassiveFeature_Generic_Threat"

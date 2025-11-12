@@ -1,11 +1,8 @@
---- janky operator overloading
---- Directly assigning to non-leaf keys will make the tree structure inconsistent.
---- Because '=' cannot be overloaded in Lua.
 --- @class TreeTable
 --- @field _table table
---- @field _nodeRefs table<any, any>
---- @field _parentRefs table<any, any>
---- @field _leafRefs table<any, boolean>
+--- @field _nodeRefs table<any, any> -- maps key to node (table or leaf value)
+--- @field _parentRefs table<any, any> -- maps child key to parent key
+--- @field _leafRefs table<any, boolean> -- maps which keys are leaves, so leaf can have table value
 --- @field _ancestorDepthCache table<any, number>
 --- @field _ancestorUpCache table<any, table<number, any>>
 --- @field _ancestorDirty boolean
@@ -15,7 +12,7 @@
 --- @field AddLeaf fun(self:TreeTable, key:any, value:any, parent?:any):any|nil
 --- @field AddPath fun(self:TreeTable, path:any[]):boolean
 --- @field Find fun(self:TreeTable, key:any):any|nil
---- @field GetPath fun(self:TreeTable, key:any):table
+--- @field GetPath fun(self:TreeTable, key:any, excludeSelf?:boolean, excludeRoot?:boolean):any[]
 --- @field Remove fun(self:TreeTable, key:any):boolean
 --- @field RemoveButKeepChildren fun(self:TreeTable, key:any):boolean
 --- @field Reparent fun(self:TreeTable, key:any, newParent?:any):boolean
@@ -37,7 +34,6 @@
 --- @field ToTable fun(self:TreeTable):table
 --- @field FromTable fun(self:TreeTable, tbl:table)
 --- @field FromTableStatic fun(tbl:table):TreeTable
-
 TreeTable = {}
 TreeTable.__index = TreeTable
 
@@ -334,6 +330,30 @@ function TreeTable:IsLeaf(key)
     return yes and true or false
 end
 
+--- @param key any
+--- @return any[]
+function TreeTable:CollectChildren(key)
+    local node = self._nodeRefs[key]
+    if not node then
+        --Debug("Key '" .. tostring(key) .. "' not found.")
+        return {}
+    end
+
+    local children = {}
+    local stack = {node}
+    while #stack > 0 do
+        local currentNode = table.remove(stack)
+        for childKey, childValue in pairs(currentNode) do
+            table.insert(children, childKey)
+            if type(childValue) == "table" and (not self:IsLeaf(childKey)) then
+                table.insert(stack, childValue)
+            end
+        end
+    end
+    
+    return children
+end
+
 function TreeTable:IsAncestor(ancestorKey, descendantKey)
     local currentKey = descendantKey
     local visited = {}
@@ -562,7 +582,7 @@ function TreeTable:_LCA_Binary(key1, key2)
         end
     end
 
-    Debug("LCA of" .. key1 .. "and" .. key2 .. "is", self._ancestorUpCache[key1][0] ," Using binary lifting")
+    --Debug("LCA of [" .. key1 .. "] and [" .. key2 .. "] is [", self._ancestorUpCache[key1][0] ,"] Using binary lifting")
     return self._ancestorUpCache[key1][0]
 end
 
@@ -594,11 +614,16 @@ function TreeTable:FindLCA(keys)
 
     local lca = keys[1]
     for i = 2, #keys do
-        lca = self:_LCA(lca, keys[i])
+        lca = self:_LCA_Binary(lca, keys[i])
         if not lca then
             return nil
         end
     end
+
+    if table.find(keys, lca) then
+        lca = self._parentRefs[lca]
+    end
+
     return lca
 end
 

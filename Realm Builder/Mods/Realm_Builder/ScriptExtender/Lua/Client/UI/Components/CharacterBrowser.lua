@@ -105,7 +105,7 @@ function CharacterBrowser:RenderIcon(entry, cell)
                 local spawnPos = {CGetPosition(selected)}
                 local spawnRot = {CGetRotation(selected)}
                 if not spawnPos or not spawnRot then return end
-                Commands.SpawnCommand(entry.TemplateId, spawnPos, spawnRot)
+                Commands.SpawnCommand(entry.TemplateId, { Position=spawnPos, Rotation=spawnRot })
             end)
         end
         rPopup:Open()
@@ -122,7 +122,7 @@ function CharacterBrowser:RenderIcon(entry, cell)
         Timer:Ticks(20, function (timerID)
             local spawnPos, spawnRot = GetPickingHitPosAndRot()
             if not spawnPos or not spawnRot then return end
-            Commands.SpawnCommand(entry.TemplateId, spawnPos, spawnRot)
+            Commands.SpawnCommand(entry.TemplateId, { Position=spawnPos, Rotation=spawnRot })
         end)
     end
 

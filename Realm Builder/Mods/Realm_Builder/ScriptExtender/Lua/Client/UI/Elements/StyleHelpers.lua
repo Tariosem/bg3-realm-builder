@@ -187,7 +187,8 @@ function AddSliderStepButton(parent, label, step, slider, direction)
 end
 
 function AddWarningIcon(parent, text)
-    local image = parent:AddImage(WARNING_ICON)
+    local image = parent:AddImage(RB_ICONS.Warning) --[[@as ExtuiImageButton]]
+    image.Tint = {1, 0.5, 0.5, 1}
     image.ImageData.Size = ToVec2(32 * SCALE_FACTOR)
     image.SameLine = true
     image:Tooltip():AddText(text)
@@ -467,10 +468,10 @@ function AddMenuButton(menu, text, onClick, isWindow)
 end
 
 function AddRightAlignCell(parent)
-    local table, leftCell, rightCell = AddTwoColTable(parent)
-    table.ColumnDefs[1] = { WidthStretch = true }
-    table.ColumnDefs[2] = { WidthFixed = true }
-    return rightCell, leftCell
+    local tab, leftCell, rightCell = AddTwoColTable(parent)
+    tab.ColumnDefs[1] = { WidthStretch = true }
+    tab.ColumnDefs[2] = { WidthFixed = true }
+    return rightCell, leftCell, tab
 end
 
 function SafeDestroy(extui)
@@ -542,7 +543,7 @@ function SetImguiDisabled(extui, disabled)
     end
 end
 
-function DestroyAllChilds(parent)
+function DestroyAllChildren(parent)
     if not parent then return end
     if not parent.Children then
         parent:Destroy()
@@ -555,7 +556,7 @@ function DestroyAllChilds(parent)
     end
 end
 
-function TraverseAllChilds(parent, func)
+function TraverseAllChildren(parent, func)
     if not parent then return end
     if not parent.Children then
         func(parent)
@@ -565,7 +566,7 @@ function TraverseAllChilds(parent, func)
         func(child)
         local suc, children = pcall(function() return child.Children end)
         if suc and children then
-            TraverseAllChilds(children, func)
+            TraverseAllChildren(children, func)
         end
     end
 end
@@ -662,27 +663,36 @@ end
 
 --- @class RB_ContextMenu : ExtuiTable
 --- @field AddItem fun(self: RB_ContextMenu, label: string, onClick: fun(selectable: ExtuiSelectable), hint: string?): ExtuiSelectable
+--- @field AddItemPacked fun(self: RB_ContextMenu, item: RB_ContextItem): ExtuiSelectable
 --- @field AddMenu fun(self: RB_ContextMenu, label: string): RB_ContextMenu
 
 --- @class RB_ContextItem
 --- @field Label string
 --- @field OnClick fun(selectable: ExtuiSelectable)
 --- @field Hint string?
+--- @field Icon string?
 --- @field HotKey Keybinding
 
 ---@param parent ExtuiTreeParent
 ---@return RB_ContextMenu
 function StyleHelpers.AddContextMenu(parent)
-    local tab = parent:AddTable("SelectionTable##" .. Uuid_v4(), 1) --[[@as ExtuiTable]]
-    tab.BordersInnerH = true
-    tab.ColumnDefs[1] = { WidthStretch = true }
+    local tab = parent:AddTable("SelectionTable##" .. Uuid_v4(), 2) --[[@as ExtuiTable]]
+    tab.BordersInner = true
+    tab.ColumnDefs[1] = { WidthFixed = true }
+    tab.ColumnDefs[2] = { WidthStretch = true }
 
     local row = tab:AddRow() --[[@as ExtuiTableRow]]
 
-    local tabProxy = {
-        AddItem = function(_, label, onClick, hint)
+    local tabProxy = {}
+    tabProxy = {
+        AddItem = function(_, label, onClick, hint, image)
+            local imageCell = row:AddCell()
+            if image and image ~= "" then
+                local img = imageCell:AddImage(image)
+                img.ImageData.Size = ToVec2(36 * SCALE_FACTOR)
+            end
             local innerCell = row:AddCell()
-            local innerTable = innerCell:AddTable("InnerTable##" .. Uuid_v4(), 2) --[[@as ExtuiTable]]
+            local innerTable = innerCell:AddTable("InnerTable##" .. Uuid_v4(), 3) --[[@as ExtuiTable]]
             innerTable.ColumnDefs[1] = { WidthStretch = true }
             innerTable.ColumnDefs[2] = { WidthFixed = true , Width = 80 * SCALE_FACTOR }
             innerTable.ColumnDefs[3] = { WidthFixed = true }
@@ -696,6 +706,7 @@ function StyleHelpers.AddContextMenu(parent)
                 text:SetColor("Text", HexToRGBA("FFAAAAAA"))
                 text.Font = "Tiny"
             end
+            
             local selectable = cell:AddSelectable(label) --[[@as ExtuiSelectable]]
             selectable.Font = "Medium"
             selectable.SpanAllColumns = true
@@ -706,6 +717,9 @@ function StyleHelpers.AddContextMenu(parent)
                 end
             end
             return selectable
+        end,
+        AddItemPacked = function (_, item)
+            return tabProxy.AddItem(_, item.Label, item.OnClick, item.Hint, item.Icon)
         end,
         AddMenu = function (_, label)
             local cell = row:AddCell()
@@ -728,6 +742,7 @@ end
 
 --- @class AttrTableProxy : ExtuiTable
 --- @field AddNewLine fun(self: AttrTableProxy): ExtuiTableCell, ExtuiTableCell
+--- @field SetValue fun(self: AttrTableProxy, name: string, value: string)
 
 ---@param parent ExtuiTreeParent
 ---@param contents table<string, string>
@@ -738,22 +753,37 @@ function StyleHelpers.AddReadOnlyAttrTable(parent, contents)
     tab.ColumnDefs[1] = { WidthFixed = true }
     tab.ColumnDefs[2] = { Width = 900 * SCALE_FACTOR }
 
-    local row = tab:AddRow() --[[@as ExtuiTableRow]]
-    for name, value in SortedPairs(contents) do
+    local function addRow(name, value)
+        local row = tab:AddRow() --[[@as ExtuiTableRow]]
         local nameCell = row:AddCell()
         nameCell:AddText(name)
 
         local valueCell = row:AddCell()
         local input = valueCell:AddInputText("", tostring(value))
+        contents[name] = input
         input.Text = tostring(value)
         input.IDContext = "ReadOnlyAttrInput##" .. name
         input.ReadOnly = true
         input.AutoSelectAll = true
     end
 
+    local contents = contents or {}
+    for name, value in SortedPairs(contents) do
+        addRow(name, value)
+    end
+
     local tabProxy = {
         AddNewLine = function()
+            local row = tab:AddRow() --[[@as ExtuiTableRow]]
             return row:AddCell(), row:AddCell()
+        end,
+        SetValue = function(_, name, value)
+            local input = contents[name]
+            if input then
+                input.Text = tostring(value)
+            else
+                addRow(name, value)
+            end
         end
     }
     
@@ -767,6 +797,70 @@ function StyleHelpers.AddReadOnlyAttrTable(parent, contents)
     })
 
     return tabProxy
+end
+
+--- @class RadioButtonOption
+--- @field Hint string
+--- @field Bit integer
+
+--- @class BitmaskRadioButtonsGroup
+--- @field OnChange fun(radioBtn: ExtuiRadioButton, value: integer)
+
+--- @param parent ExtuiTreeParent
+--- @param options RadioButtonOption[]
+--- @param initValue integer
+function StyleHelpers.AddBitmaskRadioButtons(parent, options, initValue)
+    local group = parent:AddGroup(label or "BitmaskRadioButtonsGroup" .. Uuid_v4())
+    local value = initValue or 0
+    local btns = {}
+
+    local groupProxy = {
+        OnChange = function() end
+    }
+
+    setmetatable(groupProxy, {
+        __index = function(_, k)
+            if k == "Value" then
+                return value
+            else
+                return group[k]
+            end
+        end,
+        __newindex = function(_, k, v)
+            if k == "Value" then
+                value = v
+                for i, option in ipairs(options) do
+                    local radio = btns[i]
+                    if radio then
+                        radio.Active = (value & option.Bit) ~= 0
+                    end
+                end
+            else
+                group[k] = v
+            end
+        end
+    })
+
+    for i, option in ipairs(options) do
+        local radio = group:AddRadioButton(option.Hint or ("Option" .. i))
+        radio.Active = initValue and (initValue & option.Bit) ~= 0 or false
+        radio.OnChange = function(r)
+            r.Active = not r.Active
+            if r.Active then
+                value = value | option.Bit
+            else
+                value = value & (~option.Bit)
+            end
+            if groupProxy.OnChange then
+                groupProxy.OnChange(r, value)
+            end
+        end
+
+        radio.SameLine = (i > 1 and i % 8 ~= 1)
+        btns[i] = radio
+    end
+
+    return groupProxy
 end
 
 function SetWarningBorder(extui)
@@ -811,9 +905,6 @@ end
 function ClearAllBorders(extui)
     extui:SetColor("Text", HexToRGBA("FFFFFFFF"))
     extui:SetColor("Border", HexToRGBA("00000000"))
-    extui:SetColor("Button", HexToRGBA("00000000"))
-    extui:SetColor("ButtonHovered", HexToRGBA("00000000"))
-    extui:SetColor("ButtonActive", HexToRGBA("00000000"))
     extui:SetStyle("FrameBorderSize", 0)
     extui:SetStyle("WindowBorderSize", 0)
     extui:SetStyle("PopupBorderSize", 0)

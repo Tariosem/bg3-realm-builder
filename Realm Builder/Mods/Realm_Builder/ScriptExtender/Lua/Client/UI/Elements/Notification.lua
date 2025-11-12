@@ -120,7 +120,7 @@ function Notification:BuildContent()
     self.MessageRenderFunc(panel)
     
     if self.ClickToDismiss then
-        TraverseAllChilds(panel, function(child)
+        TraverseAllChildren(panel, function(child)
             local childOnClick = child.OnClick or function() end
             child.OnClick = function()
                 childOnClick()

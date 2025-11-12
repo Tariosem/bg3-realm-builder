@@ -1,3 +1,14 @@
+--- @class OsirisHelpers
+--- @field Propify fun(guids: GUIDSTRING|GUIDSTRING[])
+--- @field DrawLine fun(startPos: Vec3, endPos: Vec3, width:number, user:GUIDSTRING):GUIDSTRING
+--- @field DrawBox fun(min:Vec3, max:Vec3, LineThickness:number, user:GUIDSTRING):GUIDSTRING[]
+--- @field DrawOrientedBox fun(center:Vec3, halfSizes:Vec3, rotation: Quat, LineThickness:number, user:GUIDSTRING):GUIDSTRING[]
+--- @field TeleportTo fun(uuid:GUIDSTRING, x:number, y:number, z:number):boolean
+--- @field TeleportToTarget fun(uuid:GUIDSTRING, targetUuid:GUIDSTRING):boolean
+--- @field RotateTo fun(guid:GUIDSTRING, rx:number, ry:number, rz:number, w:number):boolean
+--- @field ScaleTo fun(guid:GUIDSTRING, sx:number, sy:number, sz:number):boolean
+--- @field ToTransform fun(guid:GUIDSTRING, transform:Transform):boolean
+--- @field PreviewTemplate fun(templateId:string, x:number, y:number, z:number, p:number, yaw:number, r:number, w:number, visualPreset:string)
 OsirisHelpers = OsirisHelpers or {}
 
 function OsirisHelpers.Propify(guids)
@@ -10,13 +21,12 @@ function OsirisHelpers.Propify(guids)
         Osi.SetTag(guid, RB_PROP_TAG)
         Osi.SetCanFight(guid, 0)
         Osi.SetCanJoinCombat(guid, 0)
-        Osi.ClearTag(guid, RB_GIZMO_TAG)
     end
 end
 
 function OsirisHelpers.DrawLine(startPos, endPos, width, user)
     if #startPos ~= 3 or #endPos ~= 3 then
-        return
+        return nil
     end
     local dir = Ext.Math.Sub(startPos, endPos) -- beam's default direction is -z
     local length = Ext.Math.Length(dir) -- beam's default length is 10
@@ -24,8 +34,8 @@ function OsirisHelpers.DrawLine(startPos, endPos, width, user)
     local toScale = length / 10
 
     local fxHandle = Osi.CreateAt(RB_BEAM_ITEM_FX, 0, 0, 0, 1, 0, "") --[[@as string]]
-    TeleportTo(fxHandle, startPos[1], startPos[2], startPos[3])
-    RotateTo(fxHandle, table.unpack(DirectionToQuat(dir)))
+    OsirisHelpers.TeleportTo(fxHandle, startPos[1], startPos[2], startPos[3])
+    OsirisHelpers.RotateTo(fxHandle, table.unpack(DirectionToQuat(dir)))
     Timer:Ticks(10, function (timerID)
         if not EntityExists(fxHandle) then return end
 
@@ -118,7 +128,7 @@ function OsirisHelpers.DrawOrientedBox(center, halfSizes, rotation, LineThicknes
     return spawned
 end
 
-function TeleportTo(uuid, x, y, z)
+function OsirisHelpers.TeleportTo(uuid, x, y, z)
     if not uuid then
         Warning("Called TeleportTo with Invalid item")
         return false
@@ -139,7 +149,7 @@ function TeleportTo(uuid, x, y, z)
     return true
 end
 
-function TeleportToTarget(uuid, targetUuid)
+function OsirisHelpers.TeleportToTarget(uuid, targetUuid)
     if not uuid or not targetUuid then
         Warning("Called TeleportToTarget with Invalid item or target")
         return false
@@ -150,7 +160,7 @@ function TeleportToTarget(uuid, targetUuid)
     return true
 end
 
-function RotateTo(guid, rx, ry, rz, w)
+function OsirisHelpers.RotateTo(guid, rx, ry, rz, w)
     if not guid then
         Warning("Called RotateTo with Invalid item")
         return false
@@ -163,14 +173,50 @@ function RotateTo(guid, rx, ry, rz, w)
     local transform = entity.Transform.Transform
     transform.RotationQuat = {rx or 0, ry or 0, rz or 0, w or 1}
 
-    TeleportTo(guid, CGetPosition(guid))
+    --- @diagnostic disable-next-line: param-type-mismatch
+    OsirisHelpers.TeleportTo(guid, CGetPosition(guid))
 
     return true
 end
 
-SpawnedTemplates = {}
+function OsirisHelpers.ScaleTo(guid, sx, sy, sz)
+    if not guid then
+        Warning("Called ScaleTo with Invalid item")
+        return false
+    end
 
-function PreviewTemplate(templateId, x, y, z, p, yaw, r, w, visualPreset)
+    local entity = UuidToHandle(guid)
+    if not entity then
+        return false
+    end
+    local transform = entity.Transform.Transform
+    transform.Scale = {sx or 1, sy or 1, sz or 1}
+
+    --- @diagnostic disable-next-line: param-type-mismatch
+    OsirisHelpers.TeleportTo(guid, CGetPosition(guid))
+
+    return true
+end
+
+function OsirisHelpers.ToTransform(guid, transform)
+    if not guid then
+        Warning("Called ToTransform with Invalid item")
+        return false
+    end
+
+    local entity = UuidToHandle(guid)
+    if not entity then
+        return false
+    end
+    entity.Transform.Transform = transform
+
+    --- @diagnostic disable-next-line: param-type-mismatch
+    OsirisHelpers.TeleportTo(guid, transform.Translate[1], transform.Translate[2], transform.Translate[3])
+    return true
+    
+end
+
+function OsirisHelpers.PreviewTemplate(templateId, x, y, z, p, yaw, r, w, visualPreset)
     if not x or not y or not z then
         x, y, z = GetHostPosition()
     end
@@ -190,7 +236,7 @@ function PreviewTemplate(templateId, x, y, z, p, yaw, r, w, visualPreset)
         return
     end
 
-    RotateTo(preview, p, yaw, r, w)
+    OsirisHelpers.RotateTo(preview, p, yaw, r, w)
 
     OsirisHelpers.Propify(preview)
     Osi.SetCanInteract(preview, 0)

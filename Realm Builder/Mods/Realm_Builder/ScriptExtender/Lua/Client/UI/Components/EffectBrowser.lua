@@ -1,4 +1,5 @@
 --- @class EffectBrowser : IconBrowser
+--- @field SaveToConfig fun(self:EffectBrowser)
 EffectBrowser = _Class("EffectBrowser", IconBrowser)
 
 --- @class EffectIconsBrowser : IconsBrowser
@@ -15,7 +16,6 @@ function EffectBrowser:SaveToConfig()
     CONFIG.EffectBrowser.CellsPadding = self.cellsPadding
     CONFIG.EffectBrowser.autoSave = self.autoSave
     CONFIG.EffectBrowser.ButtonBgColor = self.iconButtonBgColor
-    CONFIG.EffectBrowser.BackgroundColor = self.browserBackgroundColor
     CONFIG.EffectBrowser.LastPosition = self.lastPosition
     CONFIG.EffectBrowser.LastSize = self.lastSize
     SaveConfig("EffectsBrowser")
@@ -80,6 +80,15 @@ function EffectBrowser:RenderIcon(entry, cell)
         if self.iconToName then
             iconImage.Selected = false
         end
+    end
+
+    iconImage.OnHoverEnter = function ()
+        if rPopup then return end
+        rPopup = cell:AddPopup("SpawnPopup")
+        rPopup.IDContext = entry.Uuid .. "SpawnPopup" .. Uuid_v4()
+        
+        self:RenderCustomizationTab(rPopup, entry)
+        self:RenderPlayEffectPopup(function() return rPopup end, entry, iconImage)
     end
 
     iconImage.OnRightClick = function()

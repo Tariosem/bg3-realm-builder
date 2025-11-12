@@ -9,20 +9,139 @@
 --- @field VisualPreset string|nil
 
 --- @class EntityManager
---- @field TaggedEntities table<string, ServerEntityData>
+--- @field SavedEntities table<string, ServerEntityData>
+--- @field SavedTransforms table<string, Transform>
 --- @field CreateAt fun(self: EntityManager, TemplateId: string, x:number?, y:number?, z:number?, rx:number?, ry:number?, rz:number?, w:number?): string|nil
 --- @field AddEntity fun(self: EntityManager, guid: string): string|nil
 --- @field SetEntity fun(self: EntityManager, guid: string, entInfo: ServerEntityData)
---- @field Scan fun(self: EntityManager, refresh: boolean?):any
---- @field DeleteEntity fun(self: EntityManager, guid: string, doBroadcast: boolean?): boolean
+--- @field LoadFromModVar fun(self: EntityManager):any
+--- @field DeleteEntities fun(self: EntityManager, guid: string, doBroadcast: boolean?): boolean
 --- @field DeleteEntityByTemplateId fun(self: EntityManager, TemplateId: string): string[]
---- @field DeleteAll fun(self: EntityManager): string[]
+--- @field DeleteAll fun(self: EntityManager)
 --- @field FreeEntity fun(self: EntityManager, guids: string|string[])
 EntityManager = {
-    TaggedEntities = {},
+    SavedEntities = {},
+    SavedTransforms = {},
 }
 
--- Create Add
+--- @class EntitySave
+--- @field SavedEntities table<string, boolean>
+--- @field DeleteOnNextSession table<string, boolean>
+
+Ext.Vars.RegisterModVariable(ModuleUUID, "EntityManager", {
+    Server = true,
+    Persistent = true,
+})
+
+local initModVar = Ext.Vars.GetModVariables(ModuleUUID)
+if not initModVar then
+    initModVar = {}
+end
+if not initModVar.EntityManager then
+    initModVar.EntityManager = {
+        SavedEntities = {},
+        DeleteOnNextSession = {}
+    }
+end
+
+--- @return EntitySave
+local function getModVar()
+    local modVar = Ext.Vars.GetModVariables(ModuleUUID).EntityManager
+    if not modVar then
+        modVar = {
+            SavedEntities = {},
+            DeleteOnNextSession = {}
+        }
+    end
+    return modVar
+end
+
+RegisterOnSessionLoaded(function ()
+    local modVar = getModVar()
+    for guid, _ in pairs(modVar.DeleteOnNextSession) do
+        Osi.RequestDelete(guid)
+        Osi.RequestDeleteTemporary(guid)
+        modVar.SavedEntities[guid] = nil
+        modVar.DeleteOnNextSession[guid] = nil
+    end
+end)
+
+function EntityManager:StoreGuid(guid)
+    local modVar = getModVar()
+    modVar.SavedEntities[guid] = true
+end
+
+function EntityManager:DeleteEntities(guids)
+    guids = NormalizeGuidList(guids)
+    local modVar = getModVar()
+
+    for _, guid in FilteredPairs(guids, function(_,guid) return self.SavedEntities[guid] ~= nil end) do
+        modVar.DeleteOnNextSession[guid] = true
+
+        self.SavedTransforms = self.SavedTransforms or {}
+        self.SavedTransforms[guid] = EntityHelpers.SaveTransform(guid)
+
+        OsirisHelpers.TeleportTo(guid, 0, -10000, 0)
+
+        Osi.SetVisible(guid, 0)
+        Osi.SetCanInteract(guid, 0)
+    end
+
+    NetChannel.Entities.Deleted:Broadcast(guids)
+
+    return true
+end
+
+function EntityManager:RestoreEntities(guids)
+    guids = NormalizeGuidList(guids)
+    local modVar = getModVar()
+
+    for _, guid in FilteredPairs(guids, function(_,guid) return modVar.DeleteOnNextSession[guid] == true end) do
+        modVar.DeleteOnNextSession[guid] = nil
+        modVar.SavedEntities[guid] = true
+
+        local transform = self.SavedTransforms and self.SavedTransforms[guid]
+        if transform then
+            OsirisHelpers.ToTransform(guid, transform)
+        else
+            --- @diagnostic disable-next-line
+            OsirisHelpers.TeleportTo(guid, GetHostPosition())
+        end
+
+        Osi.SetVisible(guid, 1)
+        Osi.SetCanInteract(guid, 1)
+    end
+
+    NetChannel.Entities.Added:Broadcast({Entities = self:GetEntities(guids)})
+
+    return true
+end
+
+local readOnlyTemplateProperty = {
+    Id = true,
+    TemplateName = true,
+    ParentTemplateId = true,
+    TemplateHandle = true,
+    TemplateType = true,
+    Name = true,
+    Tags = true,
+    TemplateId = true,
+    DisplayName = true,
+    Icon = true,
+    ConstructionBend = true,
+    TileSet = true,
+    Tiles = true,
+    field_100 = true,
+    field_108 = true,
+}
+
+local function copyTemplateProperties(fromTemplate, toTemplate)
+    for k,v in pairs(fromTemplate) do
+        if not readOnlyTemplateProperty[k] then 
+            toTemplate[k] = v
+        end
+    end
+end
 
 function EntityManager:CreateAt(templateId, x, y, z, rx, ry, rz, w)
     --Trace("CreateProp called with TemplateId: " .. tostring(TemplateId))
@@ -40,8 +159,16 @@ function EntityManager:CreateAt(templateId, x, y, z, rx, ry, rz, w)
 
     local templateObj = Ext.Template.GetTemplate(TakeTailTemplate(templateId))
     local tempoFlag = templateObj.TemplateType == "character" and 1 or 0
+    local spawnTemplate = templateId
+    if templateObj.TemplateType == "scenery" or templateObj.TemplateType == "TileConstruction" then
+        local sceneryTemplate = templateObj --[[@as SceneryTemplate|ConstructionTemplate]]  
+        local helperATemplate = Ext.Template.GetTemplate(INVISIBLE_HELPER_SCENERY) --[[@as ItemTemplate]]
 
-    local newProp = Osi.CreateAt(templateId, x, y, z, tempoFlag, 0, "") --[[@as string]]
+        copyTemplateProperties(sceneryTemplate, helperATemplate)
+        spawnTemplate = helperATemplate.Name .. "-" .. helperATemplate.Id
+    end
+
+    local newProp = Osi.CreateAt(spawnTemplate, x, y, z, tempoFlag, 0, "") --[[@as string]]
 
     if not newProp then
         Error("Failed to create prop with TemplateId: " .. tostring(templateId))
@@ -51,19 +178,21 @@ function EntityManager:CreateAt(templateId, x, y, z, rx, ry, rz, w)
     OsirisHelpers.Propify(newProp)
 
     if rx and ry and rz and w then
-        RotateTo(newProp, rx, ry, rz, w)
+        OsirisHelpers.RotateTo(newProp, rx, ry, rz, w)
     end
 
     --Info("Prop created with TemplateId: " .. tostring(TemplateId) .. " at position (" .. x .. ", " .. y .. ", " .. z .. ")")
 
     local propData = {
-        TemplateId = Osi.GetTemplate(newProp) or templateId,
+        TemplateId = templateId,
         Guid = newProp,
         Persistent = false,
         Parent = nil,
     }
 
-    self.TaggedEntities[newProp] = propData
+    self.SavedEntities[newProp] = propData
+    self:StoreGuid(newProp)
+
     --Info("Prop added with guid: " .. tostring(newProp))
 
     local TemplateName = TrimTail(templateId, 37)
@@ -76,12 +205,9 @@ end
 
 function EntityManager:SetEntity(guid, entInfo)
     if entInfo.VisualPreset and entInfo.VisualPreset ~= "" then
-        self.TaggedEntities[guid].VisualPreset = entInfo.VisualPreset
+        self.SavedEntities[guid].VisualPreset = entInfo.VisualPreset
     end
 
-    if entInfo.TemplateId and entInfo.TemplateId ~= "" then
-        self.TaggedEntities[guid].TemplateId = entInfo.TemplateId
-    end
 
     if type(entInfo.Gravity) == "boolean" then
         if entInfo.Gravity then
@@ -89,7 +215,7 @@ function EntityManager:SetEntity(guid, entInfo)
         else
             Osi.SetGravity(guid, 1)
         end
-        self.TaggedEntities[guid].Gravity = entInfo.Gravity
+        self.SavedEntities[guid].Gravity = entInfo.Gravity
     end
 
     if type(entInfo.Visible) == "boolean" then
@@ -98,8 +224,8 @@ function EntityManager:SetEntity(guid, entInfo)
         else
             Osi.SetVisible(guid, 0)
         end
-        if self.TaggedEntities[guid] then
-            self.TaggedEntities[guid].Visible = entInfo.Visible
+        if self.SavedEntities[guid] then
+            self.SavedEntities[guid].Visible = entInfo.Visible
         end
     end
 
@@ -109,13 +235,9 @@ function EntityManager:SetEntity(guid, entInfo)
         else
             Osi.SetMovable(guid, 0)
         end
-        if self.TaggedEntities[guid] then
-            self.TaggedEntities[guid].Movable = entInfo.Movable
+        if self.SavedEntities[guid] then
+            self.SavedEntities[guid].Movable = entInfo.Movable
         end
-    end
-
-    if type(entInfo.Persistent) == "boolean" then
-        self.TaggedEntities[guid].Persistent = entInfo.Persistent
     end
 
     if type(entInfo.CanInteract) == "boolean" then
@@ -124,8 +246,8 @@ function EntityManager:SetEntity(guid, entInfo)
         else
             Osi.SetCanInteract(guid, 0)
         end
-        if self.TaggedEntities[guid] then
-            self.TaggedEntities[guid].CanInteract = entInfo.CanInteract
+        if self.SavedEntities[guid] then
+            self.SavedEntities[guid].CanInteract = entInfo.CanInteract
         end
     end
 end
@@ -135,6 +257,11 @@ function EntityManager:AddEntity(guid)
     if not guid then
         Error("Invalid guid or object does not exist")
         return nil
+    end
+
+    if self.SavedEntities[guid] then
+        Debug("Prop with guid: " .. tostring(guid) .. " already exists in SavedEntities")
+        return guid
     end
 
     local templateId = Osi.GetTemplate(guid)
@@ -149,119 +276,49 @@ function EntityManager:AddEntity(guid)
         Persistent = false,
     }
 
-    self.TaggedEntities[guid] = propData
+    self.SavedEntities[guid] = propData
+    self:StoreGuid(guid)
     --Info("Prop added with guid: " .. tostring(guid))
 
     return guid
 end
 
-function EntityManager:Scan(refresh)
-    local isRefresh = refresh ~= false
-    --Trace("Scanning for props: isRefresh: " .. tostring(isRefresh))
-    local allGuids = BF_GetAllTagged()
-    if not allGuids or #allGuids == 0 then
-        --Warning("No props found during scan")
-        return
-    end
-    local newEntities = {}
+function EntityManager:LoadFromModVar()
+    local modVar = getModVar()
 
-    local cnt = 0
-    for _, guid in ipairs(allGuids) do
-        if isRefresh or not self.TaggedEntities[guid] then
-            table.insert(newEntities, guid)
-            self:AddEntity(guid)
-            --Info("Prop scanned and added: " .. tostring(prop))
-            cnt = cnt + 1
-        else
+    local existingEntities = {}
+    for guid, _ in pairs(modVar.SavedEntities) do
+        table.insert(existingEntities, guid)
+    end
+    NetChannel.Entities.Added:Broadcast({Entities = self:GetEntities(existingEntities)})
+end
+
+function EntityManager:ScanForEntities()
+    local modVar = getModVar()
+    local allEntities = Ext.Entity.GetAllEntitiesWithComponent("Tag")
+    for _, entity in pairs(allEntities) do
+        local uuid = entity.Uuid.EntityUuid
+        if CIsTagged(uuid) and not modVar.DeleteOnNextSession[uuid] and not self.SavedEntities[uuid] then
+            self:AddEntity(uuid)
         end
     end
-
-    --Info("Scan completed with " .. cnt .. " props found")
-    return self:GetEntities(newEntities)
 end
 
 -- Delete
-
-function EntityManager:DeleteEntity(guid, doBroadcast)
-    doBroadcast = doBroadcast ~= false
-    --Trace("DeleteProp called with guid: " .. tostring(guid))
-    if not guid or not self.TaggedEntities[guid] then
-        Error("Invalid guid or prop not found")
-        return false
-    end
-
-    if self.TaggedEntities[guid].Persistent then
-        --Warning("Cannot delete persistent prop: " .. tostring(guid))
-        return false
-    end
-
-    Osi.ClearTag(guid, RB_PROP_TAG)
-    Osi.RequestDelete(guid)
-    Osi.RequestDeleteTemporary(guid)
-    self.TaggedEntities[guid] = nil
-    --Info("Prop deleted with guid: " .. tostring(guid))
-
-    if doBroadcast then
-        NetChannel.Entities.Deleted:Broadcast({guid})
-    end
-
-    return true
-end
-
-function EntityManager:DeleteEntityByTemplateId(TemplateId)
-    --Trace("DeletePropByTemplateId called with TemplateId: " .. tostring(TemplateId))
-    if not TemplateId then
-        Error("TemplateId is nil")
-        return {}
-    end
-
-    local deletedGuids = {}
-    for guid, propData in pairs(self.TaggedEntities) do
-        if TakeTailTemplate(propData.TemplateId) == TakeTailTemplate(TemplateId) then
-            if not self.TaggedEntities[guid].Persistent then
-                self:DeleteEntity(guid, false)
-                table.insert(deletedGuids, guid)
-            end
-        end
-    end
-
-    NetChannel.Entities.Deleted:Broadcast(deletedGuids)
-
-    --Info("All props with TemplateId: " .. tostring(TemplateId) .. " deleted")
-    return deletedGuids
-end
-
 function EntityManager:DeleteAll()
-    local toDelete = {}
-    for guid, item in pairs(self.TaggedEntities) do
-        if not item.Persistent then
-            table.insert(toDelete, guid)
-        end
+    for guid, _ in pairs(self.SavedEntities) do
+        self:DeleteEntities(guid)
     end
-
-    local deletedGuids = {}
-    for _, guid in ipairs(toDelete) do
-        if self:DeleteEntity(guid, false) then
-            table.insert(deletedGuids, guid)
-        else
-            --Warning("Failed to delete prop with guid: " .. tostring(guid))
-        end
-    end
-
-    NetChannel.Entities.Deleted:Broadcast(deletedGuids)
-
-    return deletedGuids
 end
 
 function EntityManager:FreeEntity(guids)
     local toFree = NormalizeGuidList(guids)
 
     for _, guid in ipairs(toFree) do
-        if not guid or not self.TaggedEntities[guid] then
+        if not guid or not self.SavedEntities[guid] then
             Warning("Invalid guid or prop not found: " .. tostring(guid))
         else
-            Osi.ClearTag(guid, RB_PROP_TAG)
-            self.TaggedEntities[guid] = nil
+            self.SavedEntities[guid] = nil
 
             NetChannel.Entities.Deleted:Broadcast({guid})
             Info("Prop freed with guid: " .. tostring(guid))
@@ -271,7 +328,7 @@ function EntityManager:FreeEntity(guids)
 end
 
 function EntityManager:GetAllEntitiesForClients()
-    local entityList = self.TaggedEntities
+    local entityList = self.SavedEntities
     local items = {}
     for _, prop in pairs(entityList) do
         local item = self:GetEntityForClients(prop.Guid)
@@ -286,20 +343,26 @@ function EntityManager:GetAllEntitiesForClients()
 end
 
 function EntityManager:GetEntityForClients(guid)
-    local entityData = self.TaggedEntities[guid]
+    local entityData = self.SavedEntities[guid]
     if not entityData then
         Error("Prop not found for guid: " .. tostring(guid))
         return nil
     end
+    local entity = Ext.Entity.Get(guid) --[[@as EntityHandle]]
+    local serverItem = entity.ServerItem
+
     local item = {
-        TemplateId = entityData.TemplateId,
+        TemplateId = entityData.TemplateId or Osi.GetTemplate(entityData.Guid),
         Guid = entityData.Guid,
-        Gravity = entityData.Gravity or false,
         CanInteract = Osi.GetCanInteract(entityData.Guid) == 1 or false,
         Visible = Osi.IsInvisible(entityData.Guid) ~= 1 or false,
         Movable = Osi.IsMovable(entityData.Guid) == 1 or false,
         Persistent = entityData.Persistent or false,
     }
+
+    if serverItem then
+        item.Gravity = serverItem.FreezeGravity == false
+    end
 
     local items = {item}
     return items
@@ -323,8 +386,15 @@ end
 
 function EntityManager:BF_DeleteAll()
     --Trace("BF_DeleteAll called")
-    self.TaggedEntities = {}
-    self:Scan(false)
-    return self:DeleteAll()
+    local modVar = getModVar()
+    for guid, item in pairs(self.SavedEntities) do
+        Osi.ClearTag(guid, RB_PROP_TAG)
+        Osi.RequestDelete(guid)
+        Osi.RequestDeleteTemporary(guid)
+        self.SavedEntities[guid] = nil
+        modVar.SavedEntities[guid] = nil
+        modVar.DeleteOnNextSession[guid] = nil
+        --Info("Prop deleted with guid: " .. tostring(guid))
+    end
     --Info("All props deleted")
 end

@@ -110,7 +110,8 @@ function StatsTab:RenderEffects()
     end
 
     local warningCell = self.effectRow:AddCell()
-    warningCell = warningCell:AddImage(WARNING_ICON)
+    warningCell = warningCell:AddImage(RB_ICONS.Warning) --[[@as ExtuiImageButton]]
+    warningCell.Tint = {1, 0.5, 0.5, 1}
     warningCell.ImageData.Size = {32 * SCALE_FACTOR, 32 *SCALE_FACTOR}
     warningCell.OnClick = clickDestroy
     warningCell = warningCell:Tooltip()
@@ -499,7 +500,7 @@ end
 function StatsTab:RenderEmptyIcon(row, effectType)
     local emptyCell = row:AddCell()
 
-    local emptyIcon = emptyCell:AddImageButton("EmptyIcon", "Action_RegainHP")
+    local emptyIcon = emptyCell:AddImageButton("EmptyIcon", RB_ICONS.Plus_Square)
     emptyIcon.Image.Size = {64 * SCALE_FACTOR, 64 * SCALE_FACTOR}
 
     emptyIcon.DragDropType = "EffectInfo"

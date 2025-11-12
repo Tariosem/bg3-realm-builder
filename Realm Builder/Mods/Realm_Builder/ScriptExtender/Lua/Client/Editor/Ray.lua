@@ -351,7 +351,6 @@ function Ray:Debug()
         EndPosition = self:At(10),
         Duration = 3000,
     }, function(response)
-        -- do nothing
     end)
 end
 

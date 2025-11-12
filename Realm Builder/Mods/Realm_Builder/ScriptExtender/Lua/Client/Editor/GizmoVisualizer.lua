@@ -163,8 +163,14 @@ function GizmoVisualizer:HideGizmoAxis(axis, guid)
 end
 
 function GizmoVisualizer:HideGizmo(guid)
-    for _,axis in pairs({"X","Y","Z"}) do
-        self:HideGizmoAxis(axis, guid)
+    local visual = VisualHelpers.GetEntityVisual(guid)
+    if not visual then return end
+
+    local objs = visual.ObjectDescs or {}
+    if #objs == 0 then return end
+
+    for _,obj in ipairs(objs) do
+        obj.Renderable:SetWorldScale({0,0,0})
     end
 end
 

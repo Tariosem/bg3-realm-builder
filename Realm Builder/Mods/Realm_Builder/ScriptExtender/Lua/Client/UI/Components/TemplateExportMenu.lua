@@ -238,7 +238,6 @@ function TemplateExportMenu:RenderTemplateEntry(cell, entData)
         Icon = true,
         Position = true,
         Rotation = true,
-        Scale = true,
     }
     local ignoreAttrs = {
         TemplateType = true,

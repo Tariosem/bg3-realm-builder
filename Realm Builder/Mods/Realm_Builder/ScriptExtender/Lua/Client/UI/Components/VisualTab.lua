@@ -56,12 +56,13 @@ function VisualTab:__init(guid, displayName, parent, templateName)
 
     self.currentPreset = EntityStore[guid] and EntityStore[guid].VisualPreset or nil
 
+
     self.updateFuncs = {}
     self.resetFuncs = {}
     self.Materials = {}
 
 
-    if not templateName then
+    if not templateName and not EntityStore[guid] then
         NetChannel.GetTemplate:RequestToServer({ Guid = self.guid }, function(response)
             if response.GuidToTemplateId and response.GuidToTemplateId[self.guid] then
                 local getTemplateName = TrimTail(response.GuidToTemplateId[self.guid], 37)
@@ -78,6 +79,8 @@ function VisualTab:__init(guid, displayName, parent, templateName)
 end
 
 function VisualTab:SetupTemplate()
+    local stored = EntityStore:GetStoredData(self.guid)
+    self.templateName = self.templateName or (stored and TrimTail(stored.TemplateId, 37)) or "Unknown"
     local templateName = self.templateName or "Unknown"
 
     if self.tooltipTemplate then
@@ -109,8 +112,6 @@ end
 
 function VisualTab:Render(retryCnt)
     if self.isVisible then
-        self.isAttach = false
-        self:Refresh()
         return
     end
 
@@ -147,6 +148,7 @@ function VisualTab:Render(retryCnt)
         end
         return
     end
+
 
     self.keys = {}
 
@@ -285,7 +287,8 @@ function VisualTab:RenderPresetsCell()
         self:ReapplyCurrentChanges()
     end
 
-    local warningImage = self.topLeftCell:AddImage(WARNING_ICON)
+    local warningImage = self.topLeftCell:AddImage(RB_ICONS.Warning) --[[@as ExtuiImageButton]]
+    warningImage.Tint = { 1, 0.5, 0.5, 1 }
     warningImage.ImageData.Size = { 32 * SCALE_FACTOR, 32 * SCALE_FACTOR }
     warningImage.SameLine = true
     if self.templateName then
@@ -439,6 +442,7 @@ function VisualTab:RenderAttachmentSection()
             local resUuid = allColors[colorType]
             if not resUuid or resUuid == GUID_NULL then goto continue end
             local res = Ext.StaticData.Get(resUuid, colorTypes[colorType]) --[[@as ResourceCharacterCreationColor]]
+            if not res then goto continue end
             local matPresetRes = MaterialPresetProxy.new(res.MaterialPresetUUID)
             if not matPresetRes then goto continue end
             for ptype, params in pairs(matPresetRes.Parameters) do
@@ -693,6 +697,7 @@ function VisualTab:RenderEffectEditor()
             local nodeName = GetLoca("Light") .. (cnt ~= 1 and " (" .. cnt .. ")" or "")
             local newNode = self.effectHeader:AddTree(nodeName)
 
+
             self:RenderLightComponent(newNode, component, compIndex, cnt)
 
             newNode:AddSeparator()
@@ -710,7 +715,7 @@ function VisualTab:RenderEffectEditor()
     end
 end
 
----@param node any
+---@param node ExtuiTree
 ---@param component AspkComponent
 ---@param compIndex any
 function VisualTab:RenderLightEntity(node, component, compIndex)
@@ -722,7 +727,6 @@ function VisualTab:RenderLightEntity(node, component, compIndex)
     end
 
     local light = lightEntity.Light --[[@as LightComponent]]
-    local lightTemplate = light.Template
 
     local entityColorNode = entityNode:AddTree(GetLoca("Light Entity Color"))
     local angleNode = entityNode:AddTree(GetLoca("Light Angles"))
@@ -733,19 +737,63 @@ function VisualTab:RenderLightEntity(node, component, compIndex)
     --local templateNode = entityNode:AddTree(GetLoca("Template Settings"))
     local otherNode = entityNode:AddTree(GetLoca("Other Settings"))
 
+    local allNodes = {
+        entityColorNode,
+        angleNode,
+        gainNode,
+        scatteringNode,
+        directionalNode,
+        attenuationNode,
+        otherNode,
+    }
+
+    node.OnRightClick = function()
+        for _, n in ipairs(allNodes) do
+            n:SetOpen(true)
+        end
+    end
+
+    local bitMaskPropNameMap = {
+        LightChannelFlag = { displayName = "Light Channel (Bitmask)", bits = { ["Character"] = 32, ["Scenery"] = 1 }, preassign = otherNode },
+        Flags = { displayName = "Fill Light Flags (Bitmask)", bits = { ["Cast Shadow"] =8 }, preassign = otherNode },
+    }
+
     local scalarPropNameMap = {
-        --Kelvin = {min=1000, max=40000, step=100, displayName = "Template_Kelvin" , isTemplate = true},
         SpotLightInnerAngle = { min = 0, max = 180, step = 1, displayName = "Inner Angle", preassign = angleNode },
         SpotLightOuterAngle = { min = 0, max = 180, step = 1, displayName = "Outer Angle", preassign = angleNode },
         Gain = { min = 0, max = 100, step = 0.1, displayName = "Gain", preassign = gainNode },
         EdgeSharpening = { min = 0, max = 10, step = 0.05, displayName = "Edge Sharpness", preassign = otherNode },
-        LightType = { min = 0, max = 2, step = 1, displayName = "Light Type (0=Point,1=SpotLight,2=Directional)", preassign = otherNode, IsInteger = true },
-        --Intensity = {min=-1000, max=1000, step=10, displayName = "Template Intensity", isTemplate = true, preassign = templateNode},
-        --Radius = {min=0, max=100, step=1, displayName = "Template Radius", --[[isTemplate = true,]] preassign = templateNode},
+        LightType = { min = 0, max = 2, step = 1, displayName = "Light Type", preassign = otherNode, IsInteger = true, Tooltip = "0=Point,1=Spot,2=Directional" },
         ScatteringIntensityScale = { min = 0, max = 100, step = 0.1, displayName = "Scattering Intensity Scale", preassign = scatteringNode },
-        DirectionLightAttenuationEnd = { min = 0, max = 1000, step = 1, displayName = "Direction Light Attenuation End", preassign = attenuationNode },
-        DirectionLightAttenuationSide = { min = 0, max = 1000, step = 1, displayName = "Direction Light Attenuation Side", preassign = attenuationNode },
-        DirectionLightAttenuationSide2 = { min = 0, max = 1000, step = 1, displayName = "Direction Light Attenuation Side 2", preassign = attenuationNode },
+        DirectionLightAttenuationFunction = { min = 0, max = 4, step = 1, displayName = "Attenuation Function", preassign = attenuationNode, IsInteger = true, Tooltip = "0=Liner,1=Inverse Square,2=Smooth Step,3=Smoother Step,4=None" },
+        DirectionLightAttenuationEnd = { min = 0, max = 1000, step = 0.1, displayName = "Attenuation End", preassign = attenuationNode },
+        DirectionLightAttenuationSide = { min = 0, max = 1000, step = 0.1, displayName = "Attenuation Back", preassign = attenuationNode },
+        DirectionLightAttenuationSide2 = { min = 0, max = 1000, step = 0.1, displayName = "Attenuation Sides", preassign = attenuationNode },
+        CullFlags = { min = 0, max = 63, step = 1, displayName = "Cull Flags", preassign = otherNode, IsInteger = true },
+        Flags = { min = 0, max = 63, step = 1, displayName = "Fill Light Flags", preassign = otherNode, IsInteger = true },
+    }
+
+    local vec3PropNameMap = {
+        --Blackbody = { displayName = "Blackbody", preassign = otherNode },
+        DirectionLightDimensions = { displayName = "Direction Light Dimensions", preassign = directionalNode, Range = {0,100} },
+        Color = { displayName = "Light Entity Color", preassign = entityColorNode },
+    }
+
+    local renderOrder = {
+        "LightType",
+        "LightChannelFlag",
+        "SpotLightInnerAngle",
+        "SpotLightOuterAngle",
+        "Gain",
+        "EdgeSharpening",
+        "ScatteringIntensityScale",
+        "DirectionLightAttenuationEnd",
+        "DirectionLightAttenuationSide",
+        "DirectionLightAttenuationSide2",
+        "CullFlags",
+        "Flags",
+        "DirectionLightDimensions",
+        "Color",
     }
 
     local function saveLightEntityProperty(key, propName, value)
@@ -766,52 +814,36 @@ function VisualTab:RenderLightEntity(node, component, compIndex)
         return entity.Effect.Timeline.Components[compIndex].LightEntity.Light
     end
 
-    local lightchannelText = otherNode:AddBulletText("Light Channel (Bitmask)")
-
-    local lightChannelOptions = {
-        "Character Only", 
-        "Scenery Only", 
-        "Character and Scenery", 
-        "None"
-    }
-    local indexToBitmask = {
-        32,
-        1,
-        33,
-        0
-    }
-    local lightChannelCombo = otherNode:AddCombo("")
-    lightChannelCombo.Options = lightChannelOptions
-    local initLightChannel = light.LightChannelFlag or 0
-    for index, bitmask in ipairs(indexToBitmask) do
-        if bitmask == initLightChannel then
-            lightChannelCombo.SelectedIndex = index - 1
-            break
-        end
-    end
-    lightChannelCombo.OnChange = function()
-        local liveLight = GetLiveLightEntity()
-        if not liveLight then return end
-        local selectedIndex = lightChannelCombo.SelectedIndex + 1
-        local bitmask = indexToBitmask[selectedIndex]
-        liveLight.LightChannelFlag = bitmask
-        local key = "LightEntity::" .. compIndex .. "::LightChannel"
-        saveLightEntityProperty(key, "LightChannel", bitmask)
-    end
-
-    local vec3PropNameMap = {
-        --Blackbody = { displayName = "Blackbody", preassign = otherNode },
-        DirectionLightDimensions = { displayName = "Direction Light Dimensions", preassign = directionalNode },
-        Color = { displayName = "Light Entity Color", preassign = entityColorNode },
-    }
-
-    for propName, property in pairs(light) do
-        if scalarPropNameMap[propName] and type(property) == "number" then
+    for _, propName in ipairs(renderOrder) do
+        local property = lightEntity[propName]
+        if bitMaskPropNameMap[propName] and type(property) == "number" then
             local key = "LightEntity::" .. compIndex .. "::" .. propName
             self:CheckKey(key)
-            local valueNode = scalarPropNameMap[propName].preassign or
-                entityNode:AddTree(scalarPropNameMap[propName] or propName)
-            valueNode:AddBulletText(scalarPropNameMap[propName].displayName or propName)
+            local valueNode = bitMaskPropNameMap[propName].preassign or entityNode:AddTree(bitMaskPropNameMap[propName].displayName or propName)
+            --- @type RadioButtonOption[]
+            local options = {}
+            for name, bit in pairs(bitMaskPropNameMap[propName].bits) do
+                table.insert(options, {
+                    Hint = name,
+                    Bit = bit,
+                })
+            end
+            table.sort(options, function(a, b) return a.Bit < b.Bit end)
+            local displayNameText = valueNode:AddText(bitMaskPropNameMap[propName].displayName or propName)
+            if bitMaskPropNameMap[propName].Tooltip then
+                displayNameText:Tooltip():AddText(bitMaskPropNameMap[propName].Tooltip)
+            end
+            local raidoGroup = StyleHelpers.AddBitmaskRadioButtons(valueNode, options, property or 0)
+            raidoGroup.OnChange = function(sel, value)
+                local liveLight = GetLiveLightEntity()
+                if not liveLight then return end
+                liveLight[propName] = value
+                saveLightEntityProperty(key, propName, value)
+            end
+        elseif scalarPropNameMap[propName] and type(property) == "number" then
+            local key = "LightEntity::" .. compIndex .. "::" .. propName
+            self:CheckKey(key)
+            local valueNode = scalarPropNameMap[propName].preassign or entityNode:AddTree(scalarPropNameMap[propName].displayName or propName)
             local initValue = property
             local currentValue = property
             local slider = AddSliderWithStep(valueNode, nil, currentValue, scalarPropNameMap[propName].min,
@@ -829,6 +861,12 @@ function VisualTab:RenderLightEntity(node, component, compIndex)
             local valueResetButton = valueNode:AddButton(GetLoca("Reset"))
             valueResetButton.SameLine = true
             valueResetButton.IDContext = key .. "Reset"
+
+            local displayNameText = valueNode:AddText(scalarPropNameMap[propName].displayName or propName)
+            if scalarPropNameMap[propName].Tooltip then
+                displayNameText:Tooltip():AddText(scalarPropNameMap[propName].Tooltip)
+            end
+            displayNameText.SameLine = true
 
             valueResetButton.OnClick = function(sel, updateInit)
                 local liveLight = GetLiveLightEntity()
@@ -856,9 +894,7 @@ function VisualTab:RenderLightEntity(node, component, compIndex)
                     slider.Value = ToVec4(liveLight[propName])
                 end
             end
-        end
-
-        if vec3PropNameMap[propName] and type(property) == "table" and #property == 3 then
+        elseif vec3PropNameMap[propName] and type(property) == "table" and #property == 3 then
             local key = "LightEntity::" .. compIndex .. "::" .. propName
             self:CheckKey(key)
             local valueNode = vec3PropNameMap[propName].preassign or
@@ -868,15 +904,21 @@ function VisualTab:RenderLightEntity(node, component, compIndex)
             end
             local initValue = { property[1], property[2], property[3] }
             local currentValue = property
+            local displayNameText = valueNode:AddText(vec3PropNameMap[propName].displayName or propName)
+            if vec3PropNameMap[propName].Tooltip then
+                displayNameText:Tooltip():AddText(vec3PropNameMap[propName].Tooltip)
+            end
+            displayNameText.SameLine = true
             local colorEdit = valueNode:AddColorEdit("Color", { currentValue[1], currentValue[2], currentValue[3] })
             colorEdit.NoAlpha = true
             local valueResetButton = valueNode:AddButton(GetLoca("Reset"))
             valueResetButton.SameLine = true
-            local sliderX = AddSliderWithStep(valueNode, "X", currentValue[1], -100, 100, 0.1)
+            local range = vec3PropNameMap[propName].Range or { -100, 100 }
+            local sliderX = AddSliderWithStep(valueNode, "X", currentValue[1], range[1], range[2], 0.1)
             valueNode:AddText("X").SameLine = true
-            local sliderY = AddSliderWithStep(valueNode, "Y", currentValue[2], -100, 100, 0.1)
+            local sliderY = AddSliderWithStep(valueNode, "Y", currentValue[2], range[1], range[2], 0.1)
             valueNode:AddText("Y").SameLine = true
-            local sliderZ = AddSliderWithStep(valueNode, "Z", currentValue[3], -100, 100, 0.1)
+            local sliderZ = AddSliderWithStep(valueNode, "Z", currentValue[3], range[1], range[2], 0.1)
             valueNode:AddText("Z").SameLine = true
 
 

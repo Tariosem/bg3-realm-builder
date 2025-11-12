@@ -79,7 +79,7 @@ function SceneMenu:Render()
     --local autoSaveCheckbox = self.panel:AddCheckbox(GetLoca("Auto Save To File"), self.autoSave)
     local relativeCheckbox = self.panel:AddCheckbox(GetLoca("Relative"), self.isRelative)
 
-    local attentionImage = self.panel:AddImage(WARNING_ICON)
+    local attentionImage = self.panel:AddImage(RB_ICONS.Warning, IMAGESIZE.TINY) --[[@as ExtuiImageButton]]
     attentionImage.OnClick = function(e) e:Destroy() end
     attentionImage.ImageData.Size = IMAGESIZE.TINY
 
@@ -152,7 +152,8 @@ function SceneMenu:Render()
     local cTTitleTextCell = cTTitleRow:AddCell()
     local cTTitleButtonCell = cTTitleRow:AddCell()
     cTTitleTextCell:AddSeparatorText(GetLoca("Preset Preview")):SetStyle("SeparatorTextAlign", 0.5, 0)
-    local cTTitleButton = cTTitleButtonCell:AddButton("=")
+    local cTTitleButton = cTTitleButtonCell:AddImageButton("ConfigButton", RB_ICONS.Gear, IMAGESIZE.SMALL)
+    cTTitleButton:SetColor("Button", {0,0,0,0})
 
     local previewConfigPopup = cTTitleButtonCell:AddPopup("Config")
     cTTitleButton.OnClick = function()
@@ -895,10 +896,10 @@ function SceneMenu:RenderPresetObjectInfo(parent, entInfo, presetName, presetTyp
             Type = "Preview",
             EntInfo = {
                 VisualPreset = visualPreset,
+                Positon = fpos,
+                Rotation = frot,
             },
             TemplateId = entInfo.TemplateId,
-            Positon = fpos,
-            Rotation = frot,
         }
         return data
     end
@@ -912,7 +913,7 @@ function SceneMenu:RenderPresetObjectInfo(parent, entInfo, presetName, presetTyp
     local function load()
         local data = packData()
         if not data then return end
-        Commands.SpawnCommand(data.TemplateId, data.Positon, data.Rotation, data.EntInfo)
+        Commands.SpawnCommand(data.TemplateId, data.EntInfo)
     end
 
 

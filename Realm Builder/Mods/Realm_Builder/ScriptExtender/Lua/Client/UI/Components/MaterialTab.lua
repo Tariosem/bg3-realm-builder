@@ -40,6 +40,14 @@ function MaterialTab:Render(parent)
     local panel = self.panel
     local uuid = Uuid_v4()
     local parentNode = panel:AddSelectable("[-] " .. sourceFileName .. "##" .. self.MaterialName .. uuid) --[[@as ExtuiSelectable ]]
+    parentNode.AllowItemOverlap = true
+    local copyToOthersImageBtn = panel:AddImageButton("##" .. self.MaterialName, RB_ICONS.Copy, IMAGESIZE.TINY)
+    copyToOthersImageBtn.SameLine = true
+    copyToOthersImageBtn:SetColor("Button", {0,0,0,0})
+    copyToOthersImageBtn:Tooltip():AddText("Apply current material parameters to other materials")
+    if getmetatable(self) == MaterialMixerTab then
+        copyToOthersImageBtn.Visible = false
+    end
     local group = panel:AddGroup("MaterialEditorGroup##" .. self.MaterialName) -- Tree is weird with drag-and-drop, so use a Selectable + Group to simulate a collapsible tree node
     local groupIndent = AddIndent(group, 10)
     group.Visible = true
@@ -47,6 +55,10 @@ function MaterialTab:Render(parent)
     local managePopup = parent:AddPopup("Manage##" .. self.MaterialName)
     self.ContextMenu = managePopup
     self:SetupManagePopup(managePopup)
+
+    copyToOthersImageBtn.OnClick = function()
+        self:ApplyToOthers()
+    end
 
     parentNode.CanDrag = true
     parentNode.DragDropType = MATERIALPRESET_DRAGDROP_TYPE
@@ -111,6 +123,7 @@ function MaterialTab:Render(parent)
 
         local initLabel = self.cachedExpandedState[paramType] == true and "[-] " or "[+] "
         local typeNode = groupIndent:AddSelectable(initLabel .. propType .. "##" .. self.MaterialName) --[[@as ExtuiSelectable ]]
+        
         local typeGroup = groupIndent:AddGroup("TypeGroup##" .. self.MaterialName .. propType)
         local searchBox = typeGroup:AddInputText("##" .. self.MaterialName .. propType)
         local paramsGroup = typeGroup:AddGroup("AllPropertiesGroup##" .. self.MaterialName .. tostring(math.random()))
@@ -273,10 +286,6 @@ function MaterialTab:ClearRefs()
     self.UpdateFuncs = {}
     self.ResetFuncs = {}
     self.ParamTableRefs = {}
-    if self.copySub then
-        self.copySub:Unsubscribe()
-        self.copySub = nil
-    end
 end
 
 --- @param node ExtuiTreeParent
@@ -434,18 +443,6 @@ function MaterialTab:SetupManagePopup(popup)
 
     contextMenu:AddItem("Apply To Other Materials##" .. self.MaterialName, function (sel)
         self:ApplyToOthers()
-    end, "Ctrl A")
-
-    self.copySub = SubscribeKeyInput({}, function (e)
-        local ok, focus = pcall(function ()
-            return self.panel.Visible
-        end)
-        if not ok then return UNSUBSCRIBE_SYMBOL end
-        if not focus then return end
-
-        if e.Key == "A" and (e.Modifiers == "LCtrl" or e.Modifiers == "RCtrl") then
-            self:ApplyToOthers()
-        end
     end)
 
     contextMenu:AddItem("Open Material Mixer##" .. self.MaterialName, function (sel)

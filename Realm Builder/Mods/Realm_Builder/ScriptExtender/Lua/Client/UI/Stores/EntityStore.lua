@@ -3,6 +3,7 @@ local EntityDatas = {}
 local BindDatas = {}
 local GuidToDisplayName = {}
 local DisplayNameToGuid = {}
+local sceneryMap = {}
 
 local entityNameBlacklist = {
     ["Group Analog Stick"] = true,
@@ -129,7 +130,7 @@ function EntityStore:SetupServerListeners()
         for _,guid in pairs(data.Guid) do
             if EntityDatas[guid] then
                 EntityDatas[guid].Visible = data.Attributes.Visible
-                RBMenu.entityMenu:UpdateSelectableAlpha(guid)
+                RBMenu.entityMenu:UpdateEyeIcon(guid)
             end
         end
     end)
@@ -226,6 +227,10 @@ function EntityStore:SetProp(guid, data)
     end
 end
 
+function EntityStore:MapScenery(guid, entity)
+    sceneryMap[guid] = entity
+end
+
 --- @param guid string
 --- @return EntityData|nil
 function EntityStore:GetStoredData(guid)
@@ -241,6 +246,8 @@ function EntityStore:GetStoredData(guid)
         data.Gravity = not entity.GravityDisabled 
         data.Movable = entity.CanMove and true or false
         data.CanBeLooted = entity.CanBeLooted and true or false
+        data.Position = { CGetPosition(guid) }
+        data.Rotation = { CGetRotation(guid) }
         
         if CIsCharacter(guid) then
             data.Gravity = nil

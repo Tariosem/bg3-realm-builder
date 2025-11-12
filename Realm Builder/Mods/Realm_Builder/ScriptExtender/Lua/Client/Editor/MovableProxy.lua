@@ -200,6 +200,8 @@ function SceneryMovableProxy:SetTransform(transform)
     if transform.Scale then
         visual:SetWorldScale(transform.Scale)
     end
+
+    self.Entity.Transform.Transform = transform
 end
 
 function SceneryMovableProxy:IsValid()

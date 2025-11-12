@@ -578,7 +578,7 @@ function CustomEffectTab:RenderEffects()
 
     local emptyCell = effectTimelineRow:AddCell()
 
-    local emptyIcon = emptyCell:AddImageButton("EmptyEffect", "Action_RegainHP")
+    local emptyIcon = emptyCell:AddImageButton("EmptyEffect", RB_ICONS.Plus_Square)
     emptyIcon:Tooltip():AddText(GetLoca("Drag an effect here, or paste an fx name into the box and click."))
     emptyIcon.Image.Size = {64 * SCALE_FACTOR, 64 * SCALE_FACTOR}
     emptyIcon.DragDropType = "EffectInfo"

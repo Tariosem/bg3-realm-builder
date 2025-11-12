@@ -115,8 +115,8 @@ function Menu:Render()
             isWindow = false
 
         
-            DestroyAllChilds(childWin)
-            DestroyAllChilds(window)
+            DestroyAllChildren(childWin)
+            DestroyAllChildren(window)
             render(childWin)
         end
 
@@ -126,8 +126,8 @@ function Menu:Render()
             window.Open = true
             isWindow = true
 
-            DestroyAllChilds(childWin)
-            DestroyAllChilds(window)
+            DestroyAllChildren(childWin)
+            DestroyAllChildren(window)
             MaterialPresetsMenu:RenderCCPresetsLib(childWin)
             render(window)
         end

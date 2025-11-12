@@ -8,9 +8,10 @@
 --- @field IsDragging boolean -- whether currently dragging
 --- @field SlowDown boolean
 --- @field Guid Guid -- Gizmo entity guid, this is only a visual representation, most pick and drag logic is handled in gizmo picker
---- @field Translate Guid -- saved guid of move gizmo entity
---- @field Scale Guid -- saved guid of scale gizmo entity
---- @field Rotate Guid -- saved guid of rotate gizmo entity
+--- @field PivotPosition Vec3 -- current pivot position
+--- @field PivotRotation Quat -- current pivot rotation
+--- @field Step number -- multiplier for delta steps
+--- @field SavedGizmos table<TransformEditorMode, GUIDSTRING> -- guids of saved gizmos for each mode
 --- @field RotatePointer GUIDSTRING[] -- guids of rotate pointer visualizations
 --- @field Picker GizmoPicker
 --- @field Visualizer GizmoVisualizer 
@@ -32,6 +33,7 @@ function Gizmo:__init(editor)
     self.DisableHover = false
     self.StartHit = nil
     self.Guid = nil
+    self.SavedGizmos = {}
     self.Picker = GizmoPicker.new(self)
     self.Visualizer = GizmoVisualizer.new()
     self.Subscriptions = {}
@@ -233,11 +235,10 @@ function Gizmo:SetupListeners()
         if not self.Guid then return end
         
         local pos, rot = self:GetPivot()
-
-        local allGuids = {}
-        if self.Translate then table.insert(allGuids, self.Translate) end
-        if self.Rotate then table.insert(allGuids, self.Rotate) end
-        if self.Scale then table.insert(allGuids, self.Scale) end
+        local allGuids = { self.Guid }
+        for _, guid in pairs(self.SavedGizmos) do
+            table.insert(allGuids, guid)
+        end
 
         self.PivotPosition = pos
         self.PivotRotation = rot
@@ -267,21 +268,36 @@ function Gizmo:DeleteItem()
     self:StopListeners()
     NetChannel.Delete:SendToServer({ Guid = guid })
     self.Guid = nil
-    self[self.Mode] = nil
+    self.SavedGizmos[self.Mode] = nil
 end
 
 function Gizmo:CreateItem()
     -- hide original gizmo if exists
     local pos = self.PivotPosition or {0,0,0}
 
-    if self[self.Mode] and EntityExists(self[self.Mode]) then
+    if self.SavedGizmos[self.Mode] and EntityExists(self.SavedGizmos[self.Mode]) then
         local originGuid = self.Guid
-        self.Guid = self[self.Mode]
+        self.Guid = self.SavedGizmos[self.Mode]
         self.Visualizer:HideGizmo(originGuid)
+
+        NetChannel.SetAttributes:SendToServer({
+            Guid = self.Guid,
+            Attributes = {
+                Visible = true,
+            }
+        })
+        NetChannel.SetAttributes:SendToServer({
+            Guid = originGuid,
+            Attributes = {
+                Visible = false,
+            }
+        })
+
         return
-    elseif self[self.Mode] then
+    elseif self.SavedGizmos[self.Mode] then
         -- make sure it's dead
-        NetChannel.Delete:SendToServer({ Guid = self[self.Mode] })
+        NetChannel.Delete:SendToServer({ Guid = self.SavedGizmos[self.Mode] })
+        self.SavedGizmos[self.Mode] = nil
     end
      
     NetChannel.ManageGizmo:RequestToServer({
@@ -291,7 +307,7 @@ function Gizmo:CreateItem()
         local orginGuid = self.Guid
         self.Guid = response.Guid
         self.Visualizer:HideGizmo(orginGuid)
-        self[self.Mode] = self.Guid
+        self.SavedGizmos[self.Mode] = response.Guid
         local tryCnt = 0
         
         Timer:EveryFrame(function(timerID)
@@ -736,13 +752,6 @@ function Gizmo:Visualize(guid)
     if not EntityExists(guid) then return end
     local pos = self.PivotPosition
     self.Visualizer:UpdateScale(pos)
-
-    for _,mode in pairs({ "Translate", "Rotate", "Scale" }) do
-        if not self.Mode == mode then
-            local gizmoGuid = self[mode]
-            self.Visualizer:HideGizmo(gizmoGuid)
-        end
-    end
 
     if self.SelectedAxis then
         for axis, _ in pairs(self.SelectedAxis) do

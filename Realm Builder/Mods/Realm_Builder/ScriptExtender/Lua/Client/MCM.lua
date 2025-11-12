@@ -7,6 +7,7 @@ local function toggleMainWindow()
     else
         RBMenu = Menu:Add()
     end
+    NetChannel.ManageEntity:SendToServer({ Action = "Load" })
     NetChannel.ManageEntity:SendToServer({ Action = "Scan" })
     
 end
@@ -38,6 +39,7 @@ end
 
 local browserMenu = RegisterWindow("generic", "Browser Menu", "Guide Menu")
 browserMenu.AlwaysAutoResize = true
+browserMenu.Closeable = true
 
 local allAvailableBrowsers = {
     {Key = "item", Label = "Item Browser"},

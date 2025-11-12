@@ -357,7 +357,7 @@ function CGetScale(guid)
         return nil, nil, nil
     end
 
-    if Ext.IsClient() then
+    if CIsCharacter(guid) or Ext.IsClient() then
         return VisualHelpers.GetVisualScale(guid)
     end
 

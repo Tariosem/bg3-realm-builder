@@ -41,7 +41,6 @@ function IconBrowser:__init(dataManager, DisplayName)
     self.browserHeight = self.iconPC * self.iconWidth + 20
     self.lastPosition = config.LastPosition or { screenWidth * 0.6, screenHeight * 0.15 }
     self.lastSize = config.LastSize or { self.browserWidth * 1.5, self.browserHeight * 1.5 }
-    self.browserBackgroundColor = config and config.BackgroundColor or HexToRGBA("A8353535")
 
     self.selectedGuid = nil
 
@@ -63,8 +62,6 @@ function IconBrowser:Render()
 
     self.browserOptions = self.panel:AddTable("Icons Browser", 6)
 
-    self.panel:SetColor("WindowBg", self.browserBackgroundColor)
-    self.panel:SetColor("ChildBg", self.browserBackgroundColor)
 
     self.topMenuBar = self.panel:AddMainMenu()
     self.editMenu = self.topMenuBar:AddMenu("File")
@@ -128,12 +125,9 @@ function IconBrowser:SetupInputSubs()
         self.quickFavoriteKeySub,
         self.turnPageWheelSub,
     }
-
-
 end
 
 function IconBrowser:RenderFileMenu()
-
     self.editMenu:Tooltip():AddText(GetLoca("Save custom tags, groups, and notes."))
     self.fileSave = self.editMenu:AddItem(GetLoca("Save"))
     self.fileLoad = self.editMenu:AddItem(GetLoca("Load"))
@@ -160,8 +154,6 @@ function IconBrowser:RenderFileMenu()
 end
 
 function IconBrowser:RenderUiConfigMenu()
-    local screenWidth, screenHeight = GetScreenSize()
-
     local imagePerCol = self.iconPC
     local imagePerRow = self.iconPR
     local cellsPadding = self.cellsPadding
@@ -175,8 +167,6 @@ function IconBrowser:RenderUiConfigMenu()
     cellsPaddingSlider.Value = ToVec4Int(cellsPadding[1], cellsPadding[2])
     local iconButtonBgColroEdit = self.uiParamMenu:AddColorEdit(GetLoca("Button Background Color"))
     iconButtonBgColroEdit.Color = self.iconButtonBgColor or { 0, 0, 0, 0.6 }
-    local browserBackgroundColorEdit = self.uiParamMenu:AddColorEdit(GetLoca("Browser Background Color"))
-    browserBackgroundColorEdit.Color = self.browserBackgroundColor or HexToRGBA("2D1F1F1F")
 
     local function getEstimatedTopBarHeight()
         local panelHeight = self.panel.LastSize[2]
@@ -250,14 +240,6 @@ function IconBrowser:RenderUiConfigMenu()
                 buttonIcon:SetColor("Button", self.iconButtonBgColor)
             end
         end
-    end
-
-    browserBackgroundColorEdit.OnChange = function(color)
-        self.browserBackgroundColor = color.Color
-        self.panel:SetColor("WindowBg", self.browserBackgroundColor)
-        self.panel:SetColor("ChildBg", self.browserBackgroundColor)
-        self.browser:SetColor("WindowBg", self.browserBackgroundColor)
-        self.iconsContainer:SetColor("ChildBg", self.browserBackgroundColor)
     end
 end
 
@@ -472,11 +454,10 @@ function IconBrowser:RenderBrowserBase()
 
     self.firstButton = pageButtonsContainer:AddButton("<<")
     self.previousButton = pageButtonsContainer:AddButton("<")
-    self.pageInput = pageButtonsContainer:AddInputText("")
-    self.pageInput:Tooltip():AddText(GetLoca("Right-click to view current page"))
+    self.pageInput = pageButtonsContainer:AddInputInt("")
     local justAText = pageButtonsContainer:AddText(" / ")
     justAText.SameLine = true
-    self.allPageInput = pageButtonsContainer:AddInputText("")
+    self.allPageInput = pageButtonsContainer:AddInputInt("")
     self.nextButton = pageButtonsContainer:AddButton(">")
     self.lastButton = pageButtonsContainer:AddButton(">>")
 
@@ -495,12 +476,14 @@ function IconBrowser:CreateCachedSort(field)
     local value = entry[field] or "Unknown"
         sortKeyArray[cnt] = {uuid, value}
     end
+
     table.sort(sortKeyArray, function(a, b)
         if a[2] == b[2] then
             return a[1] < b[1]
         else
             return a[2] < b[2]
         end
+
     end)
 
     self[cacheFiled] = sortKeyArray
@@ -548,14 +531,17 @@ function IconBrowser:RenderIcons()
     self.iconsImage = self.iconsImage or {}
     self.updateTagsFn = {}
 
+    self.currentPage = math.floor(self.currentPage or 1)
+    self.allPages = math.floor(self.allPages or 1)
+
     self.pageInput.IDContext = "PageInput"
     self.pageInput.ItemWidth = 75 * SCALE_FACTOR
-    self.pageInput.Text = tostring(self.currentPage):gsub("%.0+$", "")
+    self.pageInput.Value = ToVec4Int(self.currentPage)
 
     self.allPageInput.IDContext = "AllPageInput"
     self.allPageInput.ItemWidth = 75 * SCALE_FACTOR
     self.allPageInput.ReadOnly = true
-    self.allPageInput.Text = tostring(self.allPages):gsub("%.0+$", "")
+    self.allPageInput.Value = ToVec4Int(self.allPages)
 
     self.previousButton.SameLine = true
     self.pageInput.SameLine = true
@@ -581,10 +567,10 @@ function IconBrowser:RenderIcons()
             self:SetPage(page)
         elseif page and page < 1 then
             self:SetPage(1)
-            text.Text = "1"
+            text.Value = ToVec4Int(1)
         elseif page and page > self.allPages then
             self:SetPage(self.allPages)
-            text.Text = tostring(self.allPages):gsub("%.0+$", "")
+            text.Value = ToVec4Int(self.allPages)
         end
     end
 
@@ -632,8 +618,8 @@ function IconBrowser:UpdatePageCnt()
         self.currentPage = 1
     end
 
-    if tonumber(self.pageInput.Text) ~= self.currentPage then
-        self.pageInput.Text = tostring(self.currentPage):gsub("%.0+$", "")
+    if self.pageInput.Value[1] ~= self.currentPage then
+        self.pageInput.Value = ToVec4Int(self.currentPage)
     end
 end
 
@@ -644,10 +630,8 @@ function IconBrowser:SetPage(page)
         return
     end
     self.currentPage = page
-    --self.pageInput.Text = tostring(self.currentPage):gsub("%.0+$", "")
-    --self.allPageInput.Text = tostring(self.allPages):gsub("%.0+$", "")
-    if tonumber(self.pageInput.Text) ~= self.currentPage then
-        self.pageInput.Text = tostring(self.currentPage):gsub("%.0+$", "")
+    if tonumber(self.pageInput.Value[1]) ~= self.currentPage then
+        self.pageInput.Value = ToVec4Int(self.currentPage)
     end
     if self.currentPage == 1 then
         SetImguiDisabled(self.previousButton, true)
@@ -676,7 +660,7 @@ function IconBrowser:RenderPage()
 
     self:UpdatePageCnt()
 
-    self.allPageInput.Text = tostring(self.allPages):gsub("%.0+$", "")
+    self.allPageInput.Value = ToVec4Int(self.allPages)
 
     local fromIndex = (self.currentPage - 1) * self.imagePerPage + 1
     local toIndex = math.min(fromIndex + self.imagePerPage - 1, #self.uuidsSorted)
@@ -688,7 +672,7 @@ function IconBrowser:RenderPage()
             end
             image:Destroy()
         end
-        DestroyAllChilds(self.iconsContainer)
+        DestroyAllChildren(self.iconsContainer)
         self.iconsContainer:Destroy()
         self.iconsContainer = nil
         self.iconsImage = {}
@@ -696,19 +680,40 @@ function IconBrowser:RenderPage()
 
     self.iconsWindow = self.iconsWindow or self.iconsBrowser:AddChildWindow("Icons Window")
     self.iconsContainer = self.iconsContainer or self.iconsWindow:AddTable("IconsBrowserTable", self.iconPR)
-    if self.uuidsSorted and #self.uuidsSorted > 0 then
-        local row = self.iconsContainer:AddRow()
-        for i = fromIndex, toIndex do
-            local cell = row:AddCell()
-            local uuid = self.uuidsSorted[i]
-            local entry = self.searchResult[uuid]
-            local iconImage = self:RenderIcon(entry, cell)
-            self:IconSetup(iconImage, entry)
-            self.iconsImage[uuid] = iconImage
+
+    local lastYield = Ext.Timer.MicrosecTime()
+    local thread
+    thread = coroutine.create(function()
+        self.panel.Disabled = true -- Disable panel during rendering to prevent interaction issues
+        if self.uuidsSorted and #self.uuidsSorted > 0 then
+            local row = self.iconsContainer:AddRow()
+            for i = fromIndex, toIndex do
+                local cell = row:AddCell()
+                local uuid = self.uuidsSorted[i]
+                local entry = self.searchResult[uuid]
+                local iconImage = self:RenderIcon(entry, cell)
+                self:IconSetup(iconImage, entry)
+                self.iconsImage[uuid] = iconImage
+                if Ext.Timer.MicrosecTime() - lastYield > 0.5 then
+                    Ext.OnNextTick(function()
+                        local ok, err = coroutine.resume(thread)
+                        if not ok then
+                            self.panel.Disabled = false
+                            Error("[IconBrowser] Error in RenderPage coroutine: " .. tostring(err))
+                        end
+                    end)
+                    coroutine.yield()
+                    lastYield = Ext.Timer.MonotonicTime()
+                end
+            end
+        else 
+            --self.iconsBrowser:AddText(GetLoca("Not Found"))
         end
-        --_P(cnt)
-    else
-        --self.iconsBrowser:AddText(GetLoca("Not Found"))
+        self.panel.Disabled = false
+    end)
+    local ok, err = coroutine.resume(thread)
+    if not ok then
+        Error("[IconBrowser] Error in RenderPage coroutine: " .. tostring(err))
     end
 
     self.iconsContainer:SetStyle("CellPadding", self.cellsPadding[1], self.cellsPadding[2])
@@ -751,6 +756,12 @@ function IconBrowser:RenderCustomizationTab(popup, entry)
 
     noteInput.Text = custom.Note or ""
 
+    local function autoSaveChanges()
+        if self.autoSave then
+            self:SaveChanges()
+        end
+    end
+
     local noteDebounceFunc = Debounce(1000, function(text)
         self.tempDisableSearch = true
 
@@ -771,6 +782,7 @@ function IconBrowser:RenderCustomizationTab(popup, entry)
         end
 
         self.dataManager:ChangeDataNote(entry.Uuid, newNote)
+        autoSaveChanges()
         self.tempDisableSearch = false
     end)
 
@@ -784,8 +796,8 @@ function IconBrowser:RenderCustomizationTab(popup, entry)
             end
         end
 
-        local width = math.max(150 * SCALE_FACTOR, longest * 32 * SCALE_FACTOR + 48)
-        local height = math.max(50 * SCALE_FACTOR, (#splitted * 48 * SCALE_FACTOR) + 32)
+        local width = math.max(150 * SCALE_FACTOR, longest * 24 * SCALE_FACTOR + 48)
+        local height = math.max(50 * SCALE_FACTOR, (#splitted * 32 * SCALE_FACTOR) + 24)
 
         noteInput.SizeHint = { width, height }
     end
@@ -820,6 +832,7 @@ function IconBrowser:RenderCustomizationTab(popup, entry)
         end
 
         self.dataManager:ChangeDataGroup(entry.Uuid, newGroup)
+        autoSaveChanges()
         self:AddGroupFilter()
         self.tempDisableSearch = false
     end)
@@ -854,6 +867,7 @@ function IconBrowser:RenderCustomizationTab(popup, entry)
             local tagText = table.concat(tags, ", ")
             allTags.Label = tagText
         end
+        autoSaveChanges()
     end
 
     self.updateTagsFn[entry.Uuid] = updateTags
@@ -894,7 +908,6 @@ function IconBrowser:RenderCustomizationTab(popup, entry)
             updateTags()
             self:AddTagsFilter()
         else
-            --Warning("[EntityTab] Cannot remove empty tag for GUID: " .. icon.guid)
         end
         self.tempDisableSearch = false
     end
@@ -950,7 +963,7 @@ function IconBrowser:Destroy()
     end
 
     if self.panel then
-        DestroyAllChilds(self.panel)
+        DestroyAllChildren(self.panel)
         DeleteWindow(self.panel)
         self.panel = nil
     end
@@ -981,7 +994,7 @@ function IconBrowser:Toggle()
 
     self.panel.Open = not self.panel.Open
     if self.panel.Open then
-    else
+    elseif self.panel.OnClose then
         self.panel:OnClose()
     end
 end

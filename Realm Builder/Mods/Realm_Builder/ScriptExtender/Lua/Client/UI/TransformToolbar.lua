@@ -24,6 +24,7 @@ function TransformToolbar:RegisterKeyInputEvents()
         local entity = GetPickingEntity()
 
         if entity and entity.Scenery and not self.Ignore["Scenery"] then
+
             RB_GLOBALS.TransformEditor:Select({SceneryMovableProxy.new(entity.Scenery)})
             return
         end
@@ -38,13 +39,11 @@ function TransformToolbar:RegisterKeyInputEvents()
 
                 local proxies = {}
                 for selGuid,_ in pairs(self.Selecting) do
-
                     table.insert(proxies, MovableProxy.CreateByGuid(selGuid))
                 end
 
                 RB_GLOBALS.TransformEditor:Select(proxies)
             else
-
 
                 RB_GLOBALS.TransformEditor:Select({MovableProxy.CreateByGuid(guid)})
             end
@@ -61,9 +60,11 @@ function TransformToolbar:RegisterKeyInputEvents()
 
     local ttMod = KeybindManager:CreateModule("TransformToolbar")
     local buMod = KeybindManager:CreateModule("BindUtility")
+    
     self.KeybindModule = ttMod
     self.BindUtilityModule = buMod
-
+    self:RegisterTransformEditorEvents()
+    
     buMod:AddModuleCondition(restrainOpening)
     ttMod:AddModuleCondition(restrainOpening)
 
@@ -91,12 +92,6 @@ function TransformToolbar:RegisterKeyInputEvents()
         if e.Event == "KeyDown" then
             self.MultiSelecting = true
         elseif e.Event == "KeyUp" then
-            local proxies = {}
-            for guid,_ in pairs(self.Selecting) do
-                table.insert(proxies, MovableProxy.CreateByGuid(guid))
-            end
-
-            RB_GLOBALS.TransformEditor:Select(proxies)
             self.MultiSelecting = false
             self.Selecting = {}
         end
@@ -145,6 +140,11 @@ function TransformToolbar:RegisterKeyInputEvents()
         end
         local visualTab = VisualTab.new(pick, GetName(pick), nil, nil)
         visualTab:Render()
+    end)
+
+    ttMod:RegisterEvent("OpenNearbyPopup", function (e)
+        if e.Event ~= "KeyDown" then return end
+        self:CreateNearbyPopup()
     end)
 
     buMod:RegisterEvent("BindTo", function (e)
@@ -218,6 +218,7 @@ function TransformToolbar:RegisterKeyInputEvents()
         end
     end)
 
+
     local function registerToggleEvent(eventName, netType, field, valueOn, valueOff, mod)
         local channel = netType == "SetAttributes" and NetChannel.SetAttributes or NetChannel.Bind
 
@@ -262,6 +263,76 @@ function TransformToolbar:RegisterKeyInputEvents()
     end)
 
     self:SetupBoxSelect()
+end
+
+function TransformToolbar:RegisterTransformEditorEvents()
+    local globalEditor = RB_GLOBALS.TransformEditor
+    local teMod = KeybindManager:CreateModule("TransformEditor")
+    teMod:AddModuleCondition(function(e)
+        return globalEditor.Disabled ~= true
+    end)
+    teMod:AddModuleCondition(function(e)
+        return globalEditor.Target and #globalEditor.Target > 0 or false
+    end)
+    
+    teMod:RegisterEvent("RotateMode", function (e)
+        if e.Event == "KeyDown" then
+            globalEditor:SetMode("Rotate")
+        end
+    end)
+
+    teMod:RegisterEvent("TranslateMode", function (e)
+        if e.Event == "KeyDown" then
+            globalEditor:SetMode("Translate")
+        end
+    end)
+
+    teMod:RegisterEvent("ScaleMode", function (e)
+        if e.Event == "KeyDown" then
+            globalEditor:SetMode("Scale")
+        end
+    end)
+
+    teMod:RegisterEvent("FollowTarget", function (e)
+        if globalEditor.IsDragging then return end
+
+        local avgPos = Vec3.new(0,0,0)
+        for _,proxy in pairs(globalEditor.Target or {}) do
+            avgPos = avgPos + proxy:GetWorldTranslate()
+        end
+        avgPos = avgPos / #globalEditor.Target
+        CameraMoveToPosition({avgPos.X, avgPos.Y, avgPos.Z})
+    end)
+
+    self.Subscriptions["ResetTransform"] = SubscribeKeyInput({}, function (e)
+        if not globalEditor.Target or #globalEditor.Target == 0 then return end
+        if globalEditor.IsDragging then return end
+        if e.Event ~= "KeyDown" then return end
+
+        if not(e.Modifiers and e.Modifiers == "LAlt") then return end
+
+        local resetTransform = {}
+        if e.Key == teMod:GetKeyByEvent("RotateMode").Key then resetTransform.RotationQuat = {0,0,0,1} end
+        if e.Key == teMod:GetKeyByEvent("TranslateMode").Key then resetTransform.Translate = {CGetPosition(CGetHostCharacter())} end
+        if e.Key == teMod:GetKeyByEvent("ScaleMode").Key then resetTransform.Scale = {1,1,1} end
+
+        Commands.SetTransform(globalEditor.Target or {}, resetTransform)
+    end)
+
+    self.KeybindModule:RegisterEvent("DeleteAllGizmos", function (e)
+        if e.Event ~= "KeyDown" then return end
+        if globalEditor.IsDragging then return end
+        if not globalEditor.Gizmo.Guid then
+            NetChannel.ManageGizmo:RequestToServer({ Clear = true }, function (response)
+                globalEditor.Gizmo.Guid = nil
+                globalEditor.Gizmo.Translate = nil
+                globalEditor.Gizmo.Rotate = nil
+                globalEditor.Gizmo.Scale = nil
+            end)
+        end
+        globalEditor.Gizmo:DeleteItem()
+        globalEditor.Target = nil
+    end)
 end
 
 function TransformToolbar:SetupBoxSelect()
@@ -657,11 +728,10 @@ function TransformToolbar:CreateBindPopup(guid)
 
         local right = row1:AddCell()
         local nearByCombo = NearbyCombo.new(right)
-        local excludeEntites = {}
-        table.insert(excludeEntites, guid)
-
-        nearByCombo.ExcludeEntries = {guid}
-
+        local excludeEntites = {
+            [guid] = true,
+        }
+        nearByCombo.ExcludeEntries = excludeEntites
         nearByCombo:SetSelected(curParent)
         nearByCombo.OnChange = function (sel, selectedGuid, displayName)
             if not selectedGuid or selectedGuid == "" then return end
@@ -779,6 +849,115 @@ function TransformToolbar:CreateBindPopup(guid)
     notif:Show(notif.name, render)
 
 
+end
+
+function TransformToolbar:CreateNearbyPopup()
+    local nearbyNotif = self.NearbyNotif or Notification.new("Nearby Entities")
+    self.NearbyNotif = nearbyNotif
+
+    nearbyNotif.NoAnimation = true
+    nearbyNotif.AutoFadeOut = false
+    nearbyNotif.Pivot = Vec2.new(GetCursorPos()) / Vec2.new(GetScreenSize())
+    nearbyNotif.Moveable = true
+
+    UpdateNearbyMap()
+
+    local tempSubs = {}
+    ---@param panel ExtuiWindow
+    local function render(panel)
+        local contextPopup = panel:AddPopup("NearbyEntitiesContextMenu")
+        local contextMenu = StyleHelpers.AddContextMenu(contextPopup)
+        local localNearbyCombo = NearbyCombo.new(panel, true)
+        localNearbyCombo:RenderSelectionTable(panel)
+        local selected = nil
+        localNearbyCombo.ExcludeCamera = true
+
+        --- @type RB_ContextItem[]
+        local contextItems = {
+            {
+                Label = "Open Entity Tab",
+                OnClick = function (selectable)
+                    if not selected or selected == "" then return end
+                    local entityTab = EntityTab.new(selected, nil, nil, nil)
+                    entityTab:Render()
+                end
+            },
+            {
+                Label = "Open Visual Tab",
+                OnClick = function (selectable)
+                    if not selected or selected == "" then return end
+                    local visualTab = VisualTab.new(selected, GetName(selected), nil, nil)
+                    visualTab.isAttach = false
+                    visualTab:Refresh()
+                end
+            },
+            {
+                Label = "Set Target",
+                OnClick = function (selectable)
+                    if not selected or selected == "" then return end
+                    local proxy = MovableProxy.CreateByGuid(selected)
+                    RB_GLOBALS.TransformEditor:Select({proxy})
+                end,
+                Hint = "S",
+                HotKey = {
+                    Key = "S"
+                }
+            },
+            {
+                Label = "Add to Target",
+                OnClick = function (selectable)
+                    if not selected or selected == "" then return end
+                    local proxy = MovableProxy.CreateByGuid(selected)
+                    RB_GLOBALS.TransformEditor:AddTarget(proxy)
+                end,
+                Hint = "A",
+                HotKey = {
+                    Key = "A"
+                }
+            }
+        }
+
+        for _,item in ipairs(contextItems) do
+            local sle = contextMenu:AddItemPacked(item)
+
+            if item.HotKey then
+                tempSubs[item.Label] = SubscribeKeyAndMouse(function (e)
+                    if e.Event ~= "KeyDown" then return end
+                    if not selected or selected == "" then return end
+                    if localNearbyCombo.HoveringKey then
+                        selected = localNearbyCombo.HoveringKey
+                    end
+                    item.OnClick(sle)
+                end, item.HotKey)
+            end
+
+        end
+
+        localNearbyCombo.OnChange = function (sel, selectedGuid, displayName)
+            selected = selectedGuid
+            contextPopup:Open()
+        end
+
+        local titleText = nearbyNotif.titleText
+        nearbyNotif.titleText.OnHoverEnter = function()
+            titleText:SetColor("Text", HexToRGBA("FF515151"))
+        end
+        nearbyNotif.titleText.OnHoverLeave = function()
+            titleText:SetColor("Text", HexToRGBA("FFFFFFFF"))
+        end
+        nearbyNotif.titleText.OnClick = function()
+            nearbyNotif:Dismiss()
+        end
+        nearbyNotif.titleText:SetColor("Text", HexToRGBA("FFFFFFFF"))
+    end
+
+    nearbyNotif:Show(nearbyNotif.name, render)
+    nearbyNotif.OnDismiss = function()
+        for _,sub in pairs(tempSubs) do
+            sub:Unsubscribe()
+        end
+        tempSubs = {}
+    end
 end
 
 function TransformToolbar:Add()

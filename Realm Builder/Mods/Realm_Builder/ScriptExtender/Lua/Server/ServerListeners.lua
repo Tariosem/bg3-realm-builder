@@ -1,53 +1,25 @@
-local readOnlyTemplateProperty = {
-    Id = true,
-    TemplateName = true,
-    ParentTemplateId = true,
-    TemplateHandle = true,
-    TemplateType = true,
-    Name = true,
-    Tags = true,
-    TemplateId = true,
-    DisplayName = true,
-    Icon = true,
-    ConstructionBend = true,
-    TileSet = true,
-    Tiles = true,
-    field_100 = true,
-    field_108 = true,
-}
 
-local function copyTemplateProperties(fromTemplate, toTemplate)
-    for k,v in pairs(fromTemplate) do
-        if not readOnlyTemplateProperty[k] then 
-            toTemplate[k] = v
-        end
-    end
-end
 
 local function spawnHandler(data)
     local template = data.TemplateId
     local spawnTemplate = template
-    local position = data.Position
-    local rotation = data.Rotation
     local entInfo = data.EntInfo or {}
+    local position = entInfo.Position
+    local rotation = entInfo.Rotation
+    if not position or #position ~= 3 then
+        position = {0,0,0}
+    end
+    if not rotation or #rotation ~= 4 then
+        rotation = {0,0,0,1}
+    end
     local rtype = data.Type
 
     if rtype == "Preview" then
-        local previewItem = PreviewTemplate(template, table.unpack(position), table.unpack(rotation), entInfo and entInfo.VisualPreset)
+        local previewItem = OsirisHelpers.PreviewTemplate(template, table.unpack(position), table.unpack(rotation), entInfo and entInfo.VisualPreset)
         return {Guid = previewItem, TemplateId = template}
     end
 
     local templateObj = Ext.Template.GetTemplate(TakeTailTemplate(template))
-    if templateObj.TemplateType == "scenery" or templateObj.TemplateType == "TileConstruction" then
-        entInfo.IsScenery = true
-        local sceneryTemplate = templateObj --[[@as SceneryTemplate|ConstructionTemplate]]  
-        local helperATemplate = Ext.Template.GetTemplate(INVISIBLE_HELPER_SCENERY) --[[@as ItemTemplate]]
-
-        copyTemplateProperties(sceneryTemplate, helperATemplate)
-        spawnTemplate = helperATemplate.Name .. "-" .. helperATemplate.Id
-    elseif templateObj.TemplateType == "prefab" then
-        
-    end
 
     local newGuid = EntityManager:CreateAt(spawnTemplate, position[1], position[2], position[3], rotation[1], rotation[2], rotation[3], rotation[4])
 
@@ -101,8 +73,8 @@ end)
 local deleteHandler = function(data)
     local guids = NormalizeGuidList(data.Guid)
     for _,guid in pairs(guids) do
-        if EntityManager.TaggedEntities[guid] then
-            EntityManager:DeleteEntity(guid)
+        if EntityManager.SavedEntities[guid] then
+            EntityManager:DeleteEntities(guid)
         else
             Osi.RequestDelete(guid)
             Osi.RequestDeleteTemporary(guid)
@@ -111,13 +83,15 @@ local deleteHandler = function(data)
 
     if data.Type == "DeleteAll" then
         EntityManager:DeleteAll()
-    elseif data.Type == "DeleteByTemplateId" and data.TemplateId then
-        EntityManager:DeleteEntityByTemplateId(data.TemplateId)
     end
 end
 
 NetChannel.Delete:SetHandler(function(data, userID)
     deleteHandler(data)
+end)
+
+NetChannel.Restore:SetHandler(function(data, userID)
+    EntityManager:RestoreEntities(data.Guid)
 end)
 
 NetChannel.Delete:SetRequestHandler(function(data, userID)
@@ -134,8 +108,12 @@ NetChannel.GetTemplate:SetRequestHandler(function(data, userID)
 
     local map = {}
     for _,g in pairs(guid) do
-        local template = Osi.GetTemplate(g)
-        map[g] = template
+        if EntityManager.SavedEntities[g] then
+            map[g] = EntityManager.SavedEntities[g].TemplateId
+        else
+            local template = Osi.GetTemplate(g)
+            map[g] = template
+        end
     end
 
     return {GuidToTemplateId = map}
@@ -154,7 +132,7 @@ NetChannel.SpawnPreview:SetRequestHandler(function(data, userID)
 
     local preview = Osi.CreateAt(template, position[1], position[2], position[3], 0, 0, "") --[[@as string]]
     if not preview then return {Guid = nil, TemplateId = template} end
-    RotateTo(preview, rotation[1], rotation[2], rotation[3], rotation[4])
+    OsirisHelpers.RotateTo(preview, rotation[1], rotation[2], rotation[3], rotation[4])
     OsirisHelpers.Propify(preview)
     Osi.ClearTag(preview, RB_PROP_TAG)
     Osi.SetCanInteract(preview, 0)
@@ -173,66 +151,52 @@ NetChannel.ManageEntity:SetHandler(function(data, userID)
             EntityManager:FreeEntity(data.Guid)
         end
     elseif action == "Delete" then
-        if data.Guid then
-            EntityManager:DeleteEntity(data.Guid)
-        end
+        deleteHandler(data)
+    elseif action == "Restore" then
+        EntityManager:RestoreEntities(data.Guid)
     elseif action == "Clear" then
         EntityManager:Clear()
-    elseif action == "Scan" then
-        local newEntities = EntityManager:Scan()
-        NetChannel.Entities.Added:Broadcast({Entities = newEntities})
     elseif action == "BFDA" then
         EntityManager:BF_DeleteAll()
+    elseif action == "Load" then
+        EntityManager:LoadFromModVar()
+    elseif action == "Scan" then
+        EntityManager:ScanForEntities()
     end
 end)
 
-NetChannel.SetTransform:SetHandler(function(data, userID)
+local function setTransform(data)
     local toSet = NormalizeGuidList(data.Guid)
     for _, guid in ipairs(toSet) do
         local transform = data.Transforms[guid]
         if not transform then goto continue end
 
         if transform.Translate and #transform.Translate == 3 then
-            TeleportTo(guid, transform.Translate[1], transform.Translate[2], transform.Translate[3])
+            OsirisHelpers.TeleportTo(guid, transform.Translate[1], transform.Translate[2], transform.Translate[3])
         end
         if transform.RotationQuat and #transform.RotationQuat == 4 then
-            RotateTo(guid, transform.RotationQuat[1], transform.RotationQuat[2], transform.RotationQuat[3], transform.RotationQuat[4])
+            OsirisHelpers.RotateTo(guid, transform.RotationQuat[1], transform.RotationQuat[2], transform.RotationQuat[3], transform.RotationQuat[4])
         end
         if transform.Scale and #transform.Scale == 3 then
+            OsirisHelpers.ScaleTo(guid, transform.Scale[1], transform.Scale[2], transform.Scale[3])
             NetChannel.SetVisualTransform:Broadcast({Guid = guid, Transforms = {[guid] = {Scale = transform.Scale}}})
         end
 
-        ::continue::
         if BindManager then
             BindManager:UpdateOffset(guid)
         end
+        ::continue::
     end
+
+end
+
+NetChannel.SetTransform:SetHandler(function(data, userID)
+    setTransform(data)
 end)
 
 NetChannel.SetTransform:SetRequestHandler(function(data, userID)
-    local toSet = NormalizeGuidList(data.Guid)
-    for _, guid in ipairs(toSet) do
-        local transform = data.Transforms[guid]
-        if not transform then goto continue end
-
-        if transform.Translate and #transform.Translate == 3 then
-            TeleportTo(guid, table.unpack(transform.Translate))
-        end
-        if transform.RotationQuat and #transform.RotationQuat == 4 then
-            RotateTo(guid, table.unpack(transform.RotationQuat))
-        end
-        if transform.Scale and #transform.Scale == 3 then
-            NetChannel.SetVisualTransform:Broadcast({Guid = guid, Transforms = {[guid] = {Scale = transform.Scale}}})
-        end
-
-
-        ::continue::
-        if BindManager then
-            BindManager:UpdateOffset(guid)
-        end
-    end
-
-    return { } --finished
+    setTransform(data)
+    return {} --finished
 end)
 
 NetChannel.Replicate:SetHandler(function (data, userID)
@@ -242,113 +206,6 @@ NetChannel.Replicate:SetHandler(function (data, userID)
         entity:Replicate(data.Field)
     end
     
-end)
-
-local function createPresetObject(data, userID)
-    if IsCamera(data.Parent) then data.Parent = data.Parent .. userID end
-    local preset = data.PresetData
-
-    if not preset then
-        Error("SpawnPreset: Preset not found: " .. data.Name)
-        return
-    end
-    local presetType = preset.PresetType or "Relative"
-    local broadCastData = {}
-    if IsCamera(data.Parent) then
-        SetCameraPosition(data.Parent, data.Position)
-        SetCameraRotation(data.Parent, data.Rotation)
-    end
-    local tree = nil --[[@as TreeTable]]
-    if preset.Tree then
-        tree = TreeTable.FromTableStatic(preset.Tree)
-    else
-        Warning("SpawnPreset: Preset tree not found: " .. data.Name)
-    end
-
-    local spawneds = preset.Spawned
-    local pivotPos = {CGetPosition(data.Parent)}
-    local pivotRot = {CGetRotation(data.Parent)}
-    local pivotTransform = {
-        Translate = pivotPos,
-        RotationQuat = pivotRot,
-        Scale = {1,1,1},
-    }
-
-    for savedguid, ent in pairs(spawneds) do
-        if not ent.TemplateId then
-            goto continue
-        end
-        local templateId = ent.TemplateId
-
-        local templateObj = Ext.Template.GetTemplate(TakeTailTemplate(templateId))
-        if templateObj.TemplateType == "scenery" or templateObj.TemplateType == "TileConstruction" then
-            local sceneryTemplate = templateObj --[[@as SceneryTemplate]]
-            local helperATemplate = Ext.Template.GetTemplate(INVISIBLE_HELPER_SCENERY) --[[@as ItemTemplate]]
-            for k,v in pairs(sceneryTemplate) do
-                if not readOnlyTemplateProperty[k] then
-                    helperATemplate[k] = v
-                end
-            end
-            templateId = helperATemplate.Name .. "-" .. helperATemplate.Id
-        end
-
-        local x, y, z = ent.Position[1] or nil, ent.Position[2] or nil, ent.Position[3] or nil
-        local p, yaw, r, w = ent.Rotation[1] or 0, ent.Rotation[2] or 0, ent.Rotation[3] or 0, ent.Rotation[4] or 1
-
-        if presetType == "Relative" then
-            local pos, rot = GetLocalRelativeTransform(pivotTransform, {x, y, z}, {p, yaw, r, w})
-            if pos and rot then
-                x, y, z = pos[1], pos[2], pos[3]
-                p, yaw, r, w = rot[1], rot[2], rot[3], rot[4]
-            else
-                Warning("SpawnPreset: Failed to get final transform for parent: " .. tostring(data.Parent))
-                goto continue
-            end
-        elseif _C().Level.LevelName ~= ent.LevelName then
-            goto continue
-        end
-        
-        if data.Type and data.Type == "Preview" then
-            PreviewTemplate(templateId, x, y, z, p, yaw, r, w, ent.VisualPreset)
-            goto continue
-        end
-    
-        local guid = EntityManager:CreateAt(templateId, x, y, z, p, yaw, r, w)
-        if tree then
-            ent.Path = tree:GetPath(savedguid, true) or nil
-        end
-
-        if guid then
-            if not ent.Group or ent.Group == "" then
-                ent.Group = data.Name
-            end
-            ent.Guid = guid
-            EntityManager:SetEntity(guid, ent)
-            table.insert(broadCastData, ent)
-        else
-            Warning("SpawnPreset: Failed to create prop with templateId: " .. tostring(templateId))
-        end
-
-
-        ::continue::
-    end
-
-    if #broadCastData > 0 then
-        Timer:Ticks(10, function ()
-            NetChannel.Entities.Added:Broadcast({ Entities = broadCastData })
-        end)
-    end
-    if IsCamera(data.Parent) then
-        SetCameraPosition(data.Parent, nil)
-        SetCameraRotation(data.Parent, nil)
-    end
-end
-
-NetChannel.SpawnPreset:SetHandler(function(data, userID)
-    local thread
-        createPresetObject(data, userID, thread)
-
-    coroutine.resume(thread)
 end)
 
 local spawnedVisualizations = {}
@@ -363,7 +220,7 @@ NetChannel.Visualize:SetRequestHandler(function(data, userID)
         local pointEntity = Osi.CreateAt(RB_PROP_AXIS_FX, pos[1], pos[2], pos[3], 1, 0, "") --[[@as string]]
         table.insert(entityHandles, pointEntity)
         if data.Rotation then
-            RotateTo(pointEntity, table.unpack(data.Rotation))
+            OsirisHelpers.RotateTo(pointEntity, table.unpack(data.Rotation))
         end
 
         -- prevent jump scare

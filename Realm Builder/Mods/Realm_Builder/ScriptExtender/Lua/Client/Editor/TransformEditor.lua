@@ -83,11 +83,15 @@ end
 
 function TransformEditor:AddTarget(proxy)
     if not proxy then return end
-    local newSelection = self.Target or {}
-    for _,v in pairs(newSelection) do
+    local oriSelection = self.Target
+    local newSelection = {}
+    for _,v in pairs(oriSelection or {}) do
         if v == proxy then
             return
         end
+    end
+    for _,v in pairs(oriSelection or {}) do
+        table.insert(newSelection, v)
     end
     table.insert(newSelection, proxy)
     self:Select(newSelection)
@@ -198,92 +202,9 @@ function TransformEditor:GetPivotRotation()
     return Quat.new(rot)
 end
 
-local registered = false
-
 function TransformEditor:RegisterEvents()
-    if registered then return end
-    registered = true
-
-    local function restrain(t)
-        t:AddCondition(function(e)
-            return not self.IsDragging
-        end)
-    end
-
-    local teMod = KeybindManager:CreateModule("TransformEditor")
-    teMod:AddModuleCondition(function(e)
-        return self.Disabled ~= true
-    end)
-    self.TransformEditorMod = teMod
-
-
-    teMod:RegisterEvent("RotateMode", function (e)
-        if not self.Target or #self.Target == 0 then return end
-        if e.Event == "KeyDown" then
-            self:SetMode("Rotate")
-        end
-    end)
-
-    teMod:RegisterEvent("TranslateMode", function (e)
-        if not self.Target or #self.Target == 0 then return end
-        if e.Event == "KeyDown" then
-            self:SetMode("Translate")
-        end
-    end)
-
-    teMod:RegisterEvent("ScaleMode", function (e)
-        if not self.Target or #self.Target == 0 then return end
-        if e.Event == "KeyDown" then
-            self:SetMode("Scale")
-        end
-    end)
-
-    teMod:RegisterEvent("FollowTarget", function (e)
-        if not self.Target or #self.Target == 0 then return end
-        if self.IsDragging then return end
-
-        local avgPos = Vec3.new(0,0,0)
-        for _,proxy in pairs(self.Target or {}) do
-            avgPos = avgPos + proxy:GetWorldTranslate()
-        end
-        avgPos = avgPos / #self.Target
-        CameraMoveToPosition({avgPos.X, avgPos.Y, avgPos.Z})
-    end)
-
-    self.Subscriptions["ResetTransform"] = SubscribeKeyInput({}, function (e)
-        if not self.Target or #self.Target == 0 then return end
-        if self.IsDragging then return end
-        if e.Event ~= "KeyDown" then return end
-
-        if not(e.Modifiers and e.Modifiers == "LAlt") then return end
-
-        local resetTransform = {}
-        if e.Key == teMod:GetKeyByEvent("RotateMode").Key then resetTransform.RotationQuat = {0,0,0,1} end
-        if e.Key == teMod:GetKeyByEvent("TranslateMode").Key then resetTransform.Translate = {CGetPosition(CGetHostCharacter())} end
-        if e.Key == teMod:GetKeyByEvent("ScaleMode").Key then resetTransform.Scale = {1,1,1} end
-
-        for _,proxy in pairs(self.Target or {}) do
-            local newTransform = proxy:GetTransform()
-            for k,v in pairs(resetTransform) do
-                newTransform[k] = v
-            end
-            proxy:SetTransform(newTransform)
-        end
-    end)
-
-    restrain(teMod:RegisterEvent("DeleteAllGizmos", function (e)
-        if e.Event ~= "KeyDown" then return end
-        if not self.Gizmo.Guid then
-            NetChannel.ManageGizmo:RequestToServer({ Clear = true }, function (response)
-                self.Gizmo.Guid = nil
-                self.Gizmo.Translate = nil
-                self.Gizmo.Rotate = nil
-                self.Gizmo.Scale = nil
-            end)
-        end
-        self.Gizmo:DeleteItem()
-        self.Target = nil
-    end))
+    if self.registered then return end
+    self.registered = true
 
     self:SetupGizmo()
 end
@@ -301,7 +222,7 @@ function TransformEditor:SetupGizmo()
     self.Gizmo.OnDragStart = function(gizmo)
         self.IsDragging = true
         for _,proxy in pairs(self.Target or {}) do
-            proxy:SaveTransform()
+            local saved = proxy:SaveTransform()
         end
     end
 
@@ -495,7 +416,7 @@ function TransformEditor:SetupGizmo()
                     finalDelta = {0,0,0}
                 end
             end
-            local newPos = startTransform.Translate + finalDelta
+            local newPos = Vec3.new(startTransform.Translate) + finalDelta
 
             proxy:SetWorldTranslate(newPos)
         end

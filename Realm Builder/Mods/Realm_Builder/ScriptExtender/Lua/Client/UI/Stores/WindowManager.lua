@@ -220,7 +220,7 @@ end
 function SetAllWindowsColor(guiColor, vec4)
     local allWindows = GetAllValidWindows()
     for _, window in ipairs(allWindows) do
-        if window and window.SetColor then
+        if window then
             window:SetColor(guiColor, vec4)
             --CONFIG.Theme.Color[guiColor] = vec4
         end

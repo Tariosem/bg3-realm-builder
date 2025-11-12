@@ -1,36 +1,54 @@
 local ENTTAB_WIDTH = 1000 * SCALE_FACTOR
 local ENTTAB_HEIGHT = 1200 * SCALE_FACTOR
 
-EntityTab = _Class("ItemTab")
-
-local copiedTransform = {
-
-}
-
 ---@class EntityTab
 ---@field guid string
 ---@field templateId string
 ---@field templateName string
 ---@field displayName string
 ---@field isVisible boolean
----@field parent ExtuiTreeParent
+---@field parent ExtuiTreeParent?
 ---@field panel ExtuiWindowBase|ExtuiTabItem
 ---@field isAttach boolean
 ---@field isWindow boolean
+---@field isValid boolean
+---@field tabBar ExtuiTabBar
+---@field monitorTab ExtuiTabItem
+---@field new fun(guid:string, templateId:string?, parent:ExtuiTreeParent|nil, initAttach:boolean?):EntityTab
+EntityTab = _Class("ItemTab")
+
+local copiedTransform = {
+}
 
 ---@param guid string
----@param templateId string
----@param parent ExtuiTabBar|nil
+---@param templateId string?
+---@param parent ExtuiTreeParent?
 ---@param initAttach boolean?
 function EntityTab:__init(guid, templateId, parent, initAttach)
     self.guid = guid
-    self.templateId = templateId
-    self.templateName = TrimTail(templateId, 37)
-    if self.templateName == "" then
-        self.templateName = templateId
+    if templateId then
+        self.templateId = templateId
+        self.templateName = TrimTail(templateId, 37)
+        if self.templateName == "" then
+            self.templateName = templateId
+        end
+    else
+        NetChannel.GetTemplate:RequestToServer({ Guid = guid }, function (data)
+            if data and data.GuidToTemplateId[guid] then
+                self.templateId = data.GuidToTemplateId[guid]
+                self.templateName = TrimTail(self.templateId, 37)
+                if self.templateName == "" then
+                    self.templateName = data.TemplateId
+                end
+                if self.attrTable then
+                    self.attrTable:SetValue("TemplateId", self.templateId)
+                    self.attrTable:SetValue("TemplateName", self.templateName)
+                end
+            end
+        end)
     end
 
-    self.displayName = EntityStore[guid] and EntityStore[guid].DisplayName or "Unknown"
+    self.displayName = GetName(guid) or ("Entity " .. tostring(guid))
 
     self.parent = parent or nil
     self.panel = nil
@@ -41,19 +59,6 @@ function EntityTab:__init(guid, templateId, parent, initAttach)
     self.isVisible = false
     self.isWindow = not self.isAttach
     self.isValid = true
-
-    self.deleteAction = function()
-        if self.persistent then
-            return
-        end
-        ConfirmPopup:DangerConfirm(
-            GetLoca("Are you sure you want to delete") .. " " .. self.displayName .. "?",
-            function()
-                NetChannel.Delete:SendToServer({ Guid = self.guid })
-            end,
-            nil
-        )
-    end
 end
 
 function EntityTab:Render()
@@ -68,7 +73,7 @@ function EntityTab:Render()
         self.isWindow = false
         self:OnAttach()
     else
-        self.panel = RegisterWindow(self.guid, self.displayName, "Prop Tab", self, self.lastPosition, self.lastSize or {ENTTAB_WIDTH, ENTTAB_HEIGHT})
+        self.panel = RegisterWindow(self.guid, self.displayName, "EntityTab", self, self.lastPosition, self.lastSize or {ENTTAB_WIDTH, ENTTAB_HEIGHT})
         self.panel.Closeable = true
         self.isWindow = true
         self:OnDetach()
@@ -113,8 +118,10 @@ function EntityTab:RenderMonitorTab()
     }
 
     local attrTable = StyleHelpers.AddReadOnlyAttrTable(monitorTab, attrs)
+    self.attrTable = attrTable
 
     local levelLine = {attrTable:AddNewLine()}
+
 
     levelLine[1]:AddText(GetLoca("Level") .. ":")
     self.levelTextMonitor = levelLine[2]:AddInputText("") --[[@as ExtuiInputText]]
@@ -148,21 +155,27 @@ function EntityTab:RenderMonitorTab()
 
 
     local posLine = {attrTable:AddNewLine()}
-    local copyPastePosBtn = posLine[1]:AddButton("Position")
-    copyPastePosBtn.IDContext = self.guid .. "_CopyPastePosBtn"
-    copyPastePosBtn:Tooltip():AddText(GetLoca("Click to copy position, Right-Click to paste position"))
+    local posText = posLine[1]:AddText("Position")
     local positionMonitor = posLine[2]:AddInputScalar("")
     positionMonitor.IDContext = self.guid .. "_PositionMonitor"
     positionMonitor.Components = 3
     positionMonitor.Value = self.LastTranslation or {0,0,0,0}
 
-    copyPastePosBtn.OnClick = function()
+    local copyPosBtn = posLine[2]:AddImageButton("##CopyPosBtn", RB_ICONS.Copy, IMAGESIZE.ROW)
+    local pastePosBtn = posLine[2]:AddImageButton("##PastePosBtn", RB_ICONS.Clipboard, IMAGESIZE.ROW)
+    copyPosBtn.SameLine = true
+    pastePosBtn.SameLine = true
+    copyPosBtn:Tooltip():AddText(GetLoca("Copy Position"))
+    pastePosBtn:Tooltip():AddText(GetLoca("Paste Position"))
+    copyPosBtn:SetColor("Button", {0,0,0,0})
+    pastePosBtn:SetColor("Button", {0,0,0,0})
+    copyPosBtn.OnClick = function()
         local pos = {CGetPosition(self.guid)}
         if pos and #pos == 3 then
             copiedTransform.Translate = {pos[1], pos[2], pos[3]}
         end
     end
-    copyPastePosBtn.OnRightClick = function()
+    pastePosBtn.OnClick = function()
         if copiedTransform.Translate then
             Commands.SetTransform({MovableProxy.CreateByGuid(self.guid)}, { Translate = copiedTransform.Translate })
         end
@@ -201,25 +214,32 @@ function EntityTab:RenderMonitorTab()
     end)
 
     local quatLine = {attrTable:AddNewLine()}
-    local copyPasteRotationBtn = quatLine[1]:AddButton("Rotation")
-    copyPasteRotationBtn.IDContext = self.guid .. "_CopyPasteRotationBtn"
-    copyPasteRotationBtn:Tooltip():AddText(GetLoca("Click to copy rotation, Right-Click to paste rotation"))
-    copyPasteRotationBtn.OnClick = function()
-        local quat = {GetQuatRotation(self.guid)}
-        if quat and #quat == 4 then
-            copiedTransform.RotationQuat = {quat[1], quat[2], quat[3], quat[4]}
-        end
-    end
-    copyPasteRotationBtn.OnRightClick = function()
-        if copiedTransform.RotationQuat then
-            Commands.SetTransform({MovableProxy.CreateByGuid(self.guid)}, { RotationQuat = copiedTransform.RotationQuat })
-        end
-    end
+    local rotText = quatLine[1]:AddText("Rotation")
 
     local rotationMonitor = quatLine[2]:AddInputScalar("")
     rotationMonitor.IDContext = self.guid .. "_RotationMonitor"
     rotationMonitor.Components = 3
     rotationMonitor.Value = self.LastRotation or {0,0,0,0}
+
+    local copyRotBtn = quatLine[2]:AddImageButton("##CopyRotationBtn", RB_ICONS.Copy, IMAGESIZE.ROW)
+    local pasteRotBtn = quatLine[2]:AddImageButton("##PasteRotationBtn", RB_ICONS.Clipboard, IMAGESIZE.ROW)
+    copyRotBtn.SameLine = true
+    pasteRotBtn.SameLine = true
+    copyRotBtn:Tooltip():AddText(GetLoca("Copy Rotation"))
+    pasteRotBtn:Tooltip():AddText(GetLoca("Paste Rotation"))
+    copyRotBtn:SetColor("Button", {0,0,0,0})
+    pasteRotBtn:SetColor("Button", {0,0,0,0})
+    copyRotBtn.OnClick = function()
+        local quat = {GetQuatRotation(self.guid)}
+        if quat and #quat == 4 then
+            copiedTransform.RotationQuat = {quat[1], quat[2], quat[3], quat[4]}
+        end
+    end
+    pasteRotBtn.OnClick = function()
+        if copiedTransform.RotationQuat then
+            Commands.SetTransform({MovableProxy.CreateByGuid(self.guid)}, { RotationQuat = copiedTransform.RotationQuat })
+        end
+    end
 
     rotationMonitor.OnChange = function(sel)
         local delta = {sel.Value[1], sel.Value[2], sel.Value[3]}

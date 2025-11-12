@@ -20,6 +20,7 @@ end
 SCALE_FACTOR = GetUIScale()
 
 IMAGESIZE = {
+    ROW = Vec2.new(36, 36) * SCALE_FACTOR,
     TINY = Vec2.new(32, 32) * SCALE_FACTOR,
     SMALL = Vec2.new(48, 48) * SCALE_FACTOR,
     MEDIUM = Vec2.new(64, 64) * SCALE_FACTOR,

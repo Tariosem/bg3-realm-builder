@@ -44,7 +44,7 @@ function EvalExpression(expr)
             table.insert(outputQueue, num)
         elseif exprFuncs[token] then
             if token == "-" and (i == 1 or tokens[i-1] == "(" or exprFuncs[tokens[i-1]]) then
-                table.insert(outputQueue, 0)
+                table.insert(outputQueue, 0) 
             end
 
             while #operatorStack > 0 do

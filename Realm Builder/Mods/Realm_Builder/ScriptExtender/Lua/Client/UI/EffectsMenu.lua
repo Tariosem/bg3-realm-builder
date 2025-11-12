@@ -34,12 +34,6 @@ function EffectsMenu:Render()
         self.isWindow = true
     end
 
-    ----------------------------------------------------------
-    -------------------- Main Menu Start ---------------------
-    ----------------------------------------------------------
-
-    --#region Main Menu
-
     local saveOpe = function()
         self:Save()
     end
@@ -107,10 +101,6 @@ function EffectsMenu:Render()
     ApplyDangerSelectableStyle(bruteForceDeleteAllButton)
     ApplyDangerSelectableStyle(clearAllButton)
 
-    --#endregion Main Menu
-    
-    --#region Utility
-
     if detachCell then
         local detachButton = AddSelectableButton(detachCell, GetLoca("Detach"), function()
             if not self.parent then return end
@@ -128,36 +118,17 @@ function EffectsMenu:Render()
         end
     end
 
-    --#endregion Utility
-
-    ----------------------------------------------------------
-    -------------------- Utility End -------------------------
-    ----------------------------------------------------------
     
     local collapsingTable = AddCollapsingTable(self.panel, nil, "Filters", { CollapseDirection = "Right", HoverToExpand = false, Collapsed = true })
     self.customEffectsCollapsingTable = collapsingTable
     local customEffectsContainer = collapsingTable.MainArea
     local optionsContainer = collapsingTable.SideBar
 
-    ----------------------------------------------------------
-    ----------------- Custom Effects Start -------------------
-    ----------------------------------------------------------
-
-    --#region Custom Effects
 
     self.customEffectsCell = customEffectsContainer:AddChildWindow("CustomEffectsContainer")
 
     self:RenderCustomEffects()
 
-    --#endregion Custom Effects
-
-    ----------------------------------------------------------
-    ----------------- Custom Effects End ---------------------
-    ----------------------------------------------------------
-    
-    -----------------------------------------------------------
-    -------------- Search And other Options Start -------------
-    -----------------------------------------------------------
     
     local searchCell = optionsContainer:AddChildWindow("SearchOptions")
 
@@ -193,7 +164,8 @@ function EffectsMenu:RenderCustomEffects()
     local imageSize = self.customEffectsImageSize or (64 * SCALE_FACTOR)
     local images = {}
     local titleCell = self.customEffectsCollapsingTable.TitleCell
-    local configButton = titleCell:AddButton("=")
+    local configButton = titleCell:AddImageButton("ConfigButton", RB_ICONS.Gear, IMAGESIZE.SMALL)
+    configButton:SetColor("Button", {0,0,0,0})
     self.customEffectsConfigButton = configButton
     local title = titleCell:AddSeparatorText("Custom Effects")
     self.customEffectsTitle = title
@@ -314,7 +286,7 @@ function EffectsMenu:RenderCustomEffects()
     
     local createEffectCell = customEffectsRow:AddCell()
 
-    local createEffectButton = createEffectCell:AddImageButton("CreateCustomEffect", "GenericIcon_Intent_Buff")
+    local createEffectButton = createEffectCell:AddImageButton("CreateCustomEffect", RB_ICONS.Plus_Square)
     table.insert(images, createEffectButton)
     createEffectButton.Image.Size = {imageSize, imageSize}
     createEffectButton:Tooltip():AddText(GetLoca("Create a new blank effect"))

@@ -1,0 +1,22 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<save>
+	<version major="4" minor="8" revision="0" build="500" lslib_meta="v1,bswap_guids,lsf_keys_adjacency" />
+	<region id="TextureBank">
+		<node id="TextureBank">
+			<children>
+				<node id="Resource">
+					<attribute id="ID" type="FixedString" value="b1e33021-177a-3221-6b48-c885c17cc3a5" />
+					<attribute id="Name" type="LSString" value="BootstrapIcons" />
+					<attribute id="SourceFile" type="LSString" value="Public/Realm_Builder/Assets/Textures/Icons/BootstrapIcons.dds" />
+					<attribute id="Template" type="FixedString" value="BootstrapIcons" />
+					<attribute id="Streaming" type="bool" value="True" />
+					<attribute id="Type" type="int32" value="1" />
+					<attribute id="SRGB" type="bool" value="False" />
+					<attribute id="Width" type="int32" value="4096" />
+					<attribute id="Height" type="int32" value="4096" />
+					<attribute id="Depth" type="int32" value="1" />
+				</node>
+			</children>
+		</node>
+	</region>
+</save>

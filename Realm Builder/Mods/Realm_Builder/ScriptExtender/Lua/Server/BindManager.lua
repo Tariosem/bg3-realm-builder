@@ -207,7 +207,7 @@ function BindManager:HandleNotFollowParent(child, parent, store)
     if store.KeepLookingAt then
         local lookAt = LookAtParent(child, parent)
         if not lookAt then return false end
-        RotateTo(child, table.unpack(lookAt))
+        OsirisHelpers.RotateTo(child, table.unpack(lookAt))
 
         if CIsCharacter(child) then
             NetChannel.SetVisualTransform:Broadcast({
@@ -239,8 +239,8 @@ function BindManager:HandleFollowParent(child, parent, store)
         end
     end
 
-    local posSuccess = TeleportTo(child, table.unpack(finalPos))
-    local rotSuccess = RotateTo(child, table.unpack(finalRot))
+    local posSuccess = OsirisHelpers.TeleportTo(child, table.unpack(finalPos))
+    local rotSuccess = OsirisHelpers.RotateTo(child, table.unpack(finalRot))
     
     if CIsCharacter(child) then
         NetChannel.SetVisualTransform:Broadcast({

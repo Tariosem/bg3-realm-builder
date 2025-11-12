@@ -410,6 +410,7 @@ function RequireFiles(folderPath, files)
 end
 
 function TrimTail(obj, count)
+    if not obj or type(obj) ~= "string" then return obj end
     return string.sub(obj, 1, #obj - count)
 end
 

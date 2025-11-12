@@ -18,12 +18,21 @@ NetChannel.Duplicate = Ext.Net.CreateChannel(ModuleUUID, "Duplicate")
 --- @field SendToServer fun(channel:self , data: {Guid: GUIDSTRING[]|GUIDSTRING})
 NetChannel.Delete = Ext.Net.CreateChannel(ModuleUUID, "Delete")
 
+--- @class RestoreChannel : NetChannel
+--- @field SendToServer fun(channel:self , data: {Guid: GUIDSTRING[]|GUIDSTRING})
+NetChannel.Restore = Ext.Net.CreateChannel(ModuleUUID, "Restore")
+
+--- @class SpawnPostData
+--- @field TemplateId string
+--- @field EntInfo EntityData?
+--- @field Type "Preview"|"Spawn"
+
 --- @class SpawnChannel : NetChannel
---- @field RequestToServer fun(channel:self , data: {TemplateId: string, Position: Vec3, Rotation: Quat, EntInfo: EntityData?, Type: "Preview"|"Spawn"}, callback: fun(response: {Guid: GUIDSTRING, TemplateId: string}))
+--- @field RequestToServer fun(channel:self , data: SpawnPostData, callback: fun(response: {Guid: GUIDSTRING, TemplateId: string}))
 NetChannel.Spawn = Ext.Net.CreateChannel(ModuleUUID, "Spawn")
 
 --- @class ManageEntityChannel : NetChannel
---- @field SendToServer fun(channel:self , data: {Guid: GUIDSTRING?, Action: "Add"|"Remove"|"Clear"|"Scan"|"BFDA"})
+--- @field SendToServer fun(channel:self , data: {Guid: GUIDSTRING?, Action: "Add"|"Remove"|"Clear"|"Load"|"BFDA"|"Restore"|"Scan"})
 NetChannel.ManageEntity = Ext.Net.CreateChannel(ModuleUUID, "ManageEntity")
 
 NetChannel.AddItem = Ext.Net.CreateChannel(ModuleUUID, "AddItem")
@@ -69,10 +78,6 @@ NetChannel.ManageGizmo = Ext.Net.CreateChannel(ModuleUUID, "ManageGizmo")
 --- @class BindChannel : NetChannel
 --- @field SendToServer fun(channel:self , data: {Type: "Bind"|"Unbind"|"UpdateOffset"|"SetAttributes", Guid: GUIDSTRING|GUIDSTRING[], Parent: GUIDSTRING, Attributes: table<'FollowParent'|'KeepLookingAt', boolean>})
 NetChannel.Bind = Ext.Net.CreateChannel(ModuleUUID, "Bind")
-
---- @class SpawnPresetChannel : NetChannel
---- @field SendToServer fun(channel:self , data: {PresetData: EntityData[], Parent: GUIDSTRING|nil, Position: Vec3|nil, Rotation: Quat|nil, Type: "Preview"|"Spawn"})
-NetChannel.SpawnPreset = Ext.Net.CreateChannel(ModuleUUID, "SpawnPreset")
 
 --- @class OsirisRequestChannel : NetChannel
 --- @field SendToServer fun(channel:self , data: { Deactive: boolean?, CameraPosition: Vec3|nil, CameraRotation: Quat|nil })

@@ -114,37 +114,31 @@ function Commands.SnapCommand(targets, onlyRotation, onlyPosition)
 end
 
 ---@param template string
----@param position Vec3
----@param rotation Quat
 ---@param entInfo EntityData|nil
-function Commands.SpawnCommand(template, position, rotation, entInfo)
+function Commands.SpawnCommand(template,entInfo)
     entInfo = entInfo and DeepCopy(entInfo) or {}
     local packedData = {
         TemplateId = template,
-        Position = position,
-        Rotation = rotation,
         EntInfo = entInfo
     }
     local spawnedGuid = nil
 
     NetChannel.Spawn:RequestToServer(packedData, function(response)
         spawnedGuid = response.Guid
-    end)
-
-    HistoryManager:PushCommand({
-        Undo = function()
-            if spawnedGuid then
+        HistoryManager:PushCommand({
+            Undo = function()
                 NetChannel.Delete:SendToServer({ Guid = spawnedGuid })
+            end,
+            Redo = function()
+                NetChannel.Restore:SendToServer({ Guid = spawnedGuid })
             end
-        end,
-        Redo = function()
-            NetChannel.Spawn:SendToServer(packedData)
-        end
-    })
+        })
+    end)
 end
 
 --- @param targets GUIDSTRING[]
-function Commands.DuplicateCommand(targets)
+--- @param path string[]?
+function Commands.DuplicateCommand(targets, path)
     if #targets == 0 then return end
     local oriTransforms = {}
     for _, guid in pairs(targets) do
@@ -152,6 +146,7 @@ function Commands.DuplicateCommand(targets)
     end
     local spawnedDuplications = {}
     local templateMap = {}
+    local originStats = {}
     local nonItemNonCharacter = {}
 
     local toGet = {}
@@ -163,11 +158,18 @@ function Commands.DuplicateCommand(targets)
             if stored.IsScenery then
                 nonItemNonCharacter[guid] = true
             end
+            originStats[guid] = DeepCopy(stored)
+            originStats[guid].DisplayName = nil
+            if path then
+                originStats[guid].Path = path
+            end
         else
             table.insert(toGet, guid)
         end
     end
 
+    local spawn
+    local thread
     NetChannel.GetTemplate:RequestToServer({ Guid = toGet }, function(response)
         for guid, templateId in pairs(response.GuidToTemplateId) do
             templateMap[guid] = templateId
@@ -180,17 +182,24 @@ function Commands.DuplicateCommand(targets)
                 table.insert(toDuplicate, guid)
             end
         end
+        thread = coroutine.create(spawn)
+        local ok, err = coroutine.resume(thread)
+        if not ok then
+            Error("DuplicateCommand: Coroutine error: " .. tostring(err))
+        end
     end)
 
-    local thread
-    local function spawn()
+    function spawn()
         for guid, templateId in pairs(templateMap) do
             local transform = oriTransforms[guid]
             
+            local entData = originStats[guid]
+            entData.Path = path
+            entData.Position = transform.Translate
+            entData.Rotation = transform.RotationQuat
             NetChannel.Spawn:RequestToServer({
                 TemplateId = templateId,
-                Position = transform.Translate,
-                Rotation = transform.RotationQuat,
+                EntInfo = entData
             }, function(response)
                 table.insert(spawnedDuplications, response.Guid)
                 if #spawnedDuplications == CountMap(templateMap) then
@@ -220,28 +229,22 @@ function Commands.DuplicateCommand(targets)
             end
         end
 
+        HistoryManager:PushCommand({
+            Undo = function()
+                NetChannel.Delete:SendToServer({ Guid = spawnedDuplications })
+            end,
+            Redo = function()
+                NetChannel.Restore:SendToServer({ Guid = spawnedDuplications })
+            end
+        })
+
         RB_GLOBALS.TransformEditor:Select(proxies)
         RB_GLOBALS.TransformEditor.Gizmo:StartDragging()
     end
-
-    thread = coroutine.create(spawn)
-    coroutine.resume(thread)
-
-    HistoryManager:PushCommand({
-        Undo = function()
-            NetChannel.Delete:SendToServer({ Guid = spawnedDuplications })
-            spawnedDuplications = {}
-        end,
-        Redo = function()
-            thread = coroutine.create(spawn)
-            coroutine.resume(thread)
-        end
-    })
 end
 
 --- @param data SceneData
 function Commands.SpawnPreset(data)
-    _D(data)
     local spawnedGuids = {}
     local thread = nil
     local ok, err
@@ -263,14 +266,9 @@ function Commands.SpawnPreset(data)
         HistoryManager:PushCommand({
             Undo = function()
                 NetChannel.Delete:SendToServer({ Guid = spawnedGuids })
-                spawnedGuids = {}
             end,
             Redo = function()
-                thread = coroutine.create(threadFunc)
-                ok, err = coroutine.resume(thread)
-                if not ok then
-                    Error("SpawnPreset: Coroutine error: " .. tostring(err))
-                end
+                NetChannel.Restore:SendToServer({ Guid = spawnedGuids })
             end
         })
     end
@@ -293,10 +291,11 @@ function Commands.SpawnPreset(data)
             entData.Group = data.Name
         end
 
+        entData.Position = pos
+        entData.Rotation = rot
+
         NetChannel.Spawn:RequestToServer({
             TemplateId = entData.TemplateId,
-            Position = pos,
-            Rotation = rot,
             EntInfo = entData.EntInfo or {},
             Type = data.SpawnType
         }, function(response)
@@ -337,29 +336,15 @@ function Commands.DeleteCommand(targets)
     targets = NormalizeGuidList(targets)
     if #targets == 0 then return end
 
-    local oriEntities = {}
-    for _, guid in pairs(targets) do
-        local entity = Ext.Entity.Get(guid) --[[@as EntityHandle]]
-        if entity then
-            oriEntities[guid] = DeepCopy(EntityStore:GetStoredData(guid))
-        end
-    end
-
+    local spawned = targets
     NetChannel.Delete:SendToServer({ Guid = targets })
 
     HistoryManager:PushCommand({
         Undo = function()
-            for _, entityData in pairs(oriEntities) do
-                Commands.SpawnCommand(
-                    entityData.TemplateId,
-                    Vec3.New(entityData.Transform.Position),
-                    Quat.New(entityData.Transform.RotationQuat),
-                    entityData
-                )
-            end
+            NetChannel.Restore:SendToServer({ Guid = spawned })
         end,
         Redo = function()
-            NetChannel.Delete:SendToServer({ Guid = targets })
+            NetChannel.Delete:SendToServer({ Guid = spawned })
         end
     })
 end
@@ -369,9 +354,9 @@ end
 function Commands.AddMarker(target, markerType)
     local spwanPost = {
         TemplateId = MARKER_ITEM[markerType],
-        Position = { CGetPosition(target) },
-        Rotation = { CGetRotation(target) },
         EntInfo = {
+            Position = { CGetPosition(target) },
+            Rotation = { CGetRotation(target) },
             DisplayName = "Spot Light Marker",
         }
     }

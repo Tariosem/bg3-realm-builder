@@ -157,10 +157,10 @@ end
 
 --- @param entry RB_Item
 function ItemBrowser:SetupTemplatePreview(entry)
-    Timer:Ticks(20, function (timerID)
+    Timer:Ticks(20, function(timerID)
         local spawnPos, spawnRot = GetPickingHitPosAndRot()
         if not spawnPos or not spawnRot then return end
-        Commands.SpawnCommand(entry.TemplateId, spawnPos, spawnRot)
+        Commands.SpawnCommand(entry.TemplateId, { Position=spawnPos, Rotation=spawnRot })
     end)
 
     if true then return end
@@ -170,14 +170,14 @@ function ItemBrowser:SetupTemplatePreview(entry)
     local notif = Notification.new("Is Previewing Item...")
     notif.Pivot = { 0.5, 0 }
     notif.Duration = 5000
-    
-    notif:Show("Item Preview", function (panel)
+
+    notif:Show("Item Preview", function(panel)
         local midAlighTab = panel:AddTable("Midddd", 3)
         midAlighTab.ColumnDefs[1] = { WidthStretch = true }
         midAlighTab.ColumnDefs[2] = { WidthFixed = true }
         midAlighTab.ColumnDefs[3] = { WidthStretch = true }
         local row = midAlighTab:AddRow()
-        local _,midCell,_ = row:AddCell(), row:AddCell(), row:AddCell()
+        local _, midCell, _ = row:AddCell(), row:AddCell(), row:AddCell()
         local icon = CheckIcon(entry.Icon or "Item_Unknown")
         local image = midCell:AddImage(icon, ToVec2(64 * SCALE_FACTOR))
         midCell:AddText(GetLoca(entry.DisplayName) or "Unknown").SameLine = true
@@ -194,7 +194,7 @@ function ItemBrowser:SetupTemplatePreview(entry)
     local mouseWheelSub = nil
     local stickTimer = nil
     local cancelSub = nil
-    local rotationOffset = Quat.new(0,0,0,1)
+    local rotationOffset = Quat.new(0, 0, 0, 1)
 
     local startPos, startRot = GetPickingHitPosAndRot()
 
@@ -202,7 +202,7 @@ function ItemBrowser:SetupTemplatePreview(entry)
         TemplateId = entry.TemplateId,
         Position = startPos,
         Rotation = startRot,
-    }, function (response)
+    }, function(response)
         if not response.Guid then
             Warning("[ItemIconBrowser] Failed to spawn preview for templateId: " .. tostring(entry.TemplateId))
             self.IsPreviewing = false
@@ -212,7 +212,7 @@ function ItemBrowser:SetupTemplatePreview(entry)
 
         local rotatedirty = false
         local dirtyRotation = nil
-        stickTimer = Timer:EveryFrame(function (timerID)
+        stickTimer = Timer:EveryFrame(function(timerID)
             if not previewItem then return UNSUBSCRIBE_SYMBOL end
 
             local hitPos, hitRot = nil, nil
@@ -221,9 +221,9 @@ function ItemBrowser:SetupTemplatePreview(entry)
             if hitOnPreview then
                 local mouseRay = ScreenToWorldRay()
                 if not mouseRay then return end
-                local planeNormal = Quat.new({CGetRotation(previewItem)}):Rotate(GLOBAL_COORDINATE.Y)
+                local planeNormal = Quat.new({ CGetRotation(previewItem) }):Rotate(GLOBAL_COORDINATE.Y)
 
-                local hit = mouseRay:IntersectPlane({CGetPosition(previewItem)}, planeNormal)
+                local hit = mouseRay:IntersectPlane({ CGetPosition(previewItem) }, planeNormal)
 
                 if not hit then return end
                 hitPos = hit.Position
@@ -232,13 +232,13 @@ function ItemBrowser:SetupTemplatePreview(entry)
             end
 
 
-            if not hitPos then hitPos = startPos or Vec3.new(0,0,0) end
-            if not hitRot then 
+            if not hitPos then hitPos = startPos or Vec3.new(0, 0, 0) end
+            if not hitRot then
                 if dirtyRotation then
                     hitRot = DeepCopy(dirtyRotation)
                     dirtyRotation = nil
                 else
-                    hitRot = {CGetRotation(previewItem)}
+                    hitRot = { CGetRotation(previewItem) }
                 end
             end
 
@@ -253,8 +253,8 @@ function ItemBrowser:SetupTemplatePreview(entry)
             hitPos = Vec3.new(hitPos)
             hitRot = Quat.new(hitRot)
 
-            hitPos:Sanitize({CGetPosition(selectedGuid)})
-            hitRot:Sanitize({CGetRotation(selectedGuid)})
+            hitPos:Sanitize({ CGetPosition(selectedGuid) })
+            hitRot:Sanitize({ CGetRotation(selectedGuid) })
 
             NetChannel.SetTransform:SendToServer({
                 Guid = previewItem,
@@ -267,32 +267,37 @@ function ItemBrowser:SetupTemplatePreview(entry)
             })
         end)
 
-        mouseButtonSub = SubscribeMouseInput({}, function (e)
+        mouseButtonSub = SubscribeMouseInput({}, function(e)
             if not previewItem then return UNSUBSCRIBE_SYMBOL end
             if not e.Pressed and e.Clicks > 0 then return end
 
             if e.Button == 1 then
                 local data = {
                     TemplateId = entry.TemplateId,
-                    Position = {CGetPosition(previewItem)},
-                    Rotation = {CGetRotation(previewItem)}
+                    EntInfo = {
+                        Position = { CGetPosition(previewItem) },
+                        Rotation = { CGetRotation(previewItem) }
+                    }
                 }
-                Commands.SpawnCommand(entry.TemplateId, data.Position, data.Rotation)
+                Commands.SpawnCommand(entry.TemplateId, data.EntInfo)
             end
         end)
 
-        mouseWheelSub = SubscribeMouseWheel({}, function (e)
+        mouseWheelSub = SubscribeMouseWheel({}, function(e)
             if not previewItem then return UNSUBSCRIBE_SYMBOL end
             if e.ScrollY == 0 then return end
 
             local angle = math.rad(15) * (e.ScrollY > 0 and 1 or -1)
-            local quatOffset = Quat.new(Ext.Math.QuatFromEuler({0, angle, 0}))
+            local quatOffset = Quat.new(Ext.Math.QuatFromEuler({ 0, angle, 0 }))
             rotationOffset = Ext.Math.QuatMul(quatOffset, rotationOffset)
             rotatedirty = true
         end)
 
-        cancelSub = SubscribeKeyInput({}, function (e)
-            if not previewItem then NetChannel.Delete:SendToServer({ Guid = previewItem }) return UNSUBSCRIBE_SYMBOL end
+        cancelSub = SubscribeKeyInput({}, function(e)
+            if not previewItem then
+                NetChannel.Delete:SendToServer({ Guid = previewItem })
+                return UNSUBSCRIBE_SYMBOL
+            end
             if e.Pressed and (e.Key == "ESCAPE" or e.Key == "BACKSPACE") then
                 NetChannel.Delete:SendToServer({ Guid = previewItem })
                 previewItem = nil
@@ -300,9 +305,7 @@ function ItemBrowser:SetupTemplatePreview(entry)
                 return UNSUBSCRIBE_SYMBOL
             end
         end)
-
     end)
-
 end
 
 --- @param popup ExtuiPopup
@@ -348,9 +351,6 @@ function ItemBrowser:RenderAttrPopup(iconImage, cell, entry, getPopupFunc)
         return title
     end
 
-    -- Store original OnClick if any
-    local originalOnClick = iconImage.OnClick
-
     iconImage.OnClick = function()
         if self.iconToName then
             iconImage.Selected = false
@@ -360,19 +360,19 @@ function ItemBrowser:RenderAttrPopup(iconImage, cell, entry, getPopupFunc)
             attributePopup:Open()
             return
         end
-        
+
         -- Lazy create popup
         local popup = getPopupFunc()
         attributePopup = cell:AddPopup("AttributesPopup##" .. entry.Uuid)
 
-        local popupBtn = popup:AddButton(GetLoca("Infos"))
+        local popupBtn = attributePopup:AddButton(GetLoca("Infos"))
         popupBtn.OnClick = function()
             self:RenderInfoPopup(popup, entry)
             popup:Open()
         end
 
         addAttrTitle("Attributes")
-        
+
         if entry.Damage then
             addAttrTitle("Damage : ")
             local damageText = attributePopup:AddText(entry.Damage)
@@ -462,14 +462,17 @@ end
 function ItemBrowser:RenderItemSpawnTab(popup, iconImage, entry)
     local spawnTab = popup
     local spawnButton = spawnTab:AddButton(GetLoca("Spawn"))
+    local target = self.selectedGuid or CGetHostCharacter()
 
     local function spawnHandle(isPreview)
         if isPreview then
             local data = {
                 TemplateId = entry.TemplateId,
                 Type = "Preview",
-                Position = {CGetPosition(self.selectedGuid or CGetHostCharacter())},
-                Rotation = {CGetRotation(self.selectedGuid or CGetHostCharacter())}
+                EntInfo = {
+                    Position = { CGetPosition(target) },
+                    Rotation = { CGetRotation(target) }
+                }
             }
 
             NetChannel.Spawn:SendToServer(data)
@@ -478,10 +481,12 @@ function ItemBrowser:RenderItemSpawnTab(popup, iconImage, entry)
                 Guid = entry.Uuid,
                 TemplateId = entry.TemplateId,
                 Type = "Spawn",
-                Position = {CGetPosition(self.selectedGuid or CGetHostCharacter())},
-                Rotation = {CGetRotation(self.selectedGuid or CGetHostCharacter())}
+                EntInfo = {
+                    Position = { CGetPosition(target) },
+                    Rotation = { CGetRotation(target) }
+                }
             }
-            Commands.SpawnCommand(entry.TemplateId, data.Position, data.Rotation, data)
+            Commands.SpawnCommand(entry.TemplateId, data)
         end
     end
 
@@ -512,7 +517,8 @@ function ItemBrowser:RenderItemSpawnTab(popup, iconImage, entry)
 
     local countInput = nil
     local cheatButton = spawnTab:AddButton(GetLoca("Cheat"))
-    local warningImage = spawnTab:AddImage(WARNING_ICON)
+    local warningImage = spawnTab:AddImage(RB_ICONS.Warning) --[[@as ExtuiImage]]
+    warningImage.Tint = { 1, 0.5, 0.5, 1 }
     warningImage.SameLine = true
     warningImage.ImageData.Size = { 32 * SCALE_FACTOR, 32 * SCALE_FACTOR }
     warningImage:Tooltip():AddText(GetLoca("Items added to your inventory will not be monitored by this mod."))
@@ -588,7 +594,6 @@ function ItemBrowser:RenderItemSpawnTab(popup, iconImage, entry)
         countInput.Value = ToVec4(countInput.Value[1] + 5)
         checkValue()
     end
-
 end
 
 function ItemBrowser.Add(Lib, DisplayName)

@@ -634,7 +634,7 @@ function MaterialPresetsMenu:RenderImportSection(parent, exportSettings, onImpor
     end
 
     function refreshCached()
-        DestroyAllChilds(parent)
+        DestroyAllChildren(parent)
 
         local cache = nil
 

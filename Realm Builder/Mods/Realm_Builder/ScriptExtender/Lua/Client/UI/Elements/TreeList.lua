@@ -2,8 +2,7 @@
 --- @field parent ExtuiTreeParent
 --- @field panel ExtuiTreeParent
 --- @field selectedItems table<any, boolean>
---- @field treeRefs table<any, ExtuiSelectable>
---- @field leafRefs table<any, ExtuiSelectable>
+--- @field itemRefs table<any, ExtuiSelectable>
 --- @field nodeRefs table<any, ExtuiTableCell>
 --- @field indexRefs table<any, number>
 --- @field indexRefsReverse table<number, any>
@@ -15,8 +14,8 @@
 --- @field keyField string
 --- @field ExpandAll fun(self:TreeList, key:any)
 --- @field CollapseAll fun(self:TreeList, key:any)
---- @field RenderLeaf fun(self:TreeList, key:any, node:ExtuiTableCell):ExtuiSelectable
---- @field RenderTree fun(self:TreeList, key:any, node:ExtuiTableCell):ExtuiSelectable
+--- @field RenderLeaf fun(self:TreeList, key:any, node:ExtuiTableCell, fixedCell:ExtuiTableCell):ExtuiSelectable
+--- @field RenderTree fun(self:TreeList, key:any, node:ExtuiTableCell, fixedCell:ExtuiTableCell):ExtuiSelectable
 --- @field SetUpLeaf fun(self:TreeList, selectable:ExtuiSelectable, key:any, item:any)
 --- @field SetUpTree fun(self:TreeList, tree:ExtuiSelectable, key:any, item:any)
 --- @field RenderOrder fun(aKey:any, bKey:any):boolean
@@ -24,6 +23,9 @@
 --- @field ShowAndShowPath fun(self:TreeList, key:any)
 --- @field ClearSelection fun(self:TreeList)
 --- @field ClearList fun(self:TreeList)
+--- @field SelectLogic fun(self:TreeList, key:any, parent:any)
+--- @field SetupArrow fun(self:TreeList, arrow:ExtuiGroup, key:any)
+--- @field GetLowestSelected fun(self:TreeList):any[]
 --- @field OnSelect fun(self:TreeList, selectedItems:table<any, boolean>)
 --- @field OnDragStart fun(self:TreeList, dragKey:any)
 --- @field OnDragDrop fun(self:TreeList, from:any, to:any)
@@ -34,6 +36,8 @@
 --- @field GroupSelect boolean
 --- @field new fun(parent:ExtuiTreeParent, label:string, tree:TreeTable, opts:table?):TreeList
 TreeList = _Class("TreeList")
+
+local emptyFunc = function() end
 
 function TreeList:__init(parent, label, tree)
     self.parent = parent --[[@as ExtuiTreeParent]]
@@ -46,8 +50,8 @@ function TreeList:__init(parent, label, tree)
     self.selectedItems = {}
     self.tree = tree
 
-    self.treeRefs = {} -- save tree selectables
-    self.leafRefs = {} -- save leaf selectables for items
+    self.itemRefs = {} -- save tree selectables
+    self.itemRefs = {} -- save leaf selectables for items
     self.nodeRefs = {} -- save all cells for nodes, userdata is the indent container
     self.collapsedTree = {}
 
@@ -76,8 +80,7 @@ function TreeList:SetupKeyListeners()
 end
 
 function TreeList:Render()
-    self.panel = self.parent:AddChildWindow(self.label .. "TreeList")
-    self.panel.NoDecoration = true
+    self.panel = self.parent
     self:OnAttach()
 
 
@@ -86,14 +89,24 @@ function TreeList:Render()
 end
 
 function TreeList:Collapsed()
-    self.panel:Destroy()
     self.panel = nil
 
-    self.rootTable = nil
-    self.leafRefs = {}
+    if self.rootTable then
+        self.rootTable:Destroy()
+        self.rootTable = nil
+    end
+    if self.OtherPanel then
+        self.OtherPanel:Destroy()
+        self.OtherPanel = nil
+    end
+    if self.topBar then
+        self.topBar:Destroy()
+        self.topBar = nil
+    end
+    self.itemRefs = {}
     self.indexRefs = {}
     self.indexRefsReverse = {}
-    self.treeRefs = {}
+    self.itemRefs = {}
     self.nodeRefs = {}
 end
 
@@ -107,8 +120,9 @@ end
 function TreeList:RenderTopBar()
     self.OtherPanel = self.panel:AddTree("Others")
     self:RenderCustomTopBar(self.OtherPanel)
-    local rightA, leftA = AddRightAlignCell(self.panel)
+    local rightA, leftA, topbar = AddRightAlignCell(self.panel)
 
+    self.topBar = topbar
     local searchInput = leftA:AddInputText("") --[[@as ExtuiInputText]]
     searchInput.IDContext = "TreeList" .. self.label .. "Search"
 
@@ -249,6 +263,20 @@ function TreeList:ApplyTreeTableStyle(tbl)
     tbl.BordersH = true
 end
 
+--- @param arrowImage ExtuiImageButton
+local function setupArrowImage(arrowImage)
+    ClearAllBorders(arrowImage)
+    arrowImage.OnHoverEnter = function ()
+        arrowImage.Tint = {0.8, 0.8, 0.8, 1}
+    end
+    arrowImage.OnHoverLeave = function ()
+        arrowImage.Tint = {1, 1, 1, 1}
+    end
+    arrowImage:SetColor("Button", {0,0,0,0})
+    arrowImage:SetColor("ButtonHovered", {0,0,0,0})
+    arrowImage:SetColor("ButtonActive", {0,0,0,0})
+end
+
 function TreeList:RenderList()
     -- validate renderOrder
     local ok, err = pcall(self.RenderOrder, "a", "b")
@@ -277,8 +305,7 @@ function TreeList:RenderList()
     self:ApplyTreeTableStyle(self.rootTable)
 
     self.arrowRefs = {}
-    self.treeRefs = {}
-    self.leafRefs = {}
+    self.itemRefs = {}
     self.nodeRefs = {}
     self.indexRefs = {}
     self.indexRefsReverse = {}
@@ -292,7 +319,7 @@ function TreeList:RenderList()
     })
     local leafCnt = 1
 
-    local function collectChilds(key)
+    local function collectChildren(key)
         local collector = {}
         local node = self.tree:Find(key)
         for childKey,_ in pairs(node or {}) do
@@ -303,19 +330,16 @@ function TreeList:RenderList()
     end
 
     --- @param key any
-    --- @param node ExtuiTableCell
     --- @return unknown
-    local depthIndent = function(key, node)
+    local depthIndent = function(key)
         local depth = self.tree:GetDepth(key)
-        local indent = node:AddDummy((depth - 1) * 64, 32)
-        indent:SetStyle("ItemSpacing", 0,0)
-        return node
+        return (depth - 1) * 64
     end
 
     local stack = {}
-    local rootChilds = collectChilds(TreeTable.GetRootKey())
-    for i = #rootChilds, 1, -1 do
-        table.insert(stack, { key = rootChilds[i], depth = 1 })
+    local rootChildren = collectChildren(TreeTable.GetRootKey())
+    for i = #rootChildren, 1, -1 do
+        table.insert(stack, { key = rootChildren[i], depth = 1 })
     end
 
     if #stack == 0 then
@@ -330,42 +354,57 @@ function TreeList:RenderList()
         local node = self.tree:Find(key)
         if node then
             local cell = row:AddCell()
-            local indent = depthIndent(key, cell)
-            cell.UserData = indent
+            local indentDepth = depthIndent(key)
+            local innerTab = cell:AddTable("IndentTable##" .. tostring(key), 3)
+            innerTab.SameLine = true
+            innerTab.PreciseWidths = true
+            innerTab.ColumnDefs[1] = { WidthFixed = true, Width = indentDepth }
+            innerTab.ColumnDefs[2] = { WidthStretch = true }
+            innerTab.ColumnDefs[3] = { WidthFixed = true }
+            local indentRow = innerTab:AddRow()
+            indentRow:AddCell() -- indent cell
+            local leftCell = indentRow:AddCell()
+            local fixedCell = indentRow:AddCell()
+            cell.UserData = {
+                SeletableCell = leftCell,
+                FixedCell = fixedCell
+            }
+            local ele
             if self.tree:IsLeaf(key) then
-                local ele = self:RenderLeaf(key, indent)
-                self.leafRefs[key] = ele
-                self.nodeRefs[key] = cell
-                self.indexRefs[key] = leafCnt
-                self.indexRefsReverse[leafCnt] = key
-                leafCnt = leafCnt + 1
+                ele = self:RenderLeaf(key, leftCell, fixedCell)
                 cell.Visible = false
             else
-                local arrowReserved = indent:AddGroup("##ArrowReserved")
+                local arrowReserved = leftCell:AddGroup("##ArrowReserved")
                 arrowReserved.IDContext = "TreeList" .. self.label .. "ArrowReserved" .. tostring(key)
-                arrowReserved.SameLine = true
                 local icon = self.collapsedTree[key] and RB_ICONS.Tree_Collapsed or RB_ICONS.Tree_Expanded
-                local arrowImage = arrowReserved:AddImage(icon, IMAGESIZE.TINY)
-                local ele = self:RenderTree(key, indent)
+                local arrowImage = arrowReserved:AddImageButton("##" .. key .. "ArrowBtn", icon, IMAGESIZE.ROW)
+                setupArrowImage(arrowImage)
+                ele = self:RenderTree(key, leftCell, fixedCell)
                 ele.SameLine = true
                 self.arrowRefs[key] = arrowReserved
-                self.treeRefs[key] = ele
-                self.nodeRefs[key] = cell
                 cell.Visible = false
 
-                local childs = collectChilds(key)
-                for i = #childs, 1, -1 do
-                    table.insert(stack, { key = childs[i], depth = depth + 1 })
+                local children = collectChildren(key)
+                for i = #children, 1, -1 do
+                    table.insert(stack, { key = children[i], depth = depth + 1 })
                 end
             end
+
+            ele.AllowItemOverlap = true
+            self.itemRefs[key] = ele
+            self.nodeRefs[key] = cell
+            self.indexRefs[key] = leafCnt
+            self.indexRefsReverse[leafCnt] = key
+            leafCnt = leafCnt + 1
         end
     end
 
-    for key,ele in pairs(self.treeRefs) do
-        self:SetUpTree(ele, key, self.tree:Find(key))
-    end
-    for key,ele in pairs(self.leafRefs) do
-        self:SetUpLeaf(ele, key, self.tree:Find(key))
+    for key,ele in pairs(self.itemRefs) do
+        if self.tree:IsLeaf(key) then
+            self:SetUpLeaf(ele, key)
+        else
+            self:SetUpTree(ele, key, self.tree:Find(key))
+        end
     end
     for key,arrow in pairs(self.arrowRefs) do
         self:SetupArrow(arrow, key)
@@ -376,8 +415,7 @@ end
 
 function TreeList:ClearList()
     --self:ClearSelection()
-    self.leafRefs = {}
-    self.treeRefs = {}
+    self.itemRefs = {}
     self.indexRefs = {}
     self.indexRefsReverse = {}
     self.nodeRefs = {}
@@ -390,7 +428,7 @@ end
 ---@param key any
 ---@param node ExtuiTableCell
 ---@return ExtuiSelectable return the selectable
-function TreeList:RenderLeaf(key, node)
+function TreeList:RenderLeaf(key, node, fixedCell)
     local selectable = node:AddSelectable(key) --[[@as ExtuiSelectable]]
     return selectable
 end
@@ -398,14 +436,14 @@ end
 ---@param key any
 ---@param node ExtuiTableCell
 ---@return ExtuiSelectable return the selectable
-function TreeList:RenderTree(key, node)
+function TreeList:RenderTree(key, node, fixedCell)
     local tree = node:AddSelectable(key) --[[@as ExtuiSelectable]]
     return tree
 end
 
 ---@param key any
 function TreeList:ToggleSelected(key)
-    local ref = self.leafRefs[key]
+    local ref = self.itemRefs[key]
     if ref then
         ref.Selected = not ref.Selected
         if ref.Selected then
@@ -417,7 +455,7 @@ function TreeList:ToggleSelected(key)
 end
 
 function TreeList:SetSelected(key, selected)
-    local ref = self.leafRefs[key]
+    local ref = self.itemRefs[key]
     if ref then
         ref.Selected = selected
         if selected then
@@ -430,11 +468,8 @@ end
 
 function TreeList:ClearSelection(notCallback)
     self.selectedItems = {}
-    for k, ele in pairs(self.leafRefs) do
+    for k, ele in pairs(self.itemRefs) do
         ele.Selected = false
-        ele.Highlight = false
-    end
-    for k, ele in pairs(self.treeRefs) do
         ele.Highlight = false
     end
     if not notCallback then
@@ -442,7 +477,129 @@ function TreeList:ClearSelection(notCallback)
     end
 end
 
-local emptyFunc = function() end
+function TreeList:GetLowestSelected()
+    local lowests = {}
+    local lowestDepth = math.huge
+    for key, _ in pairs(self.selectedItems) do
+        local depth = self.tree:GetDepth(key)
+        if depth and depth < lowestDepth then
+            lowestDepth = depth
+            lowests = { key }
+        elseif depth and depth == lowestDepth then
+            table.insert(lowests, key)
+        end
+    end
+    return lowests
+end
+
+function TreeList:SelectLogic(key, parent)
+    if self.MultiSelect then
+            self:ToggleSelected(key)
+    elseif self.GroupSelect then
+        if self.lastSelectedKey and self.indexRefs and self.indexRefs[self.lastSelectedKey] and self.indexRefs[key] then
+            local lastSelectedKey = self.lastSelectedKey
+            local lastRef = self.itemRefs[self.lastSelectedKey]
+            lastRef.Highlight = false
+            local startIdx = self.indexRefs[lastSelectedKey]
+            local endIdx = self.indexRefs[key]
+
+            if startIdx and endIdx then
+                self:ClearSelection(true)
+                if startIdx > endIdx then
+                    startIdx, endIdx = endIdx, startIdx
+                end
+
+                local ref = self.itemRefs[key]
+                lastRef.Highlight = true
+                for i = startIdx, endIdx do
+                    local indexkey = self.indexRefsReverse[i]
+                    self:ToggleSelected(indexkey)
+                end
+            else
+                Warning("Failed to determine range for group select")
+                self:ToggleSelected(key)
+            end
+        else
+            self:ToggleSelected(key)
+        end
+    else
+        local wasSelected = self.selectedItems[key] ~= nil
+        self:ClearSelection(true)
+        self:SetSelected(key, not wasSelected)
+        if self.lastSelectedKey and self.itemRefs[self.lastSelectedKey] then
+            local ref = self.itemRefs[self.lastSelectedKey]
+            ref.Highlight = false
+        end
+        self.lastSelectedKey = key
+        if parent and self.itemRefs[parent] and parent ~= TreeTable.GetRootKey() and not wasSelected then
+            self.itemRefs[parent].Highlight = true
+        end
+    end
+
+end
+
+function TreeList:SetupHoveringDetection(selectable, key)
+    local onEnter = selectable.OnHoverEnter or function() end
+    local onLeave = selectable.OnHoverLeave or function() end
+    selectable.OnHoverEnter = function(sel)
+        self.hoveringKey = key
+        onEnter(sel)
+    end
+    selectable.OnHoverLeave = function(sel)
+        self.hoveringKey = nil
+        onLeave(sel)
+    end
+end
+
+function TreeList:SetupDragAndDrop(selectable, key)
+    local userOnDragStart = selectable.OnDragStart or emptyFunc
+
+    selectable.OnDragStart = function(sel)
+        if not self.GroupSelect and not self.MultiSelect then
+            self:ClearSelection(true)
+        end
+        self.selectedItems[key] = true
+        self:OnSelect(self.selectedItems)
+        local previewTable = selectable.DragPreview:AddTable("##DragPreview", 2)
+        previewTable.ColumnDefs[1] = { WidthStretch = true }
+        previewTable.ColumnDefs[2] = { WidthFixed = true }
+        self:ApplyTreeTableStyle(previewTable)
+        local row = previewTable:AddRow()
+        for ikey, iitem in SortedPairs(self.selectedItems, self.RenderOrder) do
+            local cell = row:AddCell()
+            local fixedCell = row:AddCell()
+            if self.tree:IsLeaf(ikey) then
+                self:RenderLeaf(ikey, cell, fixedCell) 
+            else
+                cell:AddImage(RB_ICONS.Collection, IMAGESIZE.ROW)
+                local ele = self:RenderTree(ikey, cell, fixedCell)
+                ele.SameLine = true
+            end
+            local ref = self.itemRefs[ikey]
+            ref:SetStyle("Alpha", 0.5)
+        end
+        userOnDragStart(sel)
+    end
+
+    local userOnDragEnd = selectable.OnDragEnd or emptyFunc
+    selectable.OnDragEnd = function(sel)
+        for ikey, _ in pairs(self.selectedItems) do
+            local ref = self.itemRefs[ikey]
+            ref:SetStyle("Alpha", 1.0)
+        end
+        userOnDragEnd(sel)
+    end
+
+    local userDragDrop = selectable.OnDragDrop or emptyFunc
+    selectable.OnDragDrop = function(sel, drop)
+        local dropped = drop.UserData or {}
+        if dropped.Key then
+            self:OnDragDrop(dropped.Key, key)
+        end
+        userDragDrop(sel, drop)
+    end
+end
+
 ---@param selectable ExtuiSelectable
 ---@param key any
 function TreeList:SetUpLeaf(selectable, key)
@@ -455,6 +612,8 @@ function TreeList:SetUpLeaf(selectable, key)
     selectable.UserData.Key = key
     selectable.UserData.IsLeaf = true
 
+    self:SetupHoveringDetection(selectable, key)
+
     local parent = self.tree:GetParentKey(key)
 
     if self.selectedItems[key] then
@@ -463,42 +622,13 @@ function TreeList:SetUpLeaf(selectable, key)
         selectable.Selected = false
     end
 
-    local userOnDragStart = selectable.OnDragStart or emptyFunc
-    selectable.OnDragStart = function(sel)
-        if not self.GroupSelect and not self.MultiSelect then
-            self:ClearSelection(true)
-            self:SetSelected(key, true)
-            self:OnSelect(self.selectedItems)
-        end
-        
-        local previewTable = selectable.DragPreview:AddTable("##DragPreview", 1)
-        self:ApplyTreeTableStyle(previewTable)
-        local row = previewTable:AddRow()
-        for ikey, iitem in pairs(self.selectedItems) do
-            self:RenderLeaf(ikey, row:AddCell())
-        end
-        self:OnDragStart(key)
-        userOnDragStart(sel)
-    end
-
-    local userOnDragDrop = selectable.OnDragDrop or emptyFunc
-    selectable.OnDragDrop = function(sel, drop)
-        local dropped = drop.UserData or {}
-        if dropped.Key then
-            self:OnDragDrop(dropped.Key, key)
-        end
-        userOnDragDrop(sel, drop)
-    end
-
+    self:SetupDragAndDrop(selectable, key)
+    
     local userOnClick = selectable.OnClick or emptyFunc
     local userLabel = selectable.Label
 
-    local setNewLabel = function()
-        userLabel = selectable.Label
-    end
-
     local delayTimer = nil
-    local doubleClickThreshold = 400 -- ms
+    local doubleClickThreshold = 300 -- ms
     
     --- @param sel ExtuiSelectable
     selectable.OnClick = function(sel)
@@ -510,47 +640,7 @@ function TreeList:SetUpLeaf(selectable, key)
             return
         end
 
-        if self.MultiSelect then
-            self:ToggleSelected(key)
-        elseif self.GroupSelect then
-            if self.lastSelectedKey and self.indexRefs and self.leafRefs[self.lastSelectedKey] then
-                local lastSelectedKey = self.lastSelectedKey
-                self.leafRefs[self.lastSelectedKey].Highlight = false
-                local startIdx = self.indexRefs[lastSelectedKey]
-                local endIdx = self.indexRefs[key]
-
-                if startIdx and endIdx then
-                    self:ClearSelection(true)
-                    if startIdx > endIdx then
-                        startIdx, endIdx = endIdx, startIdx
-                    end
-
-                    self.leafRefs[lastSelectedKey].Highlight = true
-                    for i = startIdx, endIdx do
-                        local indexkey = self.indexRefsReverse[i]
-                        self:ToggleSelected(indexkey)
-                    end
-                else
-                    Warning("Failed to determine range for group select")
-                    self:ToggleSelected(key)
-                end
-            else
-                self:ToggleSelected(key)
-            end
-        else
-            local wasSelected = self.selectedItems[key] ~= nil
-            self:ClearSelection(true)
-            self:SetSelected(key, not wasSelected)
-            if self.lastSelectedKey and self.leafRefs[self.lastSelectedKey] then
-                self.leafRefs[self.lastSelectedKey].Highlight = false
-            end
-            self.lastSelectedKey = key
-            if parent and self.treeRefs[parent] and parent ~= TreeTable.GetRootKey() then
-                self.treeRefs[parent].Highlight = true
-            end
-        end
-
-        
+        self:SelectLogic(key, parent)
         self:OnSelect(self.selectedItems)
 
         userOnClick(sel)
@@ -560,53 +650,32 @@ function TreeList:SetUpLeaf(selectable, key)
             delayTimer = nil
         end)
     end
-
-    selectable.UserData.SetLabel = setNewLabel
 end
 
 ---@param tree ExtuiSelectable
 ---@param key any
 function TreeList:SetUpTree(tree, key)
-
     tree.CanDrag = true
     tree.DragDropType = "TreeList" .. self.label
 
     tree.UserData = tree.UserData or {}
     tree.UserData.Key = key
-    tree.UserData.IsTree = true
 
     tree.SpanAllColumns = true
 
+    self:SetupHoveringDetection(tree, key)
+
     local parent = self.tree:GetParentKey(key)
 
-    local userOnDragStart = tree.OnDragStart or emptyFunc
-
-    tree.OnDragStart = function(sel)
-        local previewTable = tree.DragPreview:AddTable("##DragPreview", 1)
-        self:ApplyTreeTableStyle(previewTable)
-        local row = previewTable:AddRow()
-        local cell = row:AddCell()
-        cell:AddImage(RB_ICONS.Collection, IMAGESIZE.TINY)
-        self:RenderTree(key, cell)
-        userOnDragStart(sel)
-    end
-
-    local userDragDrop = tree.OnDragDrop or emptyFunc
-    tree.OnDragDrop = function(sel, drop)
-        local dropped = drop.UserData or {}
-        if dropped.Key then
-            self:OnDragDrop(dropped.Key, key)
-        end
-        userDragDrop(sel, drop)
-    end
+    self:SetupDragAndDrop(tree, key)
 
     local userLabel = tree.Label
     local toggleLabel = function()
         local reserved = self.arrowRefs[key]
-        DestroyAllChilds(reserved)
+        DestroyAllChildren(reserved)
         local icon = self.collapsedTree[key] and RB_ICONS.Tree_Collapsed or RB_ICONS.Tree_Expanded
-        local arrowImage = reserved:AddImage(icon, IMAGESIZE.TINY)
-        arrowImage:SetColor("Button", {0,0,0,0})
+        local arrowImage = reserved:AddImageButton("##" .. key .. "ArrowBtn", icon, IMAGESIZE.ROW)
+        setupArrowImage(arrowImage)
     end
 
     local updateLabel = function()
@@ -638,26 +707,8 @@ function TreeList:SetUpTree(tree, key)
             return
         end
 
-        local function recurSel(pparent)
-            local parentNode = self.tree:Find(pparent)
-            if parentNode then
-                for ikey, cont in pairs(parentNode) do
-                    if self.leafRefs[ikey] then
-                        self:ToggleSelected(ikey)
-                    else
-                        recurSel(ikey)
-                    end
-                end
-            end
-        end
-
-        if self.GroupSelect then
-            self:ClearSelection()
-            recurSel(key)
-            self:OnSelect(self.selectedItems)
-        else
-            toggleFunc()
-        end
+        self:SelectLogic(key, parent)
+        self:OnSelect(self.selectedItems)
 
         userOnClick(sel)
 
@@ -683,6 +734,7 @@ function TreeList:SetUpTree(tree, key)
 
     tree.UserData.Collapse = collapse
     tree.UserData.Expand = expand
+    tree.UserData.Toggle = toggleFunc
     tree.UserData.UpdateLabel = toggleLabel
     tree.UserData.SetLabel = updateLabel
 
@@ -710,6 +762,8 @@ function TreeList:SetUpTree(tree, key)
     })
 end
 
+---@param arrow ExtuiGroup
+---@param key any
 function TreeList:SetupArrow(arrow, key)
     local show = false
 
@@ -717,6 +771,19 @@ function TreeList:SetupArrow(arrow, key)
         show = true
     end
 
+    arrow.OnHoverEnter = function ()
+        arrow:SetColor("Button", {1,1,1,0.2})
+    end
+
+    arrow.OnHoverLeave = function ()
+        arrow:SetColor("Button", {0,0,0,0})
+    end
+
+    arrow.OnClick = function()
+        if self.itemRefs[key] and self.itemRefs[key].UserData and self.itemRefs[key].UserData.Toggle then
+            self.itemRefs[key].UserData.Toggle()
+        end
+    end
 
     arrow.OnRightClick = function()
         self.collapsedTree[key] = not self.collapsedTree[key]
@@ -735,24 +802,24 @@ function TreeList:OnRenamingInput(key, newName) end
 
 function TreeList:SetupRenameInput(key, userLabel)
     if self.IsRenaming then return end
-    local isLeaf = self.leafRefs[key] ~= nil
-    local selec = isLeaf and self.leafRefs[key] or self.treeRefs[key]
+    local isLeaf = self.itemRefs[key] ~= nil
+    local selec = isLeaf and self.itemRefs[key]
     if not selec then return end
 
     self.IsRenaming = true
     selec.Visible = false
 
-    local node = self.nodeRefs[key].UserData
+    local node = self.nodeRefs[key].UserData.SeletableCell
 
     userLabel = userLabel:gsub("##.*", "") -- remove id suffix
     local input = node:AddInputText("", userLabel) --[[@type ExtuiInputText?]]
     input.IDContext = "TreeList" .. self.label .. "RenameInput"
     input.SameLine = true
-    input.SizeHint = { #userLabel * 16 + 32, IMAGESIZE.SMALL[2] }
+    --input.SizeHint = { #userLabel * 16 + 32, IMAGESIZE.SMALL[2] }
 
     input.OnChange = function(e)
         if not input then return end
-        input.SizeHint = { #input.Text * 16 + 32, IMAGESIZE.SMALL[2] }
+        --input.SizeHint = { #input.Text * 16 + 32, IMAGESIZE.SMALL[2] }
     end
 
     local function rerender()
@@ -762,7 +829,7 @@ function TreeList:SetupRenameInput(key, userLabel)
 
     local function rename()
         if not input then return end
-        local newName = input.Text
+        local newName = input.Text  
         input:Destroy()
         input = nil
         rerender()
@@ -809,7 +876,7 @@ function TreeList:ExpandAll(key)
 
     
     self.collapsedTree[key] = nil
-    self.treeRefs[key].UserData.Expand()
+    self.itemRefs[key].UserData.Expand()
 
     local childStack = {}
     table.insert(childStack, key)
@@ -821,7 +888,7 @@ function TreeList:ExpandAll(key)
             for childKey,_ in pairs(node) do
                 if not self.tree:IsLeaf(childKey) then
                     table.insert(childStack, childKey)
-                    self.treeRefs[childKey].UserData.Expand()
+                    self.itemRefs[childKey].UserData.Expand()
                 end
             end
         end
@@ -834,7 +901,7 @@ function TreeList:CollapseAll(key)
     self.collapsedTree = self.collapsedTree or {}
 
     self.collapsedTree[key] = nil
-    self.treeRefs[key].UserData.Expand()
+    self.itemRefs[key].UserData.Expand()
 
     local childStack = {}
     table.insert(childStack, key)
@@ -846,7 +913,7 @@ function TreeList:CollapseAll(key)
             for childKey,_ in pairs(node) do
                 if not self.tree:IsLeaf(childKey) then
                     table.insert(childStack, childKey)
-                    self.treeRefs[childKey].UserData.Collapse()
+                    self.itemRefs[childKey].UserData.Collapse()
                 end
             end
         end

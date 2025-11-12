@@ -60,19 +60,19 @@ DEFAULT_KEYBINDS = {}
 
 --- @diagnostic disable
 DEFAULT_KEYBINDS.TransformToolbar = {
-    ["MultiSelect"] = { Key = "M"},
+    ["MultiSelect"] = { Key = "M" },
     ["Select"] = { Key = "MMB" },
     ["ClearSelection"] = { Key = "ESCAPE" },
     ["Duplicate"] = { Key = "D", Modifiers = { "SHIFT" } },
-    ["SlowDown"] = { Key = "SHIFT" },
     ["BoxSelect"] = { Key = "B" },
     ["HideSelection"] = { Key = "H" },
     ["ShowSelection"] = { Key = "H", Modifiers = { "SHIFT" } },
     ["ApplyGravity"] = { Key = "G", Modifiers = { "SHIFT" } },
     ["FreezeGravity"] = { Key = "F", Modifiers = { "SHIFT" } },
-    ["Undo"] = { Key = "Z", Modifiers = { "CTRL" }},
+    ["Undo"] = { Key = "Z", Modifiers = { "CTRL" } },
     ["Redo"] = { Key = "X", Modifiers = { "CTRL" } },
     ["OpenVisualTab"] = { Key = "TAB", Modifiers = { "SHIFT" } },
+    ["DeleteAllGizmos"] = { Key = "X", Modifiers = { "SHIFT" } }
 }
 
 DEFAULT_KEYBINDS.TransformEditor = {
@@ -80,8 +80,6 @@ DEFAULT_KEYBINDS.TransformEditor = {
     ["RotateMode"] = { Key = "R" },
     ["ScaleMode"] = { Key = "L" },
     ["FollowTarget"] = { Key = "KP_PERIOD" },
-    ["DeleteSelection"] = { Key = "X" },
-    ["DeleteAllGizmos"] = { Key = "X", Modifiers = { "SHIFT" }}
 }
 
 DEFAULT_KEYBINDS.BindUtility = {
@@ -140,27 +138,45 @@ KeybindHelpers = {
         ["KP_PLUS"] = "+",
         ["KP_DIVIDE"] = "/",
         ["KP_MULTIPLY"] = "*",
-        ["MINUS"] = "-", ["EQUALS"] = "=",
-        ["LEFTBRACKET"] = "[", ["RIGHTBRACKET"] = "]",
+        ["MINUS"] = "-",
+        ["EQUALS"] = "=",
+        ["LEFTBRACKET"] = "[",
+        ["RIGHTBRACKET"] = "]",
         ["BACKSLASH"] = "\\",
-        ["SEMICOLON"] = ";", ["APOSTROPHE"] = "'",
-        ["COMMA"] = ",", ["PERIOD"] = ".", ["SLASH"] = "/",
+        ["SEMICOLON"] = ";",
+        ["APOSTROPHE"] = "'",
+        ["COMMA"] = ",",
+        ["PERIOD"] = ".",
+        ["SLASH"] = "/",
         ["SPACE"] = " ",
         ["GRAVE"] = "`",
     },
     ShiftKeyToChar = {
-        ["NUM_1"] = "!", ["NUM_2"] = "@", ["NUM_3"] = "#", ["NUM_4"] = "$", ["NUM_5"] = "%",
-        ["NUM_6"] = "^", ["NUM_7"] = "&", ["NUM_8"] = "*", ["NUM_9"] = "(", ["NUM_0"] = ")",
+        ["NUM_1"] = "!",
+        ["NUM_2"] = "@",
+        ["NUM_3"] = "#",
+        ["NUM_4"] = "$",
+        ["NUM_5"] = "%",
+        ["NUM_6"] = "^",
+        ["NUM_7"] = "&",
+        ["NUM_8"] = "*",
+        ["NUM_9"] = "(",
+        ["NUM_0"] = ")",
         ["KP_DECIMAL"] = ".",
         ["KP_MINUS"] = "-",
         ["KP_PLUS"] = "+",
         ["KP_DIVIDE"] = "/",
         ["KP_MULTIPLY"] = "*",
-        ["MINUS"] = "_", ["EQUALS"] = "+",
-        ["LEFTBRACKET"] = "{", ["RIGHTBRACKET"] = "}",
+        ["MINUS"] = "_",
+        ["EQUALS"] = "+",
+        ["LEFTBRACKET"] = "{",
+        ["RIGHTBRACKET"] = "}",
         ["BACKSLASH"] = "|",
-        ["SEMICOLON"] = ":", ["APOSTROPHE"] = "\"",
-        ["COMMA"] = "<", ["PERIOD"] = ">", ["SLASH"] = "?",
+        ["SEMICOLON"] = ":",
+        ["APOSTROPHE"] = "\"",
+        ["COMMA"] = "<",
+        ["PERIOD"] = ">",
+        ["SLASH"] = "?",
         ["SPACE"] = " ",
         ["GRAVE"] = "~",
     }
@@ -172,7 +188,7 @@ for c = string.byte("A"), string.byte("Z") do
     KeybindHelpers.ShiftKeyToChar[ch] = ch
 end
 
-for i=0, 9 do
+for i = 0, 9 do
     KeybindHelpers.KeyToChar["NUM_" .. i] = tostring(i)
     KeybindHelpers.KeyToChar["KP_" .. i] = tostring(i)
     KeybindHelpers.ShiftKeyToChar["KP_" .. i] = tostring(i)
