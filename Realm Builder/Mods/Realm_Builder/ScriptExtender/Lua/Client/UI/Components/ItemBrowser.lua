@@ -486,7 +486,7 @@ function ItemBrowser:RenderItemSpawnTab(popup, iconImage, entry)
                     Rotation = { CGetRotation(target) }
                 }
             }
-            Commands.SpawnCommand(entry.TemplateId, data)
+            Commands.SpawnCommand(entry.TemplateId, data.EntInfo)
         end
     end
 

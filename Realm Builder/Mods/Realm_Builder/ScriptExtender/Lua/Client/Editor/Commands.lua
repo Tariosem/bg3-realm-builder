@@ -115,7 +115,7 @@ end
 
 ---@param template string
 ---@param entInfo EntityData|nil
-function Commands.SpawnCommand(template,entInfo)
+function Commands.SpawnCommand(template, entInfo)
     entInfo = entInfo and DeepCopy(entInfo) or {}
     local packedData = {
         TemplateId = template,
@@ -291,8 +291,8 @@ function Commands.SpawnPreset(data)
             entData.Group = data.Name
         end
 
-        entData.Position = pos
-        entData.Rotation = rot
+        entData.EntInfo.Position = pos
+        entData.EntInfo.Rotation = rot
 
         NetChannel.Spawn:RequestToServer({
             TemplateId = entData.TemplateId,

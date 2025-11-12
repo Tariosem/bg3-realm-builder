@@ -190,9 +190,8 @@ function MaterialTab:Render(parent)
             paramgroup.SameLine = true
             local sliders, colorPicker
 
-            local paramValue = self:GetParameter(propertyName)
-
             propNode.OnHoverEnter = function ()
+                local paramValue = self:GetParameter(propertyName)
                 sliders, colorPicker = self:RenderProperty(paramgroup, propertyName, paramValue, rowCell)
                 propNode.OnHoverEnter = function()
                     propNode.Highlight = self:HasChanged(propertyName) and true or false

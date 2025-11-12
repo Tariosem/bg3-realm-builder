@@ -15,7 +15,7 @@ local ENTTAB_HEIGHT = 1200 * SCALE_FACTOR
 ---@field tabBar ExtuiTabBar
 ---@field monitorTab ExtuiTabItem
 ---@field new fun(guid:string, templateId:string?, parent:ExtuiTreeParent|nil, initAttach:boolean?):EntityTab
-EntityTab = _Class("ItemTab")
+EntityTab = _Class("EntityTab")
 
 local copiedTransform = {
 }

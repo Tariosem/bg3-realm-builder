@@ -257,9 +257,11 @@ local function buildMaterialOverrideNodes(matOv, overrideMaterialPresets, modfie
 
     local paramSetProxy = ParametersSetProxy.BuildFromMaterialPresetParamSet(matOv)
     if not paramSetProxy then
-        error("Failed to create ParametersSetProxy for CharacterVisual MaterialOverrides")
+        Warning("Failed to create ParametersSetProxy for CharacterVisual MaterialOverrides")
+        paramSetProxy = { Parameters = modfiedParams or {} }
+    else
+        paramSetProxy:Merge(modfiedParams or {})
     end
-    paramSetProxy:Merge(modfiedParams or {})
 
     local paramsNode = createPresetParameterNodes(nil, paramSetProxy.Parameters)
 
@@ -297,7 +299,7 @@ function ResourceHelpers.BuildCharacterVisualResource(srcUuid, uuid, internalNam
         LSXHelpers.AttrNode("BaseVisual", "FixedString", src.BaseVisual),
         LSXHelpers.AttrNode("BodySetVisual", "FixedString", srcSet.BodySetVisual),
         LSXHelpers.AttrNode("ID", "FixedString", uuid),
-        LSXHelpers.AttrNode("Name", "LSString", internalName .. "_" .. uuid),
+        LSXHelpers.AttrNode("Name", "LSString", internalName),
         LSXHelpers.AttrNode("ShowEquipmentVisuals", "bool", srcSet.ShowEquipmentVisuals),
     }
 

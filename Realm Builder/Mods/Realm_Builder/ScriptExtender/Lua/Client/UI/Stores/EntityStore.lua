@@ -475,7 +475,7 @@ function EntityStore:GetExportCopy(guids)
             data.Scale = { CGetScale(guid) }
 
             data.Scale = math.min(data.Scale[1], data.Scale[2], data.Scale[3])
-            data.Icon = template.TemplateType == "item" and template.Icon or "Item_Unknown"
+            data.Icon = GetIconForTemplateId(data.TemplateId)
             data.LevelName = entity.Level.LevelName
 
         

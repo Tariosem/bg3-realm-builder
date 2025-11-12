@@ -796,7 +796,7 @@ function SceneMenu:RenderPresetObjectInfo(parent, entInfo, presetName, presetTyp
         tagsText = "[" .. table.concat(tags, ", ") .. "]"
     end
 
-    local header = parent:AddImageButton(displayName, GetIconForTemplateId(entInfo.TemplateId))
+    local header = parent:AddImageButton(displayName, CheckIcon(GetIconForTemplateId(entInfo.TemplateId)))
     local imageSize = self.previewImageSize or (64 * SCALE_FACTOR)
     header.Image.Size = ToVec2(imageSize)
     header.Background = self.iconBGcolor or ToVec4(0)

@@ -3,7 +3,6 @@
 --- @field SourceFile string
 --- @field MaterialType number
 --- @field DiffusionProfileUUID string
---- @field Proxy MaterialProxy -- MaterialProxy instance for easier parameter access
 --- @field PresetProxy MaterialPresetProxy? -- MaterialPresetProxy instance if a preset is applied
 --- @field ParamSetProxy ParametersSetProxy -- ParameterSetProxy instance for easier parameter access
 --- @field Instance fun():Material
@@ -27,7 +26,6 @@ function MaterialEditor:__init(originMaterial, matSrc, paramsSrc, materialPreset
     self.MaterialType = matRes.MaterialType or 0
     self.DiffusionProfileUUID = matRes.DiffusionProfileUUID or ""
 
-    self.Proxy = MaterialProxy.new(originMaterial) --[[@as MaterialProxy]]
     self.PresetProxy = MaterialPresetProxy.new(materialPreset) --[[@as MaterialPresetProxy?]]
     self.ParamSetProxy = ParametersSetProxy.new(paramsSrc()) --[[@as ParametersSetProxy]]
 
@@ -40,21 +38,13 @@ function MaterialEditor:__init(originMaterial, matSrc, paramsSrc, materialPreset
         [3] = {}, -- Vector3Parameters
         [4] = {}, -- VectorParameters
     }
-
-    if self.PresetProxy then
-        for ptype,params in pairs(self.PresetProxy.Parameters) do
-            for paramName,value in pairs(params) do
-                self.Parameters[ptype][paramName] = value
-            end
-        end
-    end
-
 end
 
+--- @param params RB_ParameterSet
 function MaterialEditor:SetDefaultParameters(params)
     for ptype,paramsTable in pairs(params) do
         for paramName,value in pairs(paramsTable) do
-            self.ParamSetProxy:SetDefaultParameter(paramName, value)
+            self.ParamSetProxy:SetDefaultParameter(paramName, value)            
         end
     end
 

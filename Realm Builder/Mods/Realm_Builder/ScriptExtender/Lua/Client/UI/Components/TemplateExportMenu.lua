@@ -37,6 +37,7 @@ function TemplateExportMenu:Render()
     local exportCell = topRow:AddCell()
 
     local progressBar = progressCell:AddProgressBar("Export Progress") --[[@as ExtuiProgressBar ]]
+    StyleHelpers.SetNormalProgressBarStyle(progressBar)
     local exportButton = exportCell:AddButton("Export")
 
     local childWin = panel:AddChildWindow("Export Options")
@@ -81,14 +82,14 @@ function TemplateExportMenu:Render()
             return
         end
         panel.Disabled = true
+        StyleHelpers.SetNormalProgressBarStyle(progressBar)
         self:ExportToMod(exportSettings, function(progress, message)
             if progress < 0 then
                 progressBar.Value = 0
                 progressBar.Overlay = message
                 panel.Disabled = false
 
-                progressBar:SetColor("FrameBg", HexToRGBA("FFFF0000"))
-                progressBar:SetColor("Text", HexToRGBA("FFFFFFFF"))
+                StyleHelpers.SetWarningProgressBarStyle(progressBar)
 
                 return
             end
@@ -101,64 +102,6 @@ function TemplateExportMenu:Render()
     end
 
     self:RenderExportEntities(childWin)
-end
-
---- @param panel ExtuiTreeParent
---- @param exportSettings any
-function TemplateExportMenu:RenderExportSettings(panel, exportSettings)
-    local exportHeader = panel:AddCollapsingHeader("Export Settings")
-    local tab = exportHeader:AddTable("Export Settings", 1)
-    tab.BordersOuter = true
-    local row = tab:AddRow()
-
-    local modName = row:AddCell()
-    modName:AddText("Mod Name:")
-    local modNameInput = modName:AddInputText("")
-    modNameInput.Hint = "Enter mod name ..."
-    modNameInput.OnChange = Debounce(50, function(input)
-        if not IsValidName(input.Text) then
-            SetWarningBorder(input)
-            GuiAnim.PulseBorder(input, 2)
-            return
-        end
-
-        exportSettings.ModName = input.Text
-        ClearWarningBorder(input)
-    end)
-    modNameInput:OnChange()
-
-    local authorCell = row:AddCell()
-    authorCell:AddText("Author Name:")
-    local authorInput = authorCell:AddInputText("")
-    authorInput.Hint = "Enter author name ..."
-    authorInput.OnChange = Debounce(50, function(input)
-        if input.Text == "" then
-            SetWarningBorder(input)
-            GuiAnim.PulseBorder(input, 2)
-            return
-        end
-        exportSettings.Author = input.Text
-        ClearWarningBorder(input)
-    end)
-    authorInput:OnChange()
-
-    local descCell = row:AddCell()
-    descCell:AddText("Description:")
-    local descInput = descCell:AddInputText("")
-    descInput.Multiline = true
-    descInput.Hint = "Enter mod description ..."
-    descInput.OnChange = function(input)
-        exportSettings.Description = input.Text
-    end
-
-    local versionCell = row:AddCell()
-    versionCell:AddText("Version:")
-    local versionInput = versionCell:AddInputInt("")
-    versionInput.Components = 4
-    versionInput.OnChange = function(input)
-        local v = input.Value
-        exportSettings.Version = { v[1], v[2], v[3], v[4] }
-    end
 end
 
 function TemplateExportMenu:RenderExportEntities(panel)
@@ -595,7 +538,7 @@ function TemplateExportMenu:__export(exportSettings, progressCallback)
             saveFile(presetPath, presetNode:Stringify({ AutoFindRoot = true }))
 
             --- build visual resource
-            local visualInternalName = modInternalName .. "_CharacterVisual_" .. overrideVisualID
+            local visualInternalName = internalName .. "_CharacterVisual_" .. overrideVisualID
             local bank = LSXHelpers.BuildCharacterVisualBank()
             local visualNode = ResourceHelpers.BuildCharacterVisualResource(entData.OriginalVisualUuid,
                 overrideVisualID, visualInternalName, { [""] = presetUuid })

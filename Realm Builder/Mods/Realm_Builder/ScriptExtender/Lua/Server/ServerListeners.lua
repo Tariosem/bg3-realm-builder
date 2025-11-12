@@ -1,6 +1,5 @@
-
-
 local function spawnHandler(data)
+    _D(data)
     local template = data.TemplateId
     local spawnTemplate = template
     local entInfo = data.EntInfo or {}
@@ -35,7 +34,7 @@ local function spawnHandler(data)
 
     NetChannel.Entities.Added:Broadcast({Entities = {entInfo}})
 
-    return {Guid = newGuid, TemplateId = Osi.GetTemplate(newGuid)}
+    return {Guid = newGuid }
 end
 
 NetChannel.Spawn:SetHandler(function(data, userID)

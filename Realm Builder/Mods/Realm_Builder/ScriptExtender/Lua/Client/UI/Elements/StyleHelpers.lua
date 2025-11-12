@@ -1,3 +1,9 @@
+--- @class StyleHelpers
+--- @field AddContextMenu fun(parent: ExtuiTreeParent): RB_ContextMenu
+--- @field AddSelectableButton fun(parent: ExtuiTreeParent, label: string, onClick: fun(selectable: ExtuiSelectable)): ExtuiSelectable
+--- @field SetImguiDisabled fun(extui: ExtuiRenderable, disabled: boolean)
+--- @field SetAlphaByBool fun(s: ExtuiRenderable, bool: boolean)
+--- @field AddPrefixInput fun(parent: ExtuiTreeParent, prefix: string?, text: string, readOnly: boolean?): ExtuiInputText
 StyleHelpers = StyleHelpers or {}
 
 ---@param parent ExtuiTreeParent|ExtuiStyledRenderable
@@ -799,6 +805,23 @@ function StyleHelpers.AddReadOnlyAttrTable(parent, contents)
     return tabProxy
 end
 
+--- @param pBar ExtuiProgressBar
+function StyleHelpers.SetNormalProgressBarStyle(pBar)
+    pBar:SetStyle("FrameBorderSize", 2)
+    pBar:SetColor("PlotHistogram", HexToRGBA("FF397D38"))
+    pBar:SetColor("Border", HexToRGBA("FF31BEBE"))
+    pBar:SetColor("Text", { 1, 1, 1, 1 })
+end
+
+--- @param pBar ExtuiProgressBar
+function StyleHelpers.SetWarningProgressBarStyle(pBar)
+    pBar:SetStyle("FrameBorderSize", 2)
+    pBar:SetColor("PlotHistogram", HexToRGBA("FFFF4444"))
+    pBar:SetColor("Border", HexToRGBA("FFFF0000"))
+    pBar:SetColor("Text", { 1, 1, 1, 1 })
+    GuiAnim.PulseBorder(pBar, 2)
+end
+
 --- @class RadioButtonOption
 --- @field Hint string
 --- @field Bit integer
@@ -852,6 +875,7 @@ function StyleHelpers.AddBitmaskRadioButtons(parent, options, initValue)
                 value = value & (~option.Bit)
             end
             if groupProxy.OnChange then
+                Debug("Applying Value:", value)
                 groupProxy.OnChange(r, value)
             end
         end

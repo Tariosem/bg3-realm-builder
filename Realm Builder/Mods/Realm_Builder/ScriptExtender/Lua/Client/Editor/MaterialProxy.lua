@@ -31,6 +31,7 @@ setmetatable(MaterialPresetProxy, {__index = MaterialProxy})
 
 --- @class ParametersSetProxy : MaterialProxy
 --- @field RemoveParameter fun(self, paramName: string): boolean
+--- @field Update fun(self)
 --- @field new fun(paramSetName: MaterialParametersSet?): ParametersSetProxy|nil
 ParametersSetProxy = {}
 ParametersSetProxy.__index = ParametersSetProxy
@@ -178,7 +179,7 @@ function MaterialPresetProxy.new(materialPresetName)
     end
 
     local mP = setmetatable({}, MaterialPresetProxy) --[[@as MaterialPresetProxy]]
-    mP:__init(materialPresetName)
+    mP:__init(materialPresetName, isMaterialPreset)
     if mP.Material then
         materialProxies[materialPresetName] = mP
         return mP
@@ -187,8 +188,8 @@ function MaterialPresetProxy.new(materialPresetName)
     return nil
 end
 
-function MaterialPresetProxy:__init(materialPresetName)
-    local res = Ext.Resource.Get(materialPresetName, "MaterialPreset") --[[@as ResourceMaterialPresetResource]]
+function MaterialPresetProxy:__init(materialPresetName, res)
+    res = res or Ext.Resource.Get(materialPresetName, "MaterialPreset") --[[@as ResourceMaterialPresetResource]]
     if not res then
         Error("MaterialPresetProxy: Could not find material preset: " .. tostring(materialPresetName))
         return
@@ -320,6 +321,32 @@ function ParametersSetProxy:SetParameter(paramName, value)
     return true
 end
 
+--- @param paramSet MaterialParametersSet
+function ParametersSetProxy:Update(paramSet)
+    for typeRef, paramList in pairs({
+        paramSet.ScalarParameters,
+        paramSet.Vector2Parameters,
+        paramSet.Vector3Parameters,
+        paramSet.VectorParameters
+    }) do
+        for _, param in FilteredPairs(paramList or {}, function(_, a)
+            return not self.TypeRefs[a.ParameterName] -- only new parameters
+        end) do
+            local paramName = param.ParameterName
+            local value = param.Value
+            if type(value) == "number" then
+                value = {value}
+            else
+                value = DeepCopy(value)
+            end
+
+            self.TypeRefs[paramName] = typeRef
+            self.Parameters[typeRef][paramName] = value
+        end
+    end
+
+end
+
 function ParametersSetProxy:SetDefaultParameter(paramName, value)
     local typeRef = #value
     if not typeRef or typeRef < 1 or typeRef > 4 then
@@ -341,7 +368,6 @@ function ParametersSetProxy:SetDefaultParameter(paramName, value)
     -- Set value
     self.Parameters[typeRef][paramName] = value
     return true
-
 end
 
 function ParametersSetProxy:RemoveParameter(paramName)

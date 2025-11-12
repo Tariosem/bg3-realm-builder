@@ -201,8 +201,8 @@ function KeybindHelpers.ParseInputToCharInput(e)
     isShift = table.find(mask, "SHIFT") or table.find(mask, "RShift") or table.find(mask, "LShift")
 
     if isShift then
-        return KeybindHelpers.ShiftKeyToChar[e.Key] or e.Key
+        return KeybindHelpers.ShiftKeyToChar[e.Key]
     else
-        return KeybindHelpers.KeyToChar[e.Key] or e.Key
+        return KeybindHelpers.KeyToChar[e.Key]
     end
 end

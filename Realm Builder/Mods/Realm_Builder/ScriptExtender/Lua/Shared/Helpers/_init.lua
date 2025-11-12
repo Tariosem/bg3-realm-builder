@@ -1,6 +1,5 @@
 Ext.Require("Shared/Helpers/Class.lua")
 Ext.Require("Shared/Helpers/Utils.lua")
-Ext.Require("Shared/Helpers/EvalExpression.lua")
 Ext.Require("Shared/Helpers/Bones.lua")
 Ext.Require("Shared/Helpers/Enums.lua")
 Ext.Require("Shared/Helpers/Math/__init.lua")

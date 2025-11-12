@@ -53,9 +53,9 @@ function VisualTab:__init(guid, displayName, parent, templateName)
     self.allowRepeat = false
 
     self.modifiedParams = {}
+    self.resetParams = {}
 
     self.currentPreset = EntityStore[guid] and EntityStore[guid].VisualPreset or nil
-
 
     self.updateFuncs = {}
     self.resetFuncs = {}
@@ -65,9 +65,11 @@ function VisualTab:__init(guid, displayName, parent, templateName)
     if not templateName and not EntityStore[guid] then
         NetChannel.GetTemplate:RequestToServer({ Guid = self.guid }, function(response)
             if response.GuidToTemplateId and response.GuidToTemplateId[self.guid] then
+                self.templateId = response.GuidToTemplateId[self.guid]
                 local getTemplateName = TrimTail(response.GuidToTemplateId[self.guid], 37)
                 self.templateName = getTemplateName
                 self:SetupTemplate()
+                self:Refresh()
                 Debug("VisualTab: Received template name from server: " .. self.templateName)
             else
                 Error("VisualTab: Could not get template name from server for entity " .. self.guid)
@@ -80,6 +82,7 @@ end
 
 function VisualTab:SetupTemplate()
     local stored = EntityStore:GetStoredData(self.guid)
+    self.templateId = self.templateId or (stored and stored.TemplateId) or nil
     self.templateName = self.templateName or (stored and TrimTail(stored.TemplateId, 37)) or "Unknown"
     local templateName = self.templateName or "Unknown"
 
@@ -111,7 +114,7 @@ function VisualTab:GetCurrentPreset()
 end
 
 function VisualTab:Render(retryCnt)
-    if self.isVisible then
+    if self.isVisible or not self.templateId then
         return
     end
 
@@ -143,7 +146,7 @@ function VisualTab:Render(retryCnt)
             end)
         else
             local rerenderButton = self.panel:AddButton(GetLoca("Try to reload Visual Tab"))
-            rerenderButton:Tooltip():AddText(GetLoca("Prop is too far away, in inventory, or has no visual."))
+            rerenderButton:Tooltip():AddText(GetLoca("Entity is too far away, in inventory, or has no visual."))
             rerenderButton.OnClick = tryToRerender
         end
         return
@@ -297,7 +300,7 @@ function VisualTab:RenderPresetsCell()
     warningImage:Tooltip():AddText(GetLoca("Some changes will affect all instances of the same template."))
     warningImage:Tooltip():AddText(GetLoca("If 'Reset All' doesn't work, reload a save."))
 
-    resetAllButton.OnClick = function()
+    resetAllButton.OnClick = function(_, notResetOnServer)
         Timer:Ticks(10, function()
             local entity = Ext.Entity.Get(self.guid) --[[@as EntityHandle]]
             local isChara = CIsCharacter(self.guid)
@@ -305,14 +308,14 @@ function VisualTab:RenderPresetsCell()
             for key, matTab in pairs(self.Materials) do
                 matTab.Editor:ClearParameters()
 
-                if not isChara then
+                if not isChara or notResetOnServer then
                     matTab.Editor:ResetAll()
                 end
 
                 matTab:UpdateUIState()
             end
 
-            if isChara then
+            if isChara and not notResetOnServer then
                 NetChannel.Replicate:SendToServer({
                     Guid = self.guid,
                     Field = "GameObjectVisual",
@@ -325,6 +328,10 @@ function VisualTab:RenderPresetsCell()
                 end
             end
         end)
+    end
+
+    resetAllButton.OnRightClick = function()
+        resetAllButton:OnClick(true)
     end
 
     --#endregion Left Cell Content
@@ -413,71 +420,119 @@ function VisualTab:RenderAttachmentSection()
         self.attachmentsHeader = self.panel:AddCollapsingHeader(GetLoca("Attachments"))
     end
 
-    local overrideCharacterParams = {} --[[@as RB_ParameterSet]]
-    if CIsCharacter(self.guid) and (entity.CharacterCreationAppearance or entity.AppearanceOverride) then
-        local cca = entity.CharacterCreationAppearance or entity.AppearanceOverride.Visual or {}
-        local ccaPresetgroup = self.attachmentsHeader:AddTree(GetLoca("Character Creation Material Presets"))
+    local overrideCharacterParams = {
+        {}, -- ScalarParameters
+        {}, -- Vector2Parameters
+        {}, -- Vector3Parameters
+        {}, -- VectorParameters
+    }
+    if CIsCharacter(self.guid) then
+        local cca = entity.CharacterCreationAppearance
+        if not cca then
+            --- @diagnostic disable-next-line
+            cca = entity.AppearanceOverride and entity.AppearanceOverride.Visual
+        end
+        if cca then
+            local ccaPresetgroup = self.attachmentsHeader:AddTree(GetLoca("Character Creation Material Presets"))
 
-        local allColors = {
-            SkinColor = cca.SkinColor,
-            HairColor = cca.HairColor,
-            EyeColor = cca.EyeColor,
-            LeftEyeColor = cca.SecondEyeColor,
-        }
-        local colorTypes = {
-            SkinColor = "CharacterCreationSkinColor",
-            HairColor = "CharacterCreationHairColor",
-            EyeColor = "CharacterCreationEyeColor",
-            LeftEyeColor = "CharacterCreationEyeColor",
-        }
-        local colorOrder = {
-            "EyeColor",
-            "LeftEyeColor",
-            "HairColor",
-            "SkinColor",
-        }
+            local allColors = {
+                SkinColor = cca.SkinColor,
+                HairColor = cca.HairColor,
+                EyeColor = cca.EyeColor,
+                LeftEyeColor = cca.SecondEyeColor,
+            }
+            local colorTypes = {
+                SkinColor = "CharacterCreationSkinColor",
+                HairColor = "CharacterCreationHairColor",
+                EyeColor = "CharacterCreationEyeColor",
+                LeftEyeColor = "CharacterCreationEyeColor",
+            }
+            local colorOrder = {
+                "EyeColor",
+                "LeftEyeColor",
+                "HairColor",
+                "SkinColor",
+            }
 
-        for _, colorIndex in ipairs(colorOrder) do
-            local colorType = colorIndex
-            local resUuid = allColors[colorType]
-            if not resUuid or resUuid == GUID_NULL then goto continue end
-            local res = Ext.StaticData.Get(resUuid, colorTypes[colorType]) --[[@as ResourceCharacterCreationColor]]
-            if not res then goto continue end
-            local matPresetRes = MaterialPresetProxy.new(res.MaterialPresetUUID)
-            if not matPresetRes then goto continue end
-            for ptype, params in pairs(matPresetRes.Parameters) do
-                for paramName, value in pairs(params) do
-                    if colorIndex == "LeftEyeColor" then
-                        paramName = paramName .. "_L"
-                    end
-                    overrideCharacterParams[ptype] = overrideCharacterParams[ptype] or {}
-                    if not overrideCharacterParams[ptype][paramName] then
-                        overrideCharacterParams[ptype][paramName] = value
+            for _, colorIndex in ipairs(colorOrder) do
+                local colorType = colorIndex
+                local resUuid = allColors[colorType]
+                if not resUuid or resUuid == GUID_NULL then goto continue end
+                local res = Ext.StaticData.Get(resUuid, colorTypes[colorType]) --[[@as ResourceCharacterCreationColor]]
+                if not res then goto continue end
+                local matPresetRes = MaterialPresetProxy.new(res.MaterialPresetUUID)
+                if not matPresetRes then goto continue end
+                for ptype, params in pairs(matPresetRes.Parameters) do
+                    for paramName, value in pairs(params) do
+                        if colorIndex == "LeftEyeColor" then
+                            paramName = paramName .. "_L"
+                        end
+                        overrideCharacterParams[ptype] = overrideCharacterParams[ptype] or {}
+                        if not overrideCharacterParams[ptype][paramName] then
+                            overrideCharacterParams[ptype][paramName] = value
+                        end
                     end
                 end
-            end
-            ::continue::
-        end
-
-        ccaPresetgroup.OnHoverEnter = function()
-            local twoColTable = ccaPresetgroup:AddTable("CCAPresetsTable", 2)
-            local row = twoColTable:AddRow()
-            for _, ctype in ipairs(colorOrder) do
-                local color = allColors[ctype]
-                if not color or color == GUID_NULL then goto continue end
-                local res = Ext.StaticData.Get(color, colorTypes[ctype]) --[[@as ResourceCharacterCreationColor]]
-                if not res then goto continue end
-                local cell = row:AddCell()
-                local preset = MaterialPresetsMenu:RenderPresetColorBox(res, cell)
-                local prefixText = cell:AddText(GetLoca(ctype))
-                prefixText.SameLine = true
-
                 ::continue::
             end
 
+            ccaPresetgroup.OnHoverEnter = function()
+                local twoColTable = ccaPresetgroup:AddTable("CCAPresetsTable", 2)
+                local row = twoColTable:AddRow()
+                for _, ctype in ipairs(colorOrder) do
+                    local color = allColors[ctype]
+                    if not color or color == GUID_NULL then goto continue end
+                    local res = Ext.StaticData.Get(color, colorTypes[ctype]) --[[@as ResourceCharacterCreationColor]]
+                    if not res then goto continue end
+                    local cell = row:AddCell()
+                    local preset = MaterialPresetsMenu:RenderPresetColorBox(res, cell)
+                    local prefixText = cell:AddText(GetLoca(ctype))
+                    prefixText.SameLine = true
 
-            ccaPresetgroup.OnHoverEnter = nil
+                    ::continue::
+                end
+
+
+                ccaPresetgroup.OnHoverEnter = nil
+            end
         end
+
+        local characterTemplate = entity.ClientCharacter.Template
+        local characterVisual = Ext.Resource.Get(characterTemplate.CharacterVisualResourceID, "CharacterVisual") --[[@as ResourceCharacterVisualResource]]
+        if characterVisual and characterVisual.VisualSet then
+            _D(characterVisual)
+
+            local visualSet = characterVisual.VisualSet
+            for _, matPreset in pairs(visualSet.MaterialOverrides.MaterialPresets) do
+                local matPresetRes = MaterialPresetProxy.new(matPreset.MaterialPresetResource)
+                if not matPresetRes then goto continue end
+                for ptype, params in pairs(matPresetRes.Parameters) do
+                    for paramName, value in pairs(params) do
+                        if not overrideCharacterParams[ptype][paramName] then
+                            overrideCharacterParams[ptype][paramName] = value
+                        end
+                    end
+                end
+                ::continue::
+            end
+
+            
+            local paramLists = {
+                visualSet.MaterialOverrides.ScalarParameters,
+                visualSet.MaterialOverrides.Vector2Parameters,
+                visualSet.MaterialOverrides.Vector3Parameters,
+                visualSet.MaterialOverrides.VectorParameters,
+            }
+            for ptype, paramList in pairs(paramLists) do
+                for _, param in pairs(paramList) do
+                    if not overrideCharacterParams[ptype][param.Parameter] and param.Enabled then
+                        local fValue = type(param.Value) == "number" and { param.Value } or param.Value
+                        overrideCharacterParams[ptype][param.Parameter] = fValue
+                    end
+                end
+            end
+        end
+    
     end
 
     local attachments = visual.Attachments or {}
@@ -501,32 +556,7 @@ function VisualTab:RenderAttachmentSection()
 
             local matName = obj.Renderable.ActiveMaterial.Material.Name
             local function getliveMat()
-                local visual = VisualHelpers.GetEntityVisual(self.guid)
-                if not visual then
-                    return nil
-                end
-                local attachments = visual.Attachments or {}
-                local attach = attachments[attIndex]
-                if not attach then
-                    return nil
-                end
-
-                local desc = attach.Visual.ObjectDescs[descIndex]
-                if not desc then
-                    return nil
-                end
-
-                local renderable = desc.Renderable --[[@as RenderableObject]]
-                if not renderable then
-                    return nil
-                end
-
-                local material = renderable.ActiveMaterial
-                if not material then
-                    return nil
-                end
-
-                return material
+                return VisualHelpers.GetActiveMaterial(self.guid, descIndex, attIndex)
             end
 
             --- @return MaterialParametersSet|nil
@@ -552,7 +582,7 @@ function VisualTab:RenderAttachmentSection()
             materialTab.ApplyToOthers = appltToOthers
             materialTab.Editor.Instance = getliveMat
             materialTab.Editor.ParamsSrc = getliveParams
-            materialTab.Editor.ParamSetProxy = ParametersSetProxy.new(getliveParams()) --[[@as ParametersSetProxy]]
+            materialTab.Editor.ParamSetProxy:Update(getliveParams())
             materialTab.Editor:SetDefaultParameters(overrideCharacterParams)
 
             objToggle.OnClick = function(sel)
@@ -649,7 +679,7 @@ function VisualTab:RenderObjectEditor()
         materialEditor.ApplyToOthers = appltToOthers
         materialEditor.Editor.Instance = getliveMat
         materialEditor.Editor.ParamsSrc = getliveParams
-        materialEditor.Editor.ParamSetProxy = ParametersSetProxy.new(getliveParams()) --[[@as ParametersSetProxy]]
+        materialEditor.Editor.ParamSetProxy:Update(getliveParams())
 
         materialNode.OnHoverEnter = function()
             materialEditor:Render()
@@ -721,7 +751,7 @@ end
 function VisualTab:RenderLightEntity(node, component, compIndex)
     local entityNode = node
 
-    local lightEntity = component.LightEntity --[[@as LightComponent]]
+    local lightEntity = component.LightEntity
     if not lightEntity or not lightEntity.Light then
         return
     end
@@ -729,21 +759,15 @@ function VisualTab:RenderLightEntity(node, component, compIndex)
     local light = lightEntity.Light --[[@as LightComponent]]
 
     local entityColorNode = entityNode:AddTree(GetLoca("Light Entity Color"))
-    local angleNode = entityNode:AddTree(GetLoca("Light Angles"))
-    local gainNode = entityNode:AddTree(GetLoca("Gain"))
-    local scatteringNode = entityNode:AddTree(GetLoca("Scattering"))
+    local generalNode = entityNode:AddTree(GetLoca("General Light Settings"))
+    local spotNode = entityNode:AddTree(GetLoca("Spot Light Settings"))
     local directionalNode = entityNode:AddTree(GetLoca("Directional Light Settings"))
-    local attenuationNode = directionalNode:AddTree(GetLoca("Attenuation"))
-    --local templateNode = entityNode:AddTree(GetLoca("Template Settings"))
     local otherNode = entityNode:AddTree(GetLoca("Other Settings"))
 
     local allNodes = {
         entityColorNode,
-        angleNode,
-        gainNode,
-        scatteringNode,
         directionalNode,
-        attenuationNode,
+        directionalNode,
         otherNode,
     }
 
@@ -754,23 +778,23 @@ function VisualTab:RenderLightEntity(node, component, compIndex)
     end
 
     local bitMaskPropNameMap = {
-        LightChannelFlag = { displayName = "Light Channel (Bitmask)", bits = { ["Character"] = 32, ["Scenery"] = 1 }, preassign = otherNode },
-        Flags = { displayName = "Fill Light Flags (Bitmask)", bits = { ["Cast Shadow"] =8 }, preassign = otherNode },
+        LightChannelFlag = { displayName = "Light Channel", bits = { ["Character"] = 1 << 5, ["Scenery"] = 1 }, preassign = generalNode },
+        Flags = { displayName = "Light Flags", bits = { ["Cast Shadow"] = 1 << 3,  }, preassign = generalNode },
     }
 
     local scalarPropNameMap = {
-        SpotLightInnerAngle = { min = 0, max = 180, step = 1, displayName = "Inner Angle", preassign = angleNode },
-        SpotLightOuterAngle = { min = 0, max = 180, step = 1, displayName = "Outer Angle", preassign = angleNode },
-        Gain = { min = 0, max = 100, step = 0.1, displayName = "Gain", preassign = gainNode },
-        EdgeSharpening = { min = 0, max = 10, step = 0.05, displayName = "Edge Sharpness", preassign = otherNode },
-        LightType = { min = 0, max = 2, step = 1, displayName = "Light Type", preassign = otherNode, IsInteger = true, Tooltip = "0=Point,1=Spot,2=Directional" },
-        ScatteringIntensityScale = { min = 0, max = 100, step = 0.1, displayName = "Scattering Intensity Scale", preassign = scatteringNode },
-        DirectionLightAttenuationFunction = { min = 0, max = 4, step = 1, displayName = "Attenuation Function", preassign = attenuationNode, IsInteger = true, Tooltip = "0=Liner,1=Inverse Square,2=Smooth Step,3=Smoother Step,4=None" },
-        DirectionLightAttenuationEnd = { min = 0, max = 1000, step = 0.1, displayName = "Attenuation End", preassign = attenuationNode },
-        DirectionLightAttenuationSide = { min = 0, max = 1000, step = 0.1, displayName = "Attenuation Back", preassign = attenuationNode },
-        DirectionLightAttenuationSide2 = { min = 0, max = 1000, step = 0.1, displayName = "Attenuation Sides", preassign = attenuationNode },
-        CullFlags = { min = 0, max = 63, step = 1, displayName = "Cull Flags", preassign = otherNode, IsInteger = true },
-        Flags = { min = 0, max = 63, step = 1, displayName = "Fill Light Flags", preassign = otherNode, IsInteger = true },
+        SpotLightInnerAngle = { min = 0, max = 180, step = 1, displayName = "Inner Angle", preassign = spotNode },
+        SpotLightOuterAngle = { min = 0, max = 180, step = 1, displayName = "Outer Angle", preassign = spotNode },
+        Gain = { min = 0, max = 100, step = 0.1, displayName = "Gain", preassign = generalNode },
+        EdgeSharpening = { min = 0, max = 10, step = 0.05, displayName = "Edge Sharpness", preassign = generalNode },
+        LightType = { min = 0, max = 2, step = 1, displayName = "Light Type", preassign = entityNode, IsInteger = true, Tooltip = "0=Point,1=Spot,2=Directional" },
+        ScatteringIntensityScale = { min = 0, max = 100, step = 0.1, displayName = "Scattering Intensity Scale", preassign = generalNode },
+        DirectionLightAttenuationFunction = { min = 0, max = 4, step = 1, displayName = "Attenuation Function", preassign = directionalNode, IsInteger = true, Tooltip = "0=Liner,1=Inverse Square,2=Smooth Step,3=Smoother Step,4=None" },
+        DirectionLightAttenuationEnd = { min = 0, max = 2, step = 0.05, displayName = "Attenuation End", preassign = directionalNode },
+        DirectionLightAttenuationSide = { min = 0, max = 2, step = 0.05, displayName = "Attenuation Back", preassign = directionalNode },
+        DirectionLightAttenuationSide2 = { min = 0, max = 2, step = 0.05, displayName = "Attenuation Sides", preassign = directionalNode },
+        CullFlags = { min = 0, max = 1 << 24, step = 1, displayName = "Cull Flags", preassign = otherNode, IsInteger = true },
+        Flags = { min = 0, max = 1 << 24, step = 1, displayName = "Light Flags", preassign = otherNode, IsInteger = true },
     }
 
     local vec3PropNameMap = {
@@ -782,16 +806,17 @@ function VisualTab:RenderLightEntity(node, component, compIndex)
     local renderOrder = {
         "LightType",
         "LightChannelFlag",
+        "Flags",
         "SpotLightInnerAngle",
         "SpotLightOuterAngle",
         "Gain",
         "EdgeSharpening",
         "ScatteringIntensityScale",
+        "DirectionLightAttenuationFunction",
         "DirectionLightAttenuationEnd",
         "DirectionLightAttenuationSide",
         "DirectionLightAttenuationSide2",
         "CullFlags",
-        "Flags",
         "DirectionLightDimensions",
         "Color",
     }
@@ -815,10 +840,10 @@ function VisualTab:RenderLightEntity(node, component, compIndex)
     end
 
     for _, propName in ipairs(renderOrder) do
-        local property = lightEntity[propName]
+        local key = "LightEntity::" .. compIndex .. "::" .. propName
+        local property = self.resetParams[key] or light[propName]
+        self.resetParams[key] = property
         if bitMaskPropNameMap[propName] and type(property) == "number" then
-            local key = "LightEntity::" .. compIndex .. "::" .. propName
-            self:CheckKey(key)
             local valueNode = bitMaskPropNameMap[propName].preassign or entityNode:AddTree(bitMaskPropNameMap[propName].displayName or propName)
             --- @type RadioButtonOption[]
             local options = {}
@@ -840,9 +865,8 @@ function VisualTab:RenderLightEntity(node, component, compIndex)
                 liveLight[propName] = value
                 saveLightEntityProperty(key, propName, value)
             end
-        elseif scalarPropNameMap[propName] and type(property) == "number" then
-            local key = "LightEntity::" .. compIndex .. "::" .. propName
-            self:CheckKey(key)
+        end
+        if scalarPropNameMap[propName] and type(property) == "number" then
             local valueNode = scalarPropNameMap[propName].preassign or entityNode:AddTree(scalarPropNameMap[propName].displayName or propName)
             local initValue = property
             local currentValue = property
@@ -894,9 +918,8 @@ function VisualTab:RenderLightEntity(node, component, compIndex)
                     slider.Value = ToVec4(liveLight[propName])
                 end
             end
-        elseif vec3PropNameMap[propName] and type(property) == "table" and #property == 3 then
-            local key = "LightEntity::" .. compIndex .. "::" .. propName
-            self:CheckKey(key)
+        end
+        if vec3PropNameMap[propName] and type(property) == "table" and #property == 3 then
             local valueNode = vec3PropNameMap[propName].preassign or
                 entityNode:AddTree(vec3PropNameMap[propName].displayName or propName)
             if valueNode == otherNode then
@@ -908,7 +931,6 @@ function VisualTab:RenderLightEntity(node, component, compIndex)
             if vec3PropNameMap[propName].Tooltip then
                 displayNameText:Tooltip():AddText(vec3PropNameMap[propName].Tooltip)
             end
-            displayNameText.SameLine = true
             local colorEdit = valueNode:AddColorEdit("Color", { currentValue[1], currentValue[2], currentValue[3] })
             colorEdit.NoAlpha = true
             local valueResetButton = valueNode:AddButton(GetLoca("Reset"))
@@ -1016,17 +1038,19 @@ function VisualTab:RenderLightComponent(node, component, compIndex)
     }
 
     for propName, property in pairs(properties) do
+        local key = "LightComponent::" .. compIndex .. "::" .. propName
         if propName == "Appearance.Color" then
             if not property.Frames[1].Color then
                 goto continue
             end
-            local key = "Light::" .. compIndex .. "::" .. propName
             self:CheckKey(key)
             local overrideKey = "Light::" .. compIndex .. "::OverrideLightTemplateColor"
             self:CheckKey(overrideKey)
             local colorNode = compNode:AddTree("Color")
-            local initColor = property.Frames[1].Color
-            local initBool = lComp.OverrideLightTemplateColor
+            local initColor = self.resetParams[key] or property.Frames[1].Color
+            self.resetParams[key] = { initColor[1], initColor[2], initColor[3], initColor[4] }
+            local initBool = self.resetParams[overrideKey] or lComp.OverrideLightTemplateColor
+            self.resetParams[overrideKey] = initBool
             local currentColor = property.Frames[1].Color
             local colorResetButton = colorNode:AddButton(GetLoca("Reset"))
             local overrideEntityCheck = colorNode:AddCheckbox(GetLoca("Override Entity Color"),
@@ -1094,7 +1118,6 @@ function VisualTab:RenderLightComponent(node, component, compIndex)
         end
 
         if propNameMap[propName] then
-            local key = "Light::" .. compIndex .. "::" .. propName
             self:CheckKey(key)
             local hasValue = false
             for type, value in pairs(property.KeyFrames[1].Frames[1]) do
@@ -1137,11 +1160,8 @@ function VisualTab:RenderLightComponent(node, component, compIndex)
                     saveLightProperty(key, propName,
                         { sliderA.Value[1], sliderB.Value[1], sliderC.Value[1], sliderD.Value[1] })
                 end
-
                 sliderB.OnChange = sliderA.OnChange
-
                 sliderC.OnChange = sliderA.OnChange
-
                 sliderD.OnChange = sliderA.OnChange
 
                 valueResetButton.OnClick = function(sel, updateInit)
@@ -1202,8 +1222,8 @@ function VisualTab:RenderLightComponent(node, component, compIndex)
             local resetBoolFunc = nil
 
             if overrideMap[propName] then
+                local overrideKey = "LightComponent::" .. compIndex .. "::" .. overrideMap[propName]
                 local boolName = overrideMap[propName]
-                local overrideKey = "Light::" .. compIndex .. "::" .. boolName
                 self:CheckKey(overrideKey)
                 local initBool = lComp[boolName]
                 local overrideCheck = valueNode:AddCheckbox(GetLoca(boolName), lComp[boolName] or false)
@@ -1234,7 +1254,8 @@ function VisualTab:RenderLightComponent(node, component, compIndex)
                 overrideCheck.SameLine = true
             end
 
-            local initValue = property.KeyFrames[1].Frames[1].Value
+            local initValue = self.resetParams[key] or property.KeyFrames[1].Frames[1].Value
+            self.resetParams[key] = initValue
             local currentValue = property.KeyFrames[1].Frames[1].Value
             local valueSlider = AddSliderWithStep(valueNode, key, currentValue, -100, 100, 0.1)
             valueSlider.UserData.ResetButton.Visible = false
@@ -1314,12 +1335,12 @@ function VisualTab:RenderParticleSystemComponent(node, component, compIndex)
     }
 
     for propName, property in pairs(psComp) do
+        local key = "ParticleSystem::" .. compIndex .. "::" .. propName
         if scalarPropNameMap[propName] and type(property) == "number" then
-            local key = "ParticleSystem::" .. compIndex .. "::" .. propName
-            self:CheckKey(key)
             local valueNode = compNode:AddTree(scalarPropNameMap[propName].displayName or propName)
             local valueResetButton = valueNode:AddButton(GetLoca("Reset"))
-            local initValue = property
+            local initValue = self.resetParams[key] or property
+            self.resetParams[key] = initValue
             local currentValue = property
             local slider = AddSliderWithStep(valueNode, nil, currentValue, scalarPropNameMap[propName].min,
                 scalarPropNameMap[propName].max, scalarPropNameMap[propName].step)
@@ -1362,11 +1383,10 @@ function VisualTab:RenderParticleSystemComponent(node, component, compIndex)
         end
 
         if vec4PropNameMap[propName] and type(property) == "table" and #property == 4 then
-            local key = "ParticleSystem::" .. compIndex .. "::" .. propName
-            self:CheckKey(key)
             local valueNode = compNode:AddTree(vec4PropNameMap[propName] or propName)
             local valueResetButton = valueNode:AddButton(GetLoca("Reset"))
-            local initValue = { property[1], property[2], property[3], property[4] }
+            local initValue = self.resetParams[key] or { property[1], property[2], property[3], property[4] }
+            self.resetParams[key] = initValue
             local currentValue = property
             local colorEdit = valueNode:AddColorEdit("")
             colorEdit.SameLine = true

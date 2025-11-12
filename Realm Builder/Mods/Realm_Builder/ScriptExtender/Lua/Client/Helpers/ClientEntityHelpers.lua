@@ -39,18 +39,10 @@ function GetIcon(guid)
     end
 
     local stored = EntityStore:GetStoredData(guid)
-    if stored and stored.Icon then
-        return CheckIcon(stored.Icon, defaultIcon)
-    end
 
-    if not Ext.Entity.Get(guid) then
-        local stored = EntityStore:GetStoredData(guid)
-        if stored and stored.TemplateId then
-            local icon = GetIconForTemplateId(stored.TemplateId)
-            return CheckIcon(icon, defaultIcon)
-        end
-
-        return defaultIcon
+    if stored and stored.TemplateId then
+        local icon = GetIconForTemplateId(stored.TemplateId)
+        return CheckIcon(icon, defaultIcon)
     end
 
     local entity = UuidToHandle(guid)
@@ -116,15 +108,20 @@ function GetName(guid)
     return template.Name or "Unknown"
 end
 
+local templateTypeToIcon = {
+    scenery = RB_ICONS.Scenery,
+    character = RB_ICONS.Character,
+    TileConstruction = RB_ICONS.Scenery_Fill
+}
+
 function GetIconForTemplateId(uuid)
     uuid = TakeTailTemplate(uuid)
-    local template = Ext.ClientTemplate.GetTemplate(uuid)
-    local icon = template and template.TemplateType == "item" and template.Icon or nil
-    if icon and icon ~= "" then
-        if ICON_BLACKLIST[icon] then
-            return "Item_Unknown"
-        end
-        return CheckIcon(icon, "Item_Unknown")
+    local template = Ext.Template.GetTemplate(uuid)
+    if template.TemplateType == "item" then
+        local icon = template.Icon
+        return icon
+    else
+        return templateTypeToIcon[template.TemplateType] or defaultIcon
     end
     return "Item_Unknown"
 end

@@ -144,7 +144,7 @@ function OutlinerMenu:RenderMenu()
         )
     end
 
-    self.bruteForceDeleteAllButton = AddMenuButton(self.debugMenu, GetLoca("Deletes all props, ignoring filters or protections."), bfDeleteAllOpe, self.isWindow)
+    self.bruteForceDeleteAllButton = AddMenuButton(self.debugMenu, GetLoca("Deletes all props, can't undo"), bfDeleteAllOpe, self.isWindow)
     ApplyDangerSelectableStyle(self.bruteForceDeleteAllButton)
 end
 

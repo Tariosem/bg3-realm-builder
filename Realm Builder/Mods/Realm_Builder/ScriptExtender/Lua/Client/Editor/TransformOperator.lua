@@ -184,15 +184,10 @@ function TransformOperator:ChangeVisualization()
         transforms[viz] = newTransform
     end
 
-    local vizProxies = {}
     for _,viz in pairs(visualizations) do
         local proxy = MovableProxy.CreateByGuid(viz)
-        if proxy then
-            table.insert(vizProxies, proxy)
-        end
+        proxy:SetTransform(transforms[viz])
     end
-
-    Commands.SetTransform(vizProxies, transforms, true)
 end
 
 function TransformOperator:SetAxis(axis, shiftDown)
@@ -242,31 +237,20 @@ function TransformOperator:ParseInput(e)
         -- only supports scale in local space
         if self.Mode == "Scale" then return end
         self:SetSpace(keyToSpace[e.Key])
-
+    elseif (e.Key == "MINUS" or e.Key == "KP_MINUS") and shiftDown then
+        self.Negative = not self.Negative
+    elseif e.Key == "BACKSPACE" then
+        if #self.Num > 1 then
+            self.Num = self.Num:sub(1, #self.Num - 1)
+        else
+            self.Num = "0"
+        end
     elseif KeybindHelpers.ParseInputToCharInput(e) then
         local char = KeybindHelpers.ParseInputToCharInput(e) --[[@as string ]]
-        if char == "." or char == "," then
-            if not self.Num:find("%.") then
-                self.Num = self.Num .. "."
-            end
-        elseif (e.Key == "MINUS" or e.Key == "KP_MINUS") and shiftDown then
-            self.Negative = not self.Negative
-        elseif char == "BACKSPACE" then
-            if #self.Num > 1 then
-                self.Num = self.Num:sub(1, #self.Num - 1)
-            else
-                self.Num = "0"
-            end
-        elseif GLOBAL_AVAILABLE_OPERATORS[char] then
-            if self.Num:sub(-1) ~= " " then
-                self.Num = self.Num .. char
-            end
-        elseif tonumber(char) then
-            if self.Num == "0" then
-                self.Num = char
-            else
-                self.Num = self.Num .. char
-            end
+        if char and self.Num == "0" then
+            self.Num = char
+        else
+            self.Num = self.Num .. char
         end
     end
 
@@ -286,13 +270,40 @@ function TransformOperator:__tostring()
     local numberStr = self.Negative and ("- (" .. self.Num .. ")") or self.Num
     local spaceStr = GetLoca(self.Space)
 
-    return string.format("%s [%s%s] along %s axis in %s space for %d target(s)", verb, numberStr, unit, axisStr, spaceStr, #self.Targets)
+    return string.format("%s [%s] %s along %s axis in %s space for %d target(s)", verb, numberStr, unit, axisStr, spaceStr, #self.Targets)
 end
+
+local loadstringexpr = [[
+    local abs = math.abs
+    local floor = math.floor
+    local ceil = math.ceil
+    local round = Ext.Math.Round
+    local max = math.max
+    local min = math.min
+    local pi = math.pi
+    local sin = math.sin
+    local cos = math.cos
+    local tan = math.tan
+    local asin = math.asin
+    local acos = math.acos
+    local deg = math.deg
+    local rad = math.rad
+
+    return %s
+]]
 
 function TransformOperator:Apply()
     if #self.Targets == 0 then return end
     local transforms = {}
-    local num = tonumber(self.Num) or EvalExpression(self.Num)
+    local num = tonumber(self.Num)
+    if not num then
+        local expr = string.format(loadstringexpr, self.Num)
+        local func = Ext.Utils.LoadString(expr)
+        if func then
+            local ok, res = pcall(func)
+            if ok then num = res end
+        end
+    end
     if not num then return end
     if self.Negative then num = -num end
     for _,proxy in pairs(self.Targets) do

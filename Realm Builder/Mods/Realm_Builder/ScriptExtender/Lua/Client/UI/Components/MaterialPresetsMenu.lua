@@ -176,12 +176,8 @@ function MaterialPresetsMenu:SetupWorkspace(parent, ccaModPack, notRenderImport)
 
     local progressBar = leftCell:AddProgressBar("ss##ExportProgressBar") --[[@as ExtuiProgressBar]]
     progressBar.SameLine = true
-    progressBar:SetStyle("FrameBorderSize", 2)
 
-    progressBar:SetColor("PlotHistogram", HexToRGBA("FF397D38"))
-    progressBar:SetColor("Border", HexToRGBA("FF31BEBE"))
-    progressBar:SetColor("Text", { 1, 1, 1, 1 })
-
+    StyleHelpers.SetNormalProgressBarStyle(progressBar)
     local exportBtn = nil --[[@type ExtuiButton]]
     local exportTT = nil --[[@type ExtuiText]]
     exportBtn = rightCell:AddButton("Export")
@@ -199,8 +195,7 @@ function MaterialPresetsMenu:SetupWorkspace(parent, ccaModPack, notRenderImport)
         end
 
         progressBar.Value = 0
-        progressBar:SetColor("PlotHistogram", HexToRGBA("FF397D38"))
-        progressBar:SetColor("Border", HexToRGBA("FF2EB5B5"))
+        StyleHelpers.SetNormalProgressBarStyle(progressBar)
         parent.Disabled = true -- disable UI during export, avoid unexpected interactions
         self:ExportToMod(exportSettings, function(progress, message)
             exportTT.Label = "Exporting Material Presets... " ..
@@ -217,8 +212,7 @@ function MaterialPresetsMenu:SetupWorkspace(parent, ccaModPack, notRenderImport)
             elseif progress < 0 then
                 progressBar.Value = 1
                 progressBar.Overlay = message and (" - " .. message) or ""
-                progressBar:SetColor("PlotHistogram", HexToRGBA("FF910000"))
-                progressBar:SetColor("Border", HexToRGBA("FFFF4444"))
+                StyleHelpers.SetWarningProgressBarStyle(progressBar)
 
                 parent.Disabled = false
             end

@@ -5,11 +5,10 @@ local function toggleMainWindow()
     if RBMenu and RBMenu.panel then
         RBMenu.panel.Open = not RBMenu.panel.Open
     else
+        NetChannel.ManageEntity:SendToServer({ Action = "Load" })
         RBMenu = Menu:Add()
     end
-    NetChannel.ManageEntity:SendToServer({ Action = "Load" })
     NetChannel.ManageEntity:SendToServer({ Action = "Scan" })
-    
 end
 
 local function ToggleBrowser(targetKey)
