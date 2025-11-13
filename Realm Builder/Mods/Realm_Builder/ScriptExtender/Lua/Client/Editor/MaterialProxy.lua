@@ -116,6 +116,7 @@ function MaterialProxy.__buildParameterTables(self, paramsList, name, fieldName,
             self.IndexRefs[typeRef][paramName] = i
             self.Parameters[typeRef][paramName] = value
             self.BaseValues[typeRef][paramName] = value
+            ::continue::
         end
     end
 end

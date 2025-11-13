@@ -388,6 +388,17 @@ function VisualHelpers.GetRenderable(entity, descIndex, attachIndex)
     return nil
 end
 
+function VisualHelpers.GetAttachment(entity, attachIndex)
+    local visual = VisualHelpers.GetEntityVisual(entity)
+    if not visual then return nil end
+
+    if visual.Attachments and visual.Attachments[attachIndex] then
+        return visual.Attachments[attachIndex]
+    end
+
+    return nil
+end
+
 function VisualHelpers.GetMaterial(entity, descIndex, attachIndex)
     local renderable = VisualHelpers.GetRenderable(entity, descIndex, attachIndex)
     return renderable and renderable.ActiveMaterial and renderable.ActiveMaterial.Material

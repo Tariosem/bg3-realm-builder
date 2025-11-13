@@ -168,17 +168,9 @@ function VisualTab:Render(retryCnt)
     self:RenderPresetsCell()
     self:RenderUtilsCell()
 
-    -- Right cell content
-
     self:RenderAttachmentSection()
-
-    --#region Material Editor
-
-    self:RenderObjectEditor()
-
-    --#endregion Material Editor
-
-    self:RenderEffectEditor()
+    self:RenderObjectSection()
+    self:RenderEffectSection()
 end
 
 function VisualTab:RenderPresetsCell()
@@ -420,119 +412,152 @@ function VisualTab:RenderAttachmentSection()
         self.attachmentsHeader = self.panel:AddCollapsingHeader(GetLoca("Attachments"))
     end
 
+    self.attachmentsHeader.OnHoverEnter = function ()
+        self:RenderAttachmentEditors()
+        self.attachmentsHeader.OnHoverEnter = nil
+    end
+end
+
+function VisualTab:DetermineOverrideCharacterParameters()
     local overrideCharacterParams = {
         {}, -- ScalarParameters
         {}, -- Vector2Parameters
         {}, -- Vector3Parameters
         {}, -- VectorParameters
     }
-    if CIsCharacter(self.guid) then
-        local cca = entity.CharacterCreationAppearance
-        if not cca then
-            --- @diagnostic disable-next-line
-            cca = entity.AppearanceOverride and entity.AppearanceOverride.Visual
+    local entity = Ext.Entity.Get(self.guid) --[[@as EntityHandle]]
+    local cca = entity.CharacterCreationAppearance
+    if not cca then
+        --- @diagnostic disable-next-line
+        cca = entity.AppearanceOverride and entity.AppearanceOverride.Visual
+    end
+    if cca then
+        local ccaPresetgroup = self.attachmentsHeader:AddTree(GetLoca("Character Creation Material Presets"))
+
+        local allColors = {
+            SkinColor = cca.SkinColor,
+            HairColor = cca.HairColor,
+            EyeColor = cca.EyeColor,
+            LeftEyeColor = cca.SecondEyeColor,
+        }
+        local colorTypes = {
+            SkinColor = "CharacterCreationSkinColor",
+            HairColor = "CharacterCreationHairColor",
+            EyeColor = "CharacterCreationEyeColor",
+            LeftEyeColor = "CharacterCreationEyeColor",
+        }
+        local colorOrder = {
+            "EyeColor",
+            "LeftEyeColor",
+            "HairColor",
+            "SkinColor",
+        }
+
+        for _, colorIndex in ipairs(colorOrder) do
+            local colorType = colorIndex
+            local resUuid = allColors[colorType]
+            if not resUuid or resUuid == GUID_NULL then goto continue end
+            local res = Ext.StaticData.Get(resUuid, colorTypes[colorType]) --[[@as ResourceCharacterCreationColor]]
+            if not res then goto continue end
+            local matPresetRes = MaterialPresetProxy.new(res.MaterialPresetUUID)
+            if not matPresetRes then goto continue end
+            for ptype, params in pairs(matPresetRes.Parameters) do
+                for paramName, value in pairs(params) do
+                    if colorIndex == "LeftEyeColor" then
+                        paramName = paramName .. "_L"
+                    end
+                    overrideCharacterParams[ptype] = overrideCharacterParams[ptype] or {}
+                    if not overrideCharacterParams[ptype][paramName] then
+                        overrideCharacterParams[ptype][paramName] = value
+                    end
+                end
+            end
+            ::continue::
         end
-        if cca then
-            local ccaPresetgroup = self.attachmentsHeader:AddTree(GetLoca("Character Creation Material Presets"))
 
-            local allColors = {
-                SkinColor = cca.SkinColor,
-                HairColor = cca.HairColor,
-                EyeColor = cca.EyeColor,
-                LeftEyeColor = cca.SecondEyeColor,
-            }
-            local colorTypes = {
-                SkinColor = "CharacterCreationSkinColor",
-                HairColor = "CharacterCreationHairColor",
-                EyeColor = "CharacterCreationEyeColor",
-                LeftEyeColor = "CharacterCreationEyeColor",
-            }
-            local colorOrder = {
-                "EyeColor",
-                "LeftEyeColor",
-                "HairColor",
-                "SkinColor",
-            }
-
-            for _, colorIndex in ipairs(colorOrder) do
-                local colorType = colorIndex
-                local resUuid = allColors[colorType]
-                if not resUuid or resUuid == GUID_NULL then goto continue end
-                local res = Ext.StaticData.Get(resUuid, colorTypes[colorType]) --[[@as ResourceCharacterCreationColor]]
+        ccaPresetgroup.OnHoverEnter = function()
+            local twoColTable = ccaPresetgroup:AddTable("CCAPresetsTable", 2)
+            local row = twoColTable:AddRow()
+            for _, ctype in ipairs(colorOrder) do
+                local color = allColors[ctype]
+                if not color or color == GUID_NULL then goto continue end
+                local res = Ext.StaticData.Get(color, colorTypes[ctype]) --[[@as ResourceCharacterCreationColor]]
                 if not res then goto continue end
-                local matPresetRes = MaterialPresetProxy.new(res.MaterialPresetUUID)
-                if not matPresetRes then goto continue end
-                for ptype, params in pairs(matPresetRes.Parameters) do
-                    for paramName, value in pairs(params) do
-                        if colorIndex == "LeftEyeColor" then
-                            paramName = paramName .. "_L"
-                        end
-                        overrideCharacterParams[ptype] = overrideCharacterParams[ptype] or {}
-                        if not overrideCharacterParams[ptype][paramName] then
-                            overrideCharacterParams[ptype][paramName] = value
-                        end
-                    end
-                end
+                local cell = row:AddCell()
+                local preset = MaterialPresetsMenu:RenderPresetColorBox(res, cell)
+                local prefixText = cell:AddText(GetLoca(ctype))
+                prefixText.SameLine = true
+
                 ::continue::
             end
 
-            ccaPresetgroup.OnHoverEnter = function()
-                local twoColTable = ccaPresetgroup:AddTable("CCAPresetsTable", 2)
-                local row = twoColTable:AddRow()
-                for _, ctype in ipairs(colorOrder) do
-                    local color = allColors[ctype]
-                    if not color or color == GUID_NULL then goto continue end
-                    local res = Ext.StaticData.Get(color, colorTypes[ctype]) --[[@as ResourceCharacterCreationColor]]
-                    if not res then goto continue end
-                    local cell = row:AddCell()
-                    local preset = MaterialPresetsMenu:RenderPresetColorBox(res, cell)
-                    local prefixText = cell:AddText(GetLoca(ctype))
-                    prefixText.SameLine = true
 
-                    ::continue::
+            ccaPresetgroup.OnHoverEnter = nil
+        end
+    end
+
+    local characterTemplate = entity.ClientCharacter.Template
+    local characterVisual = Ext.Resource.Get(characterTemplate.CharacterVisualResourceID, "CharacterVisual") --[[@as ResourceCharacterVisualResource]]
+    if characterVisual and characterVisual.VisualSet then
+        local visualSet = characterVisual.VisualSet
+        for _, matPreset in pairs(visualSet.MaterialOverrides.MaterialPresets) do
+            local matPresetRes = MaterialPresetProxy.new(matPreset.MaterialPresetResource)
+            if not matPresetRes then goto continue end
+            for ptype, params in pairs(matPresetRes.Parameters) do
+                for paramName, value in pairs(params) do
+                    if not overrideCharacterParams[ptype][paramName] then
+                        overrideCharacterParams[ptype][paramName] = value
+                    end
                 end
-
-
-                ccaPresetgroup.OnHoverEnter = nil
             end
+            ::continue::
         end
 
-        local characterTemplate = entity.ClientCharacter.Template
-        local characterVisual = Ext.Resource.Get(characterTemplate.CharacterVisualResourceID, "CharacterVisual") --[[@as ResourceCharacterVisualResource]]
-        if characterVisual and characterVisual.VisualSet then
-            _D(characterVisual)
-
-            local visualSet = characterVisual.VisualSet
-            for _, matPreset in pairs(visualSet.MaterialOverrides.MaterialPresets) do
-                local matPresetRes = MaterialPresetProxy.new(matPreset.MaterialPresetResource)
-                if not matPresetRes then goto continue end
-                for ptype, params in pairs(matPresetRes.Parameters) do
-                    for paramName, value in pairs(params) do
-                        if not overrideCharacterParams[ptype][paramName] then
-                            overrideCharacterParams[ptype][paramName] = value
+        for _, visualResource in pairs(visualSet.Slots) do
+            local vres = Ext.Resource.Get(visualResource.VisualResource, "Visual") --[[@as ResourceVisualResource]]
+            if vres.HairPresetResourceId and IsUuid(vres.HairPresetResourceId) then
+                local matPresetRes = MaterialPresetProxy.new(vres.HairPresetResourceId)
+                if matPresetRes then
+                    for ptype, params in pairs(matPresetRes.Parameters) do
+                        for paramName, value in pairs(params) do
+                            if not overrideCharacterParams[ptype][paramName] then
+                                overrideCharacterParams[ptype][paramName] = value
+                            end
                         end
-                    end
-                end
-                ::continue::
-            end
-
-            
-            local paramLists = {
-                visualSet.MaterialOverrides.ScalarParameters,
-                visualSet.MaterialOverrides.Vector2Parameters,
-                visualSet.MaterialOverrides.Vector3Parameters,
-                visualSet.MaterialOverrides.VectorParameters,
-            }
-            for ptype, paramList in pairs(paramLists) do
-                for _, param in pairs(paramList) do
-                    if not overrideCharacterParams[ptype][param.Parameter] and param.Enabled then
-                        local fValue = type(param.Value) == "number" and { param.Value } or param.Value
-                        overrideCharacterParams[ptype][param.Parameter] = fValue
                     end
                 end
             end
         end
-    
+
+        
+        local paramLists = {
+            visualSet.MaterialOverrides.ScalarParameters,
+            visualSet.MaterialOverrides.Vector2Parameters,
+            visualSet.MaterialOverrides.Vector3Parameters,
+            visualSet.MaterialOverrides.VectorParameters,
+        }
+        for ptype, paramList in pairs(paramLists) do
+            for _, param in pairs(paramList) do
+                if not overrideCharacterParams[ptype][param.Parameter] and param.Enabled then
+                    local fValue = type(param.Value) == "number" and { param.Value } or param.Value
+                    overrideCharacterParams[ptype][param.Parameter] = fValue
+                end
+            end
+        end
+    end
+
+    return overrideCharacterParams
+end
+
+function VisualTab:RenderAttachmentEditors()
+    local entity = Ext.Entity.Get(self.guid) --[[@as EntityHandle]]
+    local visual = VisualHelpers.GetEntityVisual(self.guid)
+
+    if not visual then return end
+
+    local overrideCharacterParams = {}
+    if CIsCharacter(self.guid) then
+        overrideCharacterParams = self:DetermineOverrideCharacterParameters()
     end
 
     local attachments = visual.Attachments or {}
@@ -546,12 +571,19 @@ function VisualTab:RenderAttachmentSection()
         local displayName = gr2FileName
 
         local attachNode = self.attachmentsHeader:AddTree(displayName .. "##" .. tostring(attIndex))
+        local lodNode = nil
 
         for descIndex, obj in ipairs(attach.Visual.ObjectDescs) do
             local modelName = obj.Renderable and obj.Renderable.Model and obj.Renderable.Model.Name or "Unknown Model"
-            local objToggle = attachNode:AddSelectable("[+] " ..
+            local parentNode = attachNode
+            if modelName:find("LOD") then
+                lodNode = lodNode or attachNode:AddTree("LODs")
+                parentNode = lodNode
+            end
+
+            local objToggle = parentNode:AddSelectable("[+] " ..
                 modelName .. "##" .. tostring(attIndex) .. "_" .. tostring(descIndex))
-            local objNode = AddIndent(attachNode):AddGroup("ObjectDescGroup##" ..
+            local objNode = AddIndent(parentNode):AddGroup("ObjectDescGroup##" ..
                 tostring(attIndex) .. "_" .. tostring(descIndex))
 
             local matName = obj.Renderable.ActiveMaterial.Material.Name
@@ -576,8 +608,7 @@ function VisualTab:RenderAttachmentSection()
                 end
             end
 
-            local materialTab = self.Materials[keyName] or
-                MaterialTab.new(objNode, matName, getliveMat, getliveParams) --[[@as MaterialTab]]
+            local materialTab = self.Materials[keyName] or MaterialTab.new(objNode, matName, getliveMat, getliveParams) --[[@as MaterialTab]]
             materialTab.Parent = objNode
             materialTab.ApplyToOthers = appltToOthers
             materialTab.Editor.Instance = getliveMat
@@ -613,7 +644,7 @@ function VisualTab:RenderAttachmentSection()
     end
 end
 
-function VisualTab:RenderObjectEditor()
+function VisualTab:RenderObjectSection()
     if next(LightCToArray(Ext.Entity.Get(self.guid).Visual.Visual.ObjectDescs)) == nil then
         return
     end
@@ -631,6 +662,17 @@ function VisualTab:RenderObjectEditor()
     if self.isWindow then
         self.materialHeader.DefaultOpen = true
     end
+
+    self.materialHeader.OnHoverEnter = function ()
+        self:RenderObjectEditor()
+        self.materialHeader.OnHoverEnter = nil
+    end
+end
+
+function VisualTab:RenderObjectEditor()
+    local visual = VisualHelpers.GetEntityVisual(self.guid)
+    if not visual then return end
+
 
     --self.materialRoot = self.materialHeader:AddTree(GetLoca("Materials"))
 
@@ -694,7 +736,7 @@ function VisualTab:RenderObjectEditor()
     end
 end
 
-function VisualTab:RenderEffectEditor()
+function VisualTab:RenderEffectSection()
     local entity = Ext.Entity.Get(self.guid) --[[@as EntityHandle]]
     if entity.Effect == nil then
         return
@@ -713,7 +755,19 @@ function VisualTab:RenderEffectEditor()
         self.effectHeader.DefaultOpen = true
     end
 
+    self.effectHeader.OnHoverEnter = function ()
+        self:RenderEffectEditor()
+        self.effectHeader.OnHoverEnter = nil
+    end
+end
+
+
+function VisualTab:RenderEffectEditor()
+    local entity = Ext.Entity.Get(self.guid) --[[@as EntityHandle]]
     --self.effectRoot = self.effectHeader:AddTree(GetLoca("Effects"))
+    if not entity.Effect or not entity.Effect.Timeline or not entity.Effect.Timeline.Components then
+        return
+    end
 
     local effectNameCnt = {}
 
