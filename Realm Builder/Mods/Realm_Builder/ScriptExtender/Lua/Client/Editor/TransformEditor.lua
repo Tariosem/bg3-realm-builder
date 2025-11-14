@@ -1,9 +1,22 @@
 --- @class TransformEditor
 --- @field Gizmo Gizmo|nil
+--- @field Cursor GUIDSTRING|nil
 --- @field Target RB_MovableProxy[]|nil
---- @field History HistoryManager
 --- @field Subscriptions table<string, RBSubscription>
 --- @field Debug boolean
+--- @field Space TransformEditorSpace
+--- @field PivotMode TransformEditorPivotMode
+--- @field Disabled boolean
+--- @field IsDragging boolean
+--- @field SelectionChangedNotif Notification|nil
+--- @field PointVisualizations string[]|nil
+--- @field LineVisualizations string[]|nil
+--- @field registered boolean
+--- @field SetupGizmo fun(self: TransformEditor)
+--- @field RegisterEvents fun(self: TransformEditor)
+--- @field GetPivotRotation fun(self: TransformEditor): Quat
+--- @field HideAndDisableGizmo fun(self: TransformEditor)
+--- @field ShowAndEnableGizmo fun(self: TransformEditor)
 --- @field Select fun(self: TransformEditor, selection: RB_MovableProxy[], notRecordHistory:boolean|nil)
 --- @field AddTarget fun(self: TransformEditor, proxy: RB_MovableProxy)
 --- @field Clear fun(self: TransformEditor)
@@ -16,8 +29,10 @@ TransformEditor = _Class("TransformEditor")
 function TransformEditor:__init()
     self.Target = nil
     self.Gizmo = Gizmo.new(self)
+    self.Cursor = nil
     self.Subscriptions = {}
     self.Space = "World"
+    self.PivotMode = "Individual"
     self.Disabled = false
 end
 
@@ -127,30 +142,63 @@ function TransformEditor:HandleGizmo()
             return Vec3.new(0,0,0), Quat.Identity()
         end
 
-        local latestProxy = self.Target[#self.Target]
-        while not latestProxy:IsValid() do
-            table.remove(self.Target, #self.Target)
-            if #self.Target == 0 then
-                self:Clear()
-                return gizmo.PivotPosition, gizmo.PivotRotation
+        local sumPos = Vec3.new(0,0,0)
+        local pivotPos = nil
+        if self.PivotMode == "Cursor" then
+            if self.Cursor and EntityExists(self.Cursor) then
+                local pos = {CGetPosition(self.Cursor)}
+                pivotPos = Vec3.new(pos)
+            else
+                pivotPos = Vec3.new(CGetPosition(CGetHostCharacter()))
             end
-            latestProxy = self.Target[#self.Target]
+        else
+            local validCount = 0
+            for _,proxy in pairs(self.Target or {}) do
+                if proxy:IsValid() then
+                    local pos = proxy:GetWorldTranslate() or Vec3.new(0,0,0)
+                    sumPos = sumPos + pos
+                    validCount = validCount + 1
+                end
+            end
+        
+            if validCount == 0 then
+                Debug("TransformEditor: GetPivot no valid target selected")
+                return Vec3.new(0,0,0), Quat.Identity()
+            end
+            pivotPos = sumPos / validCount
         end
-
-        local avgPos = latestProxy:GetWorldTranslate() or Vec3.new(0,0,0)
         local rot = self:GetPivotRotation() or Quat.Identity()
 
-        return avgPos, rot
+        return pivotPos, rot
+
     end
 
     self.Gizmo:Enable()
 end
 
 function TransformEditor:SetSpace(space)
+    if self.IsDragging then return end
     if Enums.TransformEditorSpace[space] then
         self.Space = space
+
+        if self.Space == "Cursor" and not self.Cursor then
+            self:CreateCursor() 
+        end
     else
         Warning("TransformEditor:SetSpace: Invalid space '"..tostring(space))
+    end
+end
+
+function TransformEditor:SetPivotMode(mode)
+    if self.IsDragging then return end
+    if Enums.TransformEditorPivotMode[mode] then
+        self.PivotMode = mode
+
+        if self.PivotMode == "Cursor" and not self.Cursor then
+            self:CreateCursor() 
+        end
+    else
+        Warning("TransformEditor:SetPivotMode: Invalid mode '"..tostring(mode))
     end
 end
 
@@ -176,14 +224,12 @@ function TransformEditor:GetPivotRotation()
     while not latestProxy:IsValid() do
         table.remove(self.Target, #self.Target)
         if #self.Target == 0 then
-            Debug("TransformEditor: GetPivotRotation no valid target selected")
             return Quat.Identity()
         end
         latestProxy = self.Target[#self.Target]
     end
     local rot = Quat.Identity()
     if not latestProxy then
-        Debug("TransformEditor: GetPivotRotation called but no target selected")
         return rot
     end
     if space == "Local" then
@@ -193,13 +239,69 @@ function TransformEditor:GetPivotRotation()
         if parent then
             rot = parent:GetWorldRotation()
         else
-            Debug("TransformEditor: Parent space but no valid parent found")
             rot = Quat.Identity()
         end
     elseif space == "View" then
         rot = {GetCameraRotation()}
+    elseif space == "Cursor" then
+        if self.Cursor and EntityExists(self.Cursor) then
+            rot = {CGetRotation(self.Cursor)}
+        else
+            self:CreateCursor()
+            rot = Quat.Identity()
+        end
+    else
+        rot = Quat.Identity()
     end
     return Quat.new(rot)
+end
+
+function TransformEditor:CreateCursor()
+    if self.Cursor and EntityExists(self.Cursor) or (self.creatingCursor) then
+        return
+    end
+
+    self.creatingCursor = true
+    local hostPosition = Vec3.new(CGetPosition(CGetHostCharacter()))
+    local hostRotation = Quat.new(GetCameraRotation())
+
+    NetChannel.Visualize:RequestToServer({
+        Type = "Cursor",
+        Position = hostPosition,
+        Rotation = hostRotation,
+        Duration = -1,
+    }, function (response)
+        for _,viz in pairs(response or {}) do
+            self.Cursor = viz
+        end
+        self.creatingCursor = false
+    end)
+
+    self.CursorTimer = Timer:EveryFrame(function (timerID)
+        self.Gizmo.Visualizer:Visualize3DCursor(self.Cursor)
+    end)
+end
+
+function TransformEditor:MoveCursor()
+    if not self.Cursor or not EntityExists(self.Cursor) then
+        self:CreateCursor()
+        return
+    end
+
+    local pos = ScreenToWorldRay():At(10)
+    local rot = Quat.new(GetCameraRotation())
+
+    NetChannel.SetTransform:RequestToServer({ Guid = self.Cursor, Transforms = {
+        [self.Cursor] = {
+            Translate = pos,
+            RotationQuat = rot,
+        }
+    } }, function()
+    end)
+
+    NetChannel.SetAttributes:SendToServer({ Guid = self.Cursor, Attributes = {
+        Visible = true,
+    } })
 end
 
 function TransformEditor:RegisterEvents()
@@ -207,6 +309,109 @@ function TransformEditor:RegisterEvents()
     self.registered = true
 
     self:SetupGizmo()
+end
+
+--- @param gizmo Gizmo
+--- @param pointTransform Transform
+--- @param index integer
+function TransformEditor:MakePointVisualization(gizmo, pointTransform, index)
+    if self.PointVisualizations and self.PointVisualizations[index] then
+        local pointGuid = self.PointVisualizations[index]
+
+        NetChannel.SetTransform:RequestToServer({ Guid = pointGuid, Transforms = {[pointGuid] = pointTransform} }, function()
+            for _,axis in pairs({"X","Y","Z"}) do
+                if gizmo.SelectedAxis and gizmo.SelectedAxis[axis] then
+                    gizmo.Visualizer:HighLightGizmoAxis(axis, pointGuid)
+                else
+                    gizmo.Visualizer:HideGizmoAxis(axis, pointGuid)
+                end
+            end
+        end)
+        return
+    end
+
+    NetChannel.Visualize:RequestToServer({
+        Type = "Point",
+        Position = pointTransform.Translate,
+        Rotation = pointTransform.RotationQuat,
+        Duration = -1,
+    }, function (response)
+        local tryCnt = 0
+
+        for _,viz in pairs(response or {}) do
+            table.insert(self.PointVisualizations, viz)
+        end
+        Timer:EveryFrame(function (timerID)
+            if tryCnt > 300 or not self.IsDragging then
+                for _,viz in pairs(response or {}) do
+                    gizmo.Visualizer:HideGizmo(viz)
+                end
+                return UNSUBSCRIBE_SYMBOL
+            end
+            local allReady = true
+            for _,viz in ipairs(response or {}) do
+                if not VisualHelpers.GetEntityVisual(viz) then
+                    allReady = false
+                    break
+                end
+            end
+            if not allReady then tryCnt = tryCnt + 1 return end
+
+            for _,viz in ipairs(response or {}) do
+                for _,axis in pairs({"X","Y","Z"}) do
+                    if gizmo.SelectedAxis and gizmo.SelectedAxis[axis] then
+                        gizmo.Visualizer:HighLightGizmoAxis(axis, viz)
+                    else
+                        gizmo.Visualizer:HideGizmoAxis(axis, viz)
+                    end
+                end
+            end
+
+            return UNSUBSCRIBE_SYMBOL
+        end)
+    end)
+end
+
+--- @param gizmo Gizmo
+--- @param ray Ray
+--- @param color vec3
+--- @param index integer
+function TransformEditor:MakeAxisLineVisualization(gizmo, ray, color, index)
+    if self.LineVisualizations[index] then
+        local lineGuid = self.LineVisualizations[index]
+        gizmo.Visualizer:SetLineFxColor(lineGuid, color)
+        local newLineTransform = {
+            Translate = ray:At(-100),
+            RotationQuat = DirectionToQuat(ray.Direction * -1),
+        }
+        NetChannel.SetTransform:RequestToServer({ Guid = lineGuid, Transforms = {[lineGuid] = newLineTransform} }, function (response)
+            -- prevent flickering
+            Timer:Ticks(5, function (timerID)
+                if not self.IsDragging then return end
+                gizmo.Visualizer:SetLineLength(lineGuid, 20)
+            end)
+        end)
+        return
+    end
+
+    NetChannel.Visualize:RequestToServer({
+        Type = "Line",
+        Position = ray:At(-100),
+        EndPosition = ray:At(100),
+        Width = gizmo.Visualizer.Scale[1] * 0.3,
+        Duration = -1,
+    }, function (response)
+        local viz = response[1]
+        local tryCnt = 0
+        Timer:EveryFrame(function (timerID)
+            if tryCnt > 300 or not self.IsDragging then Debug("TransformEditor: Line viz timeout") return UNSUBSCRIBE_SYMBOL end
+            if not VisualHelpers.GetEntityVisual(viz) then tryCnt = tryCnt + 1 return end
+            gizmo.Visualizer:SetLineFxColor(viz, color)
+            gizmo.Visualizer:SetLineLength(viz, 20)
+            return UNSUBSCRIBE_SYMBOL
+        end)
+        table.insert(self.LineVisualizations, viz)
+    end)
 end
 
 function TransformEditor:SetupGizmo()
@@ -250,6 +455,51 @@ function TransformEditor:SetupGizmo()
             end
         end
 
+        if gizmo.Mode == "Rotate" and gizmo.SelectedAxis and CountMap(gizmo.SelectedAxis) > 1 then
+            for _,v in pairs(self.LineVisualizations or {}) do
+                gizmo.Visualizer:SetLineLength(v, 0)
+            end
+            for _,v in pairs(self.PointVisualizations or {}) do
+                gizmo.Visualizer:HideGizmo(v)
+            end
+            return
+        end
+
+        -- only calculate one visualization for space modes that use a common rotation
+        if self.Space ~= "Local" and self.Space ~= "Parent" then
+            local pivotPos, pivotRot = gizmo:GetPickerTransform()
+
+            local newPointTransform = {
+                Translate = pivotPos,
+                RotationQuat = pivotRot,
+            }
+            self:MakePointVisualization(gizmo, newPointTransform, 1)
+
+            if CountMap(gizmo.SelectedAxis) ~= 1 then 
+                for _,v in pairs(self.LineVisualizations or {}) do
+                    gizmo.Visualizer:SetLineLength(v, 0)
+                end
+                return
+            end
+
+            local selectedAxis = nil
+            local color = nil
+            for axis,_ in pairs(gizmo.SelectedAxis) do
+                color = gizmo.Visualizer.AxisLineColor[axis] or {0.9, 0.9, 0.9, 0.8}
+                selectedAxis = axis
+                if self.LineVisualizations and #self.LineVisualizations > 0 then
+                    gizmo.Visualizer:SetLineFxColor(self.LineVisualizations[1], color)
+                end
+            end
+
+            local rot = pivotRot
+            if not rot then return end
+            local vector = GLOBAL_COORDINATE[selectedAxis]
+            local ray = Ray.new(pivotPos, rot:Rotate(vector))
+            self:MakeAxisLineVisualization(gizmo, ray, color, 1)
+            return
+        end
+
         for cnt,proxy in pairs(self.Target or {}) do
             local transform = proxy:GetSavedTransform()
             local newPointTransform = {
@@ -268,60 +518,7 @@ function TransformEditor:SetupGizmo()
             end
 
             if transform and transform.Translate then
-                if self.PointVisualizations and self.PointVisualizations[cnt] then
-                    local pointGuid = self.PointVisualizations[cnt]
-
-                    NetChannel.SetTransform:RequestToServer({ Guid = pointGuid, Transforms = {[pointGuid] = newPointTransform} }, function()
-                        for _,axis in pairs({"X","Y","Z"}) do
-                            if gizmo.SelectedAxis and gizmo.SelectedAxis[axis] then
-                                gizmo.Visualizer:HighLightGizmoAxis(axis, pointGuid)
-                            else
-                                gizmo.Visualizer:HideGizmoAxis(axis, pointGuid)
-                            end
-                        end
-                    end)
-                else
-                    NetChannel.Visualize:RequestToServer({
-                        Type = "Point",
-                        Position = transform.Translate,
-                        Rotation = newPointTransform.RotationQuat,
-                        Duration = -1,
-                    }, function (response)
-                        local tryCnt = 0
-
-                        for _,viz in ipairs(response or {}) do
-                            table.insert(self.PointVisualizations, viz)
-                        end
-                        Timer:EveryFrame(function (timerID)
-                            if tryCnt > 300 or not self.IsDragging then
-                                for _,viz in pairs(response or {}) do
-                                    gizmo.Visualizer:HideGizmo(viz)
-                                end
-                                return UNSUBSCRIBE_SYMBOL
-                            end
-                            local allReady = true
-                            for _,viz in ipairs(response or {}) do
-                                if not VisualHelpers.GetEntityVisual(viz) then
-                                    allReady = false
-                                    break
-                                end
-                            end
-                            if not allReady then tryCnt = tryCnt + 1 return end
-
-                            for _,viz in ipairs(response or {}) do
-                                for _,axis in pairs({"X","Y","Z"}) do
-                                    if gizmo.SelectedAxis and gizmo.SelectedAxis[axis] then
-                                        gizmo.Visualizer:HighLightGizmoAxis(axis, viz)
-                                    else
-                                        gizmo.Visualizer:HideGizmoAxis(axis, viz)
-                                    end
-                                end
-                            end
-
-                            return UNSUBSCRIBE_SYMBOL
-                        end)
-                    end)
-                end
+                self:MakePointVisualization(gizmo, newPointTransform, cnt)
             end
         end
 
@@ -357,40 +554,7 @@ function TransformEditor:SetupGizmo()
             if not rot then return end
             local vector = GLOBAL_COORDINATE[selectedAxis]
             local ray = Ray.new(transform.Translate, rot:Rotate(vector))
-            if self.LineVisualizations[cnt] then
-                local lineGuid = self.LineVisualizations[cnt]
-                gizmo.Visualizer:SetLineFxColor(lineGuid, color)
-                local newLineTransform = {
-                    Translate = ray:At(-100),
-                    RotationQuat = DirectionToQuat(ray.Direction * -1),
-                }
-                NetChannel.SetTransform:RequestToServer({ Guid = lineGuid, Transforms = {[lineGuid] = newLineTransform} }, function (response)
-                    -- prevent flickering
-                    Timer:Ticks(5, function (timerID)
-                        if not self.IsDragging then return end
-                        gizmo.Visualizer:SetLineLength(lineGuid, 20)
-                    end)
-                end)
-            else
-                NetChannel.Visualize:RequestToServer({
-                    Type = "Line",
-                    Position = ray:At(-100),
-                    EndPosition = ray:At(100),
-                    Width = gizmo.Visualizer.Scale[1] * 0.3,
-                    Duration = -1,
-                }, function (response)
-                    local viz = response[1]
-                    local tryCnt = 0
-                    Timer:EveryFrame(function (timerID)
-                        if tryCnt > 300 or not self.IsDragging then Debug("TransformEditor: Line viz timeout") return UNSUBSCRIBE_SYMBOL end
-                        if not VisualHelpers.GetEntityVisual(viz) then tryCnt = tryCnt + 1 return end
-                        gizmo.Visualizer:SetLineFxColor(viz, color)
-                        gizmo.Visualizer:SetLineLength(viz, 20)
-                        return UNSUBSCRIBE_SYMBOL
-                    end)
-                    table.insert(self.LineVisualizations, viz)
-                end)
-            end
+            self:MakeAxisLineVisualization(gizmo, ray, color, cnt)
         end
     end
 
@@ -412,7 +576,6 @@ function TransformEditor:SetupGizmo()
                     local parentRot = parent:GetSavedTransform().RotationQuat
                     finalDelta = parentRot:Rotate(delta)
                 else
-                    Debug("TransformEditor: Parent space but no valid parent found")
                     finalDelta = {0,0,0}
                 end
             end
@@ -469,7 +632,13 @@ function TransformEditor:SetupGizmo()
                 newScale = Vec3.new(baseScale) * deltaWorld
             end
 
-            proxy:SetWorldScale(newScale)
+            if self.PivotMode ~= "Individual" and self.Space ~= "Local" and self.Space ~= "Parent" then
+                local pivotPos, _ = gizmo:GetPickerTransform()
+                local newTransform = ScaleAroundPivot(pivotPos, startTransform, newScale)
+                proxy:SetTransform(newTransform)
+            else
+                proxy:SetWorldScale(newScale)
+            end
         end
     end
 
@@ -477,10 +646,28 @@ function TransformEditor:SetupGizmo()
         local deltaAngle = delta.Angle or 0
         local deltaAxis = Vec3.new(delta.Axis or {0,0,0})
 
+        if deltaAxis == Vec3.new(0,0,0) or deltaAngle == 0 then
+            for _,proxy in pairs(self.Target or {}) do
+                proxy:RestoreTransform()
+            end
+            return
+        end
+
         if self.Space == "Local" or self.Space == "Parent" then
             -- Convert delta axis from world space to local space
             local rot = GetRottt(gizmo)
             deltaAxis = rot:Inverse():Rotate(deltaAxis)
+        end
+
+        if self.PivotMode ~= "Individual" and self.Space ~= "Local" and self.Space ~= "Parent" then
+            local pivotPos, _ = gizmo:GetPickerTransform()
+            for _, proxy in pairs(self.Target or {}) do
+                local startTransform = proxy:GetSavedTransform()
+                local newTransform = RotateAroundPivot(pivotPos, startTransform, deltaAxis, deltaAngle)
+
+                proxy:SetTransform(newTransform)
+            end
+            return
         end
 
         for _, proxy in pairs(self.Target or {}) do
@@ -522,6 +709,9 @@ function TransformEditor:SetupGizmo()
             gizmo.Visualizer:HideGizmo(v)
         end
         if isCancelled then 
+            for _,proxy in pairs(self.Target or {}) do
+                proxy:RestoreTransform()
+            end
             self.IsDragging = false
             return 
         end

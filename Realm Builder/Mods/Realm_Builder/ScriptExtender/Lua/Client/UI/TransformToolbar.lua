@@ -147,6 +147,15 @@ function TransformToolbar:RegisterKeyInputEvents()
         self:CreateNearbyPopup()
     end)
 
+    ttMod:RegisterEvent("Move3DCursor", function (e)
+        if e.Event ~= "KeyDown" then return end
+        local editor = RB_GLOBALS.TransformEditor
+        if not editor.Cursor then
+            editor:CreateCursor()
+        end
+        editor:MoveCursor()
+    end)
+
     buMod:RegisterEvent("BindTo", function (e)
         if e.Event ~= "KeyDown" then return end
         if not RB_GLOBALS.TransformEditor.Target or #RB_GLOBALS.TransformEditor.Target == 0 then return end
@@ -444,7 +453,7 @@ function TransformToolbar:SetupBoxSelect()
             boxSelectStart = Vec2.new(GetCursorPos())
             boxSelectEnd = nil
             initBoxSelectWindow()
-            boxSelectTimer = Timer:Every(10, function()
+            boxSelectTimer = Timer:EveryFrame(function()
                 boxSelectEnd = Vec2.new(GetCursorPos())
                 if not boxSelectStart or not boxSelectEnd then return end
                 local left = math.min(boxSelectStart[1], boxSelectEnd[1])
@@ -452,7 +461,7 @@ function TransformToolbar:SetupBoxSelect()
                 local width = math.abs(boxSelectEnd[1] - boxSelectStart[1])
                 local height = math.abs(boxSelectEnd[2] - boxSelectStart[2])
                 boxSelectWindow:SetPos({left, top})
-                -- imgui window will block mouse input so we need to shrink it a bit
+                -- imgui window will block mouse so we need to shrink it a bit
                 boxSelectWindow:SetSize({width - 10 , height - 10})
                 --boxSelect()
             end)
@@ -562,13 +571,35 @@ function TransformToolbar:RenderTopBar()
         "Local",
         "View",
         "Parent",
+        "Cursor",
     }
     local localizedMode = {
         GetLoca("Global"),
         GetLoca("Local"),
         GetLoca("View"),
         GetLoca("Parent"),
+        GetLoca("3D Cursor"),
     }
+    local pivotCombo = centerCell:AddCombo("Pivot")
+    pivotCombo.ItemWidth = 300 * SCALE_FACTOR
+    local indexToPivot = {
+        "Individual",
+        "Average",
+        "Cursor",
+    }
+    local localizedPivot = {
+        GetLoca("Individual"),
+        GetLoca("Average"),
+        GetLoca("3D Cursor"),
+    }
+    pivotCombo.Options = localizedPivot
+    pivotCombo.SelectedIndex = 0
+    pivotCombo.SameLine = true
+    pivotCombo.OnChange = function (e)
+        local mode = indexToPivot[e.SelectedIndex + 1]
+        RB_GLOBALS.TransformEditor:SetPivotMode(mode)
+    end
+    self.pivotCombo = pivotCombo
 
     spaceCombo.Options = localizedMode
     spaceCombo.SelectedIndex = 0
@@ -580,7 +611,6 @@ function TransformToolbar:RenderTopBar()
     self.GetCurrentSpace = function()
         return indexToMode[spaceCombo.SelectedIndex + 1]
     end
-
 end
 
 function TransformToolbar:RenderConfigMenu()

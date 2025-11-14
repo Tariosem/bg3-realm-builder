@@ -30,9 +30,9 @@ function AnubisHelpers.BuildScriptParamNode(paramName, value)
 	return paramNode
 end
 
---- @param triggerName any
---- @param wanderMin any
---- @param wanderMax any
+--- @param triggerName string name_uuid
+--- @param wanderMin number
+--- @param wanderMax number
 --- @param sleepMin number?
 --- @param sleepMax number?
 function AnubisHelpers.BuildWanderParams(wanderMin, wanderMax, sleepMin, sleepMax, triggerName)

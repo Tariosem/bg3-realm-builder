@@ -151,7 +151,7 @@ end
 --- @param cell ExtuiTableCell
 --- @param entData EntityData
 function TemplateExportMenu:RenderTemplateEntry(cell, entData)
-    local icon = cell:AddImageButton("##" .. entData.Guid .. "icon", CheckIcon(entData.Icon), IMAGESIZE.SMALL)
+    local icon = cell:AddImageButton("##" .. entData.Guid .. "icon", entData.DisplayIcon, IMAGESIZE.SMALL)
     local header = cell:AddTree(entData.DisplayName or entData.TemplateId)
     local attrTable = header:AddTable("Attributes", 2)
     header.SameLine = true
@@ -189,6 +189,7 @@ function TemplateExportMenu:RenderTemplateEntry(cell, entData)
         OverrideVisualUuid = true,
         VisualObjectMaterialOverride = true,
         ExcludeFromExport = true,
+        DisplayIcon = true,
     }
 
     local attrOrder = {

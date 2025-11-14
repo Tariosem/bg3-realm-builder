@@ -15,6 +15,8 @@ GIZMO_ITEM = {
     Scale = "RB_Gizmo_Scale_723a815e-801a-4792-aa80-0fd65b599a24",
 }
 
+GIZMO_CURSOR = "4a39a1c5-26c3-44ab-9410-4080c5dbc2aa"
+
 MARKER_ITEM = {
     SpotLight = "RB_SpotLight_Marker_4cc17738-e9a9-4cda-a2a2-953220d535a9",
     PointLight = "RB_PointLight_Marker_1bca30fb-aa71-48ad-afa4-33582bde984b",

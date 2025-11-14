@@ -60,11 +60,11 @@ DEFAULT_KEYBINDS = {}
 
 --- @diagnostic disable
 DEFAULT_KEYBINDS.TransformToolbar = {
-    ["MultiSelect"] = { Key = "M" },
-    ["Select"] = { Key = "MMB" },
+    ["MultiSelect"] = { Key = "LMB", Modifiers = { "SHIFT", "CTRL" } },
+    ["Select"] = { Key = "MMB", Modifiers = { "LCTRL" } },
     ["ClearSelection"] = { Key = "ESCAPE" },
     ["Duplicate"] = { Key = "D", Modifiers = { "SHIFT" } },
-    ["BoxSelect"] = { Key = "B" },
+    ["BoxSelect"] = { Key = "LMB", Modifiers = { "SHIFT" } },
     ["HideSelection"] = { Key = "H" },
     ["ShowSelection"] = { Key = "H", Modifiers = { "SHIFT" } },
     ["ApplyGravity"] = { Key = "G", Modifiers = { "SHIFT" } },
@@ -72,7 +72,8 @@ DEFAULT_KEYBINDS.TransformToolbar = {
     ["Undo"] = { Key = "Z", Modifiers = { "CTRL" } },
     ["Redo"] = { Key = "X", Modifiers = { "CTRL" } },
     ["OpenVisualTab"] = { Key = "TAB", Modifiers = { "SHIFT" } },
-    ["DeleteAllGizmos"] = { Key = "X", Modifiers = { "SHIFT" } }
+    ["DeleteAllGizmos"] = { Key = "X", Modifiers = { "SHIFT" } },
+    ["Move3DCursor"] = { Key = "RMB", Modifiers = { "SHIFT" } },
 }
 
 DEFAULT_KEYBINDS.TransformEditor = {

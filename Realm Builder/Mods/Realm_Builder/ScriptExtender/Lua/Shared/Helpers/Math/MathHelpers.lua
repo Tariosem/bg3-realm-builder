@@ -231,6 +231,7 @@ function GetLocalRelativeTransformFromGuid(parentUuid, posOffset, rotOffset)
 
     local px, py, pz = CGetPosition(parentUuid)
     local pqx, pqy, pqz, pqw = GetQuatRotation(parentUuid)
+    local psx, psy, psz = CGetScale(parentUuid)
 
     if not px or not py or not pz or not pqx or not pqy or not pqz or not pqw then
         --Error("Failed to get parent position or rotation")
@@ -241,7 +242,7 @@ function GetLocalRelativeTransformFromGuid(parentUuid, posOffset, rotOffset)
         {
             Translate = {px, py, pz},
             RotationQuat = {pqx, pqy, pqz, pqw},
-            Scale = {1,1,1},
+            Scale = {psx, psy, psz}
         },
         posOffset,
         rotOffset
@@ -256,6 +257,7 @@ end
 function GetLocalRelativeTransform(transfrom, posOffset, rotOffset)
     local px, py, pz = transfrom.Translate[1], transfrom.Translate[2], transfrom.Translate[3]
     local pqx, pqy, pqz, pqw = transfrom.RotationQuat[1], transfrom.RotationQuat[2], transfrom.RotationQuat[3], transfrom.RotationQuat[4]
+    local psx, psy, psz = transfrom.Scale[1], transfrom.Scale[2], transfrom.Scale[3]
 
     if not px or not py or not pz or not pqx or not pqy or not pqz or not pqw then
         --Error("Failed to get parent position or rotation")
@@ -266,8 +268,17 @@ function GetLocalRelativeTransform(transfrom, posOffset, rotOffset)
     posOffset = posOffset or {0, 0, 0}
     rotOffset = rotOffset or Quat.Identity()
 
-    local worldOffset = Ext.Math.QuatRotate(parentQuat, posOffset)
-    local finalPosition = {px + worldOffset[1], py + worldOffset[2], pz + worldOffset[3]}
+    local scaledOffset = {
+        posOffset[1] * psx,
+        posOffset[2] * psy,
+        posOffset[3] * psz,
+    }
+    local rotatedOffset = Ext.Math.QuatRotate(parentQuat, scaledOffset)
+    local finalPosition = {
+        px + rotatedOffset[1],
+        py + rotatedOffset[2],
+        pz + rotatedOffset[3],
+    }
 
     local finalQuat
     if #rotOffset == 4 then
@@ -305,22 +316,46 @@ function LookAtParent(childUuid, parentUuid)
     return quat
 end
 
----@param point Vec3
----@param pivot Vec3
----@param axis "X"|"Y"|"Z"|Vec3
----@param angle number in radians
----@return Vec3
-function RotateAroundPivot(point, pivot, axis, angle)
-    if type(axis) == "string" then
-        axis = GLOBAL_COORDINATE[axis:upper()]
-        if not axis then
-            Error("Invalid axis: " .. tostring(axis))
-            return point
-        end
-    end
-    local translatedPoint = Ext.Math.Sub(point, pivot)
-    local rotatedPoint = Ext.Math.QuatRotateAxisAngle(Quat.Identity(), axis, angle)
-    rotatedPoint = Ext.Math.QuatRotate(rotatedPoint, translatedPoint)
-    local finalPoint = Ext.Math.Add(rotatedPoint, pivot)
-    return finalPoint
+--- @param pivot vec3
+--- @param targetTransform Transform
+--- @param axis Vec3
+--- @param angleRad number
+--- @return Transform newTransform
+function RotateAroundPivot(pivot, targetTransform, axis, angleRad)
+    local pivotPos = Vec3.new(pivot)
+    local targetPos = Vec3.new(targetTransform.Translate)
+
+    local toTarget = Ext.Math.Sub(targetPos, pivotPos)
+    local rotatedOffset = Ext.Math.QuatRotate(Ext.Math.QuatRotateAxisAngle(Quat.Identity(), axis, angleRad), toTarget)
+    local newPos = Ext.Math.Add(pivotPos, rotatedOffset)
+
+    local targetRotQuat = Quat.new(targetTransform.RotationQuat)
+    local rotationQuat = Ext.Math.QuatRotateAxisAngle(Quat.Identity(), axis, angleRad)
+    local newRotQuat = Ext.Math.QuatMul(rotationQuat, targetRotQuat)
+    newRotQuat = Ext.Math.QuatNormalize(newRotQuat)
+
+    return {
+        Translate = {newPos[1], newPos[2], newPos[3]},
+        RotationQuat = {newRotQuat[1], newRotQuat[2], newRotQuat[3], newRotQuat[4]},
+        Scale = targetTransform.Scale,
+    }
+end
+
+function ScaleAroundPivot(pivot, targetTransform, scaleVec)
+    local pivotPos = Vec3.new(pivot)
+    local targetPos = Vec3.new(targetTransform.Translate)
+
+    local toTarget = Ext.Math.Sub(targetPos, pivotPos)
+    local scaledOffset = {
+        toTarget[1] * scaleVec[1],
+        toTarget[2] * scaleVec[2],
+        toTarget[3] * scaleVec[3],
+    }
+    local newPos = Ext.Math.Add(pivotPos, scaledOffset)
+
+    return {
+        Translate = {newPos[1], newPos[2], newPos[3]},
+        RotationQuat = targetTransform.RotationQuat,
+        Scale = {scaleVec[1], scaleVec[2], scaleVec[3]},
+    }
 end

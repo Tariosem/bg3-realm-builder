@@ -1,5 +1,5 @@
 RequireFiles("Client/Helpers/LSXHelpers/", {
-    "LSXHelpers",
+    "TemplateHelpers",
     "ResourceHelpers",
     "AnubisHelpers",
 })

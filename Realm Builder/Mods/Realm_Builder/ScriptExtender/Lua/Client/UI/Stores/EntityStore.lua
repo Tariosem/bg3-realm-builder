@@ -464,9 +464,14 @@ function EntityStore:GetExportCopy(guids)
             local entity = Ext.Entity.Get(guid)
             if not entity then goto continue end
             local data = DeepCopy(self:GetStoredData(guid)) --[[@as EntityData]]
-            results[guid] = data
             local template = Ext.Template.GetTemplate(TakeTailTemplate(data.TemplateId))
             data.TemplateType = template.TemplateType
+
+            if data.TemplateType == "TileConstruction" then 
+                goto continue
+            end
+
+            results[guid] = data
             self:DeleteUselessExportAttributes(data)
 
 
@@ -475,9 +480,9 @@ function EntityStore:GetExportCopy(guids)
             data.Scale = { CGetScale(guid) }
 
             data.Scale = math.min(data.Scale[1], data.Scale[2], data.Scale[3])
+            data.DisplayIcon = GetIcon(guid)
             data.Icon = GetIconForTemplateId(data.TemplateId)
             data.LevelName = entity.Level.LevelName
-
         
             local visualTab = VisualTab.FetchByGuid(guid)
             if data.TemplateType == "character" and template and visualTab then

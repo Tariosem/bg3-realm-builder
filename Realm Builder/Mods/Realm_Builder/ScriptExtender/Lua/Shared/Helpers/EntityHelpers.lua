@@ -624,6 +624,7 @@ function GetNearbyCharactersAndItems(pos, radius)
     return nearbyEntities
 end
 
+--- @return EntityHandle|nil
 function GetCamera()
     local Entities = Ext.Entity.GetAllEntitiesWithComponent("Camera")
     local returnCamera = nil

@@ -243,8 +243,18 @@ NetChannel.Visualize:SetRequestHandler(function(data, userID)
             Osi.RequestDelete(e)
         end
         spawnedVisualizations[userID] = {}
-    end
+    elseif data.Type == "Cursor" then
+        local pos = data.Position
+        local cursorEntity = Osi.CreateAt(GIZMO_CURSOR, pos[1], pos[2], pos[3], 1, 0, "") --[[@as string]]
+        table.insert(entityHandles, cursorEntity)
+        if data.Rotation then
+            OsirisHelpers.RotateTo(cursorEntity, table.unpack(data.Rotation))
+        end
 
+        NetChannel.SetVisualTransform:Broadcast({Guid = cursorEntity, Transforms = {
+            [cursorEntity] = { Scale = {0, 0, 0} }
+        }})
+    end
     if duration > 0 then
         Timer:After(duration, function()
             for _,e in pairs(entityHandles) do
@@ -395,12 +405,12 @@ end)
 
 NetChannel.StopStatus:SetHandler(function (data, userID)
 
-    data.DisplayName = data.DisplayName .. tostring(userID)
-
     if data.Type == "All" then
         EM:RemoveAllStatuses()
         return
     end
+
+    data.DisplayName = data.DisplayName .. tostring(userID)
 
     EM:RemoveStatus(data)
 end)

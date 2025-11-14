@@ -82,10 +82,6 @@ function Gizmo:StartDragging(mouseRay, hit)
         self.SelectedAxis = hit.Axis
     else
         self.SelectedAxis = { X = true, Y = true, Z = true }
-        if self.Mode == "Rotate" then
-            local closestAxis = self.Picker:ClosestPlane(mouseRay)
-            self.SelectedAxis = { [closestAxis] = true }
-        end
     end
     self.HoveredAxis = nil
     self.StartHit = self:GetHit(mouseRay)
@@ -99,7 +95,7 @@ function Gizmo:RestartDragging(mouseRay, axes)
     mouseRay = mouseRay or ScreenToWorldRay()
     axes = axes or DeepCopy(self.SelectedAxis) or { X = true, Y = true, Z = true }
 
-    if self.Mode == Enums.TransformEditorMode.Rotate and CountMap(axes) ~= 1 then
+    if self.Mode == Enums.TransformEditorMode.Rotate and CountMap(axes) == 2 then
         axes = { [next(axes)] = true }
     end
 
@@ -232,6 +228,7 @@ function Gizmo:SetupListeners()
     end)
 
     self.Timers["Stick"] = Timer:EveryFrame(function(timerID)
+        if self.IsDragging then return end
         if not self.Guid then return end
         
         local pos, rot = self:GetPivot()
@@ -359,18 +356,37 @@ function Gizmo:GetHit(ray)
     end
 
     local hit = nil
+    local pickerAxes = self.Picker:GetAxes()
+    local axis = nil
     if self.Mode == "Rotate" then
-        local axis = nil
-        for a, _ in pairs(self.SelectedAxis) do axis = a end
-        hit = self.Picker:HitPlanePerpToAxis(ray, axis)
+        if cnt == 1 or cnt == 2 then
+            for a, _ in pairs(self.SelectedAxis) do axis = pickerAxes[a] break end
+            if not axis then
+                Warning("Gizmo:GetHit: Failed to get axis vector for rotation")
+                return Hit.new(self.Picker.Position, nil, 0, nil)
+            end
+        elseif cnt == 3 then
+            axis = GetCameraForward() 
+            if not axis then
+                Warning("Gizmo:GetHit: Failed to get camera forward for 3-axis rotation")
+                return Hit.new(self.Picker.Position, nil, 0, nil)
+            end
+        else
+            Warning("Gizmo:GetHit: Invalid axis count for rotation: " .. tostring(cnt))
+            return Hit.new(self.Picker.Position, nil, 0, nil)
+        end
+
+        hit = self.Picker:HitPlaneByNormal(ray, axis)
+        --- @diagnostic disable-next-line
         if not hit then hit = Hit.new(self.Picker:ProjectPointOnPlanePerpToAxis(ray.Origin, axis), nil, 0, nil) end
     else
         if cnt == 1 then
-            local axis = nil
-            for a, _ in pairs(self.SelectedAxis) do axis = a end
+            local axisName = nil
+            for a, _ in pairs(self.SelectedAxis) do axisName = a break end
             -- https://underdisc.net/blog/6_gizmos/index.html
-            local p = self.Picker:ClosestPointOnAxis(ray, axis)
+            local p = self.Picker:ClosestPointOnAxis(ray, axisName)
             hit = Hit.new(p, nil, (p - ray.Origin):Length(), nil)
+            axis = pickerAxes[axisName]
         elseif cnt == 2 then
             hit = self.Picker:HitPlaneByAxes(ray, self.SelectedAxis)
         elseif cnt == 3 then
@@ -380,6 +396,9 @@ function Gizmo:GetHit(ray)
             else
                 hit = self.Picker:HitPlaneByNormal(ray, normal)
             end
+        else
+            Warning("Gizmo:GetHit: Invalid axis count for translation/scale: " .. tostring(cnt))
+            return Hit.new(self.Picker.Position, nil, 0, nil)
         end
     end
 
@@ -387,7 +406,6 @@ function Gizmo:GetHit(ray)
         NetChannel.Visualize:RequestToServer({
             Type = "Point",
             Position = hit.Position,
-            Scale = self.Visualizer.Scale[1],
             Duration = 1000
         }, function(response)
         end)
@@ -399,7 +417,7 @@ function Gizmo:GetHit(ray)
         return Hit.new(self.Picker.Position, nil, 0, nil)
     end
 
-    return hit
+    return hit, axis
 end
 
 --- Ext.Math.Angle doesn't seem to return signed angles
@@ -434,7 +452,7 @@ end
 --- @param ray Ray
 --- @return Vec3|number|nil
 function Gizmo:GetDelta(ray)
-    local hit = self:GetHit(ray)
+    local hit, axis = self:GetHit(ray)
     if not hit or not hit.Position then return nil end
     local startHit = self.StartHit
     if not startHit then
@@ -448,16 +466,10 @@ function Gizmo:GetDelta(ray)
     if self.Mode == "Translate" then
         delta = hit.Position - startHit.Position
     elseif self.Mode == "Rotate" then
-        local axis = next(self.SelectedAxis or {})
-        if not axis then
-            Warning("Gizmo:GetDelta: No axis selected for rotation")
-            return nil
-        end
-
         local startDir = (startHit.Position - gizmoOrigin):Normalize()
         local dir = (hit.Position - gizmoOrigin):Normalize()
 
-        local axisVec = axes[axis]
+        local axisVec = axis
 
         -- current raw angle (radians) between startDir and dir around axisVec
         local curAngle = CalcRotationChange(startDir, dir, axisVec, gizmoOrigin)
@@ -484,12 +496,12 @@ function Gizmo:GetDelta(ray)
         local scaleValue = CalcScaleChange(startHit, hit, self.SelectedAxis, axes, gizmoOrigin)
 
         local scaleVec = Vec3.new { 1, 1, 1 }
-        for axis, _ in pairs(self.SelectedAxis or {}) do
-            if axis == "X" then
+        for axisName, _ in pairs(self.SelectedAxis or {}) do
+            if axisName == "X" then
                 scaleVec[1] = scaleValue
-            elseif axis == "Y" then
+            elseif axisName == "Y" then
                 scaleVec[2] = scaleValue
-            elseif axis == "Z" then
+            elseif axisName == "Z" then
                 scaleVec[3] = scaleValue
             end
         end
@@ -563,6 +575,8 @@ function Gizmo:SetupDragging()
         end
     end
 
+    local movableGizmo = MovableProxy.CreateByGuid(self.Guid)
+
     self.DraggingTimer = Timer:EveryFrame(function(timerID)
         if not self.IsDragging or not self.Picker or not self.StartHit or not self.SelectedAxis then
             self:StopDragging()
@@ -584,7 +598,6 @@ function Gizmo:SetupDragging()
         delta = self:LerpDelta(delta)
         if not delta then return end -- may return nil to skip this frame
 
-
         if self.Mode == "Rotate" then
             delta = delta --[[@as { Angle:number, Axis:Vec3 }]]
             self:VisualizeRotatePointer(delta.Angle, delta.Axis)
@@ -592,6 +605,7 @@ function Gizmo:SetupDragging()
         elseif self.Mode == "Translate" then
             delta = delta --[[@as Vec3]]
             self:OnDragTranslate(delta)
+            movableGizmo:SetWorldTranslate(self.PivotPosition + delta)
         elseif self.Mode == "Scale" then
             delta = delta --[[@as Vec3]]
             self.Visualizer.ScaleMultiplier = delta
@@ -753,12 +767,18 @@ function Gizmo:Visualize(guid)
     local pos = self.PivotPosition
     self.Visualizer:UpdateScale(pos)
 
+    local selectedAxis = DeepCopy(self.SelectedAxis)
+    if CountMap(selectedAxis) > 2 and self.Mode == "Rotate" then
+        --- treat as single-axis rotation on closest axis
+        selectedAxis = {}
+    end
+
     if self.SelectedAxis then
-        for axis, _ in pairs(self.SelectedAxis) do
+        for axis, _ in pairs(selectedAxis or {}) do
             self.Visualizer:HighLightGizmoAxis(axis, guid)
         end
         for _, axis in pairs({ "X", "Y", "Z" }) do
-            if not self.SelectedAxis[axis] then
+            if not (selectedAxis and selectedAxis[axis]) then
                 if self.Mode == "Translate" then
                     self.Visualizer:ResetGizmoAxis(axis, guid)
                 else
@@ -786,6 +806,14 @@ function Gizmo:VisualizeRotatePointer(angle, axis)
     if not pointer or not EntityExists(pointer) then return end
     local pickerPos = self.Picker.Position
     local startQuat = self._pointerStartDir
+
+    local cnt = CountMap(self.SelectedAxis or {})
+    if cnt > 2 then
+        for _,viz in ipairs(self.RotatePointer or {}) do
+            self.Visualizer:HideGizmo(viz)
+        end
+        return 
+    end
 
     for _, guid in ipairs(self.RotatePointer or {}) do
         local axisName = next(self.SelectedAxis or {}) or "X"

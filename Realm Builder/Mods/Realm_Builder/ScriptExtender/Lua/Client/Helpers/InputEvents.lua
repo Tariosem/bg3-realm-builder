@@ -112,8 +112,6 @@ function SubscribeMouseWheel(key, callback)
     return { Unsubscribe = unsub, ID = id}
 end
 
-
-
 --- @class SimplifiedInputEvent
 --- @field Event "KeyDown"|"KeyUp"
 --- @field Key  SimplifiedInputCode
@@ -121,8 +119,6 @@ end
 --- @field Repeat boolean
 --- @field Modifiers? SimplifiedModfier[]
 --- @field Clicks? integer
-
-
 
 local MouseToCode = {
     [1] = "LMB",
@@ -148,6 +144,7 @@ end
 function SubscribeKeyAndMouse(callback, filterKey)
     local isCalling = false
     local subs = {}
+    local lastModifiers = {}
     local filterIdentifier = nil
     if filterKey then
         filterIdentifier = Keybinding.new(filterKey.Key, filterKey.Modifiers or {}):CreateIdentifier()
@@ -157,7 +154,6 @@ function SubscribeKeyAndMouse(callback, filterKey)
         if not filterKey then
             return true
         end
-
         local eventIdentifier = Keybinding.new(e.Key, e.Modifiers or {}):CreateIdentifier()
         return eventIdentifier == filterIdentifier
     end
@@ -178,7 +174,8 @@ function SubscribeKeyAndMouse(callback, filterKey)
             isCalling = false
             return
         end
-        
+        lastModifiers = modifs
+
         local returnValue = callback(event)
         isCalling = false
         if returnValue == UNSUBSCRIBE_SYMBOL then
@@ -193,6 +190,7 @@ function SubscribeKeyAndMouse(callback, filterKey)
 
         local event = {
             Event = e.Pressed and "KeyDown" or "KeyUp",
+            Modifiers = lastModifiers,
             Key = MouseToCode[e.Button],
             Pressed = e.Pressed,
             Repeat = e.Clicks > 1,

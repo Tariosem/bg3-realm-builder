@@ -3,7 +3,6 @@
 --- @field SourceFile string
 --- @field MaterialType number
 --- @field DiffusionProfileUUID string
---- @field PresetProxy MaterialPresetProxy? -- MaterialPresetProxy instance if a preset is applied
 --- @field ParamSetProxy ParametersSetProxy -- ParameterSetProxy instance for easier parameter access
 --- @field Instance fun():Material
 --- @field ParamsSrc fun():MaterialParametersSet
@@ -26,7 +25,6 @@ function MaterialEditor:__init(originMaterial, matSrc, paramsSrc, materialPreset
     self.MaterialType = matRes.MaterialType or 0
     self.DiffusionProfileUUID = matRes.DiffusionProfileUUID or ""
 
-    self.PresetProxy = MaterialPresetProxy.new(materialPreset) --[[@as MaterialPresetProxy?]]
     self.ParamSetProxy = ParametersSetProxy.new(paramsSrc()) --[[@as ParametersSetProxy]]
 
     self.ParamsSrc = paramsSrc
@@ -66,12 +64,6 @@ function MaterialEditor:GetParameter(paramName)
 
     if not value then
         local proxyParam = self.ParamSetProxy:GetParameter(paramName)
-        if self.PresetProxy then
-            local presetParam = self.PresetProxy:GetParameter(paramName)
-            if presetParam then
-                proxyParam = presetParam
-            end
-        end
 
         if not proxyParam then
             Warning("MaterialEditor: Could not find parameter '" .. tostring(paramName) .. "' in material proxy for material '" .. tostring(self.Material) .. "'.")
@@ -132,13 +124,6 @@ function MaterialEditor:ResetParameter(paramName)
     local value = self.ParamSetProxy:GetParameter(paramName)
     local presetValue = nil
 
-    if self.PresetProxy then
-        presetValue = self.PresetProxy:GetParameter(paramName)
-        if presetValue then
-            value = presetValue
-        end
-    end
-
     if not value then
         Warning("MaterialEditor: Could not find parameter '" .. tostring(paramName) .. "' in material proxy for material '" .. tostring(self.Material) .. "'. Cannot reset.")
         return false
@@ -182,7 +167,6 @@ function MaterialEditor:GetPreviewColor()
 end
 
 function MaterialEditor:ClearParameters()
-    self.PresetProxy = nil
     self.Parameters = {
         [1] = {}, -- ScalarParameters
         [2] = {}, -- Vector2Parameters

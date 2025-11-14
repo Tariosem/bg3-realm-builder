@@ -48,7 +48,7 @@ NetChannel.Replicate = Ext.Net.CreateChannel(ModuleUUID, "Replicate")
 NetChannel.SpawnPreview = Ext.Net.CreateChannel(ModuleUUID, "SpawnPreview")
 
 --- @class VisualizeData
---- @field Type "Point"|"Line"|"Box"|"OBB"|"Clear
+--- @field Type "Point"|"Line"|"Box"|"OBB"|"Clear"|"Cursor"
 --- @field Position Vec3|nil
 --- @field EndPosition Vec3|nil
 --- @field Rotation Quat|nil

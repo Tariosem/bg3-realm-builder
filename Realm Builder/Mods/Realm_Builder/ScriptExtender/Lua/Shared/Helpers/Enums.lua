@@ -588,6 +588,7 @@ Enums.TransformEditorSpace = {
     World = "World",
     Local = "Local",
     View = "View",
+    Cursor = "Cursor",
     Parent = "Parent"
 }
 
@@ -596,6 +597,13 @@ Enums.TransformEditorMode = {
     Translate = "Translate",
     Rotate = "Rotate",
     Scale = "Scale"
+}
+
+--- @enum TransformEditorPivotMode
+Enums.TransformEditorPivotMode = {
+    Individual = "Individual",
+    Average = "Average",
+    Cursor = "Cursor"
 }
 
 --- @enum TransformAxis

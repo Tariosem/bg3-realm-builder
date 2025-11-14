@@ -141,6 +141,26 @@ function GizmoVisualizer:ScaleGizmo(axis, renderable)
     end
 end
 
+function GizmoVisualizer:Visualize3DCursor(guid, factor)
+    local visual = VisualHelpers.GetEntityVisual(guid)
+    if not visual then return end
+
+    local objs = visual.ObjectDescs or {}
+    if #objs == 0 then return end
+
+    factor = factor or 0.3
+    local disatance = Ext.Math.Distance(GetCamera().Transform.Transform.Translate, visual.WorldTransform.Translate)
+    local clampedDistance = Ext.Math.Clamp(disatance, 1.0, 100.0)
+    local baseScale = (clampedDistance / 10.0)
+    local scaleVec = Vec3.new({baseScale * factor, baseScale * factor, baseScale * factor})
+
+    local color = Vec4.new(self.AxisLineColor["X"]) - Vec4.new(0, 0, 0, 0.8)
+    for _,obj in ipairs(objs) do
+        obj.Renderable:SetWorldScale(scaleVec)
+        obj.Renderable.ActiveMaterial.Material:SetVector4("Color", color)
+    end
+end
+
 function GizmoVisualizer:HideGizmoAxis(axis, guid)
     if tonumber(axis) then
         axis = IndexAxisMap[axis]

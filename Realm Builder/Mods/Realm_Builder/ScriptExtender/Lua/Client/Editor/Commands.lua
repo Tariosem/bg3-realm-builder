@@ -193,7 +193,7 @@ function Commands.DuplicateCommand(targets, path)
         for guid, templateId in pairs(templateMap) do
             local transform = oriTransforms[guid]
             
-            local entData = originStats[guid]
+            local entData = originStats[guid] or {}
             entData.Path = path
             entData.Position = transform.Translate
             entData.Rotation = transform.RotationQuat

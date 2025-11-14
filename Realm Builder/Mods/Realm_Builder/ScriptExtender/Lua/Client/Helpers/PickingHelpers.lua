@@ -93,14 +93,17 @@ end
 
     Similar to glm::unProjectZO, but only for a single depth value.
 ]]
-local function Unproject(screenX, screenY, screenZ, viewMatrix, projMatrix, screenW, screenH)
+--- @param screenX number
+--- @param screenY number
+--- @param screenZ number
+--- @param invView Matrix
+--- @param invProj Matrix
+--- @param screenW number
+--- @param screenH number
+function Unproject(screenX, screenY, screenZ, invView, invProj, screenW, screenH)
     local ndcX, ndcY = CalcNDC(screenX, screenY, screenW, screenH)
     local clipPos = Vec4.new({ndcX, ndcY, screenZ, 1.0})
 
-    local invProj = Matrix.new(projMatrix):Inverse()
-    local invView = Matrix.new(viewMatrix):Inverse()
-
-    -- (A * B)^-1 = B^-1 * A^-1
     local inverse = invView * invProj
 
     local worldPos4 = inverse * clipPos
@@ -110,21 +113,43 @@ local function Unproject(screenX, screenY, screenZ, viewMatrix, projMatrix, scre
     return worldPos
 end
 
-function UnprojectNear(screenX, screenY, viewMatrix, projMatrix, screenW, screenH)
-    return Unproject(screenX, screenY, 0.0, viewMatrix, projMatrix, screenW, screenH)
-end
+--[[
+    Converts a 2D screen-space coordinate into a 3D world-space coordinate
+    at a specified distance from the camera.
 
-function UnprojectFar(screenX, screenY, viewMatrix, projMatrix, screenW, screenH)
-    return Unproject(screenX, screenY, 1.0, viewMatrix, projMatrix, screenW, screenH)
+    distance: A value between 0.0 (near clip) and 1.0 (far clip)
+]]
+function ScreenToWorldAtDepth(distance, mouseX, mouseY, cameraHandle, screenW, screenH)
+    if not screenW or not screenH then
+        screenW, screenH = GetScreenSize()
+    end
+    if not mouseX or not mouseY then
+        mouseX, mouseY = GetCursorPos()
+    end
+    if not cameraHandle then
+        cameraHandle = GetCamera()
+    end
+
+    if not cameraHandle or not cameraHandle.Camera then
+        Error("ScreenToWorldAtDepth: Invalid camera entity or missing Camera component")
+        return nil
+    end
+
+    local camera = cameraHandle.Camera --[[@as CameraComponent]]
+    local controller = camera.Controller
+
+    local zNearClip = controller.NearPlane
+    local zFarClip  = controller.FarPlane
+
+    local clipNearDist = zNearClip + distance * (zFarClip - zNearClip)
+    local clipZ = clipNearDist / zFarClip
+
+    local worldPos = Unproject(mouseX, mouseY, clipZ, Matrix.new(controller.Camera.InvViewMatrix), Matrix.new(controller.Camera.InvProjectionMatrix), screenW, screenH)
+    return worldPos
 end
 
 --[[
     Converts a 2D screen-space coordinate into a world-space ray.
-
-    Conceptually similar to the following glm code:
-        worldNear = glm::unProjectZO(vec3(mouseX, mouseY, 0.0), view, proj, viewport)
-        worldFar  = glm::unProjectZO(vec3(mouseX, mouseY, 1.0), view, proj, viewport)
-        rayDir    = glm::normalize(worldFar - worldNear)
 
     though I don't why we have to subtract near from far to get the correct direction.
 ]]
@@ -179,7 +204,6 @@ function ScreenToWorldRay(cameraHandle, mouseX, mouseY, screenW, screenH)
     local worldNear = Vec3.new({ worldNear4.x, worldNear4.y, worldNear4.z })
     local worldFar  = Vec3.new({ worldFar4.x,  worldFar4.y,  worldFar4.z })
 
-    -- mystery
     local dir = worldNear - worldFar
     local origin
     if controller.IsOrthographic then
@@ -193,8 +217,6 @@ function ScreenToWorldRay(cameraHandle, mouseX, mouseY, screenW, screenH)
 
     return ray
 end
-
-
 
 --[[
     Converts a 3D world-space coordinate into a 2D screen-space coordinate.

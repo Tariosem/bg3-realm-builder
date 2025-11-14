@@ -74,11 +74,11 @@ end
 --- @field GetAxes fun(self: GizmoPicker, origin: Vec3?, rotation: Quat?): table<TransformAxis, Vec3>
 --- @field Hit fun(self: GizmoPicker, ray: Ray): (GizmoPickerHit|nil)
 --- @field HitRotationTorus fun(self: GizmoPicker, ray: Ray): (Hit|nil)
---- @field ClosestPointOnAxis fun(self: GizmoPicker, ray: Ray, axis: TransformAxis): Vec3
+--- @field ClosestTTo fun(self: GizmoPicker, ray: Ray, normal: Vec3): Vec3
 --- @field ClosestAxis fun(self: GizmoPicker, ray: Ray): TransformAxis
 --- @field ClosestPlane fun(self: GizmoPicker, ray: Ray): (TransformAxis|nil, Hit|nil)
 --- @field HitPlaneByAxes fun(self: GizmoPicker, ray: Ray, axes: table<TransformAxis, boolean>): (Hit|nil, number|nil)
---- @field HitPlanePerpToAxis fun(self: GizmoPicker, ray: Ray, axis: TransformAxis): (Hit|nil)
+--- @field HitPlanePerpToAxis fun(self: GizmoPicker, ray: Ray, axis: TransformAxis|Vec3): (Hit|nil)
 --- @field ProjectPointOnPlane fun(self: GizmoPicker, point: Vec3, planeNormal: Vec3): (Vec3|nil)
 GizmoPicker = _Class("GizmoPicker")
 
@@ -113,7 +113,8 @@ function GizmoPicker:SetTransform(pos, rot, scale)
 
     self.Scale = scale or self.Scale
 
-    self.AABB = { Min = pos - { scale, scale, scale }, Max = pos + { scale, scale, scale } }    
+    self.AABB = { Min = pos - { scale, scale, scale }, Max = pos + { scale, scale, scale } }
+    self.axesDirty = true
 end
 
 --- @return Vec3|nil, Quat|nil
@@ -124,6 +125,9 @@ function GizmoPicker:GetTransform()
 end
 
 function GizmoPicker:GetAxes(origin, rotation)
+    if not self.axesDirty and self.axes then
+        return self.axes
+    end
     local axisX = GLOBAL_COORDINATE.X
     local axisY = GLOBAL_COORDINATE.Y
     local axisZ = GLOBAL_COORDINATE.Z
@@ -135,6 +139,12 @@ function GizmoPicker:GetAxes(origin, rotation)
         axisY = rotation:Rotate(GLOBAL_COORDINATE.Y)
         axisZ = rotation:Rotate(GLOBAL_COORDINATE.Z)
     end
+
+    self.axes = self.axes or {}
+    self.axes.X = axisX
+    self.axes.Y = axisY
+    self.axes.Z = axisZ
+    self.axesDirty = false
     return {
         X = axisX,
         Y = axisY,
@@ -266,7 +276,7 @@ function GizmoPicker:HitRotationTorus(ray, origin, rotation, axes)
 end
 
 ---@param ray Ray
----@param axis 'X' | 'Y' | 'Z'
+---@param axis TransformAxis
 ---@return Vec3 -- Closest point on axis to ray
 function GizmoPicker:ClosestPointOnAxis(ray, axis)
     local origin, rotation = self:GetTransform()
@@ -281,6 +291,17 @@ function GizmoPicker:ClosestPointOnAxis(ray, axis)
     local closestPoint = gizmoRay:ClosestTTo(ray, true)
 
     return closestPoint or origin
+end
+
+--- @param ray Ray
+--- @param normal Vec3
+--- @return Vec3
+function GizmoPicker:ClosestTTo(ray, normal)
+    local origin, rotation = self:GetTransform()
+    if not origin or not rotation then return ray.Origin end
+    local otherRay = Ray.new(origin, normal)
+    local closestPoint = ray:ClosestTTo(otherRay, true)
+    return closestPoint or ray.Origin
 end
 
 --- @param ray Ray
@@ -343,6 +364,10 @@ end
 ---@param axis TransformAxis
 ---@return Hit|nil
 function GizmoPicker:HitPlanePerpToAxis(ray, axis)
+    if type(axis) == "table" and #axis == 3 then
+        return self:HitPlaneByNormal(ray, axis)
+    end
+
     local axes = {X = true, Y = true, Z = true}
     axes[axis] = nil
     
@@ -374,6 +399,7 @@ function GizmoPicker:ClosestAxis(ray)
     local closestAxis = nil
     local closestDist = math.huge
     for axis,dir in pairs(axes) do
+        --- @diagnostic disable-next-line
         local pointOnAxis = self:ClosestPointOnAxis(ray, axis)
         local dist = Ext.Math.Distance(pointOnAxis, origin)
         if dist < closestDist then

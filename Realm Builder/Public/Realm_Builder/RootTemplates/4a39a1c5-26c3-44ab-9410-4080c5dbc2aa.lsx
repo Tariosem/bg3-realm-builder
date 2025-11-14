@@ -1,0 +1,62 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<save>
+	<version major="4" minor="8" revision="0" build="500" lslib_meta="v1,bswap_guids,lsf_keys_adjacency" />
+	<region id="Templates">
+		<node id="Templates">
+			<children>
+				<node id="GameObjects">
+					<attribute id="MapKey" type="FixedString" value="4a39a1c5-26c3-44ab-9410-4080c5dbc2aa" />
+					<attribute id="Name" type="LSString" value="RB_Gizmo_Cursor" />
+					<attribute id="LevelName" type="FixedString" value="" />
+					<attribute id="Type" type="FixedString" value="item" />
+					<attribute id="ParentTemplateId" type="FixedString" value="06f96d65-0ee5-4ed5-a30a-92a3bfe3f708" />
+					<attribute id="VisualTemplate" type="FixedString" value="b2187cfd-bf60-49c2-a43a-5dd481ccc2a9" />
+					<attribute id="PhysicsTemplate" type="FixedString" value="04178fff-4061-d559-da24-e8a5152c2321" />
+					<attribute id="CastShadow" type="bool" value="False" />
+					<attribute id="CanShootThrough" type="bool" value="True" />
+					<attribute id="CanClickThrough" type="bool" value="False" />
+					<attribute id="Stats" type="FixedString" value="OBJ_GenericImmutableObject" />
+					<children>
+						<node id="Tags">
+							<children>
+								<node id="Tag">
+									<attribute id="Object" type="guid" value="08f54bd8-3029-4faa-9f2f-cef3160a44c0" />
+								</node>
+							</children>
+						</node>
+						<node id="Bounds">
+							<children>
+								<node id="Bound">
+									<attribute id="Type" type="uint8" value="1" />
+									<attribute id="Shape" type="uint8" value="1" />
+									<attribute id="Min" type="fvec3" value="-0.40008312 -0.40008312 -0.68129754" />
+									<attribute id="Max" type="fvec3" value="0.40008312 0.40008312 0.68129766" />
+									<attribute id="Radius" type="float" value="0.000866025" />
+									<attribute id="Height" type="float" value="0.002" />
+								</node>
+							</children>
+						</node>
+						<node id="Scripts">
+							<children>
+								<node id="Script">
+									<attribute id="UUID" type="FixedString" value="403d19b4-b8dc-4481-b853-c010384a6411" />
+									<children>
+										<node id="Parameters" key="MapKey">
+											<children>
+												<node id="Parameter" key="MapKey">
+													<attribute id="MapKey" type="FixedString" value="HardcoreOnly" />
+													<attribute id="Type" type="int32" value="1" />
+													<attribute id="Value" type="LSString" value="0" />
+												</node>
+											</children>
+										</node>
+									</children>
+								</node>
+							</children>
+						</node>
+					</children>
+				</node>
+			</children>
+		</node>
+	</region>
+</save>

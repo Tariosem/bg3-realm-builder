@@ -427,6 +427,7 @@ function VisualTab:DetermineOverrideCharacterParameters()
     }
     local entity = Ext.Entity.Get(self.guid) --[[@as EntityHandle]]
     local cca = entity.CharacterCreationAppearance
+    _D(cca)
     if not cca then
         --- @diagnostic disable-next-line
         cca = entity.AppearanceOverride and entity.AppearanceOverride.Visual
