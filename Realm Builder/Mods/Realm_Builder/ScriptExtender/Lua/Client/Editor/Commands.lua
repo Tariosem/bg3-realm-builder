@@ -238,8 +238,10 @@ function Commands.DuplicateCommand(targets, path)
             end
         })
 
-        RB_GLOBALS.TransformEditor:Select(proxies)
-        RB_GLOBALS.TransformEditor.Gizmo:StartDragging()
+        Timer:Ticks(30, function()
+            RB_GLOBALS.TransformEditor:Select(proxies)
+            RB_GLOBALS.TransformEditor.Gizmo:StartDragging()
+        end)
     end
 end
 
@@ -274,9 +276,16 @@ function Commands.SpawnPreset(data)
     end
 
     function spawnNode(entData, savedGuid)
-        local pos, rot = entData.Position, entData.Rotation
+        local pos, rot = entData.Position, entData.Rotation or Quat.Identity()
         if data.PresetType == "Relative" then
+            --- @diagnostic disable-next-line
             pos, rot = GetLocalRelativeTransform(pivotTransform, pos, rot)
+            if not pos or not rot then
+                Warning("[SpawnPreset] Failed to calculate relative transform.")
+                return
+            end
+            entData.Position = pos
+            entData.Rotation = rot
         end
         if not pos or not rot then
             Warning("[SpawnPreset] Entity data missing position or rotation.")
@@ -291,17 +300,13 @@ function Commands.SpawnPreset(data)
             entData.Group = data.Name
         end
 
-        entData.EntInfo.Position = pos
-        entData.EntInfo.Rotation = rot
-
         NetChannel.Spawn:RequestToServer({
             TemplateId = entData.TemplateId,
-            EntInfo = entData.EntInfo or {},
+            EntInfo = entData or {},
             Type = data.SpawnType
         }, function(response)
             local newGuid = response.Guid
             table.insert(spawnedGuids, newGuid)
-
             if #spawnedGuids == CountMap(data.Spawned) then
                 pushCommand()
             end
@@ -332,11 +337,17 @@ function Commands.SpawnPreset(data)
     end
 end
 
+--- @param targets GUIDSTRING[]
 function Commands.DeleteCommand(targets)
     targets = NormalizeGuidList(targets)
     if #targets == 0 then return end
 
     local spawned = targets
+    
+    for _, guid in ipairs(targets) do
+        EntityStore:RemoveEntity(guid)
+    end
+
     NetChannel.Delete:SendToServer({ Guid = targets })
 
     HistoryManager:PushCommand({

@@ -60,8 +60,8 @@ DEFAULT_KEYBINDS = {}
 
 --- @diagnostic disable
 DEFAULT_KEYBINDS.TransformToolbar = {
-    ["MultiSelect"] = { Key = "LMB", Modifiers = { "SHIFT", "CTRL" } },
-    ["Select"] = { Key = "MMB", Modifiers = { "LCTRL" } },
+    ["MultiSelect"] = { Key = "LSHIFT" },
+    ["Select"] = { Key = "MMB" },
     ["ClearSelection"] = { Key = "ESCAPE" },
     ["Duplicate"] = { Key = "D", Modifiers = { "SHIFT" } },
     ["BoxSelect"] = { Key = "LMB", Modifiers = { "SHIFT" } },

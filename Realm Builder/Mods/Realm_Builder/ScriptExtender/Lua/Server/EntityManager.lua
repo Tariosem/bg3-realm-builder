@@ -52,13 +52,19 @@ local function getModVar()
             DeleteOnNextSession = {}
         }
     end
-    _D(modVar)
     return modVar.EntityManager
 end
 
-Ext.RegisterConsoleCommand("rb_dump_modvar", function ()
+local function setModVar(modVar)
+    local allModVars = Ext.Vars.GetModVariables(ModuleUUID)
+    allModVars.EntityManager = modVar
+    Ext.Vars.DirtyModVariables(ModuleUUID)
+end
+
+RegisterConsoleCommand("rb_dump_modvar", function ()
     local modVar = getModVar()
-end)
+    _D(modVar)
+end, "Dump the EntityManager mod variable to console.")
 
 --[[
 RegisterOnSessionLoaded(function ()
@@ -89,7 +95,7 @@ end
 function EntityManager:DeleteEntities(guids)
     guids = NormalizeGuidList(guids)
     local modVar = getModVar()
-
+    
     for _, guid in FilteredPairs(guids, function(_,guid) return self.SavedEntities[guid] ~= nil end) do
         modVar.DeleteOnNextSession[guid] = true
         modVar.SavedEntities[guid] = nil
@@ -107,6 +113,7 @@ function EntityManager:DeleteEntities(guids)
     end
 
     NetChannel.Entities.Deleted:Broadcast(guids)
+    setModVar(modVar)
 
     return true
 end
@@ -114,7 +121,6 @@ end
 function EntityManager:RestoreEntities(guids)
     guids = NormalizeGuidList(guids)
     local modVar = getModVar()
-
     for _, guid in FilteredPairs(guids, function(_,guid) return modVar.DeleteOnNextSession[guid] == true end) do
         modVar.DeleteOnNextSession[guid] = nil
         modVar.SavedEntities[guid] = true
@@ -134,7 +140,9 @@ function EntityManager:RestoreEntities(guids)
         Osi.SetCanInteract(guid, 1)
     end
 
+    setModVar(modVar)
     NetChannel.Entities.Added:Broadcast({Entities = self:GetEntities(guids)})
+    
 
     return true
 end
@@ -197,6 +205,7 @@ function EntityManager:CreateAt(templateId, x, y, z, rx, ry, rz, w)
         return nil
     end
 
+    Debug("Created prop with TemplateId: " .. tostring(templateId) .. " at position (" .. x .. ", " .. y .. ", " .. z .. ")")
     OsirisHelpers.Propify(newProp)
 
     if rx and ry and rz and w then

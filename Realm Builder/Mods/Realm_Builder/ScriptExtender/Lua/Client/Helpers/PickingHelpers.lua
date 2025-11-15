@@ -12,7 +12,6 @@ function GetPickingGuid()
 
     if pickHandle then
         local pickUuid = HandleToUuid(pickHandle)
-        Debug("Picked GUID: " .. tostring(pickUuid))
         if pickUuid then
             if PickingHelpers.GuidRedirects[pickUuid] then
                 Debug("Redirected picked GUID from " .. pickUuid .. " to " .. PickingHelpers.GuidRedirects[pickUuid])

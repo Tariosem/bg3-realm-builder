@@ -38,7 +38,8 @@ function AddSliderWithStep(parent, IDContext, defaultValue, min, max, step, isIn
     sliderPopup.AlwaysAutoResize = false
     step = step or 0.1
     if isInteger then
-        stepInput = sliderPopup:AddInputInt("Step", math.floor(step))
+        step = math.floor(step)
+        stepInput = sliderPopup:AddInputInt("Step", step)
         decreButton = AddSliderStepButton(parent, "<", -step, nil, "<")
         slider = SafeAddSliderInt(parent, "", defaultValue or 0, min or 0, max or 100)
         increButton = AddSliderStepButton(parent, ">", step, nil, ">")
@@ -74,7 +75,7 @@ function AddSliderWithStep(parent, IDContext, defaultValue, min, max, step, isIn
     --stepInput.SameLine = true
 
     stepInput.OnChange = function()
-        local step = stepInput.Value[1]
+        step = stepInput.Value[1]
         slider.UserData.Step = step
     end
 
@@ -665,85 +666,6 @@ function AddSelectableButton(parent, label, onClick)
         end
     end
     return button
-end
-
---- @class RB_ContextMenu : ExtuiTable
---- @field AddItem fun(self: RB_ContextMenu, label: string, onClick: fun(selectable: ExtuiSelectable), hint: string?): ExtuiSelectable
---- @field AddItemPacked fun(self: RB_ContextMenu, item: RB_ContextItem): ExtuiSelectable
---- @field AddMenu fun(self: RB_ContextMenu, label: string): RB_ContextMenu
-
---- @class RB_ContextItem
---- @field Label string
---- @field OnClick fun(selectable: ExtuiSelectable)
---- @field Hint string?
---- @field Icon string?
---- @field HotKey Keybinding
-
----@param parent ExtuiTreeParent
----@return RB_ContextMenu
-function StyleHelpers.AddContextMenu(parent)
-    local tab = parent:AddTable("SelectionTable##" .. Uuid_v4(), 2) --[[@as ExtuiTable]]
-    tab.BordersInner = true
-    tab.ColumnDefs[1] = { WidthFixed = true }
-    tab.ColumnDefs[2] = { WidthStretch = true }
-
-    local row = tab:AddRow() --[[@as ExtuiTableRow]]
-
-    local tabProxy = {}
-    tabProxy = {
-        AddItem = function(_, label, onClick, hint, image)
-            local imageCell = row:AddCell()
-            if image and image ~= "" then
-                local img = imageCell:AddImage(image)
-                img.ImageData.Size = ToVec2(36 * SCALE_FACTOR)
-            end
-            local innerCell = row:AddCell()
-            local innerTable = innerCell:AddTable("InnerTable##" .. Uuid_v4(), 3) --[[@as ExtuiTable]]
-            innerTable.ColumnDefs[1] = { WidthStretch = true }
-            innerTable.ColumnDefs[2] = { WidthFixed = true , Width = 80 * SCALE_FACTOR }
-            innerTable.ColumnDefs[3] = { WidthFixed = true }
-            local innerRow = innerTable:AddRow() --[[@as ExtuiTableRow]]
-            local cell = innerRow:AddCell()
-            local spacer = innerRow:AddCell()
-            local hintCell = innerRow:AddCell()
-            if hint and hint ~= "" then
-                local text = hintCell:AddText(hint)
-                text:SetStyle("Alpha", 0.6)
-                text:SetColor("Text", HexToRGBA("FFAAAAAA"))
-                text.Font = "Tiny"
-            end
-            
-            local selectable = cell:AddSelectable(label) --[[@as ExtuiSelectable]]
-            selectable.Font = "Medium"
-            selectable.SpanAllColumns = true
-            selectable.OnClick = function(s)
-                s.Selected = false
-                if onClick then
-                    onClick(s)
-                end
-            end
-            return selectable
-        end,
-        AddItemPacked = function (_, item)
-            return tabProxy.AddItem(_, item.Label, item.OnClick, item.Hint, item.Icon)
-        end,
-        AddMenu = function (_, label)
-            local cell = row:AddCell()
-            local menu = cell:AddMenu(label)
-            return StyleHelpers.AddContextMenu(menu)
-        end
-    }
-
-    setmetatable(tabProxy, {
-        __index = function(_, k)
-            return tab[k]
-        end,
-        __newindex = function(_, k, v)
-            tab[k] = v
-        end
-    })
-
-    return tabProxy
 end
 
 --- @class AttrTableProxy : ExtuiTable

@@ -4,9 +4,9 @@ local BindDatas = {}
 local GuidToDisplayName = {}
 local DisplayNameToGuid = {}
 local sceneryMap = {}
+local cachedToRestore = {}
 
 local entityNameBlacklist = {
-    ["Group Analog Stick"] = true,
     ["Camera"] = true,
 }
 
@@ -31,7 +31,6 @@ EntityStore = {
 --- @field CanInteract boolean
 --- @field Movable boolean
 --- @field CanBeLooted boolean
---- @field Persistent boolean
 --- @field LevelName string
 --- @field Path string[]?
 --- @field Position Vec3?
@@ -119,8 +118,8 @@ function EntityStore:SetupServerListeners()
         end
 
         for _, guid in ipairs(data) do
-            if guid ~= nil and guid ~= "" then
-                EntityStore:RemoveProp(guid)
+            if guid ~= nil and guid ~= "" and EntityDatas[guid] then
+                EntityStore:RemoveEntity(guid)
             end
         end
         RBMenu:EntityDeleted(data)
@@ -191,6 +190,11 @@ end
 ---@param guid string
 ---@param data EntityData
 function EntityStore:AddEntity(guid, data)
+    if cachedToRestore[guid] then
+        data = cachedToRestore[guid]
+        cachedToRestore[guid] = nil
+    end
+
     EntityDatas[guid] = data
 
     if data.IsScenery then
@@ -213,7 +217,8 @@ function EntityStore:AddEntity(guid, data)
     end
 end
 
-function EntityStore:RemoveProp(guid)
+function EntityStore:RemoveEntity(guid)
+    cachedToRestore[guid] = self:GetStoredData(guid)
     self.Tree:Remove(guid)
     self:RemoveDisplayName(EntityDatas[guid] and EntityDatas[guid].DisplayName)
     EntityDatas[guid] = nil
@@ -248,6 +253,7 @@ function EntityStore:GetStoredData(guid)
         data.CanBeLooted = entity.CanBeLooted and true or false
         data.Position = { CGetPosition(guid) }
         data.Rotation = { CGetRotation(guid) }
+        data.Path = self.Tree:GetPath(guid, true)
         
         if CIsCharacter(guid) then
             data.Gravity = nil
@@ -459,6 +465,11 @@ end
 ---@return table<GUIDSTRING, EntityData>
 function EntityStore:GetExportCopy(guids)
     local results = {}
+    local hostLevel = _C().Level and _C().Level.LevelName or nil
+    if not hostLevel then
+        Warning("[Realm Builder] GetExportCopy called but host level is nil!")
+        return results
+    end
     for _, guid in pairs(guids) do
         if EntityDatas[guid] then
             local entity = Ext.Entity.Get(guid)
@@ -474,7 +485,6 @@ function EntityStore:GetExportCopy(guids)
             results[guid] = data
             self:DeleteUselessExportAttributes(data)
 
-
             data.Position = { CGetPosition(guid) }
             data.Rotation = { CGetRotation(guid) }
             data.Scale = { CGetScale(guid) }
@@ -482,7 +492,7 @@ function EntityStore:GetExportCopy(guids)
             data.Scale = math.min(data.Scale[1], data.Scale[2], data.Scale[3])
             data.DisplayIcon = GetIcon(guid)
             data.Icon = GetIconForTemplateId(data.TemplateId)
-            data.LevelName = entity.Level.LevelName
+            data.LevelName = entity.Level and entity.Level.LevelName or hostLevel
         
             local visualTab = VisualTab.FetchByGuid(guid)
             if data.TemplateType == "character" and template and visualTab then

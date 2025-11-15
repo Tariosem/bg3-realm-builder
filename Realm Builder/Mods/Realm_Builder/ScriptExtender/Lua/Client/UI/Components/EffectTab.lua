@@ -62,11 +62,6 @@ function EffectTab:Render()
 
     self.uniTabBar = self.panel:AddTabBar("EffectTabBar")
 
-    --------------------------------------------
-    ------------  Profile Start ----------------
-    --------------------------------------------
-
-    --#region Profile
 
     self.profileTab = self.uniTabBar:AddTabItem(GetLoca("Profile"))
 

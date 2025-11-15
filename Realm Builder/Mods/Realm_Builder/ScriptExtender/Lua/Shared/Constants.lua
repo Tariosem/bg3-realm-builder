@@ -38,6 +38,7 @@ INVISIBLE_HELPER_SCENERY = "3d4e8434-f972-4080-8602-66b12e2949f2"
 INVISIBLE_HELPER_PREVIEW = "9e28abea-a971-4aae-ab97-c161ed663c99"
 
 
+--- @enum RB_ICONS
 RB_ICONS = {}
 RB_ICONS.Character = "RB_Character_Icon"
 RB_ICONS.Scenery = "RB_Scenery_Icon"
@@ -46,6 +47,8 @@ RB_ICONS.Scenery_Fill = "RB_Scenery_Icon_Fill"
 RB_ICONS.Character_Standing = "RB_Character_Standing_Icon"
 RB_ICONS.Tree_Expanded = "RB_Tree_Expanded_Icon"
 RB_ICONS.Tree_Collapsed = "RB_Tree_Collapsed_Icon"
+RB_ICONS.Menu_Right = "RB_Menu_Right_Icon"
+RB_ICONS.Menu_Down = "RB_Menu_Down_Icon"
 RB_ICONS.Tree_Child = "RB_Tree_Child_Icon"
 RB_ICONS.Collection = "RB_Collection_Icon"
 RB_ICONS.Collection_Fill = "RB_Collection_Icon_Fill"
@@ -65,6 +68,10 @@ RB_ICONS.Warning = "RB_Warning_Icon"
 RB_ICONS.Exclamation = "RB_Exclamation_Icon"
 RB_ICONS.Plus_Square = "RB_Plus_Square_Icon"
 
+RB_ICONS.Three_Dots = "RB_Three_Dots_Icon"
+RB_ICONS.Export = "RB_Export_Icon"
+RB_ICONS.Import = "RB_Import_Icon"
+
 --- vanilla resources
 WARNING_ICON = "PassiveFeature_Generic_Threat"
 LOCK_ICON = "Spell_Abjuration_ArcaneLock"
@@ -73,6 +80,46 @@ RB_PROP_HIGHLIGHT_FX = "db2affb3-57a7-76f9-9315-d1783cdfc576"
 RB_PROP_FIRE_FX = "175786f6-1c13-3051-1001-3cf62d2819aa"
 RB_PROP_BIND_VISUALIZATION_FX = "3af9c664-d864-cbcd-e6b1-11ea99e307df" -- Loop beam effect VFX_Beams_Underdark_Arcane_Turret_Beam_01
 RB_PROP_BIND_VISUALIZATION_FX_RED = "3e3032d5-dd5c-a9e1-a77c-64273e97a7ce"  -- VFX_Debug_Beam_01
+
+
+--- @type table<RB_ICONS, {U1:number,U2:number,V1:number,V2:number}>
+RB_ICON_UV = {}
+RB_ICON_UV[RB_ICONS.Eye] = {
+    U1 = 0.12524414,
+    U2 = 0.24975586,
+    V1 = 0.12524414,
+    V2 = 0.24975586,
+}
+RB_ICON_UV[RB_ICONS.Eye_Slash] = {
+    U1 = 0.25024414,
+    U2 = 0.37475586,
+    V1 = 0.12524414,
+    V2 = 0.24975586,
+}
+RB_ICON_UV[RB_ICONS.Tree_Collapsed] = {
+    U1 = 0.25024414,
+    U2 = 0.37475586,
+    V1 = 0.25024414,
+    V2 = 0.37475586,
+}
+RB_ICON_UV[RB_ICONS.Tree_Expanded] = {
+    U1 = 0.37524414,
+    U2 = 0.49975586,
+    V1 = 0.25024414,
+    V2 = 0.37475586,
+}
+RB_ICON_UV[RB_ICONS.Menu_Right] = {
+    U1 = 0.12524414,
+    U2 = 0.24975586,
+    V1 = 0.37524414,
+    V2 = 0.49975586,
+}
+RB_ICON_UV[RB_ICONS.Menu_Down] = {
+    U1 = 0.25024414,
+    U2 = 0.37475586,
+    V1 = 0.37524414,
+    V2 = 0.49975586,
+}
 
 VANILLA_MODULES = {
     Shared = true,

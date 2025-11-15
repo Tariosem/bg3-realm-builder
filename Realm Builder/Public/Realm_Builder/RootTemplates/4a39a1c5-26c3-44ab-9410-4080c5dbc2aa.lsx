@@ -16,6 +16,7 @@
 					<attribute id="CanShootThrough" type="bool" value="True" />
 					<attribute id="CanClickThrough" type="bool" value="False" />
 					<attribute id="Stats" type="FixedString" value="OBJ_GenericImmutableObject" />
+					<attribute id="DisplayName" type="TranslatedString" handle="h413d0d703f654c0badf0a3b920f22c5c6eg4" version="1" />
 					<children>
 						<node id="Tags">
 							<children>

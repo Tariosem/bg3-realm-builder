@@ -56,4 +56,4 @@ end
 
 Ext.RegisterConsoleCommand("rb_export_unseen_strings", function()
     ExportUnseenStrings()
-end)
+end, "Exports unseen localization strings to a XML file.")

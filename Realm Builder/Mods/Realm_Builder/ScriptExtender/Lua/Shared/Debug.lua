@@ -48,7 +48,7 @@ local function rgbToANSI(rgb)
     r = math.max(0, math.min(255, r))
     g = math.max(0, math.min(255, g))
     b = math.max(0, math.min(255, b))
-    
+
     return string.format("\x1b[38;2;%d;%d;%dm", r, g, b)
 end
 
@@ -92,7 +92,7 @@ local function RB_Print(prefix, level, message)
     prefix = palette(prefix, debugColor[prefix])
     level = palette(level, debugColor[level])
     message = palette(message, debugColor[level])]]
-    local logMessage = table.concat({title, prefix, level, message}, " ")
+    local logMessage = table.concat({ title, prefix, level, message }, " ")
 
     if RB_ENABLE_LOGGER then
         Logger.Log(logMessage)
@@ -122,14 +122,14 @@ local function CPrint(level, message)
 end
 
 local function parse(...)
-    local args = {...}
+    local args = { ... }
     local parsedStr = ""
     for i, v in ipairs(args) do
         if i > 1 then
             parsedStr = parsedStr .. " "
         end
         if type(v) == "table" or Ext.Types.GetObjectType(v) == "userdata" or Ext.Types.GetObjectType(v) == "lightuserdata" then
-            parsedStr = parsedStr .. "\n" .. Ext.Json.Stringify(v, {Beautify = true})
+            parsedStr = parsedStr .. "\n" .. Ext.Json.Stringify(v, { Beautify = true })
         else
             parsedStr = parsedStr .. tostring(v)
         end
@@ -253,7 +253,7 @@ function PrintDivider(text)
     else
         local textLen = string.len(text)
         local sideLen = math.floor((totalWidth - textLen - 2) / 2)
-        
+
         if sideLen > 0 then
             local leftSide = string.rep(divider, sideLen)
             local rightSide = string.rep(divider, totalWidth - textLen - 2 - sideLen)
@@ -272,7 +272,7 @@ function SetDebugLevel(level)
     end
 
     local numLevel = tonumber(level)
-    
+
     if numLevel ~= nil then
         if numLevel % 1 == 0 and numLevel >= 0 and numLevel <= 5 then
             lvl = numLevel
@@ -289,7 +289,20 @@ function SetDebugLevel(level)
     end
 end
 
-Ext.RegisterConsoleCommand("rb_debug_level", function(cmd, level)
+local debuglevelCommandDes =
+[[
+    Sets the Realm Builder debug level.
+    Usage: rb_debug_level <level>
+    Where <level> is one of the following:
+    - Critical - 0 (never used)
+    - Error - 1
+    - Warning - 2
+    - Info - 3
+    - Debug - 4
+    - Trace - 5
+]]
+
+RegisterConsoleCommand("rb_debug_level", function(cmd, level)
     if not level or level == "" then
         _P("[Realm Builder] Current debug level: " .. tostring(debugLevels[RB_DEBUG_LEVEL + 1]))
         return
@@ -301,25 +314,10 @@ Ext.RegisterConsoleCommand("rb_debug_level", function(cmd, level)
     end
 
     if Ext.IsClient() then
-        Post("SetDebugLevel", {Level = RB_DEBUG_LEVEL})
+        Post("SetDebugLevel", { Level = RB_DEBUG_LEVEL })
         CONFIG.DEBUG_LEVEL = RB_DEBUG_LEVEL
     end
-
-end)
-
-Ext.RegisterConsoleCommand("rb_test_printer", function(cmd, ...)
-    local msg = parse(...)
-    local sth = _C():GetAllComponentNames()
-    if msg == "" then
-        msg = sth
-    end
-    Trace(msg or sth)
-    Info(msg or sth)
-    Debug(msg or sth)
-    Warning(msg or sth)
-    Error(msg or sth)
-    Critical(msg or sth)
-end)
+end, debuglevelCommandDes)
 
 Ext.RegisterConsoleCommand("rb_how_many_globals", function()
     local count = 0
@@ -328,4 +326,4 @@ Ext.RegisterConsoleCommand("rb_how_many_globals", function()
         count = count + 1
     end
     _P("Total: " .. count)
-end)
+end, "Inspect how many global variables Realm Builder is using.")

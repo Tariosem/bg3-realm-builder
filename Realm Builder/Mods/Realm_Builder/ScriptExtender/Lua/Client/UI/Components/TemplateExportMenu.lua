@@ -131,7 +131,11 @@ function TemplateExportMenu:RenderExportEntities(panel)
         local typeRow = typeTab:AddRow()
 
         local ents = filtered[templateType]
-        for guid, entData in pairs(ents) do
+        for guid, entData in SortedPairs(ents, function(a, b)
+            local nameA = ents[a].DisplayName or ents[a].TemplateId
+            local nameB = ents[b].DisplayName or ents[b].TemplateId
+            return nameA < nameB
+        end) do
             self:RenderTemplateEntry(typeRow:AddCell(), entData)
         end
     end
@@ -433,7 +437,7 @@ function TemplateExportMenu:__export(exportSettings, progressCallback)
 
     local function yield()
         if Ext.Timer.MonotonicTime() - lastYieldTime < yieldInterval then return end
-        Timer:Ticks(5, function(timerID)
+        Ext.OnNextTick(function()
             local msg
             suc, msg = coroutine.resume(thread)
             if not suc then

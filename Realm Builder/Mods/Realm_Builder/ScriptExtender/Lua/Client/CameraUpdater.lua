@@ -91,7 +91,17 @@ function StopUpdateingCamera()
     DeactiveCameraTimer()
 end
 
-Ext.RegisterConsoleCommand("rb_camera_timer_inspect", function (cmd, args)
+local commandDes = 
+[[
+    Inspect and control the camera update timer.
+    Usage: rb_camera_timer_inspect <Start|Cancel|Status>
+    Where:
+    - Start: Starts the camera update timer.
+    - Cancel: Cancels the camera update timer.
+    - Status: Displays whether the camera update timer is active or not.
+]]
+
+RegisterConsoleCommand("rb_camera_timer_inspect", function (cmd, args)
     if args == "Cancel" then
         DeactiveCameraTimer()
     elseif args == "Start" then
@@ -105,6 +115,6 @@ Ext.RegisterConsoleCommand("rb_camera_timer_inspect", function (cmd, args)
     else
         _P("Usage: rb_camera_timer_inspect <Start|Cancel|Status>")
     end
-end)
+end, commandDes)
 
 

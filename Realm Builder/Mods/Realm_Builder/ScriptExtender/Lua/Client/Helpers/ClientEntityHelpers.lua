@@ -159,3 +159,30 @@ function GetTemplateNameForGuid(guid)
     return template.Name
 end
 
+---@param guid GUIDSTRING
+---@param duration integer in ms
+---@param speed number in seconds per full rotation
+---@param turns number of full rotations
+---@return RunningAnimation|nil
+function RotatingEntity(guid, duration, speed, turns)
+    local movable = MovableProxy.CreateByGuid(guid)
+    if not movable then return nil end
+
+    movable:SaveTransform()
+
+    speed = speed or 30
+    duration = duration or 10000
+    turns = turns or duration / (1000 * speed)
+    local angle = 0
+    local toAngle = math.pi * 2 * turns
+
+    local anim = AnimateValue(90, angle, toAngle, duration, AnimationEasing.Linear, function ()
+        movable:RestoreTransform()
+    end, function (value, eased)
+        value = value % (math.pi * 2)
+        local quat = Ext.Math.QuatFromEuler({0, value, 0})
+        movable:SetWorldRotation(quat)
+    end)
+    
+    return anim
+end

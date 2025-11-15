@@ -60,5 +60,33 @@ local function OnSessionLoaded()
     end
 end
 
+local allCommands = {}
+
+--- @param command string
+--- @param func fun(...:string)
+function RegisterConsoleCommand(command, func, description)
+    allCommands[command] = { 
+        func = func,
+        description = description or "No description provided."
+    }
+    Ext.RegisterConsoleCommand(command, function(cmd, args)
+        args = SplitBySpace(args)
+        func(command, table.unpack(args))
+    end)
+end
+
+Ext.RegisterConsoleCommand("rb_help", function(args)
+    print("Realm Builder Console Commands:")
+    local info = allCommands[args]
+    if info then
+        print(args .. ": " .. info.description)
+    else
+        for cmd,_ in pairs(allCommands) do
+            print(" - " .. cmd)
+        end
+        print(" Type 'rb_help <Command> for more info.")
+    end
+end)
+
 Ext.Events.SessionLoaded:Subscribe(OnSessionLoaded)
 Ext.Events.StatsLoaded:Subscribe(OnStatsLoaded)

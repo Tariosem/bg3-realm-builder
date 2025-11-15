@@ -889,7 +889,7 @@ function MaterialPresetsMenu:RenderExportPresetRow(parentTab, obj, uuid, onDelet
 
     local colorBox = uiColorCell:AddColorEdit("##" .. obj.DisplayName)
     local nameInput = nameCell:AddInputText("##" .. obj.DisplayName .. "NameInput", obj.DisplayName)
-    local manageBtn = manageCell:AddButton("···##" .. obj.DisplayName)
+    local manageBtn = manageCell:AddImageButton("##" .. obj.DisplayName .. "ThreeDots", RB_ICONS.Three_Dots, IMAGESIZE.ROW)
 
     colorBox.Color = obj.UIColor
     colorBox.NoInputs = true
@@ -977,22 +977,18 @@ function MaterialPresetsMenu:RenderExportPresetRow(parentTab, obj, uuid, onDelet
         managePopup:Open()
     end
 
-    local selectTable = managePopup:AddTable("ManageSelectedPresetTable", 1)
-    selectTable.BordersInnerH = true
-    local selectRow = selectTable:AddRow()
-    local deleteBtn = AddSelectableButton(selectRow:AddCell(), "Remove Preset##" .. obj.DisplayName, function(sel)
+    local selectTable = StyleHelpers.AddContextMenu(managePopup, "Material Preset")
+    local deleteBtn = selectTable:AddItem("Remove Preset##" .. obj.DisplayName, function(sel)
         obj.Deleted = true
         onDelete()
         row:Destroy()
     end)
-
     ApplyDangerSelectableStyle(deleteBtn)
 
-    local openMatMixerBtn = AddSelectableButton(selectRow:AddCell(), "Material Mixer ##" .. obj.DisplayName,
-        function(sel)
-            local materialMixer = MaterialMixerTab.new(obj.Parameters)
-            materialMixer:Render()
-        end)
+    local openMatMixerBtn = selectTable:AddItem("Material Mixer ##" .. obj.DisplayName, function(sel)
+        local materialMixer = MaterialMixerTab.new(obj.Parameters)
+        materialMixer:Render()
+    end)
 
     return row
 end
@@ -1107,7 +1103,7 @@ function MaterialPresetsMenu:__exportToMod(modPack, progressCallback)
         if Ext.Timer.MonotonicTime() - lastYieldTime < yieldThreshold then return end
 
         local thread = exportThread
-        Timer:Ticks(5, function()
+        Ext.OnNextTick(function()
             if thread and coroutine.status(thread) == "suspended" then
                 local sucr, err = coroutine.resume(thread)
                 if not sucr then

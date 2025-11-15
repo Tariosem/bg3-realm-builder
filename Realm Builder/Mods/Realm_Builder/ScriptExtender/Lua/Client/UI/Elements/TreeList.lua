@@ -354,6 +354,7 @@ function TreeList:RenderList()
         local node = self.tree:Find(key)
         if node then
             local cell = row:AddCell()
+            self:SetupHoveringDetection(cell, key)
             local indentDepth = depthIndent(key)
             local innerTab = cell:AddTable("IndentTable##" .. tostring(key), 3)
             innerTab.SameLine = true
@@ -569,13 +570,13 @@ function TreeList:SetupDragAndDrop(selectable, key)
             local cell = row:AddCell()
             local fixedCell = row:AddCell()
             if self.tree:IsLeaf(ikey) then
-                self:RenderLeaf(ikey, cell, fixedCell) 
+                --self:RenderLeaf(ikey, cell, fixedCell) 
             else
-                cell:AddImage(RB_ICONS.Collection, IMAGESIZE.ROW)
-                local ele = self:RenderTree(ikey, cell, fixedCell)
-                ele.SameLine = true
+                --cell:AddImage(RB_ICONS.Collection, IMAGESIZE.ROW)
+                --local ele = self:RenderTree(ikey, cell, fixedCell)
+                --ele.SameLine = true
             end
-            local ref = self.itemRefs[ikey]
+            local ref = self.nodeRefs[ikey]
             ref:SetStyle("Alpha", 0.5)
         end
         userOnDragStart(sel)
@@ -584,7 +585,7 @@ function TreeList:SetupDragAndDrop(selectable, key)
     local userOnDragEnd = selectable.OnDragEnd or emptyFunc
     selectable.OnDragEnd = function(sel)
         for ikey, _ in pairs(self.selectedItems) do
-            local ref = self.itemRefs[ikey]
+            local ref = self.nodeRefs[ikey]
             ref:SetStyle("Alpha", 1.0)
         end
         userOnDragEnd(sel)
@@ -592,6 +593,7 @@ function TreeList:SetupDragAndDrop(selectable, key)
 
     local userDragDrop = selectable.OnDragDrop or emptyFunc
     selectable.OnDragDrop = function(sel, drop)
+        _P("DragDrop detected")
         local dropped = drop.UserData or {}
         if dropped.Key then
             self:OnDragDrop(dropped.Key, key)
@@ -611,8 +613,6 @@ function TreeList:SetUpLeaf(selectable, key)
     selectable.UserData = selectable.UserData or {}
     selectable.UserData.Key = key
     selectable.UserData.IsLeaf = true
-
-    self:SetupHoveringDetection(selectable, key)
 
     local parent = self.tree:GetParentKey(key)
 
@@ -663,8 +663,6 @@ function TreeList:SetUpTree(tree, key)
 
     tree.SpanAllColumns = true
 
-    self:SetupHoveringDetection(tree, key)
-
     local parent = self.tree:GetParentKey(key)
 
     self:SetupDragAndDrop(tree, key)
@@ -678,10 +676,6 @@ function TreeList:SetUpTree(tree, key)
         setupArrowImage(arrowImage)
     end
 
-    local updateLabel = function()
-        userLabel = tree.Label:gsub("^%[%+%]%s+", ""):gsub("^%[%-%]%s+", "")
-        toggleLabel()
-    end
 
     local toggleFunc = function()
         self.collapsedTree[key] = not self.collapsedTree[key]
@@ -736,7 +730,6 @@ function TreeList:SetUpTree(tree, key)
     tree.UserData.Expand = expand
     tree.UserData.Toggle = toggleFunc
     tree.UserData.UpdateLabel = toggleLabel
-    tree.UserData.SetLabel = updateLabel
 
     setmetatable(tree.UserData, {
         __index = function(t, k)
@@ -893,6 +886,35 @@ function TreeList:ExpandAll(key)
             end
         end
     end
+end
+
+function TreeList:SelectAll(key)
+    if not key then return end
+    if key == TreeTable.GetRootKey() then
+        for k,_ in pairs(self.nodeRefs) do
+            self.selectedItems[k] = true
+            self.itemRefs[k].Selected = true
+        end
+        self:OnSelect(self.selectedItems)
+        return
+    end
+
+    local stack = {key}
+    while #stack > 0 do
+        local current = table.remove(stack)
+        local node = self.tree:Find(current)
+        if node then
+            self.selectedItems[current] = true
+            self.itemRefs[current].Selected = true
+            if not self.tree:IsLeaf(current) then
+                for childKey,_ in pairs(node) do
+                    table.insert(stack, childKey)
+                end
+            end
+        end
+    end
+
+    self:OnSelect(self.selectedItems)
 end
 
 function TreeList:CollapseAll(key)

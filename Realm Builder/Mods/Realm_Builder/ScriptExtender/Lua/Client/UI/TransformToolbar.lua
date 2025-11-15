@@ -89,9 +89,11 @@ function TransformToolbar:RegisterKeyInputEvents()
     end)
 
     ttMod:RegisterEvent("MultiSelect", function (e)
-        if e.Event == "KeyDown" then
+        if e.Event ~= "KeyDown" then return end
+        
+        if not self.MultiSelecting then
             self.MultiSelecting = true
-        elseif e.Event == "KeyUp" then
+        else
             self.MultiSelecting = false
             self.Selecting = {}
         end
@@ -529,10 +531,14 @@ function TransformToolbar:RenderTopBar()
     local centerCell = row:AddCell()
     local rightCell = row:AddCell()
 
-    local closeButton = rightCell:AddButton("X")
+    local closeButton = rightCell:AddImageButton("CloseTransformToolbar", RB_ICONS.X_Square, IMAGESIZE.ROW)
     closeButton.OnClick = function()
         self:Toggle()
     end
+    closeButton.Tint = {1, 1, 1, 0.8}
+    closeButton:SetColor("Button", HexToRGBA("C24B0000"))
+    closeButton:SetColor("ButtonHovered", HexToRGBA("96920000"))
+    closeButton:SetColor("ButtonActive", HexToRGBA("C24B0000"))
 
     local openKeybindConfig = leftCell:AddButton("Configs")
     openKeybindConfig.OnClick = function()

@@ -41,24 +41,9 @@ function MaterialTab:Render(parent)
     local uuid = Uuid_v4()
     local parentNode = panel:AddSelectable("[-] " .. sourceFileName .. "##" .. self.MaterialName .. uuid) --[[@as ExtuiSelectable ]]
     parentNode.AllowItemOverlap = true
-    local copyToOthersImageBtn = panel:AddImageButton("##" .. self.MaterialName, RB_ICONS.Copy, IMAGESIZE.TINY)
-    copyToOthersImageBtn.SameLine = true
-    copyToOthersImageBtn:SetColor("Button", {0,0,0,0})
-    copyToOthersImageBtn:Tooltip():AddText("Apply current material parameters to other materials")
-    if getmetatable(self) == MaterialMixerTab then
-        copyToOthersImageBtn.Visible = false
-    end
     local group = panel:AddGroup("MaterialEditorGroup##" .. self.MaterialName) -- Tree is weird with drag-and-drop, so use a Selectable + Group to simulate a collapsible tree node
     local groupIndent = AddIndent(group, 10)
     group.Visible = true
-
-    local managePopup = parent:AddPopup("Manage##" .. self.MaterialName)
-    self.ContextMenu = managePopup
-    self:SetupManagePopup(managePopup)
-
-    copyToOthersImageBtn.OnClick = function()
-        self:ApplyToOthers()
-    end
 
     parentNode.CanDrag = true
     parentNode.DragDropType = MATERIALPRESET_DRAGDROP_TYPE
@@ -74,9 +59,6 @@ function MaterialTab:Render(parent)
         parentNode.Label = (group.Visible and "[-] " or "[+] ") .. sourceFileName .. "##" .. self.MaterialName .. uuid
     end
 
-    parentNode.OnRightClick = function (sel)
-        managePopup:Open()
-    end
 
     parentNode.OnDragStart = function (sel)
         parentNode.DragPreview:AddText(sourceFileName)
@@ -199,7 +181,8 @@ function MaterialTab:Render(parent)
                 end
             end
 
-            propNode.OnRightClick = function ()
+            propNode.OnClick = function(sel)
+                sel.Selected = false
                 if colorPicker and sliders then
                     for _, slider in pairs(sliders) do
                         slider.Visible = not slider.Visible
@@ -209,13 +192,6 @@ function MaterialTab:Render(parent)
 
             if paramgroup.Visible then
                 propNode.OnHoverEnter()
-            end
-
-            propNode.OnClick = function (sel)
-                propNode.Selected = false
-                self:SetParameter(propertyName, self:GetParameter(propertyName)) -- marked as changed
-                propNode.Highlight = self:HasChanged(propertyName) and true or false
-                typeNode.Highlight = self:HasChangeInType(paramType)
             end
 
             propNode.UserData = {
@@ -271,12 +247,6 @@ function MaterialTab:Render(parent)
     end
     
     return parentNode, group
-end
-
-function MaterialTab:ShowContextMenu()
-    if self.ContextMenu then
-        self.ContextMenu:Open()
-    end
 end
 
 function MaterialTab:ClearRefs()
@@ -436,53 +406,6 @@ function MaterialTab:HasChanges()
     return false
 end
 
----@param popup ExtuiPopup
-function MaterialTab:SetupManagePopup(popup)
-    local contextMenu = StyleHelpers.AddContextMenu(popup)
-
-    contextMenu:AddItem("Apply To Other Materials##" .. self.MaterialName, function (sel)
-        self:ApplyToOthers()
-    end)
-
-    contextMenu:AddItem("Open Material Mixer##" .. self.MaterialName, function (sel)
-        local allParams = self.Editor.ParamSetProxy.Parameters
-        local mixerParams = {}
-        for paramType, typeParams in pairs(allParams) do
-            mixerParams[paramType] = {}
-            for paramName, paramValue in pairs(typeParams) do
-                mixerParams[paramType][paramName] = self.Editor:GetParameter(paramName)
-            end
-        end
-
-        local mixerTab = MaterialMixerTab.new(mixerParams)
-        mixerTab:Render()
-    end)
-
-    contextMenu:AddItem("Reset All##" .. self.MaterialName, function (sel)
-        self:ResetAll()
-    end).DontClosePopups = true
-
-    contextMenu:AddItem("Export As Material##" .. self.MaterialName, function (sel)
-        local uuid = Uuid_v4()
-        local finalPath = "Realm_Builder/Materials/" .. uuid .. ".lsx"
-        local save = ResourceHelpers.BuildMaterialResource(self.Editor.Material, uuid, self.Editor.Parameters, self.ParentNodeName:gsub("%.[lL][sS][fF]$", ""))
-        if save then
-            Ext.IO.SaveFile(finalPath, save:Stringify())
-        end
-    end)
-
-    contextMenu:AddItem("Export As Preset##" .. self.MaterialName, function (sel)
-        local save = LSXHelpers.BuildMaterialPresetBank()
-
-        local uuid = Uuid_v4()
-        local preset = ResourceHelpers.BuildMaterialPresetResourceNode(self.Editor.Parameters, uuid, self.ParentNodeName:gsub("%.[lL][sS][fF]$", "") .. "_Preset")
-        save:AppendChild(preset)
-        local finalPath = "Realm_Builder/Materials/" .. uuid .. ".lsx"
-
-        Ext.IO.SaveFile(finalPath, save:Stringify({ AutoFindRoot = true }))
-    end)
-end
-
 function MaterialTab:BuildMaterialResourceNode(uuid, internalName)
     local saveNode = LSXHelpers.BuildMaterialResource()
     local materialNode = ResourceHelpers.BuildMaterialResourceNode(self.Editor.Parameters, self.Editor.Material, uuid, internalName)
@@ -594,6 +517,7 @@ function MaterialMixerTab:__init(parameters)
 end
 
 function MaterialMixerTab:Render(parent)
+    parent = parent or self.Parent
     if self.parentNode then
         self.parentNode:Destroy()
         self.group:Destroy()
@@ -611,6 +535,10 @@ function MaterialMixerTab:Render(parent)
 
     self.parentNode = parentNode
     self.group = group
+
+    local managePopup = parent:AddPopup("Manage##" .. self.MaterialName)
+    self.ContextMenu = managePopup
+    self:SetupManagePopup(managePopup)
 
     parentNode.OnDragDrop = function (sel, drop)
         if drop.UserData and drop.UserData.Parameters then
@@ -631,7 +559,7 @@ end
 function MaterialMixerTab:RenderProperty(node, propertyName, propertyValue, propRow)
     local sliders, picker = MaterialTab.RenderProperty(self, node, propertyName, propertyValue, propRow)
 
-    local removeBtn = node:AddButton("[X]##" .. self.MaterialName .. propertyName)
+    local removeBtn = node:AddImageButton("##" .. self.MaterialName .. propertyName, RB_ICONS.X_Square, IMAGESIZE.ROW)
     removeBtn.OnClick = function (sel)
         self.ParametersSetProxy:RemoveParameter(propertyName)
         propRow:Destroy()
@@ -710,7 +638,6 @@ function MaterialMixerTab:SetPreset(presetProxy)
 end
 
 function MaterialMixerTab:SetupManagePopup(popup)
-
     local contextMenu = StyleHelpers.AddContextMenu(popup)
 
     contextMenu:AddItem("Export As Preset##" .. self.MaterialName, function (sel)

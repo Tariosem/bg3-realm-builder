@@ -313,7 +313,7 @@ function EntityTab:RenderMonitorTab()
                     Guid = self.guid,
                 })
                 self:Destroy()
-                EntityStore:RemoveProp(self.guid)
+                EntityStore:RemoveEntity(self.guid)
                 DeleteWindowsByGuid(self.guid)
             end,
             nil
@@ -458,9 +458,7 @@ end
 function EntityTab:RenderVisualTab()
 
     if not self.visualTab then
-        Timer:After(500, function ()
-            self.visualTab = VisualTab:Add(self.guid, self.displayName, self.tabBar, self.templateName)
-        end)
+        self.visualTab = VisualTab:Add(self.guid, self.displayName, self.tabBar, self.templateName)
     elseif self.visualTab and self.visualTab.isWindow then
         self.visualTab.parent = self.tabBar
         if self.visualTab.panel then

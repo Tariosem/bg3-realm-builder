@@ -12,7 +12,6 @@
 CharacterManager = _Class("CharacterManager", ManagerBase)
 
 local raceCache = {}
-
 function CharacterManager:__init()
     ManagerBase.__init(self)
     self:HardCodeHierachy()

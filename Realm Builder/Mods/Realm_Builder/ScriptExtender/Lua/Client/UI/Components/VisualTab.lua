@@ -168,9 +168,85 @@ function VisualTab:Render(retryCnt)
     self:RenderPresetsCell()
     self:RenderUtilsCell()
 
+    self:RenderMaterialContextPopup()
+
     self:RenderAttachmentSection()
     self:RenderObjectSection()
     self:RenderEffectSection()
+end
+
+function VisualTab:RenderMaterialContextPopup()
+    local popup = self.panel:AddPopup("MaterialContextMenu")
+    self.materialContextPopup = popup
+    self.SelectedMaterial = ""
+    local contextMenu = StyleHelpers.AddContextMenu(popup)
+
+    contextMenu:AddItem("Copy To Other Materials", function (sel)
+        local keyName = self.SelectedMaterial
+        local matTab = self.Materials[keyName]
+        if not matTab then return end
+        for _, otherMatTab in pairs(self.Materials) do
+            otherMatTab.Editor:ApplyParameters(matTab.Editor.Parameters)
+            otherMatTab:UpdateUIState()
+        end
+    end)
+
+    contextMenu:AddItem("Open Material Mixer", function (sel)
+        local matTab = self.Materials[self.SelectedMaterial]
+        if not matTab then return end
+        local allParams = matTab.Editor.ParamSetProxy.Parameters
+        local mixerParams = {}
+        for paramType, typeParams in pairs(allParams) do
+            mixerParams[paramType] = {}
+            for paramName, paramValue in pairs(typeParams) do
+                mixerParams[paramType][paramName] = matTab.Editor:GetParameter(paramName)
+            end
+        end
+
+        local mixerTab = MaterialMixerTab.new(mixerParams)
+        mixerTab:Render()
+    end)
+
+    contextMenu:AddItem("Reset All", function (sel)
+        local matTab = self.Materials[self.SelectedMaterial]
+        if not matTab then return end
+        matTab:ResetAll()
+    end).DontClosePopups = true
+
+    contextMenu:AddItem("Export As Material", function (sel)
+        local keyName = self.SelectedMaterial
+        local matTab = self.Materials[keyName]
+        if not matTab then return end
+        local uuid = Uuid_v4()
+        local finalPath = "Realm_Builder/Materials/" .. uuid .. ".lsx"
+        local save = ResourceHelpers.BuildMaterialResource(matTab.Editor.Material, uuid, matTab.Editor.Parameters, matTab.ParentNodeName:gsub("%.[lL][sS][fF]$", ""))
+        if save then
+            local suc = Ext.IO.SaveFile(finalPath, save:Stringify())
+            if not suc then
+                Error("Failed to export material to " .. finalPath)
+            else
+                Info("Exported material to " .. finalPath)
+            end
+        end
+    end)
+
+    contextMenu:AddItem("Export As Preset", function (sel)
+        local matTab = self.Materials[self.SelectedMaterial]
+        if not matTab then return end
+
+        local save = LSXHelpers.BuildMaterialPresetBank()
+        local uuid = Uuid_v4()
+        local preset = ResourceHelpers.BuildMaterialPresetResourceNode(matTab.Editor.Parameters, uuid, matTab.ParentNodeName:gsub("%.[lL][sS][fF]$", "") .. "_Preset")
+        save:AppendChild(preset)
+        local finalPath = "Realm_Builder/Materials/" .. uuid .. ".lsx"
+
+        local suc = Ext.IO.SaveFile(finalPath, save:Stringify({ AutoFindRoot = true }))
+        if not suc then
+            Error("Failed to export material preset to " .. finalPath)
+        else
+            Info("Exported material preset to " .. finalPath)
+        end
+    end)
 end
 
 function VisualTab:RenderPresetsCell()
@@ -454,6 +530,11 @@ function VisualTab:DetermineOverrideCharacterParameters()
             "SkinColor",
         }
 
+        --for _, colorChoice in pairs(cca.Elements) do
+            --_D(Ext.StaticData.Get(colorChoice.Color, "ColorDefinition"))
+            --_D(Ext.StaticData.Get(colorChoice.Material, "CharacterCreationAppearanceMaterial"))
+        --end
+
         for _, colorIndex in ipairs(colorOrder) do
             local colorType = colorIndex
             local resUuid = allColors[colorType]
@@ -601,17 +682,8 @@ function VisualTab:RenderAttachmentEditors()
 
             local keyName = gr2FileName .. "::" .. modelName .. "::" .. tostring(attIndex) .. "::" .. tostring(descIndex)
 
-            local function appltToOthers()
-                local matTab = self.Materials[keyName]
-                for _, otherMatTab in pairs(self.Materials) do
-                    otherMatTab.Editor:ApplyParameters(matTab.Editor.Parameters)
-                    otherMatTab:UpdateUIState()
-                end
-            end
-
             local materialTab = self.Materials[keyName] or MaterialTab.new(objNode, matName, getliveMat, getliveParams) --[[@as MaterialTab]]
             materialTab.Parent = objNode
-            materialTab.ApplyToOthers = appltToOthers
             materialTab.Editor.Instance = getliveMat
             materialTab.Editor.ParamsSrc = getliveParams
             materialTab.Editor.ParamSetProxy:Update(getliveParams())
@@ -627,13 +699,18 @@ function VisualTab:RenderAttachmentEditors()
 
             objToggle.OnRightClick = function()
                 objToggle.OnHoverEnter()
-                materialTab:ShowContextMenu()
+                self.SelectedMaterial = keyName
+                self.materialContextPopup:Open()
             end
 
             objToggle.OnHoverEnter = function()
                 materialTab:Render()
                 materialTab:UpdateUIState()
                 materialTab.panel.Visible = false
+                materialTab.panel.OnRightClick = function()
+                    self.SelectedMaterial = keyName
+                    self.materialContextPopup:Open()
+                end
                 self:RenderTransformSliders(materialTab.panel, descIndex, attIndex, modelName)
                 objToggle.OnHoverEnter = function() end
             end
@@ -674,7 +751,7 @@ function VisualTab:RenderObjectEditor()
     local visual = VisualHelpers.GetEntityVisual(self.guid)
     if not visual then return end
 
-
+    local lodTree = nil
     --self.materialRoot = self.materialHeader:AddTree(GetLoca("Materials"))
 
     for descIndex, desc in ipairs(visual.ObjectDescs) do
@@ -691,7 +768,14 @@ function VisualTab:RenderObjectEditor()
             meshName = "Unknown Mesh"
         end
 
-        local materialNode = self.materialHeader:AddTree(meshName .. "##" .. tostring(descIndex))
+        --- @type ExtuiTreeParent
+        local parentTree = self.materialHeader
+        if meshName:find("LOD") then
+            lodTree = lodTree or self.materialHeader:AddTree("LODs")
+            parentTree = lodTree
+        end
+
+        local materialNode = parentTree:AddTree(meshName .. "##" .. tostring(descIndex))
 
         local function getliveMat()
             return VisualHelpers.GetMaterial(self.guid, descIndex)
@@ -706,27 +790,28 @@ function VisualTab:RenderObjectEditor()
         --- @return MaterialParametersSet|nil
 
         local keyName = meshName .. "::" .. tostring(descIndex)
-
-        local function appltToOthers()
-            local matTab = self.Materials[keyName]
-            for _, otherMatTab in pairs(self.Materials) do
-                otherMatTab.Editor:ApplyParameters(matTab.Editor.Parameters)
-                otherMatTab:UpdateUIState()
-            end
-        end
-
         local materialEditor = self.Materials[keyName] or
             MaterialTab.new(materialNode, material.MaterialName, getliveMat, getliveParams) --[[@as MaterialTab]]
         materialEditor.IsObject = true
         materialEditor.Parent = materialNode
-        materialEditor.ApplyToOthers = appltToOthers
         materialEditor.Editor.Instance = getliveMat
         materialEditor.Editor.ParamsSrc = getliveParams
         materialEditor.Editor.ParamSetProxy:Update(getliveParams())
 
+        materialNode.OnRightClick = function()
+            materialNode.OnHoverEnter()
+            self.SelectedMaterial = keyName
+            self.materialContextPopup:Open()
+        end
+
         materialNode.OnHoverEnter = function()
             materialEditor:Render()
             materialEditor:UpdateUIState()
+            materialEditor.panel.OnRightClick = function()
+                self.SelectedMaterial = keyName
+                self.materialContextPopup:Open()
+            end
+
             self:RenderTransformSliders(materialNode, descIndex, nil, meshName)
             materialNode.OnHoverEnter = nil
         end

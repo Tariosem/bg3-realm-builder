@@ -331,7 +331,7 @@ function CGetPosition(guid)
         return nil, nil, nil
     end
 
-    if Ext.IsClient() then
+    if Ext.IsClient() and entity.Visual then
         return VisualHelpers.GetVisualPosition(entity)
     end
 
@@ -357,7 +357,7 @@ function CGetScale(guid)
         return nil, nil, nil
     end
 
-    if CIsCharacter(guid) or Ext.IsClient() then
+    if CIsCharacter(guid) and Ext.IsClient() then
         return VisualHelpers.GetVisualScale(guid)
     end
 

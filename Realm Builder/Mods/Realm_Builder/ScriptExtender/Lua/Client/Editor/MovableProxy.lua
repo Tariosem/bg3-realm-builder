@@ -263,6 +263,8 @@ local function clearCache()
     end
 end
 
+--- @param guid string
+--- @return RB_MovableProxy
 function MovableProxy.CreateByGuid(guid)
     clearCache()
     local proxy = movabelCache[guid]

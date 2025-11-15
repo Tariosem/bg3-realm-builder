@@ -6,7 +6,7 @@ Menu = _Class("Menu")
 --- @field isValid boolean
 --- @field effectsMenu EffectsMenu
 --- @field entityMenu OutlinerMenu
---- @field presetMenu SceneMenu
+--- @field sceneMenu SceneMenu
 --- @field styleMenu StyleMenu
 --- @field itemBrowser ItemBrowser
 --- @field effectBrowser EffectBrowser
@@ -51,10 +51,9 @@ function Menu:Render()
         self.styleMenu = StyleMenu:Add(self.tabBar)
     end)
 
-    now = Ext.Timer.MonotonicTime()
-
     Timer:Ticks(2, function()
-        self.presetMenu = SceneMenu:Add(self.tabBar)
+        self.sceneMenu = SceneMenu:Add(self.tabBar)
+        RB_GLOBALS.SceneMenu = self.sceneMenu
     end)
 
     Timer:Ticks(3, function()
@@ -77,25 +76,21 @@ function Menu:Render()
     Timer:Ticks(7, function()
         self.itemBrowser = ItemBrowser.new(RB_ItemManager, "Item - Browser")
         self.itemBrowser:CreateCachedSort("DisplayName")
-        Debug("Item Browser initialized.")
     end)
 
     Timer:Ticks(8, function()
         self.effectBrowser = EffectBrowser.new(RB_MultiEffectManager, "Effect - Browser")
         self.effectBrowser:CreateCachedSort("DisplayName")
-        Debug("Effect Browser initialized.")
     end)
 
     Timer:Ticks(9, function()
         self.characterBrowser = CharacterBrowser.new(RB_CharacterManager, "Character - Browser")
         self.characterBrowser:CreateCachedSort("DisplayName")
-        Debug("Character Browser initialized.")
     end)
 
     Timer:Ticks(9, function()
         self.sceneryBrowser = SceneryBrowser.new(RB_SceneryManager, "Scenery - Browser")
         self.sceneryBrowser:CreateCachedSort("DisplayName")
-        Debug("Scenery Browser initialized.")
     end)
 
     Timer:Ticks(9, function()
@@ -135,9 +130,6 @@ function Menu:Render()
         childWin.OnRightClick = tabDetachFunc
         
     end)
-
-    --print(string.format("[Realm Builder] EffectsMenu initialized in %d ms", Ext.Timer.MonotonicTime() - now))
-    now = Ext.Timer.MonotonicTime()
 end
 
 function Menu:NewEntityAdded(guid)
@@ -160,9 +152,9 @@ function Menu:Destroy()
         self.styleMenu:Destroy()
         self.styleMenu = nil
     end
-    if self.presetMenu then
-        self.presetMenu:Destroy()
-        self.presetMenu = nil
+    if self.sceneMenu then
+        self.sceneMenu:Destroy()
+        self.sceneMenu = nil
     end
     if self.entityMenu then
         self.entityMenu:Destroy()
@@ -189,12 +181,10 @@ end
 --- @type RB_MainMenu
 RBMenu = nil
 RegisterOnSessionLoaded(function()
-    local now = Ext.Timer.MonotonicTime()
     if RBMenu == nil then
         RBMenu = Menu:Add()
         RBMenu.panel.Open = false
     end
-    print(string.format("[Realm Builder] Menu initialized in %d ms", Ext.Timer.MonotonicTime() - now))
 end, 100)
 
 

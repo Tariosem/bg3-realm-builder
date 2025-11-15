@@ -17,7 +17,7 @@
 --- @field GetPivotRotation fun(self: TransformEditor): Quat
 --- @field HideAndDisableGizmo fun(self: TransformEditor)
 --- @field ShowAndEnableGizmo fun(self: TransformEditor)
---- @field Select fun(self: TransformEditor, selection: RB_MovableProxy[], notRecordHistory:boolean|nil)
+--- @field Select fun(self: TransformEditor, selection: RB_MovableProxy[], notRecordHistory:boolean|nil):boolean|nil -- returns true if selection changed
 --- @field AddTarget fun(self: TransformEditor, proxy: RB_MovableProxy)
 --- @field Clear fun(self: TransformEditor)
 --- @field SetMode fun(self: TransformEditor, mode: "Translate"|"Rotate"|"Scale")
@@ -70,6 +70,18 @@ end
 --- @param selection RB_MovableProxy[]
 function TransformEditor:Select(selection, notRecordHistory)
     local oriSelection = self.Target
+    
+    if not notRecordHistory then
+        HistoryManager:PushCommand({
+            Undo = function()
+                self:Select(oriSelection or {}, true)
+            end,
+            Redo = function()
+                self:Select(selection or {}, true)
+            end
+        })
+    end
+    
     if self.IsDragging then return end
     if not selection or #selection == 0 then
         self.Target = nil
@@ -84,16 +96,7 @@ function TransformEditor:Select(selection, notRecordHistory)
     self:RegisterEvents()
     self:PopupNotify()
 
-    if not notRecordHistory then
-        HistoryManager:PushCommand({
-            Undo = function()
-                self:Select(oriSelection or {}, true)
-            end,
-            Redo = function()
-                self:Select(selection or {}, true)
-            end
-        })
-    end
+    return true
 end
 
 function TransformEditor:AddTarget(proxy)
@@ -247,7 +250,6 @@ function TransformEditor:GetPivotRotation()
         if self.Cursor and EntityExists(self.Cursor) then
             rot = {CGetRotation(self.Cursor)}
         else
-            self:CreateCursor()
             rot = Quat.Identity()
         end
     else
@@ -256,13 +258,15 @@ function TransformEditor:GetPivotRotation()
     return Quat.new(rot)
 end
 
-function TransformEditor:CreateCursor()
+function TransformEditor:CreateCursor(pos)
     if self.Cursor and EntityExists(self.Cursor) or (self.creatingCursor) then
         return
     end
 
     self.creatingCursor = true
-    local hostPosition = Vec3.new(CGetPosition(CGetHostCharacter()))
+        
+    pos = ScreenToWorldRay():At(10)
+    local hostPosition = Vec3.new(pos)
     local hostRotation = Quat.new(GetCameraRotation())
 
     NetChannel.Visualize:RequestToServer({

@@ -13,7 +13,10 @@ SCENEMENU_HEIGHT = 1200 * SCALE_FACTOR
 --- @field Spawned table<GUIDSTRING, EntityData>
 
 --- @class SceneMenu
+--- @field panel ExtuiTabItem
+--- @field SavePreset fun(self: SceneMenu, name: string, overwrite: boolean?, candiates: GUIDSTRING[]?)
 --- @field presets table<string, SceneData>
+--- @field Add fun(parent: ExtuiTabBar):SceneMenu
 SceneMenu = _Class("PresetMenu")
 
 function SceneMenu:__init(parent)
@@ -109,7 +112,7 @@ function SceneMenu:Render()
     saveButton.OnClick = function()
         local presetName = presetNameInput.Text
         if presetName and presetName ~= "" then
-            self:SavePreset(presetName)
+            self:SavePreset(presetName, false)
             presetNameInput.Text = ""
         else
             --Warning("Preset name cannot be empty.")
@@ -178,6 +181,7 @@ function SceneMenu:Render()
     self:RenderSidebarSelection()
 end
 
+--- @return SceneMenu
 function SceneMenu:Add(parent)
     local menu = SceneMenu.new(parent)
     menu:Render()
@@ -198,7 +202,7 @@ function SceneMenu:Destroy()
 
 end
 
-function SceneMenu:SavePreset(name, overwrite)
+function SceneMenu:SavePreset(name, overwrite, candiates)
     if not name or name == "" then
         Error("Preset name cannot be empty.")
         return
@@ -211,7 +215,12 @@ function SceneMenu:SavePreset(name, overwrite)
         anchor = CGetHostCharacter()
     end
 
-    local infos = EntityStore:GetAll()
+    local infos = {}
+    if candiates then
+        infos = EntityStore:GetEntities(candiates)
+    else
+        infos = EntityStore:GetAll()
+    end
     if not infos or CountMap(infos) == 0 then
         ConfirmPopup:Popup("No props found to save in preset.")
         return

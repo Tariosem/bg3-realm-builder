@@ -3,6 +3,7 @@
 --- @field focus string -- currently focused tab guid
 --- @field hotKeySubs table<string, RBSubscription>
 --- @field hoveringKey string|nil
+--- @field propTreeList TreeList
 --- @field CollectionContextMenu ExtuiPopup
 --- @field EntityContextMenu ExtuiPopup
 OutlinerMenu = _Class("EntityMenu")
@@ -148,6 +149,30 @@ function OutlinerMenu:RenderMenu()
     ApplyDangerSelectableStyle(self.bruteForceDeleteAllButton)
 end
 
+local function setupEyeHover(image, icon)
+    if icon == RB_ICONS.Eye then
+        image.OnHoverEnter = function()
+            image.Tint = {1,1,1,1}
+        end
+        image.OnHoverLeave = function()
+            image.Tint = {0.9,0.9,0.9,1}
+        end
+        image.Tint = {0.9,0.9,0.9,1}
+    else
+        image.OnHoverEnter = function()
+            image.Tint = {0.6,0.6,0.6,1}
+        end
+        image.OnHoverLeave = function()
+            image.Tint = {0.5,0.5,0.5,1}
+        end
+        image.Tint = {0.5,0.5,0.5,1}
+    end
+    image:SetColor("Button", ToVec4(0))
+    image:SetColor("ButtonHovered", ToVec4(0))
+    image:SetColor("ButtonActive", ToVec4(0))
+    ClearAllBorders(image)
+end
+
 function OutlinerMenu:RenderTreeList()
     local panel = self.panel
     local tree = EntityStore.Tree
@@ -196,9 +221,7 @@ function OutlinerMenu:RenderTreeList()
         local eyeIcon = propData.Visible and RB_ICONS.Eye or RB_ICONS.Eye_Slash
         local eyeImage = fixedCell:AddImageButton("EyeButton##" .. key, eyeIcon, {36, 36}) --[[@as ExtuiImageButton]]
         self.eyeImageRefs[key] = fixedCell
-        eyeImage.Tint = propData.Visible and {1,1,1,1} or {0.5,0.5,0.5,1}
-        eyeImage:SetColor("Button", ToVec4(0))
-        ClearAllBorders(eyeImage)
+        setupEyeHover(eyeImage, eyeIcon)
         local toggleVisible
         local function toggleEye()
             fixedCell = self.eyeImageRefs[key]
@@ -206,9 +229,7 @@ function OutlinerMenu:RenderTreeList()
             DestroyAllChildren(fixedCell)
             local newEyeIcon = propData.Visible and RB_ICONS.Eye or RB_ICONS.Eye_Slash
             eyeImage = fixedCell:AddImageButton("EyeButton##" .. key, newEyeIcon, {36, 36}) --[[@as ExtuiImageButton]]
-            eyeImage.Tint = propData.Visible and {1,1,1,1} or {0.5,0.5,0.5,1}
-            eyeImage:SetColor("Button", ToVec4(0))
-            ClearAllBorders(eyeImage)
+            setupEyeHover(eyeImage, newEyeIcon)
             eyeImage.OnClick = toggleVisible
         end
 
@@ -268,15 +289,13 @@ function OutlinerMenu:RenderTreeList()
 
         self:SetupTree(treeSelectable, key, node)
         local eyeIcon = self.hiddenRoots[key] and RB_ICONS.Eye_Slash or RB_ICONS.Eye
-        local eyeImage = fixedCell:AddImageButton("EyeButton##" .. key, eyeIcon, {36, 36}) --[[@as ExtuiImageButton]]
+        local eyeImage = fixedCell:AddImageButton("EyeButton##" .. key, eyeIcon, IMAGESIZE.ROW) --[[@as ExtuiImageButton]]
         self.eyeImageRefs[key] = fixedCell
-        eyeImage.Tint = self.hiddenRoots[key] and {0.5,0.5,0.5,1} or {1,1,1,1}
-        eyeImage:SetColor("Button", ToVec4(0))
-        ClearAllBorders(eyeImage)
+        setupEyeHover(eyeImage, eyeIcon)
 
         local toggleHidden
         local updateEye
-        function toggleHidden()
+        function toggleHidden(dontPush)
             local orginState = self.hiddenRoots[key] or false
             local children = tree:CollectChildren(key)
             for _, childKey in pairs(children) do
@@ -305,31 +324,34 @@ function OutlinerMenu:RenderTreeList()
                 self.hiddenRoots[key] = true
             end
 
+            updateEye()
+            if dontPush then return end
+
             HistoryManager:PushCommand({
                 Redo = function()
                     self.hiddenRoots[key] = orginState
-                    toggleHidden()
+                    toggleHidden(true)
                 end,
                 Undo = function()
                     self.hiddenRoots[key] = not orginState
-                    toggleHidden()
+                    toggleHidden(true)
                 end,
-            })
-
-            updateEye()
+            })            
         end
         function updateEye()
-            fixedCell = self.eyeImageRefs[key]
+            fixedCell = self.eyeImageRefs[key] --[[@as ExtuiTableCell]]
             if not fixedCell then return end
             DestroyAllChildren(fixedCell)
             local newEyeIcon = self.hiddenRoots[key] and RB_ICONS.Eye_Slash or RB_ICONS.Eye
-            eyeImage = fixedCell:AddImageButton("EyeButton##" .. key, newEyeIcon, {36, 36}) --[[@as ExtuiImageButton]]
-            eyeImage.Tint = self.hiddenRoots[key] and {0.5,0.5,0.5,1} or {1,1,1,1}
-            eyeImage:SetColor("Button", ToVec4(0))
-            ClearAllBorders(eyeImage)
-            eyeImage.OnClick = toggleHidden
+            eyeImage = fixedCell:AddImageButton("EyeButton##" .. key, newEyeIcon, IMAGESIZE.ROW) --[[@as ExtuiImageButton]]
+            setupEyeHover(eyeImage, newEyeIcon)
+            eyeImage.OnClick = function ()
+                toggleHidden()
+            end
         end
-        eyeImage.OnClick = toggleHidden
+        eyeImage.OnClick = function ()
+            toggleHidden()
+        end
         fixedCell.UserData = {
             UpdateEye = updateEye,
         }
@@ -525,11 +547,13 @@ function OutlinerMenu:CommonContext()
 
         local path = nil
         local hovering = self.propTreeList.hoveringKey
-        if EntityStore.Tree:IsLeaf(hovering) then
-            path = EntityStore.Tree:GetParentKey(hovering)
-            path = EntityStore.Tree:GetPath(path)
-        else
-            path = EntityStore.Tree:GetPath(hovering)
+        if hovering then
+            if EntityStore.Tree:IsLeaf(hovering) then
+                path = EntityStore.Tree:GetParentKey(hovering)
+                path = EntityStore.Tree:GetPath(path)
+            else
+                path = EntityStore.Tree:GetPath(hovering)
+            end
         end
         
         if not self.isCropMode then
@@ -541,7 +565,7 @@ function OutlinerMenu:CommonContext()
             end
 
             for child,_ in pairs(toReparent) do
-                EntityStore.Tree:Reparent(child, path[#path])
+                EntityStore.Tree:Reparent(child, hovering)
             end
 
             self.clipboard = {}
@@ -559,7 +583,7 @@ function OutlinerMenu:CommonContext()
         for key,_ in pairs(self.propTreeList.selectedItems) do
             local prop = EntityStore:GetStoredData(key)
             if not prop then
-                orginStates[key] = self.hiddenRoots[key] or false
+                orginStates[key] = self.hiddenRoots[key]
             else
                 orginStates[key] = prop.Visible
             end
@@ -568,23 +592,21 @@ function OutlinerMenu:CommonContext()
         local function doCommand(isUndo)
             for _, key in pairs(selected) do
                 local prop = EntityStore:GetStoredData(key)
+                local state = orginStates[key]
                 if not prop then -- collection, simple toggle UI
-                    local state = orginStates[key]
-                    if isUndo then
-                        self.hiddenRoots[key] = state
-                    else
-                        self.hiddenRoots[key] = not state
+                    if self.eyeImageRefs[key] then
+                        if isUndo then
+                            self.hiddenRoots[key] = state
+                        else
+                            self.hiddenRoots[key] = not state
+                        end
+                        self.eyeImageRefs[key].UserData.UpdateEye()
                     end
-                    self.eyeImageRefs[key].UserData.UpdateEye()
                     goto continue
                 end
-                orginStates[key] = prop.Visible
 
-                local state = orginStates[key]
-                if isUndo then
-                    state = orginStates[key]
-                else
-                    state = not orginStates[key]
+                if not isUndo then
+                    state = not state
                 end
                 local data = {
                     Guid = prop.Guid,
@@ -609,7 +631,41 @@ function OutlinerMenu:CommonContext()
         doCommand(false)
     end
 
+    local function delete()
+        local target = self:DecideSelectedKeys()
+        local collections = {}
+        local entities = {}
+
+        for _, key in pairs(target) do
+            if EntityStore.Tree:IsLeaf(key) then
+                table.insert(entities, key)
+            else
+                table.insert(collections, key)
+            end
+        end
+
+        Commands.DeleteCommand(entities)
+
+        for _, colKey in pairs(collections) do
+            EntityStore.Tree:Remove(colKey)
+        end
+
+        self.propTreeList:ClearSelection()
+        self.selectedGuids = {}
+        self:UpdateList()
+    end
+
     self.commonContextItems = {
+        { Separator = true },
+        {
+            Label = GetLoca("Delete"),
+            OnClick = delete,
+            Hint = "Del",
+            Danger = true,
+            HotKey = {
+                Key = "DEL",
+            }
+        },
         {
             Label = GetLoca("Paste"),
             OnClick = paste,
@@ -635,7 +691,8 @@ function OutlinerMenu:CommonContext()
                 Key = "G",
                 Modifiers = {"CTRL"}
             }
-        }
+        },
+
     }
 
     return self.commonContextItems
@@ -647,7 +704,7 @@ function OutlinerMenu:SetupSelectablePopup()
     self.EntityContextMenu = self.propTreeList.panel:AddPopup("PropRightClickPopup") --[[@as ExtuiPopup]]
     local tree = EntityStore.Tree
 
-    local contextMenu = StyleHelpers.AddContextMenu(self.EntityContextMenu)
+    local contextMenu = StyleHelpers.AddContextMenu(self.EntityContextMenu, "Object")
 
     local function select()
         local target = self.selectedGuids
@@ -677,15 +734,6 @@ function OutlinerMenu:SetupSelectablePopup()
                 RB_GLOBALS.TransformEditor:Select(originStats)
             end,
         })
-    end
-
-    local function delete()
-        local target = self.selectedGuids
-        if not(self.selectedGuids and #self.selectedGuids > 0) then
-            target = {self.hoveringKey}
-        end
-    
-        Commands.DeleteCommand(target)
     end
 
     local function copy()
@@ -737,15 +785,6 @@ function OutlinerMenu:SetupSelectablePopup()
                 Modifiers = {"CTRL"}
             }
         },
-        {
-            Label = GetLoca("Delete"),
-            OnClick = delete,
-            Hint = "Del",
-            Danger = true,
-            HotKey = {
-                Key = "DEL",
-            }
-        },
     }
 
     local commonContext = self:CommonContext()
@@ -754,6 +793,11 @@ function OutlinerMenu:SetupSelectablePopup()
     end
 
     for _, item in ipairs(context) do
+        if item.Separator then
+            contextMenu:AddSeparator()
+            goto continue
+        end
+
         local selectable = contextMenu:AddItem(item.Label, item.OnClick, item.Hint, item.Icon)
         if item.Danger then
             ApplyDangerSelectableStyle(selectable)
@@ -769,6 +813,7 @@ function OutlinerMenu:SetupSelectablePopup()
                 item.OnClick(selectable)
             end, item.HotKey)
         end
+        ::continue::
     end
 end
 
@@ -789,7 +834,7 @@ function OutlinerMenu:SetupCollectionSelectablePopup(openKey)
     self.CollectionContextMenu = self.propTreeList.panel:AddPopup("CollectionRightClickPopup") --[[@as ExtuiPopup]]
     local tree = EntityStore.Tree
 
-    local contextMenu = StyleHelpers.AddContextMenu(self.CollectionContextMenu)
+    local contextMenu = StyleHelpers.AddContextMenu(self.CollectionContextMenu, "Collection")
 
     local function collectChildGuids(node, guids)
         if not node then return guids end
@@ -804,22 +849,6 @@ function OutlinerMenu:SetupCollectionSelectablePopup(openKey)
             end
         end
         return guids
-    end
-
-    local function deleteCollection()
-        local hovering = self.propTreeList.hoveringKey
-        local targetKey = self.selectedTree or {hovering}
-        for i = 1, #targetKey do
-            local key = targetKey[i]
-            if not key or tree:IsLeaf(key) then goto continue end
-
-            tree:RemoveButKeepChildren(key)
-            ::continue::
-        end
-
-        self.propTreeList:ClearSelection()
-        self.selectedGuids = {}
-        self:UpdateList()
     end
 
     local function openExportMenu()
@@ -844,17 +873,37 @@ function OutlinerMenu:SetupCollectionSelectablePopup(openKey)
     --- @type RB_ContextItem[]
     local context = {
         {
-            Label = GetLoca("Delete Collection"),
-            OnClick = deleteCollection,
-            Hint = "Del",
-            Danger = true,
+            Label = GetLoca("Select All in Collection"),
+            OnClick = function()
+                self.propTreeList:SelectAll(self.selectedTree[1])
+            end,
+            Hint = "Enter",
             HotKey = {
-                Key = "DEL",
+                Key = "RETURN",
             }
+        },
+        {
+            Label = GetLoca("Save as Scene"),
+            OnClick = function()
+                if not RB_GLOBALS.SceneMenu then return end
+                if not self.selectedTree or #self.selectedTree == 0 then return end
+
+                local treeKey = self.selectedTree[1]
+                local childs = {}
+                local childArr = {}
+                local node = tree:Find(treeKey)
+                collectChildGuids(node, childs)
+                for guid,_ in pairs(childs) do
+                    table.insert(childArr, guid)
+                end
+
+                RB_GLOBALS.SceneMenu:SavePreset(treeKey, false, childArr)
+            end,
         },
         {
             Label = GetLoca("Export Collection"),
             OnClick = openExportMenu,
+            Icon = RB_ICONS.Export,
         },
     }
 
@@ -863,23 +912,11 @@ function OutlinerMenu:SetupCollectionSelectablePopup(openKey)
         table.insert(context, 1, item)
     end
 
-    for _, item in ipairs(context) do
-        local selectable = contextMenu:AddItem(item.Label, item.OnClick, item.Hint)
-        if item.Danger then
-            ApplyDangerSelectableStyle(selectable)
-        end
-
-        if item.HotKey and not self.hotKeySubs[item.Label] then
-            self.hotKeySubs[item.Label] = SubscribeKeyAndMouse(function (e)
-                local hovering = self.propTreeList.hoveringKey
-                local focus = self.hoveringKey ~= nil
-                if not focus then return end
-                if not e.Pressed then return end
-
-                item.OnClick(selectable)
-            end, item.HotKey)
-        end
+    local focusFunc = function()
+        local focus = self.hoveringKey ~= nil
     end
+
+    contextMenu:AddContext(context, focusFunc)
 end
 
 function OutlinerMenu:RenderMainArea()

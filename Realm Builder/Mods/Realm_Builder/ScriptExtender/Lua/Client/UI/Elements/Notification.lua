@@ -86,7 +86,7 @@ end
 
 function Notification:BuildContent()
     if self.NeverShowAgain then return end
-    self:Close()
+    self:QuickDismiss()
     self:ValidateConfig()
 
     local screenWidth, screenHeight = GetScreenSize()
@@ -233,6 +233,29 @@ function Notification:Dismiss()
     end
     self:StartAnimation("FadeOut", self.AnimDirection)
     self.OnDismiss()
+end
+
+function Notification:QuickDismiss()
+    if not self.isVisible then return end
+    if self.fadeOutTimer then
+        Timer:Cancel(self.fadeOutTimer)
+        self.fadeOutTimer = nil
+    end
+    if self.FlickTimer then
+        Timer:Cancel(self.FlickTimer)
+        self.FlickTimer = nil
+    end
+    self:StopAnimation()
+    local panel = self.panel
+    if not panel then return end
+    AnimateValue(self.Fps or 60, 0, 1, 1000, "Linear",
+        function()
+            panel:Destroy()
+        end,
+        function(t, eased)
+            panel:SetStyle("Alpha", 1 - eased)
+        end
+    )
 end
 
 function Notification:StopAnimation()

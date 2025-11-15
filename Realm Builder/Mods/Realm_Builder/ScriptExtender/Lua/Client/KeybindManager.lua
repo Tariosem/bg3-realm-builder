@@ -352,8 +352,6 @@ function KeybindModule:__init(name)
             return nil
         end
     })
-
-
 end
 
 --- @class KeybindModule
@@ -406,4 +404,4 @@ Ext.RegisterConsoleCommand("rb_dump_keybinds", function()
     for _, binding in ipairs(bindings) do
         print(string.format("%s:%s => %s", binding.Module, binding.EventName, binding.Identifier))
     end
-end)
+end, "Dumps all current keybindings to the console.")

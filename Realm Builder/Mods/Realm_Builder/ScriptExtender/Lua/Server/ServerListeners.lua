@@ -14,11 +14,9 @@ local function spawnHandler(data)
     local rtype = data.Type
 
     if rtype == "Preview" then
-        local previewItem = OsirisHelpers.PreviewTemplate(template, table.unpack(position), table.unpack(rotation), entInfo and entInfo.VisualPreset)
+        local previewItem = OsirisHelpers.PreviewTemplate(template, position[1], position[2], position[3], rotation[1], rotation[2], rotation[3], rotation[4], entInfo and entInfo.VisualPreset)
         return {Guid = previewItem, TemplateId = template}
     end
-
-    local templateObj = Ext.Template.GetTemplate(TakeTailTemplate(template))
 
     local newGuid = EntityManager:CreateAt(spawnTemplate, position[1], position[2], position[3], rotation[1], rotation[2], rotation[3], rotation[4])
 
@@ -71,14 +69,16 @@ end)
 
 local deleteHandler = function(data)
     local guids = NormalizeGuidList(data.Guid)
+    local toCache = {}
     for _,guid in pairs(guids) do
         if EntityManager.SavedEntities[guid] then
-            EntityManager:DeleteEntities(guid)
+            table.insert(toCache, guid)
         else
             Osi.RequestDelete(guid)
             Osi.RequestDeleteTemporary(guid)
         end
     end
+    EntityManager:DeleteEntities(toCache)
 
     if data.Type == "DeleteAll" then
         EntityManager:DeleteAll()

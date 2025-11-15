@@ -201,5 +201,5 @@ Ext.RegisterConsoleCommand("rb_open_the_bloody_gates", function()
     if GLOBAL_DEBUG_WINDOW then
         GLOBAL_DEBUG_WINDOW.Open = true
     end
-end)
+end, "Opens the Realm Builder debug window.")
 

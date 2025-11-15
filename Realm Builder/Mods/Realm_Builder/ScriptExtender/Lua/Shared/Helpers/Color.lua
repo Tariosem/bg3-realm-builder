@@ -627,35 +627,3 @@ function Radiant(text, startColor, endColor, mode, options)
         Options = options
     }
 end
-
-Ext.RegisterConsoleCommand("rb_test_radiant", function(cmd, mode, text)
-    local text = text or "Hello World"
-    mode = mode or "rainbow"
-
-    _P("Testing gradient mode: " .. mode)
-    RPrint(text, "#FF0000", "#0000FF", mode)
-
-    _P("Available modes:")
-    for modeName, v in pairs(GradientModes) do
-        if type(v) == "function" then
-            RPrint(" -" .. modeName .. " This is a test text", "#FFFFFF", "#888888", modeName)
-        end
-    end
-
-    _P("Vertical Test")
-    local multiLine = ""
-    local lines = 5
-    for i = 1, lines do
-        for j = 1, i do
-            multiLine = multiLine .. "|"
-        end
-        multiLine = multiLine .. "\n"
-    end
-    for i = lines, 1, -1 do
-        for j = 1, i do
-            multiLine = multiLine .. "|"
-        end
-        multiLine = multiLine .. "\n"
-    end
-    RPrintPurple(multiLine, { Cycles = 2 })
-end)
