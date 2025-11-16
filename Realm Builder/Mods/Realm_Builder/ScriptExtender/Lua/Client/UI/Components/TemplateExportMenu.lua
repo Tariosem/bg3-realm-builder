@@ -430,7 +430,10 @@ function TemplateExportMenu:__export(exportSettings, progressCallback)
     local suc = true
 
     local function throwError(message)
-        progressCallback(-1, message)
+        Ext.OnNextTick(function ()
+    
+            progressCallback(-1, message)
+        end)
         Error(message)
         coroutine.yield()
     end
@@ -521,7 +524,7 @@ function TemplateExportMenu:__export(exportSettings, progressCallback)
     local intenalNameMap = {}
     local templateNameCnt = {}
 
-    for guid, entData in pairs(toBuildCustomVisuals) do
+    for guid, entData in pairs(toExport) do
         local baseName = TrimTail(entData.TemplateId, 37)
         templateNameCnt[baseName] = (templateNameCnt[baseName] or 0) + 1
         intenalNameMap[guid] = modInternalName .. "_" .. baseName .. "_" .. PadNumber(templateNameCnt[baseName], 3) 

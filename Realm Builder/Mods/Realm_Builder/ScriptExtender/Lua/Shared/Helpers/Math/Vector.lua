@@ -105,13 +105,25 @@ end
 function Vec2.__add(a, b) return Vector.new({a[1] + b[1], a[2] + b[2]}, 2) end
 function Vec2.__sub(a, b) return Vector.new({a[1] - b[1], a[2] - b[2]}, 2) end
 function Vec2.__mul(a, b)
+    local newVec = {}
     if type(b) == "number" then
-        return Vector.new({a[1] * b, a[2] * b}, 2)
+        for _,number in ipairs(a) do
+            table.insert(newVec, number * b)
+        end
+        return Vector.new(newVec)
     elseif type(b) == "table" and #b == 2 then
-        return Vector.new({a[1] * b[1], a[2] * b[2]}, 2)
+        for i,number in ipairs(a) do
+            table.insert(newVec, number * b[i])
+        end
+
+        return Vector.new(newVec)
     else
         Warning("Vec2: Invalid multiplication")
-        return Vector.new({0, 0}, 2)
+        for _,_ in ipairs(a) do
+            table.insert(newVec, 0)
+        end
+
+        return Vector.new(newVec)
     end
 end
 
@@ -126,7 +138,12 @@ function Vec2.__div(a, b)
     end
 end
 
-function Vec2.__unm(a)    return Vector.new({-a[1], -a[2]}, 2) end
+function Vec2.__unm(a)
+    for i = 1, 2 do
+        a[i] = -a[i]
+    end
+
+end
 function Vec2.__tostring(a) return string.format("Vec2(%s)", table.concat(a, ", ")) end
 
 

@@ -182,9 +182,11 @@ genratePowerEasing(4, "Quart")
 genratePowerEasing(5, "Quint")
 
 --- @class RunningAnimation
---- @field Stop fun():number, number
---- @field Get fun():number, number
---- @field GetLast fun():number, number  
+--- @field Stop fun():number|number[], number -- returns last value and eased progress
+--- @field Get fun():number|number[], number -- returns current value and eased progress
+--- @field GetLast fun():number|number[], number -- returns last value and eased progress
+--- @field GetEnd fun():number|number[], number -- returns end value and eased progress (1.0)
+--- @field ChangeOnComplete fun(callback:fun())
 
 --- @param fps number
 --- @param fromValue number|Vec
@@ -282,12 +284,22 @@ function AnimateValue(fps, fromValue, toValue, duration, easing, onComplete, onU
         return cancelValue, cancelEased
     end
 
+    local function GetEnd()
+        return toValue, 1.0
+    end
+
+    local function ChangeOnComplete(callback)
+        onComplete = callback
+    end
+
     step()
 
     return {
         Stop = CancelAnimation,
         Get = GetCurrent,
         GetLast = GetLast,
+        GetEnd = GetEnd,
+        ChangeOnComplete = ChangeOnComplete,
     }
 end
 

@@ -148,8 +148,11 @@ function GizmoVisualizer:Visualize3DCursor(guid, factor)
     local objs = visual.ObjectDescs or {}
     if #objs == 0 then return end
 
+    local camera = GetCamera()
+    if not camera then return end
+
     factor = factor or 0.3
-    local disatance = Ext.Math.Distance(GetCamera().Transform.Transform.Translate, visual.WorldTransform.Translate)
+    local disatance = Ext.Math.Distance(camera.Transform.Transform.Translate, visual.WorldTransform.Translate)
     local clampedDistance = Ext.Math.Clamp(disatance, 1.0, 100.0)
     local baseScale = (clampedDistance / 10.0)
     local scaleVec = Vec3.new({baseScale * factor, baseScale * factor, baseScale * factor})

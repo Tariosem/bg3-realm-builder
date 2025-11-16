@@ -56,6 +56,9 @@ function GetCursorPos(picker)
     if not picker then
         picker = Ext.ClientUI.GetPickingHelper(1)
     end
+    if not picker then
+        return 0, 0
+    end
     local pos = picker.WindowCursorPos
     return pos[1], pos[2]
 end

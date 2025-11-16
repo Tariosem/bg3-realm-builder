@@ -293,7 +293,7 @@ function Commands.SpawnPreset(data)
         end
 
         if tree then
-            entData.Path = tree:GetPath(savedGuid)
+            entData.Path = tree:GetPath(savedGuid, true)
         end
 
         if not entData.Group then

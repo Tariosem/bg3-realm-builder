@@ -212,10 +212,7 @@ function Gizmo:SetupListeners()
     self.Timers["DetectHover"] = Timer:EveryFrame(function(timerID)
         if self.IsDragging or not self.Picker then return end
         local mouseRay = ScreenToWorldRay()
-        if not mouseRay then
-            Warning("Gizmo:DetectHover: Failed to get mouse ray")
-            return
-        end
+        if not mouseRay then return end
 
         self:UpdatePicker()
         local hit = self.Picker:Hit(mouseRay)

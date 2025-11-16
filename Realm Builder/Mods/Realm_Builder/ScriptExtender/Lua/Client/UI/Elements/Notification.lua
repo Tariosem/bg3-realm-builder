@@ -143,17 +143,20 @@ end
 
 function Notification:StartAnimation(dir, direction)
     self:StopAnimation()
+    local panel = self.panel
 
-    self.panel.NoMove = true
+    if not panel then return end
+    
+    panel.NoMove = true
 
     local onFrame = function(newPos, alpha)
-        if not self.panel or not self.isVisible then
+        if not panel or not self.isVisible then
             self:StopAnimation()
             return
         end
         alpha = Ext.Math.Clamp(alpha, 0, 1)
-        self.panel:SetPos(newPos)
-        self.panel:SetStyle("Alpha", alpha)
+        panel:SetPos(newPos)
+        panel:SetStyle("Alpha", alpha)
     end
     
 
@@ -167,11 +170,11 @@ function Notification:StartAnimation(dir, direction)
             
         end
         if dir == "FadeIn" and self.FlickToDismiss then
-            self.panel.NoMove = false
+            panel.NoMove = false
             self:SetupFlick()
         end
         if self.Moveable then
-            self.panel.NoMove = false
+            panel.NoMove = false
         end
     end
 
@@ -179,8 +182,8 @@ function Notification:StartAnimation(dir, direction)
     local oldRelativePos = self.Pivot
     if dir == "FadeOut" and self.Moveable then
         self.Pivot = {
-            Ext.Math.Clamp(self.panel.LastPosition[1] / screenWidth, 0, 1),
-            Ext.Math.Clamp(self.panel.LastPosition[2] / screenHeight, 0, 1)
+            Ext.Math.Clamp(panel.LastPosition[1] / screenWidth, 0, 1),
+            Ext.Math.Clamp(panel.LastPosition[2] / screenHeight, 0, 1)
         }
     end
     if dir == "FadeOut" and self.ChangeDirectionWhenFadeOut then
@@ -191,7 +194,7 @@ function Notification:StartAnimation(dir, direction)
         self.EndPos = {self:CalcEndPosition()}
         self.StartPos = {self:CalcStartPosition()}
     elseif dir == "FadeOut" then
-        self.EndPos = {self.panel.LastPosition[1], self.panel.LastPosition[2]}
+        self.EndPos = {panel.LastPosition[1], panel.LastPosition[2]}
         self.StartPos = {self:CalcStartPosition()}
         self.Pivot = oldRelativePos
 
@@ -237,25 +240,53 @@ end
 
 function Notification:QuickDismiss()
     if not self.isVisible then return end
-    if self.fadeOutTimer then
-        Timer:Cancel(self.fadeOutTimer)
-        self.fadeOutTimer = nil
-    end
+
+    local panel = self.panel
+    self.panel = nil
+    if not panel then return end
+
+    Timer:After(1005, function ()
+        if panel then
+            panel:SetStyle("Alpha", 0)
+            panel:Destroy()
+        end
+    end)
+
     if self.FlickTimer then
         Timer:Cancel(self.FlickTimer)
         self.FlickTimer = nil
     end
-    self:StopAnimation()
-    local panel = self.panel
-    if not panel then return end
-    AnimateValue(self.Fps or 60, 0, 1, 1000, "Linear",
-        function()
-            panel:Destroy()
-        end,
-        function(t, eased)
-            panel:SetStyle("Alpha", 1 - eased)
-        end
-    )
+    if self.fadeOutTimer then
+        Timer:Cancel(self.fadeOutTimer)
+        self.fadeOutTimer = nil
+
+        AnimateValue(self.Fps or 60, 0, 1, 500, "Linear",
+            function()
+                panel:Destroy()
+                panel = nil
+            end,
+            function(t, eased)
+                panel:SetStyle("Alpha", 1 - eased)
+            end
+        )
+        return
+    end
+
+    local runningAnimation = self.runningAnimation
+    self.runningAnimation = nil
+    if not runningAnimation then return end
+
+    runningAnimation.ChangeOnComplete(function()
+        AnimateValue(self.Fps or 60, 0, 1, 500, "Linear",
+            function()
+                panel:Destroy()
+                panel = nil
+            end,
+            function(t, eased)
+                panel:SetStyle("Alpha", 1 - eased)
+            end
+        )
+    end)
 end
 
 function Notification:StopAnimation()
