@@ -927,9 +927,9 @@ function IconBrowser:Destroy()
         return
     end
 
-    if self.tagsFilter then
-        DeleteWindow(self.tagsFilter)
-        self.tagsFilter = nil
+    if self.tagsFilterMenu then
+        DeleteWindow(self.tagsFilterMenu)
+        self.tagsFilterMenu = nil
     end
 
     for _, sub in pairs(self.toUnSubOnDestroy or {}) do

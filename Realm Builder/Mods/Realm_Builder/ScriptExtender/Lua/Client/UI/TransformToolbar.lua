@@ -665,7 +665,7 @@ function TransformToolbar:RenderOtherConfigOptions(panel)
     local row2 = leftA:AddRow()
 
     row1:AddCell():AddText("Move Step")
-    local stepSlider = AddSliderWithStep(row1:AddCell(), "Step", 1, 0.1, 3, 0.05)
+    local stepSlider = StyleHelpers.AddSliderWithStep(row1:AddCell(), "Step", 1, 0.1, 3, 0.05)
     stepSlider.UserData.StepInput.Visible = false
     stepSlider.OnChange = function (e)
         if not RB_GLOBALS.TransformEditor.Gizmo then return end
@@ -673,7 +673,7 @@ function TransformToolbar:RenderOtherConfigOptions(panel)
     end
 
     row2:AddCell():AddText("Gizmo Size")
-    local gizmoSizeSlider = AddSliderWithStep(row2:AddCell(), "Gizmo Size", 0.1, 0.01, 2, 0.01)
+    local gizmoSizeSlider = StyleHelpers.AddSliderWithStep(row2:AddCell(), "Gizmo Size", 0.1, 0.01, 2, 0.01)
     gizmoSizeSlider.UserData.StepInput.Visible = false
     gizmoSizeSlider.OnChange = function (e)
         local editor = RB_GLOBALS.TransformEditor

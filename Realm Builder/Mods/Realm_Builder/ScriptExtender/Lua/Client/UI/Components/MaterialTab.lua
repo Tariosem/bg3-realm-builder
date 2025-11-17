@@ -1,6 +1,7 @@
 --- @class MaterialTab
 --- @field Parent ExtuiTreeParent
 --- @field Editor MaterialEditor
+--- @field Panel ExtuiTreeParent
 --- @field ResetFuncs table<string, fun()>
 --- @field UpdateFuncs table<string, fun(newValue: number[]?)>
 --- @field ParamNodeRefs table<string, ExtuiSelectable>
@@ -32,18 +33,14 @@ function MaterialTab:__init(parent, materialName, materialFunc, paramsSrc)
 end
 
 --- @param parent ExtuiTreeParent?
---- @return ExtuiSelectable, ExtuiGroup
+--- @return ExtuiSelectable
 function MaterialTab:Render(parent)
     local sourceFileName = self.ParentNodeName
     parent = parent or self.Parent
-    self.panel = parent:AddGroup("MaterialEditorPanel##" .. self.MaterialName .. Uuid_v4())
-    local panel = self.panel
     local uuid = Uuid_v4()
-    local parentNode = panel:AddSelectable("[-] " .. sourceFileName .. "##" .. self.MaterialName .. uuid) --[[@as ExtuiSelectable ]]
+    local parentNode = StyleHelpers.AddTree(self.Parent, sourceFileName, false) --[[@as ExtuiSelectable ]]
     parentNode.AllowItemOverlap = true
-    local group = panel:AddGroup("MaterialEditorGroup##" .. self.MaterialName) -- Tree is weird with drag-and-drop, so use a Selectable + Group to simulate a collapsible tree node
-    local groupIndent = AddIndent(group, 10)
-    group.Visible = true
+    self.Panel = parentNode.Panel
 
     parentNode.CanDrag = true
     parentNode.DragDropType = MATERIALPRESET_DRAGDROP_TYPE
@@ -52,13 +49,6 @@ function MaterialTab:Render(parent)
         MaterialProxy = self.Editor,
         Parameters = self.Editor and self.Editor.Parameters or nil
     }
-
-    parentNode.OnClick = function (sel)
-        parentNode.Selected = false
-        group.Visible = not group.Visible
-        parentNode.Label = (group.Visible and "[-] " or "[+] ") .. sourceFileName .. "##" .. self.MaterialName .. uuid
-    end
-
 
     parentNode.OnDragStart = function (sel)
         parentNode.DragPreview:AddText(sourceFileName)
@@ -102,15 +92,9 @@ function MaterialTab:Render(parent)
     for paramType,propNames in ipairs(params) do
         local propType = indexToDisplay[paramType]
         if #propNames < 1 then goto continue end
-
-        local initLabel = self.cachedExpandedState[paramType] == true and "[-] " or "[+] "
-        local typeNode = groupIndent:AddSelectable(initLabel .. propType .. "##" .. self.MaterialName) --[[@as ExtuiSelectable ]]
-        
-        local typeGroup = groupIndent:AddGroup("TypeGroup##" .. self.MaterialName .. propType)
-        local searchBox = typeGroup:AddInputText("##" .. self.MaterialName .. propType)
-        local paramsGroup = typeGroup:AddGroup("AllPropertiesGroup##" .. self.MaterialName .. tostring(math.random()))
-
-        typeGroup.Visible = self.cachedExpandedState[paramType] == true
+        local typeNode = parentNode:AddTree(propType .. "##" .. self.MaterialName, self.cachedExpandedState[paramType] == true) --[[@as ExtuiSelectable ]]
+        local searchBox = typeNode:AddInputText("##" .. self.MaterialName .. propType)
+        local paramsGroup = typeNode:AddGroup("AllPropertiesGroup##" .. self.MaterialName .. tostring(math.random()))
 
         searchBox.Hint = "Search " .. propType .. "..."
         searchBox.OnChange = Debounce(50 ,function (sel)
@@ -133,29 +117,24 @@ function MaterialTab:Render(parent)
                 end
             end
         end)
-
-        local allParamNodes = {}
-
-        typeNode.OnClick = function (sel)
-            typeNode.Selected = false
-            typeGroup.Visible = not typeGroup.Visible
-            typeNode.Label = (typeGroup.Visible and "[-] " or "[+] ") .. propType .. "##" .. self.MaterialName
-            self.cachedExpandedState[paramType] = typeGroup.Visible
-        end
-
-        typeNode.OnRightClick = function (sel)
-            for _, propNode in pairs(allParamNodes) do
-                propNode.OnHoverEnter()
-            end
-        end
         
         self.ParamTypeNodeRefs[paramType] = typeNode
-        local indent = AddIndent(paramsGroup, 10)
-
-        local paramTable = indent:AddTable("ParameterTable##" .. self.MaterialName .. propType, 1)
+        local allParamNode = {}
+        local paramTable = paramsGroup:AddTable("ParameterTable##" .. self.MaterialName .. propType, 1)
         local paramRow = paramTable:AddRow()
         paramTable.BordersOuter = true
         paramTable.RowBg = true
+
+        typeNode.OnExpand = function (isOpen)
+            for _,node in pairs(allParamNode) do
+                node:OnHoverEnter()
+            end
+            self.cachedExpandedState[paramType] = true
+        end
+        typeNode.OnCollapse = function ()
+            self.cachedExpandedState[paramType] = false
+        end
+
         for _,propertyName in ipairs(propNames) do
             local rowCell = paramRow:AddCell()
             local tab = rowCell:AddTable("PropertyTable##" .. self.MaterialName .. propertyName, 3)
@@ -166,7 +145,7 @@ function MaterialTab:Render(parent)
             local propCell = row:AddCell()
             local propNode = propCell:AddSelectable(propertyName .. "##" .. self.MaterialName) --[[@as ExtuiSelectable ]]
             self.ParamNodeRefs[propertyName] = propNode
-            self.ParamTableRefs[propertyName] = tab
+            self.ParamTableRefs[propertyName] = rowCell
             row:AddCell() -- Spacer
             local paramgroup = row:AddCell():AddGroup("PropertyGroup##" .. self.MaterialName .. propertyName .. tostring(math.random()))
             paramgroup.SameLine = true
@@ -240,13 +219,12 @@ function MaterialTab:Render(parent)
                 end
             end
 
-            allParamNodes[propertyName] = propNode
+            allParamNode[propertyName] = propNode
         end
-
         ::continue::
     end
     
-    return parentNode, group
+    return parentNode
 end
 
 function MaterialTab:ClearRefs()
@@ -260,7 +238,7 @@ end
 --- @param node ExtuiTreeParent
 --- @param propertyName string
 --- @param propertyValue number[]
-function MaterialTab:RenderProperty(node, propertyName, propertyValue, propRow)
+function MaterialTab:RenderProperty(node, propertyName, propertyValue)
     local sliders = {} --[[@type ExtuiSliderScalar[] ]]
     local colorPicker = nil
     if type(propertyValue) == "number" then
@@ -268,7 +246,6 @@ function MaterialTab:RenderProperty(node, propertyName, propertyValue, propRow)
     end
 
     if #propertyValue >= 3 then
-
         colorPicker = node:AddColorEdit("##" .. self.MaterialName .. propertyName)
         colorPicker.Color = ToVec4(propertyValue)
         colorPicker.AlphaBar = (#propertyValue == 4)
@@ -301,7 +278,13 @@ function MaterialTab:RenderProperty(node, propertyName, propertyValue, propRow)
             range.max = 100
             range.step = 0.1
         end
-        local slider = AddSliderWithStep(node, propertyName .. "##" .. self.MaterialName .. i, propertyValue[i], range.min, range.max, range.step, propertyName:find("Index") ~= nil)
+        if propertyValue[i] > range.max then
+            range.max = propertyValue[i] * 2
+        end
+        if propertyValue[i] < range.min then
+            range.min = propertyValue[i] / 2
+        end
+        local slider = StyleHelpers.AddSliderWithStep(node, propertyName .. "##" .. self.MaterialName .. i, propertyValue[i], range.min, range.max, range.step, propertyName:find("Index") ~= nil)
 
         if colorPicker then
             slider.Visible = false
@@ -507,7 +490,6 @@ function MaterialMixerTab:__init(parameters)
         DeleteWindow(self.Parent)
     end
 
-
     self.MaterialName = "MaterialMixerEditor"
     self.ParentNodeName = "Material Mixer"
     self.ParametersSetProxy = ParametersSetProxy.BuildFromFormatParameters(parameters)
@@ -523,18 +505,16 @@ function MaterialMixerTab:Render(parent)
         self.group:Destroy()
     end
 
-    local parentNode, group = MaterialTab.Render(self, parent)
+    local parentNode = MaterialTab.Render(self, parent)
 
     parentNode.UserData = {
         MaterialProxy = self.ParametersSetProxy,
         Parameters = self.ParametersSetProxy.Parameters
     }
 
-    parentNode.Label = "[-] Material Mixer##" .. self.MaterialName
-    group.Visible = true
+    parentNode.Label = "Material Mixer##" .. self.MaterialName
 
     self.parentNode = parentNode
-    self.group = group
 
     local managePopup = parent:AddPopup("Manage##" .. self.MaterialName)
     self.ContextMenu = managePopup

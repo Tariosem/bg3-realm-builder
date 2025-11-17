@@ -44,7 +44,7 @@ if GLOBAL_DEBUG_WINDOW then
             if type(v) ~= "number" then 
                 for i=1,#v do
                     local vecName = k .. "[" .. i .. "]"
-                    local slider = AddSliderWithStep(node, vecName, v[i], 0.01, 10, 0.01)
+                    local slider = StyleHelpers.AddSliderWithStep(node, vecName, v[i], 0.01, 10, 0.01)
                     slider.SameLine = true
                     slider.OnChange = function (s)
                         constant[k][i] = s.Value[1]
@@ -52,7 +52,7 @@ if GLOBAL_DEBUG_WINDOW then
                 end
             else
                 local name = node:AddText(k .. ": " .. tostring(v))
-                local slider = AddSliderWithStep(node, k, v, 0.01, 10, 0.01)
+                local slider = StyleHelpers.AddSliderWithStep(node, k, v, 0.01, 10, 0.01)
                 slider.SameLine = true
                 slider.OnChange = function (s)
                     constant[k] = s.Value[1]

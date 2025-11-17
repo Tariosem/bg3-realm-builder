@@ -5,6 +5,12 @@ local visualTabCache = {}
 
 --- @class VisualTab
 --- @field Materials table<string, MaterialTab>
+--- @field Effects table<string, table<string, any>> -- EffectType -> EffectProperty -> value
+--- @field guid GUIDSTRING
+--- @field templateName string
+--- @field updateFuncs table<string, table<string, fun()>> -- EffectType -> EffectProperty -> update function
+--- @field resetFuncs table<string, table<string, fun()>> -- EffectType -> EffectProperty -> reset function
+--- @field resetParams table<string, table<string, any>> -- EffectType -> EffectProperty -> reset value
 --- @field new fun(guid: GUIDSTRING, displayName: string|nil, parent: ExtuiTreeParent|nil, templateName: string|nil): VisualTab
 --- @field FetchByGuid fun(guid: GUIDSTRING): VisualTab|nil
 VisualTab = {}
@@ -52,7 +58,7 @@ function VisualTab:__init(guid, displayName, parent, templateName)
     self.autoReload = true
     self.allowRepeat = false
 
-    self.modifiedParams = {}
+    self.Effects = {}
     self.resetParams = {}
 
     self.currentPreset = EntityStore[guid] and EntityStore[guid].VisualPreset or nil
@@ -170,6 +176,8 @@ function VisualTab:Render(retryCnt)
 
     self:RenderMaterialContextPopup()
 
+    self.editorWindow = self.panel:AddChildWindow("EditorWindow")
+
     self:RenderAttachmentSection()
     self:RenderObjectSection()
     self:RenderEffectSection()
@@ -179,7 +187,7 @@ function VisualTab:RenderMaterialContextPopup()
     local popup = self.panel:AddPopup("MaterialContextMenu")
     self.materialContextPopup = popup
     self.SelectedMaterial = ""
-    local contextMenu = StyleHelpers.AddContextMenu(popup)
+    local contextMenu = StyleHelpers.AddContextMenu(popup, "Material")
 
     contextMenu:AddItem("Copy To Other Materials", function (sel)
         local keyName = self.SelectedMaterial
@@ -392,7 +400,9 @@ function VisualTab:RenderPresetsCell()
 
             if not isChara then
                 for key, func in pairs(self.resetFuncs) do
-                    func()
+                    for propName, resetFunc in pairs(func) do
+                        resetFunc()
+                    end
                 end
             end
         end)
@@ -481,11 +491,13 @@ function VisualTab:RenderAttachmentSection()
 
     if not visual.Attachments or #visual.Attachments == 0 then return end
 
+    local renderParent = self.editorWindow
+
     if self.attachmentsHeader then
         self.attachmentsHeader:Destroy()
-        self.attachmentsHeader = self.panel:AddCollapsingHeader(GetLoca("Attachments"))
+        self.attachmentsHeader = renderParent:AddCollapsingHeader(GetLoca("Attachments"))
     else
-        self.attachmentsHeader = self.panel:AddCollapsingHeader(GetLoca("Attachments"))
+        self.attachmentsHeader = renderParent:AddCollapsingHeader(GetLoca("Attachments"))
     end
 
     self.attachmentsHeader.OnHoverEnter = function ()
@@ -503,7 +515,6 @@ function VisualTab:DetermineOverrideCharacterParameters()
     }
     local entity = Ext.Entity.Get(self.guid) --[[@as EntityHandle]]
     local cca = entity.CharacterCreationAppearance
-    _D(cca)
     if not cca then
         --- @diagnostic disable-next-line
         cca = entity.AppearanceOverride and entity.AppearanceOverride.Visual
@@ -650,23 +661,24 @@ function VisualTab:RenderAttachmentEditors()
         local source = vres and vres.SourceFile or "Unknown Model"
         local gr2FileName = GetLastPath(source)
 
-        local displayName = gr2FileName
+        local displayName = vres.Slot
 
-        local attachNode = self.attachmentsHeader:AddTree(displayName .. "##" .. tostring(attIndex))
+        local attachNode = StyleHelpers.AddTree(self.attachmentsHeader, displayName .. "##" .. tostring(attIndex), false)
+        local gr2Text = attachNode:AddHint("Model: " .. gr2FileName)
+        gr2Text:SetColor("Text", HexToRGBA("FF6D6D6D"))
+        gr2Text.SameLine = true
+        gr2Text.Font = "Tiny"
         local lodNode = nil
 
         for descIndex, obj in ipairs(attach.Visual.ObjectDescs) do
             local modelName = obj.Renderable and obj.Renderable.Model and obj.Renderable.Model.Name or "Unknown Model"
             local parentNode = attachNode
             if modelName:find("LOD") then
-                lodNode = lodNode or attachNode:AddTree("LODs")
+                lodNode = lodNode or attachNode:AddTree("LODs", false)
                 parentNode = lodNode
             end
 
-            local objToggle = parentNode:AddSelectable("[+] " ..
-                modelName .. "##" .. tostring(attIndex) .. "_" .. tostring(descIndex))
-            local objNode = AddIndent(parentNode):AddGroup("ObjectDescGroup##" ..
-                tostring(attIndex) .. "_" .. tostring(descIndex))
+            local objNode = parentNode:AddTree(modelName .. "##" .. tostring(attIndex) .. "::" .. tostring(descIndex), false)
 
             local matName = obj.Renderable.ActiveMaterial.Material.Name
             local function getliveMat()
@@ -689,30 +701,24 @@ function VisualTab:RenderAttachmentEditors()
             materialTab.Editor.ParamSetProxy:Update(getliveParams())
             materialTab.Editor:SetDefaultParameters(overrideCharacterParams)
 
-            objToggle.OnClick = function(sel)
-                objToggle.Selected = false
-                materialTab.panel.Visible = not materialTab.panel.Visible
-
-                sel.Label = (materialTab.panel.Visible and "[-] " or "[+] ") ..
-                    modelName .. "##" .. tostring(attIndex) .. "_" .. tostring(descIndex)
-            end
-
-            objToggle.OnRightClick = function()
-                objToggle.OnHoverEnter()
+            objNode.OnRightClick = function()
+                --local renable = VisualHelpers.GetRenderable(self.guid, descIndex, attIndex)
+                objNode:OnExpand()
                 self.SelectedMaterial = keyName
                 self.materialContextPopup:Open()
             end
 
-            objToggle.OnHoverEnter = function()
+            objNode.OnExpand = function()
                 materialTab:Render()
                 materialTab:UpdateUIState()
-                materialTab.panel.Visible = false
-                materialTab.panel.OnRightClick = function()
+                materialTab.Panel.Visible = false
+                materialTab.Panel.OnRightClick = function()
                     self.SelectedMaterial = keyName
                     self.materialContextPopup:Open()
                 end
-                self:RenderTransformSliders(materialTab.panel, descIndex, attIndex, modelName)
-                objToggle.OnHoverEnter = function() end
+                self:RenderTransformSliders(materialTab.Panel, descIndex, attIndex, keyName)
+                objNode.OnExpand = function()
+                end
             end
 
             self.Materials[keyName] = materialTab
@@ -730,11 +736,13 @@ function VisualTab:RenderObjectSection()
     local visual = VisualHelpers.GetEntityVisual(self.guid)
     if not visual then return end
 
+    local renderParent = self.editorWindow
+
     if self.materialHeader then
         self.materialHeader:Destroy()
-        self.materialHeader = self.panel:AddCollapsingHeader(GetLoca("Material Editor"))
+        self.materialHeader = renderParent:AddCollapsingHeader(GetLoca("Material Editor"))
     else
-        self.materialHeader = self.panel:AddCollapsingHeader(GetLoca("Material Editor"))
+        self.materialHeader = renderParent:AddCollapsingHeader(GetLoca("Material Editor"))
     end
 
     if self.isWindow then
@@ -771,11 +779,11 @@ function VisualTab:RenderObjectEditor()
         --- @type ExtuiTreeParent
         local parentTree = self.materialHeader
         if meshName:find("LOD") then
-            lodTree = lodTree or self.materialHeader:AddTree("LODs")
+            lodTree = lodTree or StyleHelpers.AddTree(self.materialHeader, "LODs", false)
             parentTree = lodTree
         end
 
-        local materialNode = parentTree:AddTree(meshName .. "##" .. tostring(descIndex))
+        local materialNode = StyleHelpers.AddTree(parentTree, meshName .. "##" .. tostring(descIndex), false)
 
         local function getliveMat()
             return VisualHelpers.GetMaterial(self.guid, descIndex)
@@ -799,21 +807,21 @@ function VisualTab:RenderObjectEditor()
         materialEditor.Editor.ParamSetProxy:Update(getliveParams())
 
         materialNode.OnRightClick = function()
-            materialNode.OnHoverEnter()
+            materialNode.OnExpand()
             self.SelectedMaterial = keyName
             self.materialContextPopup:Open()
         end
 
-        materialNode.OnHoverEnter = function()
+        materialNode.OnExpand = function()
             materialEditor:Render()
             materialEditor:UpdateUIState()
-            materialEditor.panel.OnRightClick = function()
+            materialEditor.Panel.OnRightClick = function()
                 self.SelectedMaterial = keyName
                 self.materialContextPopup:Open()
             end
 
-            self:RenderTransformSliders(materialNode, descIndex, nil, meshName)
-            materialNode.OnHoverEnter = nil
+            self:RenderTransformSliders(materialNode, descIndex, nil, keyName)
+            materialNode.OnExpand = function() end
         end
 
         self.Materials[keyName] = materialEditor
@@ -830,11 +838,13 @@ function VisualTab:RenderEffectSection()
 
     self.hasEffect = true
 
+    local renderParent = self.editorWindow
+
     if self.effectHeader then
         self.effectHeader:Destroy()
-        self.effectHeader = self.panel:AddCollapsingHeader(GetLoca("Effect Editor"))
+        self.effectHeader = renderParent:AddCollapsingHeader(GetLoca("Effect Editor"))
     else
-        self.effectHeader = self.panel:AddCollapsingHeader(GetLoca("Effect Editor"))
+        self.effectHeader = renderParent:AddCollapsingHeader(GetLoca("Effect Editor"))
     end
 
     if self.isWindow then
@@ -847,7 +857,6 @@ function VisualTab:RenderEffectSection()
     end
 end
 
-
 function VisualTab:RenderEffectEditor()
     local entity = Ext.Entity.Get(self.guid) --[[@as EntityHandle]]
     --self.effectRoot = self.effectHeader:AddTree(GetLoca("Effects"))
@@ -855,34 +864,483 @@ function VisualTab:RenderEffectEditor()
         return
     end
 
+    self:SetupEffectContextMenu()
     local effectNameCnt = {}
 
     -- WHY is effect so disorderly
     for compIndex, component in ipairs(entity.Effect.Timeline.Components) do
         --_P(component.TypeName)
-
+        local newTree = nil
         if component.TypeName == "Light" then
             effectNameCnt[component.TypeName] = (effectNameCnt[component.TypeName] or 0) + 1
             local cnt = effectNameCnt[component.TypeName]
             local nodeName = GetLoca("Light") .. (cnt ~= 1 and " (" .. cnt .. ")" or "")
-            local newNode = self.effectHeader:AddTree(nodeName)
+            newTree = StyleHelpers.AddTree(self.effectHeader, nodeName, false)
+            newTree.Panel.OnRightClick = function()
+                self.SelectedEffectComponent = "Light::" .. tostring(compIndex)
+                self.effectContextPopup:Open()
+            end
 
-
-            self:RenderLightComponent(newNode, component, compIndex, cnt)
-
-            newNode:AddSeparator()
-
-            self:RenderLightEntity(newNode, component, compIndex, cnt)
+            self:RenderLightComponent(newTree, component, compIndex, cnt)
+            self:RenderLightEntity(newTree, component, compIndex, cnt)
         end
 
         if component.TypeName == "ParticleSystem" then
             effectNameCnt[component.TypeName] = (effectNameCnt[component.TypeName] or 0) + 1
             local cnt = effectNameCnt[component.TypeName]
             local nodeName = GetLoca("Particle System") .. (cnt ~= 1 and " (" .. cnt .. ")" or "")
-            local newNode = self.effectHeader:AddTree(nodeName)
-            self:RenderParticleSystemComponent(newNode, component, compIndex, cnt)
+            newTree = StyleHelpers.AddTree(self.effectHeader, nodeName, false)
+            newTree.Panel.OnRightClick = function()
+                self.SelectedEffectComponent = "ParticleSystem::" .. tostring(compIndex)
+                self.effectContextPopup:Open()
+            end
+            self:RenderParticleSystemComponent(newTree, component, compIndex, cnt)
         end
     end
+end
+
+--- @class EffectComponentRenderInfo
+--- @field Group string
+--- @field RenderOrder string[]
+--- @field PropertyMap EffectPropertyMap 
+
+--- @class EffectComponentParameterInfo
+--- @field DisplayName string
+--- @field Hint string
+--- @field IsInt boolean
+--- @field Range { Min:number, Max:number, Step:number }
+--- @field Options RadioButtonOption[]?
+
+--- @class EffectPropertyMap
+--- @field Boolean table<string, EffectComponentParameterInfo>
+--- @field BitMask table<string, EffectComponentParameterInfo>
+--- @field Enum table<string, EffectComponentParameterInfo>
+--- @field Scalar table<string, EffectComponentParameterInfo>
+--- @field Vector2 table<string, EffectComponentParameterInfo>
+--- @field Vector3 table<string, EffectComponentParameterInfo>
+--- @field Vector4 table<string, EffectComponentParameterInfo>
+
+function VisualTab:RenderEffectComponentEditor(parent, key, getComp, renderInfo)
+    local component = getComp()
+    if not component then return end
+
+    local propMap = renderInfo.PropertyMap
+    local renderOrder = renderInfo.RenderOrder
+
+    local renderHandlers = {
+        Scalar = function(tree, propName, propInfo)
+            self:RenderEffectComponentSliders(tree, getComp, key, propName, propInfo)
+        end,
+        Vector2 = function(tree, propName, propInfo)
+            self:RenderEffectComponentSliders(tree, getComp, key, propName, propInfo)
+        end,
+        Vector3 = function(tree, propName, propInfo)
+            self:RenderEffectComponentSliders(tree, getComp, key, propName, propInfo)
+        end,
+        Vector4 = function(tree, propName, propInfo)
+            self:RenderEffectComponentSliders(tree, getComp, key, propName, propInfo)
+        end,
+        Boolean = function(tree, propName, propInfo)
+            self:RenderEffectComponentBooleanCheckbox(tree, getComp, key, propName, propInfo)
+        end,
+        BitMask = function(tree, propName, propInfo)
+            self:RenderEffectComponentBitmaskRadioButtons(tree, getComp, key, propName, propInfo)
+        end,
+        Enum = function(tree, propName, propInfo)
+            self:RenderEffectComponentEnumRadioButtons(tree, getComp, key, propName, propInfo)
+        end,
+    }
+
+    local groupTrees = {
+        Default = parent,
+    }
+    self.resetFuncs[key] = {}
+    self.updateFuncs[key] = {}
+    self.resetParams[key] = self.resetParams[key] or {}
+    local seen = {}
+    for _, propName in ipairs(renderOrder) do
+        local propType = nil
+        seen[propName] = true
+        for pType, propList in pairs(propMap) do
+            if propList[propName] then
+                propType = pType
+                break
+            end
+        end
+        if not propType then goto continue end
+
+        local propInfo = propMap[propType][propName]
+        local groupName = propInfo.Group or "Default"
+        if not groupTrees[groupName] then
+            groupTrees[groupName] = StyleHelpers.AddTree(parent, groupName, true)
+        end
+
+        renderHandlers[propType](groupTrees[groupName], propName, propInfo)
+        groupTrees[groupName]:AddSeparator()
+        ::continue::
+    end
+    for propType, propList in pairs(propMap) do
+        for propName, propInfo in pairs(propList) do
+            if seen[propName] then goto continue end
+
+            local groupName = propInfo.Group or "Default"
+            if not groupTrees[groupName] then
+                groupTrees[groupName] = StyleHelpers.AddTree(parent, groupName, true)
+            end
+
+            renderHandlers[propType](groupTrees[groupName], propName, propInfo)
+            groupTrees[groupName]:AddSeparator()
+            ::continue::
+        end
+    end
+end
+
+--- @param panel ExtuiTreeParent
+function VisualTab:RenderEffectComponentSliders(panel, getComp, key, componentName, valueInfo)
+    --- @type any[], ExtuiColorEdit
+    local sliders, colorPicker = {}, nil
+
+    local applyMethod = valueInfo.ApplyMethod or function (value)
+        local comp = getComp()
+        if not comp then return end
+
+        comp[componentName] = value
+    end
+    local getMethod = valueInfo.GetMethod or function ()
+        local comp = getComp()
+        if not comp then return nil end
+
+        return comp[componentName]
+    end
+    local updateMethod = function ()
+        local value = getMethod()
+        if not value then return end
+        if type(value) ~= "table" then
+            value = { value }
+        end
+        for i, slider in ipairs(sliders) do
+            slider.Value = ToVec4(value[i])
+        end
+        if colorPicker then
+            colorPicker.Color = {value[1], value[2], value[3], value[4] or 1 }
+        end
+    end
+
+    local initValue = self.resetParams[key] and self.resetParams[key][componentName] or getMethod()
+    self.resetParams[key] = self.resetParams[key] or {}
+    self.resetParams[key][componentName] = initValue
+    if type(initValue) ~= "table" then
+        initValue = { initValue }
+    end
+    local isInt = valueInfo.IsInt or false
+    local range = valueInfo.Range or { Min = -10, Max = 10 , Step = 0.1 }
+    local compDisplayName = valueInfo.DisplayName or componentName
+
+    local function saveChanged(value)
+        local comp = getComp()
+        if not comp then return end
+
+        if #value == 1 then
+            value = value[1]
+        end
+        applyMethod(value)
+        self.Effects[key] = self.Effects[key] or {}
+        self.Effects[key][componentName] = value
+    end
+
+    local innerTable = panel:AddTable("EffectComponentSliderTable_" .. key, 2)
+    innerTable.ColumnDefs[1] = { WidthFixed = true }
+    innerTable.ColumnDefs[2] = { WidthStretch = true }
+    innerTable.BordersInnerV = true
+
+    local row = innerTable:AddRow()
+    local displayNameCell = row:AddCell()
+    local slidersCell = row:AddCell()
+    local selectable = displayNameCell:AddSelectable(compDisplayName)
+    local resetChange = function()
+        for i, slider in ipairs(sliders) do
+            slider.Value = ToVec4(initValue[i])
+        end
+        if colorPicker then
+            colorPicker.Color = {initValue[1], initValue[2], initValue[3], initValue[4] or 1 }
+        end
+
+        local applyValue = #initValue == 1 and initValue[1] or initValue
+        local comp = getComp()
+
+        if not comp then return end
+
+        applyMethod(applyValue)
+        self.Effects[key] = self.Effects[key] or {}
+        self.Effects[key][componentName] = nil
+        if not next(self.Effects[key]) then
+            self.Effects[key] = nil
+        end
+    end
+
+    if #initValue == 0 then
+        Warning("VisualTab:RenderEffectComponentSliders - initValue has no components for " .. componentName)
+    end
+
+    if #initValue >= 3 then
+        colorPicker = slidersCell:AddColorEdit("##ColorPicker_" .. key)
+        colorPicker.NoAlpha = #initValue == 3
+        colorPicker.AlphaBar = #initValue == 4
+
+        colorPicker.OnChange = function()
+            local comp = getComp()
+            if not comp then return end
+            saveChanged({ colorPicker.Color[1], colorPicker.Color[2], colorPicker.Color[3], #initValue == 4 and colorPicker.Color[4] or nil })
+
+            for i = 1, #initValue do
+                sliders[i].Value = ToVec4(colorPicker.Color[i])
+            end
+        end
+        colorPicker.OnRightClick = function()
+            for i, slider in ipairs(sliders) do
+                slider.Visible = not slider.Visible
+            end
+        end
+    end
+
+    for i = 1, #initValue do
+        local slider = StyleHelpers.AddSliderWithStep(slidersCell, componentName .. " " .. i, initValue[i], range.Min, range.Max, range.Step, isInt)
+        slider.Visible = #initValue < 3
+        slider.OnChange = function()
+            local currentValues = {}
+            for j, s in ipairs(sliders) do
+                currentValues[j] = s.Value[1]
+            end
+            if colorPicker then
+                colorPicker.Color = { currentValues[1], currentValues[2], currentValues[3], #initValue == 4 and currentValues[4] or 1 }
+            end
+            saveChanged(currentValues)
+        end
+        sliders[i] = slider
+    end
+
+    if valueInfo.PreferSliders then
+        for i, slider in ipairs(sliders) do
+            slider.Visible = true
+        end
+        colorPicker.Visible = false
+    end
+    
+    selectable.OnClick = function ()
+        selectable.Selected = false
+        resetChange()
+    end
+    selectable.OnRightClick = function()
+        resetChange()
+    end
+
+    self.resetFuncs[key][componentName] = resetChange
+    self.updateFuncs[key][componentName] = function()
+        updateMethod()
+    end
+end
+
+function VisualTab:RenderEffectComponentBooleanCheckbox(panel, getComp, key, componentName, boolInfo)
+    local comp = getComp()
+    local initValue = self.resetParams[key] and self.resetParams[key][componentName] or comp[componentName]
+    self.resetParams[key] = self.resetParams[key] or {}
+    self.resetParams[key][componentName] = initValue
+    local displayName = boolInfo.DisplayName or componentName
+    local checkbox = panel:AddCheckbox("##EffectComponentCheckbox_" .. key, initValue)
+    checkbox.Label = displayName or componentName
+
+    checkbox:Tooltip():AddText("Right click to reset to default value.")
+    checkbox.OnChange = function()
+        local comp = getComp()
+        if not comp then return end
+
+        comp[componentName] = checkbox.Checked
+        self.Effects[key] = self.Effects[key] or {}
+        self.Effects[key][componentName] = checkbox.Checked
+    end
+
+    checkbox.OnRightClick = function()
+        checkbox.Checked = initValue
+        local comp = getComp()
+        if not comp then return end
+        comp[componentName] = initValue
+
+        self.Effects[key] = self.Effects[key] or {}
+        self.Effects[key][componentName] = nil
+        if not next(self.Effects[key]) then
+            self.Effects[key] = nil
+        end
+    end
+
+    self.resetFuncs[key][componentName] = function()
+        checkbox.Checked = initValue
+
+        local comp = getComp()
+        if not comp then return end
+        comp[componentName] = initValue
+
+        self.Effects[key] = self.Effects[key] or {}
+        self.Effects[key][componentName] = nil
+        if not next(self.Effects[key]) then
+            self.Effects[key] = nil
+        end
+    end
+
+    self.updateFuncs[key][componentName] = function()
+        local comp = getComp()
+        if not comp then return end
+        checkbox.Checked = comp[componentName]
+    end
+end
+
+function VisualTab:RenderEffectComponentBitmaskRadioButtons(panel, getComp, key, componentName, bitMaskInfo)
+    local comp = getComp()
+    local initValue = self.resetParams[key] and self.resetParams[key][componentName] or comp[componentName]
+    self.resetParams[key] = self.resetParams[key] or {}
+    self.resetParams[key][componentName] = initValue
+    local displayName = bitMaskInfo.DisplayName or componentName
+    local options = bitMaskInfo.Options or {}
+
+    local tab = panel:AddTable("EffectComponentBitmaskRadioTable_" .. key, 2)
+    tab.ColumnDefs[1] = { WidthFixed = true }
+    tab.ColumnDefs[2] = { WidthStretch = true }
+    local row = tab:AddRow()
+    local titleCell = row:AddCell()
+    local radioCell = row:AddCell()
+    local title = titleCell:AddBulletText(displayName)
+    local radioGroup = StyleHelpers.AddBitmaskRadioButtons(radioCell, options, initValue)
+
+    local saveChanged = function(value)
+        local comp = getComp()
+        if not comp then return end
+
+        comp[componentName] = value
+        self.Effects[key] = self.Effects[key] or {}
+        self.Effects[key][componentName] = value
+    end
+
+    local resetChange = function()
+        radioGroup.Value = initValue
+        self.Effects[key] = self.Effects[key] or {}
+        self.Effects[key][componentName] = nil
+        if not next(self.Effects[key]) then
+            self.Effects[key] = nil
+        end
+    end
+
+    radioGroup.OnChange = function()
+        local comp = getComp()
+        if not comp then return end
+        saveChanged(radioGroup.Value)    
+    end
+
+    title.OnRightClick = function()
+        resetChange()
+    end
+
+    self.resetFuncs[key][componentName] = resetChange
+    self.updateFuncs[key][componentName] = function()
+        local comp = getComp()
+        if not comp then return end
+        radioGroup.Value = comp[componentName]
+    end
+end
+
+function VisualTab:RenderEffectComponentEnumRadioButtons(panel, getComp, key, componentName, enumInfo)
+    local comp = getComp()
+    local initValue = self.resetParams[key] and self.resetParams[key][componentName] or comp[componentName]
+    self.resetParams[key] = self.resetParams[key] or {}
+    self.resetParams[key][componentName] = initValue
+    local displayName = enumInfo.DisplayName or componentName
+    local options = enumInfo.Options or {}
+
+    local tab = panel:AddTable("EffectComponentEnumRadioTable_" .. key, 2)
+    tab.ColumnDefs[1] = { WidthFixed = true }
+    tab.ColumnDefs[2] = { WidthStretch = true }
+    local row = tab:AddRow()
+    local titleCell = row:AddCell()
+    local radioCell = row:AddCell()
+    local title = titleCell:AddBulletText(displayName)
+    local radioGroup = StyleHelpers.AddEnumRadioButtons(radioCell, options, initValue)
+
+    local saveChanged = function(value)
+        local comp = getComp()
+        if not comp then return end
+
+        comp[componentName] = value
+        self.Effects[key] = self.Effects[key] or {}
+        self.Effects[key][componentName] = value
+    end
+
+    local resetChange = function()
+        radioGroup.Value = initValue
+        self.Effects[key] = self.Effects[key] or {}
+        self.Effects[key][componentName] = nil
+        if not next(self.Effects[key]) then
+            self.Effects[key] = nil
+        end
+    end
+
+    radioGroup.OnChange = function()
+        local comp = getComp()
+        if not comp then return end
+        saveChanged(radioGroup.Value)    
+    end
+
+    title.OnRightClick = function()
+        resetChange()
+    end
+
+    self.resetFuncs[key][componentName] = resetChange
+    self.updateFuncs[key][componentName] = function()
+        local comp = getComp()
+        if not comp then return end
+        radioGroup.Value = comp[componentName]
+    end
+end
+
+function VisualTab:SetupEffectContextMenu()
+    local effectContextPopup = self.panel:AddPopup("EffectContextMenu")
+    self.effectContextPopup = effectContextPopup
+    self.SelectedEffectComponent = nil
+    local contextMenu = StyleHelpers.AddContextMenu(effectContextPopup, "Effect Component")
+
+    contextMenu:AddItem("Apply To Same Type", function (sel)
+        local compKey = self.SelectedEffectComponent
+        if not compKey then return end
+        
+        local modfiedParams = self.Effects[compKey]
+        if not modfiedParams then return end
+
+        local parsedKey = SplitByString(compKey, "::")
+        local compIndex = tonumber(parsedKey[2])
+        if not compIndex then return end
+        local selectedComp = VisualHelpers.GetEffectComponent(self.guid, compIndex)
+        if not selectedComp then return end
+        local compType = selectedComp.TypeName
+
+        local entity = Ext.Entity.Get(self.guid) --[[@as EntityHandle]]
+        if not entity.Effect or not entity.Effect.Timeline or not entity.Effect.Timeline.Components then
+            return
+        end
+
+        for otIdx, comp in FilteredPairs(entity.Effect.Timeline.Components, function(idx, comp)
+            return comp.TypeName == compType and (idx ~= compIndex)
+        end) do
+            local otherKey = compType .. "::" .. tostring(otIdx)
+            for paramName, paramValue in pairs(modfiedParams) do
+                if comp.TypeName == "Light" then
+                    VisualHelpers.ApplyValueToLightComponent(self.guid, otIdx, paramValue, paramName)
+                else
+                    comp[paramName] = paramValue
+                end
+                if self.updateFuncs[otherKey] and self.updateFuncs[otherKey][paramName] then
+                    self.updateFuncs[otherKey][paramName]()
+                end
+            end
+        end
+    end)
+
 end
 
 ---@param node ExtuiTree
@@ -891,62 +1349,111 @@ end
 function VisualTab:RenderLightEntity(node, component, compIndex)
     local entityNode = node
 
-    local lightEntity = component.LightEntity
+    local lightEntity = component.LightEntity --[[@as LightComponent]]
     if not lightEntity or not lightEntity.Light then
         return
     end
 
-    local light = lightEntity.Light --[[@as LightComponent]]
-
-    local entityColorNode = entityNode:AddTree(GetLoca("Light Entity Color"))
-    local generalNode = entityNode:AddTree(GetLoca("General Light Settings"))
-    local spotNode = entityNode:AddTree(GetLoca("Spot Light Settings"))
-    local directionalNode = entityNode:AddTree(GetLoca("Directional Light Settings"))
-    local otherNode = entityNode:AddTree(GetLoca("Other Settings"))
-
-    local allNodes = {
-        entityColorNode,
-        directionalNode,
-        directionalNode,
-        otherNode,
+    local bitMaskParamMap = {
+        LightChannelFlag = {
+            Options = {
+                { Name = "Character", Value = 1 << 5 },
+                { Name = "Scenery", Value = 1 },
+            },
+            DisplayName = "Light Channel",
+            Group = "Light Flags",
+        },
+        Flags = {
+            Options = {
+                { Name = "Fill Light", Value = 1 << 3 },
+            },
+            DisplayName = "Light Flags",
+            Group = "Light Flags",
+        },
+    }
+    local enumParamMap = {
+        LightType = {
+            Options = {
+                { Name = "Point", Value = 0 },
+                { Name = "Spot", Value = 1 },
+                { Name = "Directional", Value = 2 },
+            },
+            DisplayName = "Light Type",
+            Group = "General Light Settings",
+        },
+        DirectionLightAttenuationFunction = {
+            Options = {
+                { Name = "Linear", Value = 0 },
+                { Name = "Inverse Square", Value = 1 },
+                { Name = "Smooth Step", Value = 2 },
+                { Name = "Smoother Step", Value = 3 },
+                { Name = "None", Value = 4 },
+            },
+            DisplayName = "Attenuation Function",
+            Group = "Directional Light Settings",
+        },
+    }
+    local scalarParamMap = {
+        SpotLightInnerAngle = {
+            Range = { Min = 0, Max = 180, Step = 1 },
+            DisplayName = "Inner Angle",
+            Group = "Spot Light Settings",
+        },
+        SpotLightOuterAngle = {
+            Range = { Min = 0, Max = 180, Step = 1 },
+            DisplayName = "Outer Angle",
+            Group = "Spot Light Settings",
+        },
+        Gain = {
+            Range = { Min = 0, Max = 100, Step = 0.1 },
+            DisplayName = "Gain",
+            Group = "General Light Settings",
+        },
+        EdgeSharpening = {
+            Range = { Min = 0, Max = 10, Step = 0.05 },
+            DisplayName = "Edge Sharpness",
+            Group = "General Light Settings",
+        },
+        ScatteringIntensityScale = {
+            Range = { Min = 0, Max = 100, Step = 0.1 },
+            DisplayName = "Scattering Intensity Scale",
+            Group = "General Light Settings",
+        },
+        DirectionLightAttenuationEnd = {
+            Range = { Min = 0, Max = 2, Step = 0.05 },
+            DisplayName = "Attenuation End",
+            Group = "Directional Light Settings",
+        },
+        DirectionLightAttenuationSide = {
+            Range = { Min = 0, Max = 2, Step = 0.05 },
+            DisplayName = "Attenuation Back",
+            Group = "Directional Light Settings",
+        },
+        DirectionLightAttenuationSide2 = {
+            Range = { Min = 0, Max = 2, Step = 0.05 },
+            DisplayName = "Attenuation Sides",
+            Group = "Directional Light Settings",
+        },
     }
 
-    node.OnRightClick = function()
-        for _, n in ipairs(allNodes) do
-            n:SetOpen(true)
-        end
-    end
-
-    local bitMaskPropNameMap = {
-        LightChannelFlag = { displayName = "Light Channel", bits = { ["Character"] = 1 << 5, ["Scenery"] = 1 }, preassign = generalNode },
-        Flags = { displayName = "Light Flags", bits = { ["Cast Shadow"] = 1 << 3,  }, preassign = generalNode },
+    local vector3ParamMap = {
+        DirectionLightDimensions = {
+            Range = { Min = 0, Max = 100, Step = 1 },
+            DisplayName = "Direction Light Dimensions",
+            Group = "Directional Light Settings",
+            PreferSliders = true,
+        },
+        Color = {
+            Range = { Min = -1, Max = 1, Step = 0.01 },
+            DisplayName = "Light Entity Color",
+            Group = "General Light Settings",
+        },
     }
-
-    local scalarPropNameMap = {
-        SpotLightInnerAngle = { min = 0, max = 180, step = 1, displayName = "Inner Angle", preassign = spotNode },
-        SpotLightOuterAngle = { min = 0, max = 180, step = 1, displayName = "Outer Angle", preassign = spotNode },
-        Gain = { min = 0, max = 100, step = 0.1, displayName = "Gain", preassign = generalNode },
-        EdgeSharpening = { min = 0, max = 10, step = 0.05, displayName = "Edge Sharpness", preassign = generalNode },
-        LightType = { min = 0, max = 2, step = 1, displayName = "Light Type", preassign = entityNode, IsInteger = true, Tooltip = "0=Point,1=Spot,2=Directional" },
-        ScatteringIntensityScale = { min = 0, max = 100, step = 0.1, displayName = "Scattering Intensity Scale", preassign = generalNode },
-        DirectionLightAttenuationFunction = { min = 0, max = 4, step = 1, displayName = "Attenuation Function", preassign = directionalNode, IsInteger = true, Tooltip = "0=Liner,1=Inverse Square,2=Smooth Step,3=Smoother Step,4=None" },
-        DirectionLightAttenuationEnd = { min = 0, max = 2, step = 0.05, displayName = "Attenuation End", preassign = directionalNode },
-        DirectionLightAttenuationSide = { min = 0, max = 2, step = 0.05, displayName = "Attenuation Back", preassign = directionalNode },
-        DirectionLightAttenuationSide2 = { min = 0, max = 2, step = 0.05, displayName = "Attenuation Sides", preassign = directionalNode },
-        CullFlags = { min = 0, max = 1 << 24, step = 1, displayName = "Cull Flags", preassign = otherNode, IsInteger = true },
-        Flags = { min = 0, max = 1 << 24, step = 1, displayName = "Light Flags", preassign = otherNode, IsInteger = true },
-    }
-
-    local vec3PropNameMap = {
-        --Blackbody = { displayName = "Blackbody", preassign = otherNode },
-        DirectionLightDimensions = { displayName = "Direction Light Dimensions", preassign = directionalNode, Range = {0,100} },
-        Color = { displayName = "Light Entity Color", preassign = entityColorNode },
-    }
-
+    
     local renderOrder = {
-        "LightType",
         "LightChannelFlag",
         "Flags",
+        "LightType",
         "SpotLightInnerAngle",
         "SpotLightOuterAngle",
         "Gain",
@@ -956,21 +1463,11 @@ function VisualTab:RenderLightEntity(node, component, compIndex)
         "DirectionLightAttenuationEnd",
         "DirectionLightAttenuationSide",
         "DirectionLightAttenuationSide2",
-        "CullFlags",
         "DirectionLightDimensions",
         "Color",
     }
 
-    local function saveLightEntityProperty(key, propName, value)
-        self.modifiedParams[key] = {
-            Type = "LightEntity",
-            CompIndex = compIndex,
-            PropertyName = propName,
-            Value = value,
-            IsTemplate = scalarPropNameMap[propName] and scalarPropNameMap[propName].isTemplate or false,
-        }
-    end
-
+    local key = "Light::" .. compIndex
     local function GetLiveLightEntity()
         local entity = Ext.Entity.Get(self.guid)
         if not entity or not entity.Effect or not entity.Effect.Timeline or not entity.Effect.Timeline.Components[compIndex] or not entity.Effect.Timeline.Components[compIndex].LightEntity then
@@ -979,171 +1476,15 @@ function VisualTab:RenderLightEntity(node, component, compIndex)
         return entity.Effect.Timeline.Components[compIndex].LightEntity.Light
     end
 
-    for _, propName in ipairs(renderOrder) do
-        local key = "LightEntity::" .. compIndex .. "::" .. propName
-        local property = self.resetParams[key] or light[propName]
-        self.resetParams[key] = property
-        if bitMaskPropNameMap[propName] and type(property) == "number" then
-            local valueNode = bitMaskPropNameMap[propName].preassign or entityNode:AddTree(bitMaskPropNameMap[propName].displayName or propName)
-            --- @type RadioButtonOption[]
-            local options = {}
-            for name, bit in pairs(bitMaskPropNameMap[propName].bits) do
-                table.insert(options, {
-                    Hint = name,
-                    Bit = bit,
-                })
-            end
-            table.sort(options, function(a, b) return a.Bit < b.Bit end)
-            local displayNameText = valueNode:AddText(bitMaskPropNameMap[propName].displayName or propName)
-            if bitMaskPropNameMap[propName].Tooltip then
-                displayNameText:Tooltip():AddText(bitMaskPropNameMap[propName].Tooltip)
-            end
-            local raidoGroup = StyleHelpers.AddBitmaskRadioButtons(valueNode, options, property or 0)
-            raidoGroup.OnChange = function(sel, value)
-                local liveLight = GetLiveLightEntity()
-                if not liveLight then return end
-                liveLight[propName] = value
-                saveLightEntityProperty(key, propName, value)
-            end
-        end
-        if scalarPropNameMap[propName] and type(property) == "number" then
-            local valueNode = scalarPropNameMap[propName].preassign or entityNode:AddTree(scalarPropNameMap[propName].displayName or propName)
-            local initValue = property
-            local currentValue = property
-            local slider = AddSliderWithStep(valueNode, nil, currentValue, scalarPropNameMap[propName].min,
-                scalarPropNameMap[propName].max, scalarPropNameMap[propName].step, scalarPropNameMap[propName].IsInteger)
-            slider.UserData.ResetButton.Visible = false
-            slider.OnChange = function()
-                local liveLight = GetLiveLightEntity()
-                if not liveLight then return end
-                liveLight[propName] = slider.Value[1]
-                if scalarPropNameMap[propName].isTemplate then
-                    liveLight.Template[propName] = slider.Value[1]
-                end
-                saveLightEntityProperty(key, propName, slider.Value[1])
-            end
-            local valueResetButton = valueNode:AddButton(GetLoca("Reset"))
-            valueResetButton.SameLine = true
-            valueResetButton.IDContext = key .. "Reset"
-
-            local displayNameText = valueNode:AddText(scalarPropNameMap[propName].displayName or propName)
-            if scalarPropNameMap[propName].Tooltip then
-                displayNameText:Tooltip():AddText(scalarPropNameMap[propName].Tooltip)
-            end
-            displayNameText.SameLine = true
-
-            valueResetButton.OnClick = function(sel, updateInit)
-                local liveLight = GetLiveLightEntity()
-                if not liveLight then return end
-
-                if updateInit then
-                    initValue = liveLight[propName]
-                    return
-                end
-
-                liveLight[propName] = initValue
-                if scalarPropNameMap[propName].isTemplate then
-                    liveLight.Template[propName] = initValue
-                end
-                slider.Value = { initValue, initValue, initValue, initValue }
-                self.modifiedParams[key] = nil
-            end
-
-            self.resetFuncs[key] = valueResetButton.OnClick
-
-            self.updateFuncs[key] = function()
-                local liveLight = GetLiveLightEntity()
-                if not liveLight then return end
-                if slider then
-                    slider.Value = ToVec4(liveLight[propName])
-                end
-            end
-        end
-        if vec3PropNameMap[propName] and type(property) == "table" and #property == 3 then
-            local valueNode = vec3PropNameMap[propName].preassign or
-                entityNode:AddTree(vec3PropNameMap[propName].displayName or propName)
-            if valueNode == otherNode then
-                valueNode = valueNode:AddTree(vec3PropNameMap[propName].displayName or propName)
-            end
-            local initValue = { property[1], property[2], property[3] }
-            local currentValue = property
-            local displayNameText = valueNode:AddText(vec3PropNameMap[propName].displayName or propName)
-            if vec3PropNameMap[propName].Tooltip then
-                displayNameText:Tooltip():AddText(vec3PropNameMap[propName].Tooltip)
-            end
-            local colorEdit = valueNode:AddColorEdit("Color", { currentValue[1], currentValue[2], currentValue[3] })
-            colorEdit.NoAlpha = true
-            local valueResetButton = valueNode:AddButton(GetLoca("Reset"))
-            valueResetButton.SameLine = true
-            local range = vec3PropNameMap[propName].Range or { -100, 100 }
-            local sliderX = AddSliderWithStep(valueNode, "X", currentValue[1], range[1], range[2], 0.1)
-            valueNode:AddText("X").SameLine = true
-            local sliderY = AddSliderWithStep(valueNode, "Y", currentValue[2], range[1], range[2], 0.1)
-            valueNode:AddText("Y").SameLine = true
-            local sliderZ = AddSliderWithStep(valueNode, "Z", currentValue[3], range[1], range[2], 0.1)
-            valueNode:AddText("Z").SameLine = true
-
-
-            local function sliderOnChange()
-                local liveLight = GetLiveLightEntity()
-                if not liveLight then return end
-                liveLight[propName] = { sliderX.Value[1], sliderY.Value[1], sliderZ.Value[1] }
-                saveLightEntityProperty(key, propName, { sliderX.Value[1], sliderY.Value[1], sliderZ.Value[1] })
-                if colorEdit then
-                    colorEdit.Color = { sliderX.Value[1], sliderY.Value[1], sliderZ.Value[1], colorEdit.Color[4] or 1.0 }
-                end
-            end
-
-            local function colorEditOnChange()
-                local liveLight = GetLiveLightEntity()
-                if not liveLight then return end
-                local col = colorEdit.Color
-                liveLight[propName] = { col[1], col[2], col[3] }
-                saveLightEntityProperty(key, propName, { col[1], col[2], col[3] })
-                if sliderX and sliderY and sliderZ then
-                    sliderX.Value = { col[1], col[1], col[1], col[1] }
-                    sliderY.Value = { col[2], col[2], col[2], col[2] }
-                    sliderZ.Value = { col[3], col[3], col[3], col[3] }
-                end
-            end
-
-            sliderX.OnChange = sliderOnChange
-            sliderY.OnChange = sliderOnChange
-            sliderZ.OnChange = sliderOnChange
-
-            colorEdit.OnChange = colorEditOnChange
-
-            valueResetButton.OnClick = function(sel, updateInit)
-                local liveLight = GetLiveLightEntity()
-                if not liveLight then return end
-
-                if updateInit then
-                    initValue = { liveLight[propName][1], liveLight[propName][2], liveLight[propName][3] }
-                    return
-                end
-
-                liveLight[propName] = { initValue[1], initValue[2], initValue[3] }
-                sliderX.Value = ToVec4(initValue[1])
-                sliderY.Value = ToVec4(initValue[2])
-                sliderZ.Value = ToVec4(initValue[3])
-                colorEdit.Color = { initValue[1], initValue[2], initValue[3], colorEdit.Color[4] or 1.0 }
-                self.modifiedParams[key] = nil
-            end
-
-            self.resetFuncs[key] = valueResetButton.OnClick
-            self.updateFuncs[key] = function()
-                local liveLight = GetLiveLightEntity()
-                if not liveLight then return end
-                if sliderX and sliderY and sliderZ then
-                    sliderX.Value = ToVec4(liveLight[propName][1])
-                    sliderY.Value = ToVec4(liveLight[propName][2])
-                    sliderZ.Value = ToVec4(liveLight[propName][3])
-                    colorEdit.Color = { liveLight[propName][1], liveLight[propName][2], liveLight[propName][3], colorEdit
-                    .Color[4] or 1.0 }
-                end
-            end
-        end
-    end
+    self:RenderEffectComponentEditor(entityNode, key, GetLiveLightEntity, {
+        PropertyMap = {
+            Scalar = scalarParamMap,
+            BitMask = bitMaskParamMap,
+            Enum = enumParamMap,
+            Vector3 = vector3ParamMap,
+        },
+        RenderOrder = renderOrder,
+    })
 end
 
 ---@param node any
@@ -1152,300 +1493,167 @@ end
 function VisualTab:RenderLightComponent(node, component, compIndex)
     local compNode = node
 
-    local lComp = component --[[@as AspkLightComponent]]
+    local lcomp = component --[[@as AspkLightComponent]]
 
-    local properties = lComp.Properties
+    local function applyToFrames(value, propName, frameField)
+        local comp = VisualHelpers.GetEffectComponent(self.guid, compIndex) --[[@as AspkLightComponent]]
+        if not comp then return end
 
-    local function saveLightProperty(key, propName, value)
-        self.modifiedParams[key] = {
-            Type = "Light",
-            CompIndex = compIndex,
-            PropertyName = propName,
-            Value = value,
-        }
+        local property = comp[propName]
+        if not property or not property[frameField] then return end
+
+        if frameField == "KeyFrames" then
+            VisualHelpers.ChangeKeyFrames(property.KeyFrames, value)
+        else
+            VisualHelpers.ChangeFrames(property.Frames, value, true)
+        end
     end
-
-    local propNameMap = {
-        --["Appearance.Flicker Amount"] = "Flicker Amount",
-        ["Appearance.Intensity"] = "Intensity",
-        ["Appearance.Radius"] = "Radius",
-        ["Behavior.Flicker Speed"] = "Flicker Speed"
+    
+    local scalarNameMap = {
+        ["IntensityProperty"] = {
+            Range = { Min = 0, Max = 100, Step = 0.1 },
+            DisplayName = "Intensity",
+            Group = "Appearance",
+        },
+        ["RadiusProperty"] = {
+            Range = { Min = 0, Max = 100, Step = 0.1 },
+            DisplayName = "Radius",
+            Group = "Appearance",
+        },
+        ["FlickerSpeedProperty"] = {
+            Range = { Min = 0, Max = 10, Step = 0.05 },
+            DisplayName = "Flicker Speed",
+            Group = "Behavior",
+        },
+        ["FlickerAmountProperty"] = {
+            Range = { Min = 0, Max = 1, Step = 0.01 },
+            DisplayName = "Flicker Amount",
+            Group = "Behavior",
+        },
     }
 
-    local overrideMap = {
-        ["Appearance.Radius"] = "ModulateLightTemplateRadius",
-        ["Behavior.Flicker Speed"] = "OverrideLightTemplateFlickerSpeed"
-    }
+    for propName, prop in pairs(scalarNameMap) do
+        if propName == "IntensityProperty" then
+            local hasABCDField = false
+            local checkMap = { A = true, B = true, C = true, D = true }
+            for _, frame in pairs(lcomp.IntensityProperty.KeyFrames or {}) do
+                for _, f in pairs(frame.Frames or {}) do
+                    for pName, value in pairs(f) do
+                        if checkMap[pName] then
+                            hasABCDField = true
+                            break
+                        end
+                    end
+                end
+                if hasABCDField then break end
+            end
+            if hasABCDField then
+                prop.ApplyMethod = function(value)
+                    lcomp = VisualHelpers.GetEffectComponent(self.guid, compIndex) --[[@as AspkLightComponent]]
+                    if not lcomp then return end
+                    for _, keyFrame in pairs(lcomp.IntensityProperty.KeyFrames or {}) do
+                        for _, frame in pairs(keyFrame.Frames or {}) do
+                            frame.A = value[1]
+                            frame.B = value[2]
+                            frame.C = value[3]
+                            frame.D = value[4]
+                        end
+                    end
+                end
+                prop.GetMethod = function()
+                    local comp = VisualHelpers.GetEffectComponent(self.guid, compIndex) --[[@as AspkLightComponent]]
+                    if not comp then return nil end
 
-    for propName, property in pairs(properties) do
-        local key = "LightComponent::" .. compIndex .. "::" .. propName
-        if propName == "Appearance.Color" then
-            if not property.Frames[1].Color then
+                    local property = comp.IntensityProperty
+                    if not property or not property.KeyFrames then return nil end
+
+                    local frame = property.KeyFrames[1] and property.KeyFrames[1].Frames[1]
+                    if not frame then return nil end
+
+                    return { frame.A, frame.B, frame.C, frame.D }
+                end
+                prop.PreferSliders = true
                 goto continue
-            end
-            self:CheckKey(key)
-            local overrideKey = "Light::" .. compIndex .. "::OverrideLightTemplateColor"
-            self:CheckKey(overrideKey)
-            local colorNode = compNode:AddTree("Color")
-            local initColor = self.resetParams[key] or property.Frames[1].Color
-            self.resetParams[key] = { initColor[1], initColor[2], initColor[3], initColor[4] }
-            local initBool = self.resetParams[overrideKey] or lComp.OverrideLightTemplateColor
-            self.resetParams[overrideKey] = initBool
-            local currentColor = property.Frames[1].Color
-            local colorResetButton = colorNode:AddButton(GetLoca("Reset"))
-            local overrideEntityCheck = colorNode:AddCheckbox(GetLoca("Override Entity Color"),
-                lComp.OverrideLightTemplateColor)
-            overrideEntityCheck.OnChange = function(checkbox)
-                local entity = Ext.Entity.Get(self.guid)
-                if not entity or not entity.Effect then return end
-                entity.Effect.Timeline.Components[compIndex].OverrideLightTemplateColor = checkbox.Checked
-                saveLightProperty(overrideKey, "OverrideLightTemplateColor", checkbox.Checked)
-            end
-            overrideEntityCheck.SameLine = true
-
-            self.updateFuncs[overrideKey] = function()
-                local entity = Ext.Entity.Get(self.guid)
-                if not entity or not entity.Effect then return end
-                if overrideEntityCheck then
-                    overrideEntityCheck.Checked = entity.Effect.Timeline.Components[compIndex]
-                        .OverrideLightTemplateColor
-                end
-            end
-
-            local colorPicker = colorNode:AddColorEdit("")
-            --colorPicker.SameLine = true
-            colorPicker.Color = currentColor
-            colorPicker.OnChange = function(picker)
-                local entity = Ext.Entity.Get(self.guid)
-                if not entity or not entity.Effect then return end
-                local frames = entity.Effect.Timeline.Components[compIndex].Properties[propName].Frames
-                local colorValue = { picker.Color[1], picker.Color[2], picker.Color[3], picker.Color[4] }
-                VisualHelpers.ChangeFrames(frames, colorValue, true)
-                saveLightProperty(key, propName, colorValue)
-            end
-
-            colorResetButton.OnClick = function(sel, updateInit)
-                local entity = Ext.Entity.Get(self.guid)
-                if not entity or not entity.Effect then return end
-                local component = entity.Effect.Timeline.Components[compIndex]
-                local frames = component.Properties[propName].Frames
-
-                if updateInit then
-                    initColor = { frames[1].Color[1], frames[1].Color[2], frames[1].Color[3], frames[1].Color[4] }
-                    initBool = component.OverrideLightTemplateColor
-                    return
-                end
-
-                component.OverrideLightTemplateColor = initBool
-                VisualHelpers.ChangeFrames(frames, initColor, true)
-                colorPicker.Color = { initColor[1], initColor[2], initColor[3], initColor[4] }
-                overrideEntityCheck.Checked = initBool
-                self.modifiedParams[key] = nil
-                self.modifiedParams[overrideKey] = nil
-            end
-
-            self.resetFuncs[key] = colorResetButton.OnClick
-
-            self.updateFuncs[key] = function()
-                local entity = Ext.Entity.Get(self.guid)
-                if not entity or not entity.Effect then return end
-                local frames = entity.Effect.Timeline.Components[compIndex].Properties[propName].Frames
-                if frames and frames[1] and frames[1].Color and colorPicker then
-                    local colorValue = frames[1].Color
-                    colorPicker.Color = { colorValue[1], colorValue[2], colorValue[3], colorValue[4] }
-                end
             end
         end
 
-        if propNameMap[propName] then
-            self:CheckKey(key)
-            local hasValue = false
-            for type, value in pairs(property.KeyFrames[1].Frames[1]) do
-                if type == "Value" and value then
-                    hasValue = true
-                    break
-                end
-            end
-            -- A B C D value variation
-            if not hasValue then
-                if not property.KeyFrames or not property.KeyFrames[1] or not property.KeyFrames[1].Frames or not property.KeyFrames[1].Frames[1] then
-                    goto continue
-                end
+        prop.ApplyMethod = function(value)
+            applyToFrames(value, propName, "KeyFrames")
+        end
+        prop.GetMethod = function()
+            local comp = VisualHelpers.GetEffectComponent(self.guid, compIndex) --[[@as AspkLightComponent]]
+            if not comp then return nil end
 
-                local valueNode = compNode:AddTree(propNameMap[propName] or propName)
-                local valueResetButton = valueNode:AddButton(GetLoca("Reset"))
-                local setTo0Button = valueNode:AddButton(GetLoca("Set to 0"))
-                setTo0Button.SameLine = true
-                local initValue = { property.KeyFrames[1].Frames[1].A, property.KeyFrames[1].Frames[1].B, property
-                    .KeyFrames[1].Frames[1].C, property.KeyFrames[1].Frames[1].D }
-                local currentValue = property.KeyFrames[1].Frames[1]
+            local property = comp[propName]
+            if not property or not property.KeyFrames then return nil end
 
-                local sliderA = AddSliderWithStep(valueNode, "A", currentValue.A, -100, 100, 0.1)
-                valueNode:AddText("?Amplitude").SameLine = true
-                local sliderB = AddSliderWithStep(valueNode, "B", currentValue.B, -100, 100, 0.1)
-                valueNode:AddText("?Frequency").SameLine = true
-                local sliderC = AddSliderWithStep(valueNode, "C", currentValue.C, -100, 100, 0.1)
-                valueNode:AddText("?Phase").SameLine = true
-                local sliderD = AddSliderWithStep(valueNode, "D", currentValue.D, -100, 100, 0.1)
-                valueNode:AddText("Base").SameLine = true
-
-                sliderA.OnChange = function(slider)
-                    local entity = Ext.Entity.Get(self.guid)
-                    if not entity or not entity.Effect then return end
-                    local keyFrames = entity.Effect.Timeline.Components[compIndex].Properties[propName].KeyFrames
-                    for keyFrameIndex, keyFrame in ipairs(keyFrames) do
-                        VisualHelpers.ChangeABCDFrames(keyFrame.Frames, sliderA.Value[1], sliderB.Value[1],
-                            sliderC.Value[1], sliderD.Value[1])
-                    end
-                    saveLightProperty(key, propName,
-                        { sliderA.Value[1], sliderB.Value[1], sliderC.Value[1], sliderD.Value[1] })
-                end
-                sliderB.OnChange = sliderA.OnChange
-                sliderC.OnChange = sliderA.OnChange
-                sliderD.OnChange = sliderA.OnChange
-
-                valueResetButton.OnClick = function(sel, updateInit)
-                    local entity = Ext.Entity.Get(self.guid)
-                    if not entity or not entity.Effect then return end
-                    local keyFrames = entity.Effect.Timeline.Components[compIndex].Properties[propName].KeyFrames
-                    if updateInit then
-                        initValue = { keyFrames[1].Frames[1].A, keyFrames[1].Frames[1].B, keyFrames[1].Frames[1].C,
-                            keyFrames[1].Frames[1].D }
-                        return
-                    end
-
-                    for keyFrameIndex, keyFrame in ipairs(keyFrames) do
-                        VisualHelpers.ChangeABCDFrames(keyFrame.Frames, initValue[1], initValue[2], initValue[3],
-                            initValue[4])
-                    end
-                    sliderA.Value = { initValue[1], initValue[1], initValue[1], initValue[1] }
-                    sliderB.Value = { initValue[2], initValue[2], initValue[2], initValue[2] }
-                    sliderC.Value = { initValue[3], initValue[3], initValue[3], initValue[3] }
-                    sliderD.Value = { initValue[4], initValue[4], initValue[4], initValue[4] }
-                    self.modifiedParams[key] = nil
-                end
-
-                setTo0Button.OnClick = function()
-                    local entity = Ext.Entity.Get(self.guid)
-                    if not entity or not entity.Effect then return end
-                    local keyFrames = entity.Effect.Timeline.Components[compIndex].Properties[propName].KeyFrames
-                    for keyFrameIndex, keyFrame in ipairs(keyFrames) do
-                        VisualHelpers.ChangeABCDFrames(keyFrame.Frames, 0, 0, 0, 0)
-                    end
-                    sliderA.Value = { 0, 0, 0, 0 }
-                    sliderB.Value = { 0, 0, 0, 0 }
-                    sliderC.Value = { 0, 0, 0, 0 }
-                    sliderD.Value = { 0, 0, 0, 0 }
-                    self.modifiedParams[key] = { 0, 0, 0, 0 }
-                end
-
-                self.resetFuncs[key] = valueResetButton.OnClick
-
-                self.updateFuncs[key] = function()
-                    local entity = Ext.Entity.Get(self.guid)
-                    if not entity or not entity.Effect then return end
-                    local keyFrames = entity.Effect.Timeline.Components[compIndex].Properties[propName].KeyFrames
-                    if keyFrames and keyFrames[1] and keyFrames[1].Frames and keyFrames[1].Frames[1] and sliderA then
-                        local frame = keyFrames[1].Frames[1]
-                        sliderA.Value = { frame.A, frame.A, frame.A, frame.A }
-                        sliderB.Value = { frame.B, frame.B, frame.B, frame.B }
-                        sliderC.Value = { frame.C, frame.C, frame.C, frame.C }
-                        sliderD.Value = { frame.D, frame.D, frame.D, frame.D }
-                    end
-                end
-
-                goto continue
-            end
-
-            local valueNode = compNode:AddTree(propNameMap[propName] or propName)
-            local valueResetButton = valueNode:AddButton(GetLoca("Reset"))
-            local resetBoolFunc = nil
-
-            if overrideMap[propName] then
-                local overrideKey = "LightComponent::" .. compIndex .. "::" .. overrideMap[propName]
-                local boolName = overrideMap[propName]
-                self:CheckKey(overrideKey)
-                local initBool = lComp[boolName]
-                local overrideCheck = valueNode:AddCheckbox(GetLoca(boolName), lComp[boolName] or false)
-                overrideCheck.OnChange = function(checkbox)
-                    local entity = Ext.Entity.Get(self.guid)
-                    if not entity or not entity.Effect then return end
-                    entity.Effect.Timeline.Components[compIndex][boolName] = checkbox.Checked
-                    saveLightProperty(overrideKey, boolName, checkbox.Checked)
-                end
-
-                self.updateFuncs[overrideKey] = function()
-                    local entity = Ext.Entity.Get(self.guid)
-                    if not entity or not entity.Effect then return end
-                    if overrideCheck then
-                        overrideCheck.Checked = entity.Effect.Timeline.Components[compIndex][boolName]
-                    end
-                end
-
-                resetBoolFunc = function()
-                    local entity = Ext.Entity.Get(self.guid)
-                    if not entity or not entity.Effect then return end
-                    local component = entity.Effect.Timeline.Components[compIndex]
-                    component[boolName] = initBool
-                    overrideCheck.Checked = initBool
-                    self.modifiedParams[overrideKey] = nil
-                end
-
-                overrideCheck.SameLine = true
-            end
-
-            local initValue = self.resetParams[key] or property.KeyFrames[1].Frames[1].Value
-            self.resetParams[key] = initValue
-            local currentValue = property.KeyFrames[1].Frames[1].Value
-            local valueSlider = AddSliderWithStep(valueNode, key, currentValue, -100, 100, 0.1)
-            valueSlider.UserData.ResetButton.Visible = false
-            if not overrideMap[propName] then
-                valueSlider.UserData.StepInput.SameLine = true
-            end
-            valueSlider.OnChange = function(slider)
-                local entity = Ext.Entity.Get(self.guid)
-                if not entity or not entity.Effect then return end
-                local keyFrames = entity.Effect.Timeline.Components[compIndex].Properties[propName].KeyFrames
-                for keyFrameIndex, keyFrame in ipairs(keyFrames) do
-                    VisualHelpers.ChangeFrames(keyFrame.Frames, slider.Value[1])
-                end
-                saveLightProperty(key, propName, slider.Value[1])
-            end
-
-            valueResetButton.OnClick = function(sel, updateInit)
-                local entity = Ext.Entity.Get(self.guid)
-                if not entity or not entity.Effect then return end
-                local keyFrames = entity.Effect.Timeline.Components[compIndex].Properties[propName].KeyFrames
-
-                if updateInit then
-                    initValue = keyFrames[1].Frames[1].Value
-                    return
-                end
-
-                for keyFrameIndex, keyFrame in ipairs(keyFrames) do
-                    VisualHelpers.ChangeFrames(keyFrame.Frames, initValue)
-                end
-                valueSlider.Value = { initValue, initValue, initValue, initValue }
-                if resetBoolFunc then
-                    resetBoolFunc()
-                end
-                self.modifiedParams[key] = nil
-            end
-
-            self.resetFuncs[key] = valueResetButton.OnClick
-
-            self.updateFuncs[key] = function()
-                local entity = Ext.Entity.Get(self.guid)
-                if not entity or not entity.Effect then return end
-                local keyFrames = entity.Effect.Timeline.Components[compIndex].Properties[propName].KeyFrames
-                if keyFrames and keyFrames[1] and keyFrames[1].Frames and keyFrames[1].Frames[1] and valueSlider then
-                    local frame = keyFrames[1].Frames[1]
-                    valueSlider.Value = { frame.Value, frame.Value, frame.Value, frame.Value }
-                end
-            end
+            return property.KeyFrames[1] and property.KeyFrames[1].Frames[1].Value or nil
         end
         ::continue::
     end
+
+    local vec4NameMap = {
+        ["ColorProperty"] = {
+            Range = { Min = -1, Max = 1, Step = 0.01 },
+            DisplayName = "Color",
+            Group = "Appearance",
+        },
+    }
+
+    for propName, prop in pairs(vec4NameMap) do
+        prop.ApplyMethod = function(value)
+            applyToFrames(value, propName, "Frames")
+        end
+        prop.GetMethod = function()
+            local comp = VisualHelpers.GetEffectComponent(self.guid, compIndex) --[[@as AspkLightComponent]]
+            if not comp then return nil end
+
+            local property = comp[propName]
+            if not property or not property.Frames then return nil end
+
+            return property.Frames[1] and property.Frames[1].Color or nil
+        end
+    end
+
+    local boolNameMap = {
+        ["ModulateLightTemplateRadius"] = {
+            DisplayName = "Modulate Light Template Radius",
+            Group = "Override Flags",
+        },
+        ["OverrideLightTemplateFlickerSpeed"] = {
+            DisplayName = "Override Light Template Flicker Speed",
+            Group = "Override Flags",
+        },
+        ["OverrideLightTemplateColor"] = {
+            DisplayName = "Override Light Template Color",
+            Group = "Override Flags",
+        },
+    }
+
+
+    local key = "Light::" .. compIndex
+    self.resetFuncs[key] = {}
+    self.updateFuncs[key] = {}
+    self.resetParams[key] = self.resetParams[key] or {}
+    self:RenderEffectComponentEditor(compNode, key, function()
+        return VisualHelpers.GetEffectComponent(self.guid, compIndex) --[[@as AspkLightComponent]]
+    end, {
+        PropertyMap = {
+            Scalar = scalarNameMap,
+            Vector4 = vec4NameMap,
+            Boolean = boolNameMap,
+        },
+        RenderOrder = {
+            "IntensityProperty",
+            "RadiusProperty",
+            "ColorProperty",
+            "FlickerSpeedProperty",
+            "FlickerAmountProperty",
+            "ModulateLightTemplateRadius",
+            "OverrideLightTemplateFlickerSpeed",
+            "OverrideLightTemplateColor",
+        }
+    })
 end
 
 ---@param node any
@@ -1455,129 +1663,49 @@ function VisualTab:RenderParticleSystemComponent(node, component, compIndex)
     local compNode = node
 
     local psComp = component --[[@as AspkParticleSystemComponent]]
-
-    local function saveParticleProperty(key, propName, value)
-        self.modifiedParams[key] = {
-            Type = "ParticleSystem",
-            CompIndex = compIndex,
-            PropertyName = propName,
-            Value = value
-        }
-    end
-
-    local scalarPropNameMap = {
-        Brightness_ = { min = 0, max = 10, step = 0.1, displayName = "Brightness" },
-        UniformScale = { min = 0, max = 10, step = 0.1, displayName = "Uniform Scale" },
+    local scalarParamMap = {
+        Brightness_ = {
+            Range = { Min = 0, Max = 10, Step = 0.1 },
+            DisplayName = "Brightness",
+        },
+        UniformScale = {
+            Range = { Min = 0, Max = 10, Step = 0.1 },
+            DisplayName = "Uniform Scale",
+        },
     }
-
     local vec4PropNameMap = {
-        Color = "Color",
+        Color = {
+            Range = { Min = -1, Max = 1, Step = 0.01 },
+            DisplayName = "Color",
+        }
     }
 
-    for propName, property in pairs(psComp) do
-        local key = "ParticleSystem::" .. compIndex .. "::" .. propName
-        if scalarPropNameMap[propName] and type(property) == "number" then
-            local valueNode = compNode:AddTree(scalarPropNameMap[propName].displayName or propName)
-            local valueResetButton = valueNode:AddButton(GetLoca("Reset"))
-            local initValue = self.resetParams[key] or property
-            self.resetParams[key] = initValue
-            local currentValue = property
-            local slider = AddSliderWithStep(valueNode, nil, currentValue, scalarPropNameMap[propName].min,
-                scalarPropNameMap[propName].max, scalarPropNameMap[propName].step)
-            slider.UserData.ResetButton.Visible = false
-            slider.OnChange = function(slider)
-                local entity = Ext.Entity.Get(self.guid)
-                if not entity or not entity.Effect then return end
-                local liveComponent = entity.Effect.Timeline.Components[compIndex]
-                liveComponent[propName] = slider.Value[1]
-                saveParticleProperty(key, propName, slider.Value[1])
-            end
-
-            valueResetButton.OnClick = function(sel, updateInit)
-                local entity = Ext.Entity.Get(self.guid)
-                if not entity or not entity.Effect then return end
-                local liveComponent = entity.Effect.Timeline.Components[compIndex]
-
-                if updateInit then
-                    initValue = liveComponent[propName]
-                    return
-                end
-
-                liveComponent[propName] = initValue
-                slider.Value = { initValue, initValue, initValue, initValue }
-                self.modifiedParams[key] = nil
-            end
-
-            self.resetFuncs[key] = valueResetButton.OnClick
-            self.updateFuncs[key] = function()
-                local entity = Ext.Entity.Get(self.guid)
-                if not entity or not entity.Effect then return end
-                local liveComponent = entity.Effect.Timeline.Components[compIndex]
-                if liveComponent[propName] and slider then
-                    slider.Value = { liveComponent[propName], liveComponent[propName], liveComponent[propName],
-                        liveComponent[propName] }
-                end
-            end
-
-            goto continue
+    local key = "ParticleSystem::" .. compIndex
+    
+    local function GetLiveParticleSystem()
+        local entity = Ext.Entity.Get(self.guid)
+        if not entity or not entity.Effect or not entity.Effect.Timeline or not entity.Effect.Timeline.Components[compIndex] then
+            return nil
         end
-
-        if vec4PropNameMap[propName] and type(property) == "table" and #property == 4 then
-            local valueNode = compNode:AddTree(vec4PropNameMap[propName] or propName)
-            local valueResetButton = valueNode:AddButton(GetLoca("Reset"))
-            local initValue = self.resetParams[key] or { property[1], property[2], property[3], property[4] }
-            self.resetParams[key] = initValue
-            local currentValue = property
-            local colorEdit = valueNode:AddColorEdit("")
-            colorEdit.SameLine = true
-            colorEdit.Color = currentValue
-            colorEdit.OnChange = function(picker)
-                local entity = Ext.Entity.Get(self.guid)
-                if not entity or not entity.Effect then return end
-                local liveComponent = entity.Effect.Timeline.Components[compIndex]
-                local colorValue = { picker.Color[1], picker.Color[2], picker.Color[3], picker.Color[4] }
-                liveComponent[propName] = colorValue
-                saveParticleProperty(key, propName, colorValue)
-            end
-
-            valueResetButton.OnClick = function(sel, updateInit)
-                local entity = Ext.Entity.Get(self.guid)
-                if not entity or not entity.Effect then return end
-                local liveComponent = entity.Effect.Timeline.Components[compIndex]
-
-                if updateInit then
-                    initValue = { liveComponent[propName][1], liveComponent[propName][2], liveComponent[propName][3],
-                        liveComponent[propName][4] }
-                    return
-                end
-
-                liveComponent[propName] = { initValue[1], initValue[2], initValue[3], initValue[4] }
-                colorEdit.Color = { initValue[1], initValue[2], initValue[3], initValue[4] }
-                self.modifiedParams[key] = nil
-            end
-
-            self.resetFuncs[key] = valueResetButton.OnClick
-            self.updateFuncs[key] = function()
-                local entity = Ext.Entity.Get(self.guid)
-                if not entity or not entity.Effect then return end
-                local liveComponent = entity.Effect.Timeline.Components[compIndex]
-                if liveComponent[propName] and colorEdit then
-                    local col = liveComponent[propName]
-                    colorEdit.Color = { col[1], col[2], col[3], col[4] }
-                end
-            end
-
-            goto continue
-        end
-
-        ::continue::
+        return entity.Effect.Timeline.Components[compIndex]
     end
+
+    self:RenderEffectComponentEditor(compNode, key, GetLiveParticleSystem, {
+        PropertyMap = {
+            Scalar = scalarParamMap,
+            Vector4 = vec4PropNameMap,
+        },
+        RenderOrder = {
+            "Color",
+            "Brightness_",
+            "UniformScale",
+        }
+    })
 end
 
-function VisualTab:RenderTransformSliders(parent, descIndex, attachIndex, modelName)
+function VisualTab:RenderTransformSliders(parent, descIndex, attachIndex, keyName)
     local selectInTransformEditor = parent:AddButton(GetLoca("Select in Transform Editor"))
-    selectInTransformEditor.IDContext = tostring(parent) ..
-        "::" .. modelName .. "::" .. descIndex .. "::" .. (attachIndex or 0) .. "::SelectInTransformEditor"
+    selectInTransformEditor.IDContext = "VisualTab_TransformEditorSelectButton_" .. descIndex .. "_" .. (attachIndex or "")
 
     selectInTransformEditor.OnClick = function()
         if not self:CheckVisual() then return end
@@ -1587,8 +1715,10 @@ function VisualTab:RenderTransformSliders(parent, descIndex, attachIndex, modelN
         local startScale = VisualHelpers.GetRenderableScale(self.guid, descIndex, attachIndex)
         local proxy = RenderableMovableProxy.new(renderableFunc)
         RB_GLOBALS.TransformEditor:Select({ proxy })
-        self.StartScale = self.StartScale or {}
-        table.insert(self.StartScale, { AttachIndex = attachIndex, DescIndex = descIndex, Scale = startScale })
+        self.resetParams[keyName] = self.resetParams[keyName] or {}
+        self.resetParams[keyName].Scale = startScale
+        self.resetParams[keyName].DescIndex = descIndex
+        self.resetParams[keyName].AttachIndex = attachIndex
     end
 end
 
@@ -1602,6 +1732,13 @@ function VisualTab:Add(guid, displayName, parent, templateName)
     visualTab:Render()
     return visualTab
 end
+
+--- @class RB_VisualPreset
+--- @field Name string
+--- @field TemplateName string
+--- @field Effects table<string, table<string, any>> -- key <componentType :: componentIndex> -> propertyName -> value
+--- @field Materials table<string, RB_ParameterSet> -- key <name :: attachIndex(if any) :: descIndex> -> RB_ParameterSet
+--- @field Transforms table<string, Transform> -- key <name :: attachIndex(if any) :: descIndex> -> Transform
 
 function VisualTab:Save(name, overwrite)
     local templateName = self.templateName or GetTemplateNameForGuid(self.guid)
@@ -1628,6 +1765,7 @@ function VisualTab:Save(name, overwrite)
     local filePath = GetVisualPresetsPath(templateName)
     local oriFile = Ext.Json.Parse(Ext.IO.LoadFile(filePath) or "{}")
 
+    local localTransforms = {}
     local Mats = {}
     for key, mat in pairs(self.Materials) do
         local params = mat:ExportChanges()
@@ -1642,30 +1780,22 @@ function VisualTab:Save(name, overwrite)
         if hasChanges then
             Mats[key] = params
         end
-    end
 
-    for _, startScaleData in ipairs(self.StartScale or {}) do
-        local currentScale = VisualHelpers.GetAttachmentScale(self.guid, startScaleData.DescIndex,
-            startScaleData.AttachIndex)
-        if EqualArrays(currentScale, startScaleData.Scale) then
-            goto continue
+        local objStart = self.resetParams[key]
+        local currentScale = VisualHelpers.GetRenderableScale(self.guid, objStart.DescIndex, objStart.AttachIndex)
+        if EqualArrays(currentScale, objStart.Scale) == false then
+            localTransforms[key] = {
+                Scale = currentScale
+            }
         end
-        local attachKey = "Transform::" ..
-            startScaleData.DescIndex .. "::" .. (startScaleData.AttachIndex or 0) .. "::Scale"
-        self.modifiedParams[attachKey] = {
-            Type = "Scale",
-            DescIndex = startScaleData.DescIndex,
-            AttachIndex = startScaleData.AttachIndex,
-            Value = currentScale
-        }
-        ::continue::
     end
 
     oriFile[saveName] = {
         Name = saveName,
         TemplateName = templateName,
-        ModifiedParams = self.modifiedParams or {},
-        Materials = Mats
+        Effects = DeepCopy(self.Effects),
+        Materials = Mats,
+        Transforms = localTransforms,
     }
 
     local ok, err = Ext.IO.SaveFile(filePath, Ext.Json.Stringify(oriFile))
@@ -1696,6 +1826,38 @@ function VisualTab:Save(name, overwrite)
 
     --Info("VisualTab:Save - Preset '" .. saveName .. "' saved successfully for template: " .. templateName)
     return true
+end
+
+function VisualTab:ExportPreset()
+    local presetData = {
+        Materials = {},
+        Effects = DeepCopy(self.Effects),
+        Transforms = {},
+    }
+
+    for key, mat in pairs(self.Materials) do
+        local params = mat:ExportChanges()
+        local hasChanges = false
+        for typeRef, changed in pairs(params) do
+            if next(changed) then
+                hasChanges = true
+                break
+            end
+        end
+
+        if hasChanges then
+            presetData.Materials[key] = params
+        end
+        local objStart = self.resetParams[key]
+        local currentScale = VisualHelpers.GetRenderableScale(self.guid, objStart.DescIndex, objStart.AttachIndex)
+        if EqualArrays(currentScale, objStart.Scale) == false then
+            presetData.Transforms[key] = {
+                Scale = currentScale
+            }
+        end
+    end
+
+    return presetData
 end
 
 function VisualTab:Load(notoverwrite)
@@ -1806,23 +1968,18 @@ function VisualTab:LoadPreset(name)
 
     local preset = self.savedPresets[name]
 
-    if not preset or not preset.ModifiedParams then
-        Warning("Preset not found or invalid: " .. name .. ", object: " .. self.templateName)
-        return false
-    end
-
-    local presetParams = DeepCopy(preset.ModifiedParams)
-
     for _, resetFunc in pairs(self.resetFuncs) do
-        if resetFunc then
-            resetFunc()
+        for _, func in pairs(resetFunc) do
+            if func then
+                func()
+            end
         end
     end
 
-    VisualHelpers.ApplyVisualParams(self.guid, presetParams)
-
+    VisualHelpers.ApplyVisualParams(self.guid, preset)
     self.currentPreset = name
-    self.modifiedParams = presetParams or {}
+    self.Effects = DeepCopy(preset.Effects) or {}
+    self.LocalTransforms = DeepCopy(preset.Transforms) or {}
 
     for key, matParams in pairs(preset.Materials or {}) do
         if self.Materials[key] then
@@ -1845,16 +2002,12 @@ function VisualTab:LoadPreset(name)
 end
 
 function VisualTab:UpdateAll()
-    for _, func in pairs(self.updateFuncs) do
-        func()
-    end
-end
-
-function VisualTab:TryUpdate(key)
-    if self.updateFuncs[key] then
-        self.updateFuncs[key]()
-    else
-        --Warning("No update function found for key: " .. key)
+    for _, compType in pairs(self.updateFuncs) do
+        for _, updateFunc in pairs(compType) do
+            if updateFunc then
+                updateFunc()
+            end
+        end
     end
 end
 

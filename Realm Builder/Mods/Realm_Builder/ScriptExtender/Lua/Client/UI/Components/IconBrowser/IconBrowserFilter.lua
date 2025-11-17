@@ -52,30 +52,17 @@ function IconBrowser:CheckIfAnySearchCriteria()
     return hasIncludeConditions or hasExcludeConditions
 end
 
-function IconBrowser:SetupTagFilterWindow()
-    self.tagsFilter = self.tagsFilter or RegisterWindow("generic", self.displayName, "Tags Filter", self)
-
-    self.tagsFilter.NoResize = true
-    self.tagsFilter.NoMove = true
-
-    self.tagsFilter.AlwaysAutoResize = true
-    self.tagsFilter.NoTitleBar = true
-    self.tagsFilter.Open = false
-
-    return self.tagsFilter
-end
-
 -- Abomination
 function IconBrowser:AddTagsFilter()
-    if self.tagsFilterOpenButton then
+    if self.tagsFilterMenu then
         self:RenderTagsFilter()
         return
     end
-    self.tagsFilterOpenButton = self.tagsFilterOpenButton or self.topMenuBar:AddMenu("Tags Filter >")
+    self.tagsFilterMenu = self.tagsFilterMenu or self.topMenuBar:AddMenu("Tags Filter >")
 
-    self.tagsFilterOpenButton.OnHoverEnter = function()
+    self.tagsFilterMenu.OnHoverEnter = function()
         self:RenderTagsFilter()
-        self.tagsFilterOpenButton.OnHoverEnter()
+        self.tagsFilterMenu.OnHoverEnter()
     end
 end
 
@@ -141,39 +128,37 @@ function IconBrowser:RenderTagsFilter()
 
     self.tagsFilterElements = {}
 
-    if not self.tagsFilterOpenButton then
-        self.tagsFilterOpenButton = self.topMenuBar:AddMenu("Tags Filter >")
+    if not self.tagsFilterMenu then
+        self.tagsFilterMenu = self.topMenuBar:AddMenu("Tags Filter >")
     end
 
-    self.tagsFilter = self.tagsFilter or self:SetupTagFilterWindow()
-
-    local keepOpen = self.tagsFilter.Open
-    self.tagsFilterOpenButton.OnHoverEnter = function()
-        self.tagsFilter.Open = true
+    local keepOpen = self.tagsFilterMenu.Open
+    self.tagsFilterMenu.OnHoverEnter = function()
+        self.tagsFilterMenu.Open = true
         Timer:Ticks(30, function(timerID)
             local panelPos = self.panel.LastPosition
-            local filterWidth = self.tagsFilter.LastSize and self.tagsFilter.LastSize[1] or 500 * SCALE_FACTOR
+            local filterWidth = self.tagsFilterMenu.LastSize and self.tagsFilterMenu.LastSize[1] or 500 * SCALE_FACTOR
             local pos = { panelPos[1] - filterWidth, panelPos[2] }
-            self.tagsFilter:SetPos(pos)
+            self.tagsFilterMenu:SetPos(pos)
         end)
     end
-    self.tagsFilterOpenButton.OnHoverLeave = function()
+    self.tagsFilterMenu.OnHoverLeave = function()
         if not keepOpen then
-            self.tagsFilter.Open = false
+            self.tagsFilterMenu.Open = false
         end
     end
-    self.tagsFilterOpenButton.OnClick = function()
+    self.tagsFilterMenu.OnClick = function()
         keepOpen = not keepOpen
-        self.tagsFilter.Open = keepOpen
-        FocusWindow(self.tagsFilter)
+        self.tagsFilterMenu.Open = keepOpen
+        FocusWindow(self.tagsFilterMenu)
     end
 
     self.panel.OnClose = function()
         keepOpen = false
-        self.tagsFilter.Open = false
+        self.tagsFilterMenu.Open = false
     end
 
-    self.tagsPopup = self.tagsFilter
+    self.tagsPopup = self.tagsFilterMenu --[[@as ExtuiTreeParent]]
     local topTable, leftCe, rightCe = self.tagsFilterTopTable, nil, nil
     if not topTable then
         topTable, leftCe, rightCe = AddTwoColTable(self.tagsPopup, "TagsTopTable")

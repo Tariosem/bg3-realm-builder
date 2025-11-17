@@ -235,7 +235,7 @@ function NearbyCombo:RenderSelectionTable(parent)
     end
 
     configPopup:AddText(GetLoca("Scan Radius"))
-    local radiusSlider = AddSliderWithStep(configPopup, "Radius", self.Radius, 1, 64, 1)
+    local radiusSlider = StyleHelpers.AddSliderWithStep(configPopup, "Radius", self.Radius, 1, 64, 1)
 
     radiusSlider.OnChange = function (sld)
         self.Radius = sld.Value[1]

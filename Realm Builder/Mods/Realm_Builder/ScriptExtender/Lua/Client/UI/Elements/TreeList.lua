@@ -263,20 +263,6 @@ function TreeList:ApplyTreeTableStyle(tbl)
     tbl.BordersH = true
 end
 
---- @param arrowImage ExtuiImageButton
-local function setupArrowImage(arrowImage)
-    ClearAllBorders(arrowImage)
-    arrowImage.OnHoverEnter = function ()
-        arrowImage.Tint = {0.8, 0.8, 0.8, 1}
-    end
-    arrowImage.OnHoverLeave = function ()
-        arrowImage.Tint = {1, 1, 1, 1}
-    end
-    arrowImage:SetColor("Button", {0,0,0,0})
-    arrowImage:SetColor("ButtonHovered", {0,0,0,0})
-    arrowImage:SetColor("ButtonActive", {0,0,0,0})
-end
-
 function TreeList:RenderList()
     -- validate renderOrder
     local ok, err = pcall(self.RenderOrder, "a", "b")
@@ -379,7 +365,7 @@ function TreeList:RenderList()
                 arrowReserved.IDContext = "TreeList" .. self.label .. "ArrowReserved" .. tostring(key)
                 local icon = self.collapsedTree[key] and RB_ICONS.Tree_Collapsed or RB_ICONS.Tree_Expanded
                 local arrowImage = arrowReserved:AddImageButton("##" .. key .. "ArrowBtn", icon, IMAGESIZE.ROW)
-                setupArrowImage(arrowImage)
+                StyleHelpers.SetupImageButton(arrowImage)
                 ele = self:RenderTree(key, leftCell, fixedCell)
                 ele.SameLine = true
                 self.arrowRefs[key] = arrowReserved
@@ -569,13 +555,13 @@ function TreeList:SetupDragAndDrop(selectable, key)
         for ikey, iitem in SortedPairs(self.selectedItems, self.RenderOrder) do
             local cell = row:AddCell()
             local fixedCell = row:AddCell()
-            if self.tree:IsLeaf(ikey) then
+            --if self.tree:IsLeaf(ikey) then
                 --self:RenderLeaf(ikey, cell, fixedCell) 
-            else
-                --cell:AddImage(RB_ICONS.Collection, IMAGESIZE.ROW)
+            --else
+                cell:AddImage(RB_ICONS.Collection, IMAGESIZE.ROW)
                 --local ele = self:RenderTree(ikey, cell, fixedCell)
                 --ele.SameLine = true
-            end
+            --end
             local ref = self.nodeRefs[ikey]
             ref:SetStyle("Alpha", 0.5)
         end
@@ -593,7 +579,6 @@ function TreeList:SetupDragAndDrop(selectable, key)
 
     local userDragDrop = selectable.OnDragDrop or emptyFunc
     selectable.OnDragDrop = function(sel, drop)
-        _P("DragDrop detected")
         local dropped = drop.UserData or {}
         if dropped.Key then
             self:OnDragDrop(dropped.Key, key)
@@ -673,7 +658,7 @@ function TreeList:SetUpTree(tree, key)
         DestroyAllChildren(reserved)
         local icon = self.collapsedTree[key] and RB_ICONS.Tree_Collapsed or RB_ICONS.Tree_Expanded
         local arrowImage = reserved:AddImageButton("##" .. key .. "ArrowBtn", icon, IMAGESIZE.ROW)
-        setupArrowImage(arrowImage)
+        StyleHelpers.SetupImageButton(arrowImage)
     end
 
 

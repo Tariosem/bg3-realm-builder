@@ -10,6 +10,9 @@ function SceneryBrowser:SubclassInit()
     self.iconPR = config.IconPerRow or 2
     self.iconPC = config.IconPerColumn or 20
     self.iconWidth = config.IconWidth or 600
+    self.browserWidth = self.iconPR * self.iconWidth + 20
+    self.browserHeight = self.iconPC * (48 * SCALE_FACTOR + self.cellsPadding[2]) + 40 * SCALE_FACTOR + 240
+    self.lastSize = config.LastSize or { self.browserWidth * 1.5, self.browserHeight * 1.5 }
 
     self.iconButtonBgColor = config.ButtonBgColor or HexToRGBA("FF615238")
 end

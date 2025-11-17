@@ -466,13 +466,13 @@ function SpellTab:RenderControlPanel()
         self.searchData.Sheathing = GetCombo(input)
     end
 
-    local areaRadiusSlider = AddSliderWithStep(self.effectsInfoTab, "AreaRadius", self.searchData.AreaRadius or 9, 1, 100, 1, true)
+    local areaRadiusSlider = StyleHelpers.AddSliderWithStep(self.effectsInfoTab, "AreaRadius", self.searchData.AreaRadius or 9, 1, 100, 1, true)
     areaRadiusSlider.OnChange = function(slider)
         self.searchData.AreaRadius = slider.Value[1]
     end
     self.effectsInfoTab:AddText(GetLoca("Hit Radius")).SameLine = true
 
-    local targetRadiusSlider = AddSliderWithStep(self.effectsInfoTab, "TargetRadius", self.searchData.TargetRadius or 18, 1, 100, 1, true)
+    local targetRadiusSlider = StyleHelpers.AddSliderWithStep(self.effectsInfoTab, "TargetRadius", self.searchData.TargetRadius or 18, 1, 100, 1, true)
     targetRadiusSlider.OnChange = function(slider)
         self.searchData.TargetRadius = slider.Value[1]
     end

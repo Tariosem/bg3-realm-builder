@@ -185,7 +185,7 @@ local function Realm_Builder_Population()
     local effectCnt = RB_MultiEffectManager:PopulateAllEffects()
     local effectsFinished = Ext.Timer:MonotonicTime()
     if itemCnt ~= -1 and effectCnt ~= -1 then
-        RPrintPurple("[Realm Builder] Populating Templates took " .. (itemsFinished - now) .. " ms.")
+        RPrintPurple("[Realm Builder] Populating Root Templates took " .. (itemsFinished - now) .. " ms.")
         RPrintPurple("  - " .. itemCnt .. " items populated.")
         RPrintPurple("  - " .. characterCnt .. " characters populated.")
         RPrintPurple("  - " .. sceneryCnt .. " scenery populated.")

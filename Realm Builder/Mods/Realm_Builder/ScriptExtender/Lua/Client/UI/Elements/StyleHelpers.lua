@@ -25,7 +25,7 @@ end
 --- @param step number
 --- @param isInteger? boolean
 --- @return ExtuiSliderInt|ExtuiSliderScalar
-function AddSliderWithStep(parent, IDContext, defaultValue, min, max, step, isInteger)
+function StyleHelpers.AddSliderWithStep(parent, IDContext, defaultValue, min, max, step, isInteger)
     local sliderProxy = {}
     if not IDContext then
         IDContext = Uuid_v4()
@@ -53,7 +53,7 @@ function AddSliderWithStep(parent, IDContext, defaultValue, min, max, step, isIn
     decreButton.UserData.Slider = slider
     increButton.UserData.Slider = slider
 
-    local allEles = {decreButton, slider, increButton, resetButton}
+    local allEles = { decreButton, slider, increButton, resetButton }
     stepInput.IDContext = IDContext .. "_StepInput"
     increButton.IDContext = IDContext .. "_IncreButton"
     slider.IDContext = IDContext .. "_Slider"
@@ -161,7 +161,7 @@ function AddSliderStepButton(parent, label, step, slider, direction)
         if not s then
             return
         end
-        
+
         local dir = direction == "<" and "<" or ">"
         local factor = 10.0
 
@@ -173,8 +173,10 @@ function AddSliderStepButton(parent, label, step, slider, direction)
             local newMin = Vec4.new(s.Min) * factor
             local newMax = Vec4.new(s.Max) * factor
             if s.UserData.IsInteger then
-                newMin = Vec4.new(math.floor(newMin[1]), math.floor(newMin[2]), math.floor(newMin[3]), math.floor(newMin[4]))
-                newMax = Vec4.new(math.floor(newMax[1]), math.floor(newMax[2]), math.floor(newMax[3]), math.floor(newMax[4]))
+                newMin = Vec4.new(math.floor(newMin[1]), math.floor(newMin[2]), math.floor(newMin[3]),
+                    math.floor(newMin[4]))
+                newMax = Vec4.new(math.floor(newMax[1]), math.floor(newMax[2]), math.floor(newMax[3]),
+                    math.floor(newMax[4]))
             end
             s.Min = newMin
             s.Max = newMax
@@ -182,8 +184,10 @@ function AddSliderStepButton(parent, label, step, slider, direction)
             local newMin = Vec4.new(s.Min) / factor
             local newMax = Vec4.new(s.Max) / factor
             if s.UserData.IsInteger then
-                newMin = Vec4.new(math.floor(newMin[1]), math.floor(newMin[2]), math.floor(newMin[3]), math.floor(newMin[4]))
-                newMax = Vec4.new(math.floor(newMax[1]), math.floor(newMax[2]), math.floor(newMax[3]), math.floor(newMax[4]))
+                newMin = Vec4.new(math.floor(newMin[1]), math.floor(newMin[2]), math.floor(newMin[3]),
+                    math.floor(newMin[4]))
+                newMax = Vec4.new(math.floor(newMax[1]), math.floor(newMax[2]), math.floor(newMax[3]),
+                    math.floor(newMax[4]))
             end
             s.Min = newMin
             s.Max = newMax
@@ -195,7 +199,7 @@ end
 
 function AddWarningIcon(parent, text)
     local image = parent:AddImage(RB_ICONS.Warning) --[[@as ExtuiImageButton]]
-    image.Tint = {1, 0.5, 0.5, 1}
+    image.Tint = { 1, 0.5, 0.5, 1 }
     image.ImageData.Size = ToVec2(32 * SCALE_FACTOR)
     image.SameLine = true
     image:Tooltip():AddText(text)
@@ -411,8 +415,16 @@ function AddSimpleTextWrap(parent, text, num)
         texts[1].SameLine = bool
     end
 
-    return { Destroy = destroy, SetColor = setColor, SetStyle = setStyle, Font = Font, Visible = Visible, SameLine =
-    sameLine, Texts = texts }
+    return {
+        Destroy = destroy,
+        SetColor = setColor,
+        SetStyle = setStyle,
+        Font = Font,
+        Visible = Visible,
+        SameLine =
+            sameLine,
+        Texts = texts
+    }
 end
 
 ---@param parent ExtuiTreeParent
@@ -700,7 +712,7 @@ function StyleHelpers.AddReadOnlyAttrTable(parent, contents)
         addRow(name, value)
     end
 
-    local tabProxy = {
+    local clos = {
         AddNewLine = function()
             local row = tab:AddRow() --[[@as ExtuiTableRow]]
             return row:AddCell(), row:AddCell()
@@ -714,8 +726,8 @@ function StyleHelpers.AddReadOnlyAttrTable(parent, contents)
             end
         end
     }
-    
-    setmetatable(tabProxy, {
+
+    setmetatable(clos, {
         __index = function(_, k)
             return tab[k]
         end,
@@ -724,7 +736,177 @@ function StyleHelpers.AddReadOnlyAttrTable(parent, contents)
         end
     })
 
-    return tabProxy
+    return clos
+end
+
+--- @param arrowImage ExtuiImageButton
+function StyleHelpers.SetupImageButton(arrowImage)
+    ClearAllBorders(arrowImage)
+    arrowImage.OnHoverEnter = function ()
+        arrowImage.Tint = {0.8, 0.8, 0.8, 1}
+    end
+    arrowImage.OnHoverLeave = function ()
+        arrowImage.Tint = {1, 1, 1, 1}
+    end
+    arrowImage:SetColor("Button", {0,0,0,0})
+    arrowImage:SetColor("ButtonHovered", {0,0,0,0})
+    arrowImage:SetColor("ButtonActive", {0,0,0,0})
+end
+
+local treeOpenIcon = RB_ICONS.Menu_Down
+local treeClosedIcon = RB_ICONS.Menu_Right
+
+local treeOpen = {
+    UV0 = {
+        RB_ICON_UV[treeOpenIcon].U1,
+        RB_ICON_UV[treeOpenIcon].V1
+    },
+    UV1 = {
+        RB_ICON_UV[treeOpenIcon].U2,
+        RB_ICON_UV[treeOpenIcon].V2
+    }
+}
+
+local treeClosed = {
+    UV0 = {
+        RB_ICON_UV[treeClosedIcon].U1,
+        RB_ICON_UV[treeClosedIcon].V1,
+    },
+    UV1 = {
+        RB_ICON_UV[treeClosedIcon].U2,
+        RB_ICON_UV[treeClosedIcon].V2,
+    }
+}
+
+--- @class RB_UI_Tree : ExtuiTree
+--- @field Children RB_UI_Tree[]
+--- @field SetOpen fun(self: RB_UI_Tree, isOpen: boolean)
+--- @field IsOpen fun(self: RB_UI_Tree): boolean
+--- @field AddTree fun(self: RB_UI_Tree, label: string, isOpen: boolean): RB_UI_Tree
+--- @field AddHint fun(self: RB_UI_Tree, hintText: string): ExtuiText
+--- @field ToggleAll fun(self: RB_UI_Tree)
+--- @field Panel ExtuiGroup
+--- @field OnExpand fun()
+--- @field OnCollapse fun()
+
+--- @param parent ExtuiTreeParent
+--- @param label string
+--- @param open boolean
+--- @return RB_UI_Tree
+function StyleHelpers.AddTree(parent, label, open)
+    if parent.UserData and parent.UserData.Is_RB_UI_Tree then
+        return parent:AddTree(label, open)
+    end
+    label = label or "TreeGroup"
+    local uuid = Uuid_v4()
+    local headerGroup = parent:AddGroup(label .. "##uuid_" .. uuid)
+    local indent = parent:AddDummy(16 * SCALE_FACTOR, 1)
+    local panel = parent:AddGroup(label .. "_TreeGroup##uuid_" .. uuid)
+    local children = {}
+    panel.Visible = open == true
+    panel.SameLine = true
+    local arrowReserved = headerGroup:AddImageButton("##" .. label .. uuid , open and RB_ICONS.Menu_Down or RB_ICONS.Menu_Right, IMAGESIZE.ROW)
+    local selectable = headerGroup:AddSelectable(label .. "##" .. uuid)
+    selectable.SameLine = true
+    selectable.AllowItemOverlap = true
+    arrowReserved.IDContext = "TreeArrowReserved_" .. Uuid_v4()
+
+    local closure = {}
+    local function setOpen(isOpen)
+        panel.Visible = isOpen
+        arrowReserved.Image = panel.Visible and treeOpen or treeClosed
+        if closure.OnExpand and isOpen then
+            closure.OnExpand()
+        elseif closure.OnCollapse and not isOpen then
+            closure.OnCollapse()
+        end
+    end
+
+    StyleHelpers.SetupImageButton(arrowReserved)
+    arrowReserved.OnClick = function()
+        selectable.Selected = false
+        setOpen(not panel.Visible)
+    end
+
+    local toggleAll = function ()
+        for _, child in ipairs(children) do
+            if child.SetOpen then
+                child:SetOpen(not child:IsOpen())
+                child:ToggleAll()
+            end
+        end
+    end
+
+    arrowReserved.OnRightClick = function()
+        toggleAll()
+    end
+    selectable.OnRightClick = arrowReserved.OnRightClick
+    selectable.OnClick = arrowReserved.OnClick
+
+    closure = {
+        UserData = {
+            Is_RB_UI_Tree = true
+        },
+        ToggleAll = toggleAll,
+        Children = children,
+        Panel = panel,
+        SetOpen = function(_, isOpen)
+            setOpen(isOpen)
+        end,
+        IsOpen = function()
+            return panel.Visible
+        end,
+        AddTree = function(_, label, isOpen)
+            local childTree = StyleHelpers.AddTree(panel, label, isOpen)
+            table.insert(children, childTree)
+            return childTree
+        end,
+        AddHint = function(_, hintText)
+            local hint = headerGroup:AddText(hintText)
+            hint:SetColor("Text", HexToRGBA("FFAAAAAA"))
+            hint.SameLine = true
+            hint.Font = "Tiny"
+            return hint
+        end,
+        OnExpand = function() end,
+        OnCollapse = function() end,
+    }
+    selectable.UserData = closure.UserData
+
+    setmetatable(closure, {
+        __index = function(_, k)
+            if k:sub(1, 3) == "Add" then
+                return function(_, ...)
+                    return panel[k](panel, ...)
+                end
+            elseif rawget(closure, k) ~= nil then -- avoid stack overflow
+                return rawget(closure, k)
+            end
+            return selectable[k]
+        end,
+        __newindex = function(_, k, v)
+            if k == "OnRightClick" then
+                arrowReserved.OnRightClick = function()
+                    toggleAll()
+                    v()
+                end
+                selectable.OnRightClick = arrowReserved.OnRightClick
+                return
+            elseif k == "OnClick" then
+                arrowReserved.OnClick = function()
+                    selectable.Selected = false
+                    panel.Visible = not panel.Visible
+                    arrowReserved.Image = panel.Visible and treeOpen or treeClosed
+                    v()
+                end
+                selectable.OnClick = arrowReserved.OnClick
+                return
+            end
+            selectable[k] = v
+        end
+    })
+
+    return closure
 end
 
 --- @param pBar ExtuiProgressBar
@@ -745,10 +927,10 @@ function StyleHelpers.SetWarningProgressBarStyle(pBar)
 end
 
 --- @class RadioButtonOption
---- @field Hint string
---- @field Bit integer
+--- @field Name string
+--- @field Value integer
 
---- @class BitmaskRadioButtonsGroup
+--- @class BitmaskRadioButtonsGroup :ExtuiGroup
 --- @field OnChange fun(radioBtn: ExtuiRadioButton, value: integer)
 
 --- @param parent ExtuiTreeParent
@@ -759,11 +941,11 @@ function StyleHelpers.AddBitmaskRadioButtons(parent, options, initValue)
     local value = initValue or 0
     local btns = {}
 
-    local groupProxy = {
+    local clos = {
         OnChange = function() end
     }
 
-    setmetatable(groupProxy, {
+    setmetatable(clos, {
         __index = function(_, k)
             if k == "Value" then
                 return value
@@ -777,7 +959,7 @@ function StyleHelpers.AddBitmaskRadioButtons(parent, options, initValue)
                 for i, option in ipairs(options) do
                     local radio = btns[i]
                     if radio then
-                        radio.Active = (value & option.Bit) ~= 0
+                        radio.Active = (value & option.Value) ~= 0
                     end
                 end
             else
@@ -787,26 +969,90 @@ function StyleHelpers.AddBitmaskRadioButtons(parent, options, initValue)
     })
 
     for i, option in ipairs(options) do
-        local radio = group:AddRadioButton(option.Hint or ("Option" .. i))
-        radio.Active = initValue and (initValue & option.Bit) ~= 0 or false
+        local radio = group:AddRadioButton(option.Name or ("Option" .. i))
+        radio.Active = initValue and (initValue & option.Value) ~= 0 or false
         radio.OnChange = function(r)
             r.Active = not r.Active
             if r.Active then
-                value = value | option.Bit
+                value = value | option.Value
             else
-                value = value & (~option.Bit)
+                value = value & (~option.Value)
             end
-            if groupProxy.OnChange then
-                Debug("Applying Value:", value)
-                groupProxy.OnChange(r, value)
+            if clos.OnChange then
+                clos.OnChange(r, value)
             end
         end
 
-        radio.SameLine = (i > 1 and i % 8 ~= 1)
+        radio.SameLine = (i > 1 and i % 4 ~= 1)
         btns[i] = radio
     end
 
-    return groupProxy
+    return clos
+end
+
+--- @class EnumRadioButtonsGroup :ExtuiGroup
+--- @field OnChange fun(radioBtn: ExtuiRadioButton, value: number)
+
+--- @param parent ExtuiTreeParent
+--- @param options RadioButtonOption[]
+--- @param initValue number
+--- @return EnumRadioButtonsGroup
+function StyleHelpers.AddEnumRadioButtons(parent, options, initValue)
+    local group = parent:AddGroup("EnumRadioButtonsGroup" .. Uuid_v4())
+
+    local current = initValue
+    local radioButtons = {}
+    local closure = {
+        OnChange = function() end
+    }
+
+    setmetatable(closure, {
+        __index = function(_, k)
+            if k == "Value" then
+                return current
+            end
+            return group[k]
+        end,
+        __newindex = function(_, k, v)
+            if k == "Value" then
+                current = v
+                for enumName, radio in pairs(radioButtons) do
+                    local enumValue = radio.UserData.EnumValue
+                    radio.Active = (current == enumValue)
+                end
+                return
+            end
+            group[k] = v
+        end
+    })
+
+    
+    for i, option in ipairs(options) do
+        local enumName = option.Name
+        local enumValue = option.Value
+        local radio = group:AddRadioButton(enumName)
+        radioButtons[enumName] = radio
+        radio.Active = (initValue == enumValue)
+        radio.UserData = {
+            EnumValue = enumValue
+        }
+        radio.OnChange = function(r)
+            if current == enumValue then
+                return
+            end
+            current = enumValue
+            for _, otherRadio in pairs(radioButtons) do
+                if otherRadio ~= r then
+                    otherRadio.Active = false
+                end
+            end
+            r.Active = true
+            closure.OnChange(r, current)
+        end
+        radio.SameLine = i > 1 and i % 4 ~= 1
+    end
+
+    return closure
 end
 
 function SetWarningBorder(extui)

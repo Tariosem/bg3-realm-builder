@@ -40,7 +40,6 @@ function VisualHelpers.GetVisualPosition(handle)
         return nil, nil, nil
     end
     return transform[1], transform[2], transform[3]
-    
 end
 
 --- @param handle any
@@ -56,7 +55,7 @@ function VisualHelpers.SetVisualPosition(handle, pos)
     if not transform or #transform < 3 then
         return false
     end
-    visual.WorldTransform.Translate = {pos[1], pos[2], pos[3]}
+    visual.WorldTransform.Translate = { pos[1], pos[2], pos[3] }
     return true
 end
 
@@ -165,9 +164,8 @@ end
 function VisualHelpers.SetVisualTransform(guids, transforms)
     local visuals = {} --[[@as table<GUIDSTRING, Visual>]]
 
-    for _,guid in pairs(guids) do
+    for _, guid in pairs(guids) do
         if type(guid) ~= "string" or guid == "" then
-            
             goto continue
         end
         local visual = VisualHelpers.GetEntityVisual(guid)
@@ -180,7 +178,7 @@ function VisualHelpers.SetVisualTransform(guids, transforms)
     end
 
 
-    for guid,visual in pairs(visuals) do
+    for guid, visual in pairs(visuals) do
         if CIsCharacter(guid) then
             local transform = transforms[guid]
             if not transform then
@@ -199,7 +197,7 @@ function VisualHelpers.SetVisualTransform(guids, transforms)
         else
             local transform = transforms[guid]
             local objs = visual.ObjectDescs --[[@as VisualObjectDesc[] ]]
-            for _,obj in pairs(objs) do
+            for _, obj in pairs(objs) do
                 local renderable = obj.Renderable
                 if not renderable or not renderable.WorldTransform then
                     goto continue
@@ -218,7 +216,6 @@ function VisualHelpers.SetVisualTransform(guids, transforms)
         end
     end
 end
-
 
 function VisualHelpers.GetEntityAABB(handle)
     local entity = handle
@@ -240,17 +237,32 @@ function VisualHelpers.VisualizeAABB(entity)
     end
     local aabb = visual.WorldBound
     if not aabb then return end
-    NetChannel.VisualizeAABB:SendToServer({Min = aabb.Min, Max = aabb.Max})
+    NetChannel.VisualizeAABB:SendToServer({ Min = aabb.Min, Max = aabb.Max })
 end
 
+local checkMap = { A = true, B = true, C = true, D = true }
 function VisualHelpers.ChangeFrames(frames, value, isColor)
     isColor = isColor or false
+    for pName, pValue in pairs(frames[1]) do
+        if checkMap[pName] then
+            VisualHelpers.ChangeABCDFrames(frames, value[1], value[2], value[3], value[4])
+            return
+        end
+    end
+
     for _, frame in ipairs(frames) do
         if isColor then
             frame.Color = value
         else
             frame.Value = value
         end
+    end
+end
+
+function VisualHelpers.ChangeKeyFrames(keyFrames, value, isColor)
+    isColor = isColor or false
+    for _, keyFrame in ipairs(keyFrames) do
+        VisualHelpers.ChangeFrames(keyFrame.Frames, value, isColor)
     end
 end
 
@@ -263,6 +275,53 @@ function VisualHelpers.ChangeABCDFrames(frames, a, b, c, d)
     end
 end
 
+function VisualHelpers.ApplyValueToFrames(guid, compIndex, value, propName)
+    local comp = VisualHelpers.GetEffectComponent(guid, compIndex) --[[@as AspkLightComponent]]
+    if not comp then return end
+
+    local property = comp[propName]
+
+    local frameField = propName == "ColorProperty" and "Frames" or "KeyFrames"
+
+    if not property or not property[frameField] then return end
+
+    if frameField == "KeyFrames" then
+        VisualHelpers.ChangeKeyFrames(property.KeyFrames, value)
+    else
+        VisualHelpers.ChangeFrames(property.Frames, value, true)
+    end
+end
+
+local lightComponentFields = {
+    OverriderLightTemplateColor = true,
+    OverriderLightTemplateFlickerSpeed = true,
+    ModulateLightTemplateRadius = true,
+}
+
+--- @param guid string
+--- @param compIndex number
+--- @param value any
+--- @param propName string
+function VisualHelpers.ApplyValueToLightComponent(guid, compIndex, value, propName)
+    local comp = VisualHelpers.GetEffectComponent(guid, compIndex) --[[@as AspkLightComponent]]
+    if not comp then return end
+
+    if TakeTail(propName, #"Property") == "Property" then
+        VisualHelpers.ApplyValueToFrames(guid, compIndex, value, propName)
+        return
+    end
+
+    if lightComponentFields[propName] then
+        comp[propName] = value
+        return
+    end
+
+    local lightEntity = comp.LightEntity.Light
+    if not lightEntity then return end
+
+    lightEntity[propName] = value
+end
+
 --- @param guid string
 --- @param preset table
 --- @param retryCnt number?
@@ -271,15 +330,15 @@ function VisualHelpers.ApplyVisualParams(guid, preset, retryCnt)
         Warning("ApplyVisualParams: Invalid parameters.")
         return
     end
-    
+
     retryCnt = retryCnt or 0
     local isCharacter = CIsCharacter(guid)
 
-    local liveEntity = UuidToHandle(guid)
-    if not liveEntity or not liveEntity.Visual then
-        if not liveEntity and retryCnt < 1 then
+    local entity = UuidToHandle(guid)
+    if not entity or not entity.Visual then
+        if not entity and retryCnt < 1 then
             Timer:After(500, function()
-                VisualHelpers.ApplyVisualParams(guid, preset, retryCnt+1)
+                VisualHelpers.ApplyVisualParams(guid, preset, retryCnt + 1)
             end)
         else
             Error("Visual not found for GUID: " .. tostring(guid))
@@ -287,78 +346,54 @@ function VisualHelpers.ApplyVisualParams(guid, preset, retryCnt)
         return
     end
 
-    local handlers = {
-        Scale = function(value, entity)
-            local renderable = VisualHelpers.GetRenderable(entity, value.DescIndex, value.AttachIndex)
-            if renderable then
-                renderable.WorldTransform.Scale = value.Value
-            end
-        end,
-
-        Light = function(value, entity)
-            local component = VisualHelpers.GetEffectComponent(entity, value.CompIndex)
-            if not component then return end
-            
-            local property = component.Properties[value.PropertyName]
-            if type(value.Value) == "boolean" then property = true end
-            if not property then return end
-
-            if value.PropertyName == "Appearance.Color" then
-                VisualHelpers.ChangeFrames(property.Frames, value.Value, true)
-            elseif type(value.Value) == "table" and #value.Value == 4 then
-                for _, keyFrame in ipairs(property.KeyFrames) do
-                    VisualHelpers.ChangeABCDFrames(keyFrame.Frames, value.Value[1], value.Value[2], value.Value[3], value.Value[4])
-                end
-            elseif type(value.Value) == "number" then
-                for _, keyFrame in ipairs(property.KeyFrames) do
-                    VisualHelpers.ChangeFrames(keyFrame.Frames, value.Value)
-                end
-            elseif type(value.Value) == "boolean" then
-                component[value.PropertyName] = value.Value
-            end
-        end,
-        
-        ParticleSystem = function(value, entity)
-            local component = VisualHelpers.GetEffectComponent(entity, value.CompIndex)
-            if component then
-                component[value.PropertyName] = value.Value
-            end
-        end,
-
-        LightEntity = function(value, entity)
-            local light = VisualHelpers.GetLightEntity(entity, value.CompIndex)
-            if light then
-                light[value.PropertyName] = value.Value
-                if value.IsTemplate and light.Template then
-                    light.Template[value.PropertyName] = value.Value
-                end
-            end
-
-        end,
-    }
-
-    for _, value in pairs(preset.ModifiedParams) do
-        local handler = handlers[value.Type]
-        if handler then
-            handler(value, liveEntity)
-        else
+    for key, compParams in pairs(preset.Effects) do
+        local parsed = SplitByString(key, "::")
+        local compType, compIndex = parsed[#parsed - 1], tonumber(parsed[#parsed])
+        if not compIndex then
+            Warning("Invalid component index in preset key:" ..
+                "\n Parsed key:" .. tostring(key), " Type: " .. tostring(compType) .. " Index: " .. tostring(compIndex))
+            goto continue1
         end
+        local comp = VisualHelpers.GetEffectComponent(guid, compIndex) --[[@as AspkComponent]]
+        for propName, value in pairs(compParams) do
+            VisualHelpers.ApplyValueToLightComponent(guid, compIndex, value, propName)
+        end
+
+        ::continue1::
     end
 
     for key, matParam in pairs(preset.Materials) do
         local parsed = SplitByString(key, "::")
-        local descIndex, attachIndex = tonumber(parsed[#parsed]), tonumber(parsed[#parsed-1])
-        local mat = isCharacter and VisualHelpers.GetActiveMaterial(liveEntity, descIndex, attachIndex) or VisualHelpers.GetMaterial(liveEntity, descIndex, attachIndex)
+        local descIndex, attachIndex = tonumber(parsed[#parsed]), tonumber(parsed[#parsed - 1])
+        if not descIndex then
+            Warning([[Invalid desc index in preset key: ]] .. tostring(key) ..
+                "\n Parsed key: " .. tostring(key),
+                " DescIndex: " .. tostring(descIndex) .. " AttachIndex: " .. tostring(attachIndex))
+            goto continue
+        end
+
+        if preset.Transforms and preset.Transforms[key] then
+            local transform = preset.Transforms[key]
+            local renderable = VisualHelpers.GetRenderable(guid, descIndex, attachIndex)
+            if renderable and renderable.WorldTransform then
+                if transform.Scale then
+                    renderable.WorldTransform.Scale = transform.Scale
+                end
+            end
+        end
+
+        local mat = isCharacter and VisualHelpers.GetActiveMaterial(guid, descIndex, attachIndex) or
+        VisualHelpers.GetMaterial(guid, descIndex, attachIndex)
         if not mat then return false end
 
-        for i,params in pairs(matParam) do
+        for i, params in pairs(matParam) do
             i = tonumber(i) --[[@as number]]
             for paramName, value in pairs(params) do
                 local applyValue = #value == 1 and value[1] or value
                 mat[PropTypeToFunc[#value]](mat, paramName, applyValue)
             end
         end
-
+        ::continue::
     end
 end
 
@@ -409,7 +444,14 @@ function VisualHelpers.GetActiveMaterial(entity, descIndex, attachIndex)
     return renderable and renderable.ActiveMaterial
 end
 
+--- @param entity EntityHandle|GUIDSTRING
+--- @param compIndex number
+--- @return AspkComponent|nil
 function VisualHelpers.GetEffectComponent(entity, compIndex)
+    if type(entity) == "string" then
+        entity = UuidToHandle(entity)
+    end
+
     if entity.Effect and entity.Effect.Timeline and entity.Effect.Timeline.Components then
         return entity.Effect.Timeline.Components[compIndex]
     end

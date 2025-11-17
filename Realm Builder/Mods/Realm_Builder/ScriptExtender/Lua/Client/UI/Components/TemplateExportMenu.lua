@@ -368,7 +368,7 @@ function TemplateExportMenu:RenderTemplateEntry(cell, entData)
                         cached[attrName] = defaultValue
                     end
                 else
-                    local slider = AddSliderWithStep(attrValueCell, "##" .. attrName .. entData.Guid, defaultValue, 0, 120, 1)
+                    local slider = StyleHelpers.AddSliderWithStep(attrValueCell, "##" .. attrName .. entData.Guid, defaultValue, 0, 120, 1)
                     slider.OnChange = function(sld)
                         cached[attrName] = sld.Value[1]
                     end
