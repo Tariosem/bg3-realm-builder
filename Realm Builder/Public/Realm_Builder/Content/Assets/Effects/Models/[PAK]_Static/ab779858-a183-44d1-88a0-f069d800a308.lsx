@@ -5,7 +5,7 @@
 		<node id="VisualBank">
 			<children>
 				<node id="Resource">
-					<attribute id="ID" type="FixedString" value="4fcd57a3-d120-9b28-2dab-e8f7efdb25ea" />
+					<attribute id="ID" type="FixedString" value="ab779858-a183-44d1-88a0-f069d800a308" />
 					<attribute id="Name" type="LSString" value="RB_VFX_Static_Beam_01" />
 					<attribute id="SourceFile" type="LSString" value="Generated/Public/Shared/Assets/Effects/Models/Static/Resources/VFX_Static_Beam_LightningBolt_01.GR2" />
 					<attribute id="Slot" type="FixedString" value="Unassigned" />

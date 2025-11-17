@@ -7,12 +7,12 @@
 				<node id="Resource">
 					<attribute id="ID" type="FixedString" value="3a997dba-7af4-40f0-8bac-48d5930d55e5" />
 					<attribute id="Name" type="LSString" value="RB_Gizmo_Scale" />
-					<attribute id="SourceFile" type="LSString" value="Generated/Public/Engine/Assets/Editor/Gizmo_Scale.GR2" />
+					<attribute id="SourceFile" type="LSString" value="Generated/Realm_Builder/Public/Engine/Assets/Editor/Gizmo_Scale.GR2" />
 					<attribute id="Slot" type="FixedString" value="Unassigned" />
 					<attribute id="RemapperSlotId" type="FixedString" value="" />
 					<attribute id="AttachmentSkeletonResource" type="FixedString" value="" />
 					<attribute id="AttachBone" type="FixedString" value="" />
-					<attribute id="Template" type="FixedString" value="Generated/Public/Engine/Assets/Editor/Gizmo_Scale.Scale.0" />
+					<attribute id="Template" type="FixedString" value="Generated/Realm_Builder/Public/Engine/Assets/Editor/Gizmo_Scale.Scale.0" />
 					<attribute id="SupportsVertexColorMask" type="bool" value="False" />
 					<attribute id="NeedsSkeletonRemap" type="bool" value="False" />
 					<attribute id="SkeletonResource" type="FixedString" value="" />

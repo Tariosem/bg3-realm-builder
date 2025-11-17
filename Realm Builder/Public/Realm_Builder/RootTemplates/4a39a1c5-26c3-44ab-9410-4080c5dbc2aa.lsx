@@ -10,7 +10,7 @@
 					<attribute id="LevelName" type="FixedString" value="" />
 					<attribute id="Type" type="FixedString" value="item" />
 					<attribute id="ParentTemplateId" type="FixedString" value="06f96d65-0ee5-4ed5-a30a-92a3bfe3f708" />
-					<attribute id="VisualTemplate" type="FixedString" value="b2187cfd-bf60-49c2-a43a-5dd481ccc2a9" />
+					<attribute id="VisualTemplate" type="FixedString" value="f722e9ed-d693-4637-b1cc-df8a9a9b84f9" />
 					<attribute id="PhysicsTemplate" type="FixedString" value="04178fff-4061-d559-da24-e8a5152c2321" />
 					<attribute id="CastShadow" type="bool" value="False" />
 					<attribute id="CanShootThrough" type="bool" value="True" />

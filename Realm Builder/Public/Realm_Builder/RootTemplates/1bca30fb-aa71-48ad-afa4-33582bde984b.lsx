@@ -12,7 +12,7 @@
 					<attribute id="ParentTemplateId" type="FixedString" value="" />
 					<attribute id="Flag" type="uint8" value="0" />
 					<attribute id="GroupID" type="uint32" value="0" />
-					<attribute id="VisualTemplate" type="FixedString" value="5b5c19ab-595f-4afc-9eba-1df821ab5e57" />
+					<attribute id="VisualTemplate" type="FixedString" value="45dbb325-f308-4751-abab-948052d0c203" />
 					<attribute id="PhysicsTemplate" type="FixedString" value="04178fff-4061-d559-da24-e8a5152c2321" />
 					<attribute id="CastShadow" type="bool" value="False" />
 					<attribute id="RecieveDecal" type="bool" value="False" />
