@@ -633,21 +633,63 @@ function OutlinerMenu:CommonContext()
 
     local function delete()
         local target = self:DecideSelectedKeys()
-        local collections = {}
-        local entities = {}
+        local tree = EntityStore.Tree
 
-        for _, key in pairs(target) do
-            if EntityStore.Tree:IsLeaf(key) then
-                table.insert(entities, key)
-            else
-                table.insert(collections, key)
+        -- map of selected keys for quick ancestor checks
+        local selectedMap = {}
+        for _, k in ipairs(target) do selectedMap[k] = true end
+
+        local collectionsToRemove = {}
+        local entitiesSet = {}
+
+        local function collectLeafGuids(node)
+            if not node then return end
+            for childKey, _ in pairs(node) do
+                if tree:IsLeaf(childKey) then
+                    entitiesSet[childKey] = true
+                else
+                    local childNode = tree:Find(childKey)
+                    if childNode then
+                        collectLeafGuids(childNode)
+                    end
+                end
             end
         end
 
-        Commands.DeleteCommand(entities)
+        for _, key in ipairs(target) do
+            if tree:IsLeaf(key) then
+                entitiesSet[key] = true
+            else
+                -- skip traversal if any ancestor of this collection is also selected
+                local parent = tree:GetParentKey(key)
+                local skip = false
+                while parent do
+                    if selectedMap[parent] then
+                        skip = true
+                        break
+                    end
+                    parent = tree:GetParentKey(parent)
+                end
 
-        for _, colKey in pairs(collections) do
-            EntityStore.Tree:Remove(colKey)
+                if not skip then
+                    table.insert(collectionsToRemove, key)
+                    local node = tree:Find(key)
+                    collectLeafGuids(node)
+                end
+            end
+        end
+
+        local entities = {}
+        for guid, _ in pairs(entitiesSet) do
+            table.insert(entities, guid)
+        end
+
+        if #entities > 0 then
+            Commands.DeleteCommand(entities)
+        end
+
+        for _, colKey in ipairs(collectionsToRemove) do
+            tree:Remove(colKey)
         end
 
         self.propTreeList:ClearSelection()

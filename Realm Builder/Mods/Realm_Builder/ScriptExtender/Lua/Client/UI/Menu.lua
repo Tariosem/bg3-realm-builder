@@ -84,13 +84,18 @@ function Menu:Render()
     end)
 
     Timer:Ticks(9, function()
-        self.characterBrowser = CharacterBrowser.new(RB_CharacterManager, "Character - Browser")
+        self.characterBrowser = RootTemplateBrowser.new(RB_CharacterManager, "Character - Browser")
         self.characterBrowser:CreateCachedSort("DisplayName")
     end)
 
     Timer:Ticks(9, function()
-        self.sceneryBrowser = SceneryBrowser.new(RB_SceneryManager, "Scenery - Browser")
+        self.sceneryBrowser = RootTemplateBrowser.new(RB_SceneryManager, "Scenery - Browser")
         self.sceneryBrowser:CreateCachedSort("DisplayName")
+    end)
+
+    Timer:Ticks(9, function()
+        self.prefabBrowser = RootTemplateBrowser.new(RB_PrefabManager, "Prefab - Browser")
+        self.prefabBrowser:CreateCachedSort("TemplateName")
     end)
 
     Timer:Ticks(9, function()

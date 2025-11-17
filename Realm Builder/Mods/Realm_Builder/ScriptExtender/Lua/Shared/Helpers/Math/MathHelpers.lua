@@ -264,30 +264,13 @@ function GetLocalRelativeTransform(transfrom, posOffset, rotOffset)
         return nil, nil
     end
 
-    local parentQuat = {pqx, pqy, pqz, pqw}
-    posOffset = posOffset or {0, 0, 0}
-    rotOffset = rotOffset or Quat.Identity()
-
-    local scaledOffset = {
-        posOffset[1] * psx,
-        posOffset[2] * psy,
-        posOffset[3] * psz,
-    }
-    local rotatedOffset = Ext.Math.QuatRotate(parentQuat, scaledOffset)
+    local rotatedOffset = Ext.Math.QuatRotate({pqx, pqy, pqz, pqw}, posOffset)
     local finalPosition = {
-        px + rotatedOffset[1],
-        py + rotatedOffset[2],
-        pz + rotatedOffset[3],
+        px + rotatedOffset[1] * psx,
+        py + rotatedOffset[2] * psy,
+        pz + rotatedOffset[3] * psz,
     }
-
-    local finalQuat
-    if #rotOffset == 4 then
-        finalQuat = Ext.Math.QuatMul(parentQuat, rotOffset)
-    else
-        local offsetQuat = Ext.Math.QuatFromEuler(rotOffset)
-        finalQuat = Ext.Math.QuatMul(parentQuat, offsetQuat)
-    end
-    
+    local finalQuat = Ext.Math.QuatMul({pqx, pqy, pqz, pqw}, rotOffset)
     finalQuat = Ext.Math.QuatNormalize(finalQuat)
 
     return finalPosition, finalQuat

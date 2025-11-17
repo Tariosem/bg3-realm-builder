@@ -268,11 +268,9 @@ function CharacterManager:PopulateCharacter(template)
             local displayName = raceRes and raceRes.DisplayName:Get() or "Unknown"
 
             raceCache[template.Race] = displayName
-            self.Data[template.Id].Tags = self.Data[template.Id].Tags or {}
-            table.insert(self.Data[template.Id].Tags, displayName)
+            self:AddTagToData(template.Id, displayName)
         else
-            self.Data[template.Id].Tags = self.Data[template.Id].Tags or {}
-            table.insert(self.Data[template.Id].Tags, raceCache[template.Race])
+            self:AddTagToData(template.Id, raceCache[template.Race])
         end
     end
 end

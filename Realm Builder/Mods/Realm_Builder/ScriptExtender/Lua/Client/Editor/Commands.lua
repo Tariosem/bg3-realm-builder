@@ -113,6 +113,90 @@ function Commands.SnapCommand(targets, onlyRotation, onlyPosition)
     Commands.SetTransform(targetProxies, targetPos)
 end
 
+local function spawnPrefab(prefabObj, entInfo)
+    local pivotTransform = {
+        Translate = entInfo.Position or {0,0,0},
+        RotationQuat = entInfo.Rotation or {0,0,0,1},
+        Scale = {1,1,1}
+    }
+    local spawned = {}
+
+    local cnt = 1
+    local folderName = prefabObj.Name
+    while EntityStore.Tree:Find(folderName) do
+        folderName = prefabObj.Name .. "_" .. tostring(cnt)
+        cnt = cnt + 1
+    end
+    local entPath = { folderName }
+
+    local function pushCommand()
+        HistoryManager:PushCommand({
+            Undo = function()
+                NetChannel.Delete:SendToServer({ Guid = spawned })
+            end,
+            Redo = function()
+                NetChannel.Restore:SendToServer({ Guid = spawned })
+            end
+        })
+    end
+
+    local thread
+    thread = coroutine.create(function()
+        for i, child in pairs(prefabObj.Children or {}) do
+            local childTemplateId = child
+            local childTemplateObj = Ext.Template.GetTemplate(childTemplateId)
+            if not childTemplateObj then
+                Warning("[spawnPrefab] Child template not found: " .. tostring(childTemplateId))
+                goto continue
+            end
+            local childEntInfo = {}
+
+            childEntInfo.Position = prefabObj.ChildrenTransforms[i].Translate or {0,0,0}
+            childEntInfo.Rotation = prefabObj.ChildrenTransforms[i].RotationQuat or {0,0,0,1}
+
+            -- Calculate relative position/rotation
+            local pos, rot = GetLocalRelativeTransform(pivotTransform, childEntInfo.Position, childEntInfo.Rotation)
+            if not pos or not rot then
+                Warning("[spawnPrefab] Failed to calculate relative transform for prefab child.")
+                pos = pivotTransform.Translate
+                rot = pivotTransform.RotationQuat
+            end
+            childEntInfo.Position = pos
+            childEntInfo.Rotation = rot
+            childEntInfo.Scale = prefabObj.ChildrenTransforms[i].Scale
+            childEntInfo.Path = entPath
+
+            NetChannel.Spawn:RequestToServer({
+                TemplateId = childTemplateId,
+                EntInfo = childEntInfo
+            }, function(response)
+                table.insert(spawned, response.Guid)
+                if #spawned == #prefabObj.Children then
+                    pushCommand()
+                end
+            end)
+
+            if childTemplateObj.TemplateType ~= "item" and childTemplateObj.TemplateType ~= "character" then
+                -- Wait to make template overwirte work properly
+                Timer:Ticks(30, function (timerID)
+                    local ok, suc = coroutine.resume(thread)
+                    if not ok then
+                        Error("Error resuming spawnPrefab coroutine: " .. tostring(suc))
+                    end
+                end)
+
+                coroutine.yield()
+            end
+            ::continue::
+        end
+    end)
+
+    local ok, err = coroutine.resume(thread)
+    if not ok then
+        Error("spawnPrefab: Coroutine error: " .. tostring(err))
+    end
+end
+
 ---@param template string
 ---@param entInfo EntityData|nil
 function Commands.SpawnCommand(template, entInfo)
@@ -122,6 +206,12 @@ function Commands.SpawnCommand(template, entInfo)
         EntInfo = entInfo
     }
     local spawnedGuid = nil
+
+    local templateObj = Ext.Template.GetTemplate(TakeTailTemplate(template))
+    if templateObj.TemplateType == "prefab" then
+        spawnPrefab(templateObj, entInfo)
+        return
+    end
 
     NetChannel.Spawn:RequestToServer(packedData, function(response)
         spawnedGuid = response.Guid

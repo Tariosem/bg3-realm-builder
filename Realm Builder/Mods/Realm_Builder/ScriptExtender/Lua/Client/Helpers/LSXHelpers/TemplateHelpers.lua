@@ -645,3 +645,39 @@ function LSXHelpers.BuildLightTemplate(srcUuid, uuid, internalName, modfiedParam
 
     return lightNode
 end
+
+function LSXHelpers.BuildPrefabTemplate(uuid, internalName, childUuids, childTransforms, levelName)
+    local templateNode = LSXHelpers.BuildTemplatesRegionNode()
+    local prefabNode = templateNode:AppendChild(LSXNode.new("node", { id = "GameObjects" }))
+
+    local baseAttr = {
+        lsattrNode("MapKey", "FixedString", uuid),
+        lsattrNode("Name", "LSString", internalName),
+        lsattrNode("LevelName", "FixedString", levelName),
+        lsattrNode("Type", "FixedString", "prefab"),
+    }
+
+    prefabNode:AppendChildren(baseAttr)
+
+    local childrenNode = prefabNode:AppendChild(LSXHelpers.ChildrenNode())
+
+    local prefabChildrenGroup = childrenNode:AppendChild(LSXNode.new("node", { id = "PrefabChildrenGroup" }))
+    local prefabChildren = prefabChildrenGroup:AppendChild(LSXHelpers.ChildrenNode())
+    for _, childUuid in ipairs(childUuids) do
+        prefabChildren:AppendChild(LSXNode.new("node", { id = "PrefabChildren" }))
+            :AppendChild(lsattrNode("Object", "FixedString", childUuid))
+    end
+
+    local prefabChildrenTransformGroup = childrenNode:AppendChild(LSXNode.new("node", { id = "PrefabChildrenTransformGroup" }))
+    local prefabChildrenTransforms = prefabChildrenTransformGroup:AppendChild(LSXHelpers.ChildrenNode())
+    for _, transform in ipairs(childTransforms) do
+        local childTransformNode = prefabChildrenTransforms:AppendChild(LSXNode.new("node", { id = "PrefabChildrenTransforms" }))
+        childTransformNode:AppendChildren({
+            lsattrNode("Position", "fvec3", transform.Position),
+            lsattrNode("RotationQuat", "fvec4", transform.RotationQuat),
+            lsattrNode("Scale", "float", transform.Scale),
+        })
+    end
+
+    return templateNode
+end

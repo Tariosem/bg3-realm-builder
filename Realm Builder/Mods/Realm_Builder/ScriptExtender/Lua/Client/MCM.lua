@@ -21,6 +21,7 @@ local function ToggleBrowser(targetKey)
         item = RBMenu.itemBrowser,
         character = RBMenu.characterBrowser,
         scenery = RBMenu.sceneryBrowser,
+        prefab = RBMenu.prefabBrowser,
     }
 
     local targetBrowser = allBrowsers[targetKey]
@@ -45,6 +46,7 @@ local allAvailableBrowsers = {
     {Key = "effect", Label = "Effect Browser"},
     {Key = "character", Label = "Character Browser"},
     {Key = "scenery", Label = "Scenery Browser"},
+    {Key = "prefab", Label = "Prefab Browser"},
 }
 table.sort(allAvailableBrowsers, function(a,b) return a.Label < b.Label end)
 

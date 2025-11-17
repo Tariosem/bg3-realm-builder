@@ -38,7 +38,7 @@ function IconBrowser:__init(dataManager, DisplayName)
     self.iconPR = config and config.IconPerRow or 10
     self.cellsPadding = config and config.CellsPadding or { 10 * SCALE_FACTOR, 10 * SCALE_FACTOR }
     self.browserWidth = self.iconPR * self.iconWidth + 20
-    self.browserHeight = self.iconPC * self.iconWidth + 20
+    self.browserHeight = self.iconPC * self.iconWidth + 20 + 240 * SCALE_FACTOR
     self.lastPosition = config.LastPosition or { screenWidth * 0.6, screenHeight * 0.15 }
     self.lastSize = config.LastSize or { self.browserWidth * 1.5, self.browserHeight * 1.5 }
 
@@ -61,8 +61,7 @@ function IconBrowser:Render()
     self.panel.Closeable = true
 
     self.browserOptions = self.panel:AddTable("Icons Browser", 6)
-
-
+    
     self.topMenuBar = self.panel:AddMainMenu()
     self.editMenu = self.topMenuBar:AddMenu("File")
     self.uiParamMenu = self.topMenuBar:AddMenu("UI")
@@ -390,16 +389,7 @@ function IconBrowser:RenderMiscMenu()
     end
 
     self.tooltipName.OnClick = function()
-        if self.iconTooltipName == "DisplayName" then
-            self.iconTooltipName = "TemplateName"
-            self.tooltipName.Label = GetLoca("Tooltip Name: Template Name")
-        elseif self.iconTooltipName == "TemplateName" then
-            self.iconTooltipName = "StatsName"
-            self.tooltipName.Label = GetLoca("Tooltip Name: Stats Name")
-        else
-            self.iconTooltipName = "DisplayName"
-            self.tooltipName.Label = GetLoca("Tooltip Name: Display Name")
-        end
+        self:TooltipChangeLogic()
         self:RenderIcons()
     end
 
@@ -464,6 +454,16 @@ function IconBrowser:RenderBrowserBase()
     self.iconsBrowser = self.browser:AddChildWindow("Icons Browser")
 
     self:Search()
+end
+
+function IconBrowser:TooltipChangeLogic()
+    if self.iconTooltipName == "DisplayName" then
+        self.iconTooltipName = "TemplateName"
+        self.tooltipName.Label = GetLoca("Tooltip Name: Template Name")
+    elseif self.iconTooltipName == "TemplateName" then
+        self.iconTooltipName = "DisplayName"
+        self.tooltipName.Label = GetLoca("Tooltip Name: Display Name")
+    end
 end
 
 function IconBrowser:CreateCachedSort(field)

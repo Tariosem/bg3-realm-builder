@@ -1,61 +1,56 @@
---- @class CharacterBrowser : IconBrowser
---- @field DataManager RB_CharacterManager
---- @field new fun(dataManager:RB_CharacterManager, title:string):CharacterBrowser
-CharacterBrowser = _Class("CharacterBrowser", IconBrowser)
+--- @class RootTemplateBrowser : IconBrowser
+--- @field DataManager ManagerBase
+--- @field new fun(dataManager:ManagerBase, title:string):RootTemplateBrowser
+RootTemplateBrowser = _Class("RootTemplateBrowser", IconBrowser)
 
-function CharacterBrowser:SubclassInit()
+function RootTemplateBrowser:SubclassInit()
     local config = self:GetConfig()
 
     self.iconToName = true
+    self.iconTooltipName = "TemplateName"
     self.iconPR = config.IconPerRow or 2
     self.iconPC = config.IconPerColumn or 20
     self.iconWidth = config.IconWidth or 600
     self.browserWidth = self.iconPR * self.iconWidth + 20
-    self.browserHeight = self.iconPC * (48 * SCALE_FACTOR + self.cellsPadding[2]) + 40 * SCALE_FACTOR + 240
+    self.browserHeight = self.iconPC * (36 * SCALE_FACTOR + self.cellsPadding[2]) + 240 * SCALE_FACTOR
     self.lastSize = config.LastSize or { self.browserWidth * 1.5, self.browserHeight * 1.5 }
 
     self.iconButtonBgColor = config.ButtonBgColor or HexToRGBA("FF615238")
 end
 
-function CharacterBrowser:GetConfig()
-    return CONFIG.CharacterBrowser or {}
+function RootTemplateBrowser:GetConfig()
+    if not CONFIG.RootTemplateBrowser then
+        CONFIG.RootTemplateBrowser = {}
+    end
+
+    return CONFIG.RootTemplateBrowser
 end
 
-function CharacterBrowser:SaveToConfig()
+function RootTemplateBrowser:SaveToConfig()
     self.lastPosition = self.panel.LastPosition
     self.lastSize = self.panel.LastSize
-    CONFIG.CharacterBrowser.IconWidth = self.iconWidth
-    CONFIG.CharacterBrowser.IconPerRow = self.iconPR
-    CONFIG.CharacterBrowser.IconPerColumn = self.iconPC
-    CONFIG.CharacterBrowser.CellsPadding = self.cellsPadding
-    CONFIG.CharacterBrowser.autoSave = self.autoSave
-    CONFIG.CharacterBrowser.ButtonBgColor = self.iconButtonBgColor
-    CONFIG.CharacterBrowser.BackgroundColor = self.browserBackgroundColor
-    CONFIG.CharacterBrowser.LastPosition = self.lastPosition
-    CONFIG.CharacterBrowser.LastSize = self.lastSize
-    SaveConfig("CharacterBrowser")
+    CONFIG.RootTemplateBrowser.IconWidth = self.iconWidth
+    CONFIG.RootTemplateBrowser.IconPerRow = self.iconPR
+    CONFIG.RootTemplateBrowser.IconPerColumn = self.iconPC
+    CONFIG.RootTemplateBrowser.CellsPadding = self.cellsPadding
+    CONFIG.RootTemplateBrowser.autoSave = self.autoSave
+    CONFIG.RootTemplateBrowser.ButtonBgColor = self.iconButtonBgColor
+    CONFIG.RootTemplateBrowser.BackgroundColor = self.browserBackgroundColor
+    CONFIG.RootTemplateBrowser.LastPosition = self.lastPosition
+    CONFIG.RootTemplateBrowser.LastSize = self.lastSize
+    SaveConfig("RootTemplateBrowser")
 end
 
-function CharacterBrowser:TooltipChangeLogic()
-    if self.iconTooltipName == "DisplayName" then
-        self.iconTooltipName = "TemplateName"
-        self.tooltipName.Label = GetLoca("Tooltip Name: Template Name")
-    elseif self.iconTooltipName == "TemplateName" then
-        self.iconTooltipName = "DisplayName"
-        self.tooltipName.Label = GetLoca("Tooltip Name: Display Name")
-    end
-end
-
---- @param entry RB_Character
+--- @param entry RB_Scenery
 --- @param cell ExtuiTableCell
 --- @return ExtuiImageButton|ExtuiStyledRenderable?
-function CharacterBrowser:RenderIcon(entry, cell)
+function RootTemplateBrowser:RenderIcon(entry, cell)
     if entry.Uuid == nil then
-        Warning("[CharacterBrowser] Icon with UUID: " .. tostring(entry.Uuid) .. " is missing Uuid field.")
+        Warning("[Browser] Icon with UUID: " .. tostring(entry.Uuid) .. " is missing Uuid field. Browser: " .. tostring(self.displayName))
         return nil
     end
 
-    local popup = nil
+     local popup = nil
     local rPopup = nil
 
     local iconImage = nil
@@ -82,11 +77,10 @@ function CharacterBrowser:RenderIcon(entry, cell)
 
     iconImage.OnClick = function()
         if not popup then
-            popup = cell:AddPopup(GetLoca("Character Template Details"))
+            popup = cell:AddPopup(GetLoca("Root Template Details"))
             popup.IDContext = entry.Uuid .. "Popup" .. Uuid_v4()
             local attrs = {
                 Uuid = entry.Uuid,
-                DisplayName = entry.DisplayName,
                 TemplateName = entry.TemplateName,
                 Icon = entry.Icon,
                 TemplateId = entry.TemplateId,
@@ -98,11 +92,11 @@ function CharacterBrowser:RenderIcon(entry, cell)
 
     iconImage.OnRightClick = function()
         if not rPopup then
-            rPopup = cell:AddPopup(GetLoca("Character Template Preview"))
+            rPopup = cell:AddPopup(GetLoca("Preview Template"))
             rPopup.IDContext = entry.Uuid .. "RPopup" .. Uuid_v4()
             self:RenderCustomizationTab(rPopup, entry)
             local actTab = StyleHelpers.AddContextMenu(rPopup, "Actions")
-            actTab:AddItem(GetLoca("Spawn Character"), function()
+            actTab:AddItem(GetLoca("Spawn"), function()
                 local selected = self.selectedGuid or CGetHostCharacter()
                 if not selected then return end
                 local spawnPos = {CGetPosition(selected)}
@@ -115,7 +109,7 @@ function CharacterBrowser:RenderIcon(entry, cell)
     end
 
     iconImage.CanDrag = true
-    iconImage.DragDropType = "RB_CharacterTemplate"
+    iconImage.DragDropType = self.displayName
 
     iconImage.OnDragStart = function(sel)
         sel.DragPreview:AddText(entry[self.iconTooltipName] or "Unknown")

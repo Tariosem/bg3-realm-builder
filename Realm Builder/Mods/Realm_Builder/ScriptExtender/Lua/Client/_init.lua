@@ -91,6 +91,7 @@ RB_CharacterManager = CharacterManager.new()
 RB_ItemManager = ItemManager.new()
 RB_MultiEffectManager = MultiEffectManager.new()
 RB_SceneryManager = SceneryManager.new()
+RB_PrefabManager = PrefabManager.new()
 
 --- @param uuid GUIDSTRING
 --- @return GameObjectTemplate|ResourceMultiEffectInfo|ResourceEffectInfo|nil
@@ -119,6 +120,7 @@ local function PopulateAllTemplates()
     local characterCnt = 0
     local sceneryCnt = 0
     local constructionsCnt = 0
+    local prefabCnt = 0
 
     local allWeaponStats = Ext.Stats.GetStats("Weapon")
     for _, statsId in pairs(allWeaponStats) do
@@ -166,6 +168,9 @@ local function PopulateAllTemplates()
             object = object --[[@as ConstructionTemplate]]
             RB_SceneryManager:PopulateConstruction(object)
             constructionsCnt = constructionsCnt + 1
+        elseif object.TemplateType == "prefab" then
+            RB_PrefabManager:PopulatePrefab(object)
+            prefabCnt = prefabCnt + 1
         end
         ::continue::
     end
@@ -173,23 +178,29 @@ local function PopulateAllTemplates()
     RB_CharacterManager.populated = true
     RB_ItemManager.populated = true
     RB_SceneryManager.populated = true
+    RB_PrefabManager.populated = true
     RB_ItemManager.modCache = {}
-    return itemCnt, characterCnt, sceneryCnt, constructionsCnt
+    return {
+        Items = itemCnt,
+        Characters = characterCnt,
+        Scenery = sceneryCnt,
+        TileConstructions = constructionsCnt,
+        Prefabs = prefabCnt,
+    }, itemCnt + characterCnt + sceneryCnt + constructionsCnt + prefabCnt
 end
 
 
 local function Realm_Builder_Population()
     local now = Ext.Timer:MonotonicTime()
-    local itemCnt, characterCnt, sceneryCnt, contructionCnt = PopulateAllTemplates()
+    local cnts, sumCnt = PopulateAllTemplates()
     local itemsFinished = Ext.Timer:MonotonicTime()
     local effectCnt = RB_MultiEffectManager:PopulateAllEffects()
     local effectsFinished = Ext.Timer:MonotonicTime()
-    if itemCnt ~= -1 and effectCnt ~= -1 then
-        RPrintPurple("[Realm Builder] Populating Root Templates took " .. (itemsFinished - now) .. " ms.")
-        RPrintPurple("  - " .. itemCnt .. " items populated.")
-        RPrintPurple("  - " .. characterCnt .. " characters populated.")
-        RPrintPurple("  - " .. sceneryCnt .. " scenery populated.")
-        RPrintPurple("  - " .. contructionCnt .. " TileConstructions populated.")
+    if sumCnt >= 0 then
+        RPrintPurple("[Realm Builder] Populating " .. sumCnt .. " root templates took " .. (itemsFinished - now) .. " ms:")
+        for k,v in SortedPairs(cnts) do
+            RPrintPurple("    " .. tostring(k) .. ": " .. tostring(v))
+        end
         RPrintPurple("[Realm Builder] Populating Effects took " .. (effectsFinished - itemsFinished) .. " ms for " .. effectCnt .. " effects")
     end
 end

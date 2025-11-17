@@ -791,7 +791,7 @@ local treeClosed = {
 
 --- @param parent ExtuiTreeParent
 --- @param label string
---- @param open boolean
+--- @param open boolean?
 --- @return RB_UI_Tree
 function StyleHelpers.AddTree(parent, label, open)
     if parent.UserData and parent.UserData.Is_RB_UI_Tree then
@@ -800,13 +800,14 @@ function StyleHelpers.AddTree(parent, label, open)
     label = label or "TreeGroup"
     local uuid = Uuid_v4()
     local headerGroup = parent:AddGroup(label .. "##uuid_" .. uuid)
-    local indent = parent:AddDummy(16 * SCALE_FACTOR, 1)
-    local panel = parent:AddGroup(label .. "_TreeGroup##uuid_" .. uuid)
+    
     local children = {}
-    panel.Visible = open == true
-    panel.SameLine = true
     local arrowReserved = headerGroup:AddImageButton("##" .. label .. uuid , open and RB_ICONS.Menu_Down or RB_ICONS.Menu_Right, IMAGESIZE.ROW)
     local selectable = headerGroup:AddSelectable(label .. "##" .. uuid)
+    local indent = headerGroup:AddDummy(16 * SCALE_FACTOR, 1)
+    local panel = headerGroup:AddGroup(label .. "_TreeGroup##uuid_" .. uuid)
+    panel.Visible = open == true
+    panel.SameLine = true
     selectable.SameLine = true
     selectable.AllowItemOverlap = true
     arrowReserved.IDContext = "TreeArrowReserved_" .. Uuid_v4()
@@ -861,6 +862,11 @@ function StyleHelpers.AddTree(parent, label, open)
             table.insert(children, childTree)
             return childTree
         end,
+        AddChild = function(_, child)
+            if child and child.UserData and child.UserData.Is_RB_UI_Tree then
+                table.insert(children, child)
+            end
+        end,
         AddHint = function(_, hintText)
             local hint = headerGroup:AddText(hintText)
             hint:SetColor("Text", HexToRGBA("FFAAAAAA"))
@@ -878,6 +884,10 @@ function StyleHelpers.AddTree(parent, label, open)
             if k:sub(1, 3) == "Add" then
                 return function(_, ...)
                     return panel[k](panel, ...)
+                end
+            elseif k:sub(1, 3) == "Get" or (k:sub(1, 3) == "Set" and k ~= "SetOpen") then
+                return function(_, ...)
+                    return headerGroup[k](headerGroup, ...)
                 end
             elseif rawget(closure, k) ~= nil then -- avoid stack overflow
                 return rawget(closure, k)
@@ -900,6 +910,9 @@ function StyleHelpers.AddTree(parent, label, open)
                     v()
                 end
                 selectable.OnClick = arrowReserved.OnClick
+                return
+            elseif k == "SameLine" then
+                headerGroup.SameLine = v
                 return
             end
             selectable[k] = v

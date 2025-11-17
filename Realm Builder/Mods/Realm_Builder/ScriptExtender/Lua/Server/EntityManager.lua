@@ -173,6 +173,15 @@ local function copyTemplateProperties(fromTemplate, toTemplate)
     end
 end
 
+local debugText = 
+[[
+    ===========================
+    Create At (%.2f, %.2f, %.2f)
+    TemplateId : %s
+    Spawned As : %s
+    ===========================
+]]
+
 function EntityManager:CreateAt(templateId, x, y, z, rx, ry, rz, w)
     --Trace("CreateProp called with TemplateId: " .. tostring(TemplateId))
     if not templateId then
@@ -196,6 +205,9 @@ function EntityManager:CreateAt(templateId, x, y, z, rx, ry, rz, w)
 
         copyTemplateProperties(sceneryTemplate, helperATemplate)
         spawnTemplate = helperATemplate.Name .. "-" .. helperATemplate.Id
+    elseif templateObj.TemplateType ~= "item" and templateObj.TemplateType ~= "character" then
+        Debug(" Sorry , but we can't spawn root template of type: " .. tostring(templateObj.TemplateType))
+        return nil
     end
 
     local newProp = Osi.CreateAt(spawnTemplate, x, y, z, tempoFlag, 0, "") --[[@as string]]
@@ -205,7 +217,8 @@ function EntityManager:CreateAt(templateId, x, y, z, rx, ry, rz, w)
         return nil
     end
 
-    Debug("Created prop with TemplateId: " .. tostring(templateId) .. " at position (" .. x .. ", " .. y .. ", " .. z .. ")")
+    Debug(debugText:format(x, y, z, tostring(templateId), tostring(newProp)))
+
     OsirisHelpers.Propify(newProp)
 
     if rx and ry and rz and w then

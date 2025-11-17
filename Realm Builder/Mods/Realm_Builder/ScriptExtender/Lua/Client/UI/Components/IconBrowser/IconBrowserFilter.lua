@@ -6,14 +6,6 @@ function IconBrowser:GetSearchCriteria()
     return tostring(self.searchInput.Text), tostring(self.noteInput.Text), fields
 end
 
-function IconBrowser:CandidatesToMap(candidates)
-    local result = {}
-    for uuid in pairs(candidates) do
-        result[uuid] = self.searchData[uuid]
-    end
-    return result
-end
-
 function IconBrowser:ClearNonExistTagsAndGroups()
     for tag, _ in pairs(self.selectedTags) do
         if not self.tagsMap[tag] then
@@ -59,10 +51,8 @@ function IconBrowser:AddTagsFilter()
         return
     end
     self.tagsFilterMenu = self.tagsFilterMenu or self.topMenuBar:AddMenu("Tags Filter >")
-
     self.tagsFilterMenu.OnHoverEnter = function()
         self:RenderTagsFilter()
-        self.tagsFilterMenu.OnHoverEnter()
     end
 end
 
@@ -130,32 +120,6 @@ function IconBrowser:RenderTagsFilter()
 
     if not self.tagsFilterMenu then
         self.tagsFilterMenu = self.topMenuBar:AddMenu("Tags Filter >")
-    end
-
-    local keepOpen = self.tagsFilterMenu.Open
-    self.tagsFilterMenu.OnHoverEnter = function()
-        self.tagsFilterMenu.Open = true
-        Timer:Ticks(30, function(timerID)
-            local panelPos = self.panel.LastPosition
-            local filterWidth = self.tagsFilterMenu.LastSize and self.tagsFilterMenu.LastSize[1] or 500 * SCALE_FACTOR
-            local pos = { panelPos[1] - filterWidth, panelPos[2] }
-            self.tagsFilterMenu:SetPos(pos)
-        end)
-    end
-    self.tagsFilterMenu.OnHoverLeave = function()
-        if not keepOpen then
-            self.tagsFilterMenu.Open = false
-        end
-    end
-    self.tagsFilterMenu.OnClick = function()
-        keepOpen = not keepOpen
-        self.tagsFilterMenu.Open = keepOpen
-        FocusWindow(self.tagsFilterMenu)
-    end
-
-    self.panel.OnClose = function()
-        keepOpen = false
-        self.tagsFilterMenu.Open = false
     end
 
     self.tagsPopup = self.tagsFilterMenu --[[@as ExtuiTreeParent]]
@@ -267,7 +231,7 @@ function IconBrowser:RenderTagsFilter()
         parentMenu.CanDrag = true
         parentMenu.UserData.TagCollection = parent
         parentMenu.OnRightClick = openPopup
-        parentMenu.DragDropType = "TagCollection"
+        parentMenu.DragDropType = "TagCollection" .. self.displayName
 
         local function menuDragDropSingle(menu, drop)
             local data = drop.UserData
@@ -344,7 +308,7 @@ function IconBrowser:RenderTagsFilter()
     end
     --Debug("Tag parents render order:", table.concat(parentRenderOrder, " > "))
 
-    self.tagsPopup.DragDropType = "TagCollection"
+    self.tagsPopup.DragDropType = "TagCollection" .. self.displayName
     self.tagsPopup.OnDragDrop = function(menu, drop)
         local data = drop.UserData
 
@@ -381,7 +345,7 @@ function IconBrowser:RenderTagsFilter()
         local selection = tagArea:AddSelectable(currentTag .. " (" .. currentCnt .. ")")
 
         selection.CanDrag = true
-        selection.DragDropType = "TagCollection"
+        selection.DragDropType = "TagCollection" .. self.displayName
         selection.UserData = { Tag = currentTag }
 
         selection.OnDragStart = function(sel)

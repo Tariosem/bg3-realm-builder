@@ -136,16 +136,17 @@ function TemplateExportMenu:RenderExportEntities(panel)
             local nameB = ents[b].DisplayName or ents[b].TemplateId
             return nameA < nameB
         end) do
-            self:RenderTemplateEntry(typeRow:AddCell(), entData)
+            local treeChild = self:RenderTemplateEntry(typeRow:AddCell(), entData)
+            cell.UserData:AddChild(treeChild)
         end
     end
 
     for _, templateType in ipairs(allTemplateTypes) do
         local cell = row:AddCell()
-        local templateSelectable = cell:AddTree(string.upper(templateType))
+        local templateSelectable = StyleHelpers.AddTree(cell, string.upper(templateType))
         templateSelectable.OnExpand = function()
             renderTemplateTypes(templateType)
-            templateSelectable.OnExpand = nil
+            templateSelectable.OnExpand = function () end
         end
         cell.UserData = templateSelectable
         typeCells[templateType] = cell
@@ -155,8 +156,9 @@ end
 --- @param cell ExtuiTableCell
 --- @param entData EntityData
 function TemplateExportMenu:RenderTemplateEntry(cell, entData)
+    local templateObj = Ext.Template.GetTemplate(entData.TemplateId)
     local icon = cell:AddImageButton("##" .. entData.Guid .. "icon", entData.DisplayIcon, IMAGESIZE.SMALL)
-    local header = cell:AddTree(entData.DisplayName or entData.TemplateId)
+    local header = StyleHelpers.AddTree(cell, entData.DisplayName or templateObj.Name or entData.TemplateId)
     local attrTable = header:AddTable("Attributes", 2)
     header.SameLine = true
 
@@ -379,8 +381,10 @@ function TemplateExportMenu:RenderTemplateEntry(cell, entData)
 
     header.OnExpand = function()
         renderAttr()
-        header.OnExpand = nil
+        header.OnExpand = function() end
     end
+
+    return header
 end
 
 function TemplateExportMenu:ExportToMod(exportSettings, progressCallback)

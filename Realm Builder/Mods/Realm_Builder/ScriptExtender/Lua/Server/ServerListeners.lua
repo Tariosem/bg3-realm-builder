@@ -1,5 +1,4 @@
 local function spawnHandler(data)
-    _D(data)
     local template = data.TemplateId
     local spawnTemplate = template
     local entInfo = data.EntInfo or {}
@@ -29,6 +28,10 @@ local function spawnHandler(data)
     entInfo.Visible = true
     entInfo.Guid = newGuid
     entInfo.TemplateId = template
+
+    if entInfo.Scale then 
+        NetChannel.SetVisualTransform:Broadcast({Guid = newGuid, Transforms = {[newGuid] = {Scale = entInfo.Scale}}})
+    end
 
     NetChannel.Entities.Added:Broadcast({Entities = {entInfo}})
 

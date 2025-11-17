@@ -663,6 +663,10 @@ function VisualTab:RenderAttachmentEditors()
 
         local displayName = vres.Slot
 
+        if displayName == "" or displayName == "Unassigned" then 
+            displayName = gr2FileName
+        end
+
         local attachNode = StyleHelpers.AddTree(self.attachmentsHeader, displayName .. "##" .. tostring(attIndex), false)
         local gr2Text = attachNode:AddHint("Model: " .. gr2FileName)
         gr2Text:SetColor("Text", HexToRGBA("FF6D6D6D"))
