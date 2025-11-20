@@ -730,14 +730,14 @@ function IconBrowser:IconSetup(iconImage, entry)
     iconImage.OnHoverEnter = function()
         self.hoveredEntry = entry.Uuid
 
-        if type(userOnHoverEnter) == "function" then
+        if userOnHoverEnter then
             userOnHoverEnter(iconImage)
         end
     end
     iconImage.OnHoverLeave = function()
         self.hoveredEntry = nil
 
-        if type(userOnHoverLeave) == "function" then
+        if userOnHoverLeave then
             userOnHoverLeave(iconImage)
         end
     end

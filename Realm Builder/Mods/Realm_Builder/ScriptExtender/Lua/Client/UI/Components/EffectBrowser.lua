@@ -33,11 +33,11 @@ end
 
 local function previewEffect(guid, entry)
         local effectsData = {}
-        local fxNames = entry.fxNames or {}
-        if #fxNames == 0 then
+        local FxNames = entry.FxNames or {}
+        if #FxNames == 0 then
             return
         end
-        for _, fxName in ipairs(fxNames) do
+        for _, fxName in ipairs(FxNames) do
             local fxData = GetDataFromUuid(fxName) or {}
             local effectData = {
                 Object = guid,
@@ -143,14 +143,7 @@ function EffectBrowser:RenderIcon(entry, cell)
 
     iconImage.CanDrag = true
     iconImage.DragDropType = "EffectInfo"
-    iconImage.UserData = {
-        Uuid = entry.Uuid,
-        DisplayName = entry.DisplayName,
-        TemplateName = entry.TemplateName,
-        isMultiEffect = self.searchData[entry.Uuid].isMultiEffect or false,
-        FxName = self.searchData[entry.Uuid].fxNames or {},
-        Icon = entry.Icon
-    }
+    iconImage.UserData = entry
 
     iconImage.OnDragStart = function()
         iconImage.DragPreview:AddImage(entry.Icon)

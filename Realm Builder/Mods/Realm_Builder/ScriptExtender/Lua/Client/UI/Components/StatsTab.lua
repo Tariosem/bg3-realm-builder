@@ -155,12 +155,22 @@ function StatsTab:RenderEffectType(effectType)
         self.selectedEffectType = effectType
         self:OpenEffectContextMenu()
     end
+    effectTypeTree.OnHoverEnter = function ()
+        self.isFocused = true
+        self.selectedEffectData = nil
+        self.selectedEffectType = effectType
+    end
+    effectTypeTree.OnHoverLeave = function ()
+        self.isFocused = false
+        self.selectedEffectData = nil
+        self.selectedEffectType = nil
+    end
 
     if not self.cachedExpandedTrees[effectType] then
         self.cachedExpandedTrees[effectType] = {}
     end
 
-    local effectTypeData = self.searchData.fxNames[effectType]
+    local effectTypeData = self.searchData.FxNames[effectType]
     local effectGroupType = self.searchData.fxGroupType[effectType]
 
     if effectGroupType == "MultiEffect" then
@@ -171,9 +181,45 @@ function StatsTab:RenderEffectType(effectType)
 
 end
 
+function StatsTab:SetupEffectTreeBehaviors(effectTree, effectType, name)
+    local data = effectTree.UserData
+
+    effectTree.OnDragDrop = function(button, drop)
+        self:ProcessDropData(effectType, drop.UserData, data)
+    end
+
+    effectTree.OnDragStart = function(sel)
+        sel.DragPreview:AddImage(data.Icon)
+    end
+
+    effectTree.OnRightClick = function ()
+        self.selectedEffectData = data
+        self.selectedEffectType = effectType
+        self:OpenEffectContextMenu()
+    end
+
+    effectTree.OnHoverEnter = function ()
+        self.isFocused = true
+    end
+    effectTree.OnHoverLeave = function ()
+        self.isFocused = false
+    end
+
+    effectTree.OnExpand = function()
+        self.cachedExpandedTrees[effectType][name] = true
+    end
+    effectTree.OnCollapse = function()
+        self.cachedExpandedTrees[effectType][name] = false
+    end
+
+    if self.cachedExpandedTrees[effectType][name] then
+        effectTree:SetOpen(true)
+    end
+end
+
 --- @param parent RB_UI_Tree
 function StatsTab:RenderSingleEffectType(parent, effectType)
-    local effectTypeData = self.searchData.fxNames[effectType] or {}
+    local effectTypeData = self.searchData.FxNames[effectType] or {}
 
     local sortedNames = {}
     for name,_ in pairs(effectTypeData) do
@@ -191,34 +237,7 @@ function StatsTab:RenderSingleEffectType(parent, effectType)
         effectTree.UserData = data
         effectTree.CanDrag = true
 
-        effectTree.OnRightClick = function ()
-            self.selectedEffectData = data
-            self.selectedEffectType = effectType
-            self:OpenEffectContextMenu()
-        end
-
-        effectTree.OnDragDrop = function(button, drop)
-            self:ProcessDropData(effectType, drop.UserData, data)
-        end
-
-        effectTree.OnDragStart = function(button)
-            effectTree.DragPreview:AddImage(data.Icon)
-        end
-
-        if self.cachedExpandedTrees[effectType][name] then
-            effectTree:SetOpen(true)
-        end
-
-        effectTree.OnExpand = function()
-            self.cachedExpandedTrees[effectType][name] = true
-        end
-
-        effectTree.OnCollapse = function()
-            self.cachedExpandedTrees[effectType][name] = false
-        end
-
-        effectTree.IDContext = "EffectHeader_" .. name
-        effectTree.SameLine = true
+        self:SetupEffectTreeBehaviors(effectTree, effectType, name)
 
         local attrTable = StyleHelpers.AddAlignedTable(effectTree)
         local displayNameInput = attrTable:AddInputText(GetLoca("DisplayName"), data.DisplayName or "")
@@ -259,20 +278,6 @@ function StatsTab:RenderSingleEffectType(parent, effectType)
             end
             self:OnChange()
         end
-
-        local removeButton = effectTree:AddButton(GetLoca("Remove"))
-
-        ApplyDangerButtonStyle(removeButton)
-        removeButton.OnClick = function()
-            ConfirmPopup:DangerConfirm(
-                GetLoca("Are you sure you want to remove this effect?"), 
-                function()
-                    effectTypeData[name] = nil
-                    self:RenderEffectType(effectType)
-                    self:OnChange()
-                end
-            )
-        end
     end
 
     self:RenderEmptyIcon(parent, effectType)
@@ -280,32 +285,20 @@ end
 
 --- @param parent RB_UI_Tree
 function StatsTab:RenderMultiEffectType(parent, effectType)
-    local effectTypeData = self.searchData.fxNames[effectType]
+    local effectTypeData = self.searchData.FxNames[effectType]
 
     for name, data in pairs(effectTypeData) do
         local effectTree = parent:AddTree(name .. "## " .. effectType .. name)
-        local effectButton = effectTree:AddTreeIcon(data.Icon, IMAGESIZE.ROW)
-        effectButton.DragDropType = "EffectInfo"
-        effectButton.UserData = data
-        effectButton.CanDrag = true
-        effectButton.OnDragDrop = function(button, drop)
-            self:ProcessDropData(effectType, drop.UserData, data)
-        end
-        effectButton.OnDragStart = function(button)
-            effectButton.DragPreview:AddImage(data.Icon)
-        end
+        local effectIcon = effectTree:AddTreeIcon(data.Icon, IMAGESIZE.ROW)
+        effectTree.DragDropType = "EffectInfo"
+        effectTree.UserData = data
+        effectTree.CanDrag = true
         effectTree.IDContext = "EffectHeader_" .. name
+
+        self:SetupEffectTreeBehaviors(effectTree, effectType, name)
 
         if self.cachedExpandedTrees[effectType][name] then
             effectTree:SetOpen(true)
-        end
-
-        effectTree.OnExpand = function()
-            self.cachedExpandedTrees[effectType][name] = true
-        end
-
-        effectTree.OnCollapse = function()
-            self.cachedExpandedTrees[effectType][name] = false
         end
 
         local attrTable = StyleHelpers.AddAlignedTable(effectTree)
@@ -437,11 +430,11 @@ function StatsTab:SetupEffectContextMenu()
             OnClick = function()
                 local effectType = self.selectedEffectType
 
-                if not self.selectedEffectData then
+                if self.selectedEffectData then
                     ConfirmPopup:DangerConfirm(
                         GetLoca("Remove this effect?"), 
                         function()
-                            self.searchData.fxNames[effectType][self.selectedEffectData.DisplayName] = nil
+                            self.searchData.FxNames[effectType][self.selectedEffectData.DisplayName] = nil
                             self:RenderEffectType(effectType)
                             self:OnChange()
                             self.selectedEffectData = nil
@@ -451,7 +444,7 @@ function StatsTab:SetupEffectContextMenu()
                     ConfirmPopup:DangerConfirm(
                         GetLoca("Clear all?"),
                         function()
-                            self.searchData.fxNames[effectType] = {}
+                            self.searchData.FxNames[effectType] = {}
                             self.searchData.fxGroupType[effectType] = nil
                             self:RenderEffectType(effectType)
                             self:OnChange()
@@ -463,12 +456,14 @@ function StatsTab:SetupEffectContextMenu()
             Danger = true,
             Hint = "Del",
             HotKey = {
-                Key = "DELETE"
+                Key = "DEL"
             }
         }
     }
 
-    contextMenu:AddItems(contextItems)
+    contextMenu:AddContext(contextItems, function()
+        return self.isFocused
+    end)
 
     return contextMenu
 end
@@ -521,8 +516,8 @@ end
 
 function StatsTab:ProcessDropData(effectType, data)
     local searchData = self.searchData
-    if searchData.fxNames[effectType] == nil then
-        searchData.fxNames[effectType] = {}
+    if searchData.FxNames[effectType] == nil then
+        searchData.FxNames[effectType] = {}
     end
     local theName = data.isMultiEffect and data.DisplayName or data.TemplateName
     local newName = self:GetUniqueNameInType(theName, effectType)
@@ -536,17 +531,17 @@ function StatsTab:ProcessDropData(effectType, data)
         FxName = data.FxName or nil,
     }
     if data.isMultiEffect then
-        searchData.fxNames[effectType] = {}
+        searchData.FxNames[effectType] = {}
 
-        searchData.fxNames[effectType][newEntry.DisplayName] = newEntry
+        searchData.FxNames[effectType][newEntry.DisplayName] = newEntry
 
         searchData.fxGroupType[effectType] = "MultiEffect"
     else
         if searchData.fxGroupType[effectType] == "MultiEffect" then
-            searchData.fxNames[effectType] = {}
+            searchData.FxNames[effectType] = {}
         end
 
-        searchData.fxNames[effectType][newEntry.DisplayName] = newEntry
+        searchData.FxNames[effectType][newEntry.DisplayName] = newEntry
 
         searchData.fxGroupType[effectType] = "SingleEffect"
     end
@@ -556,13 +551,13 @@ function StatsTab:ProcessDropData(effectType, data)
 end
 
 function StatsTab:GetUniqueNameInType(name, effectType, discard)
-    local data = self.searchData.fxNames[effectType]
+    local data = self.searchData.FxNames[effectType]
     if not data then
         return name
     end
 
     if discard then
-        self.searchData.fxNames[effectType][discard] = nil
+        self.searchData.FxNames[effectType][discard] = nil
     end
 
     local count = 1
@@ -579,7 +574,7 @@ function StatsTab:Play()
     local postData = {}
     local searchData = self.searchData
     postData.Type = searchData.StatsType
-    for effectType, multiData in pairs(self.searchData.fxNames) do
+    for effectType, multiData in pairs(self.searchData.FxNames) do
         local effectTypeValue = ""
         if searchData.fxGroupType[effectType] == "MultiEffect" then
             for _,data in pairs(multiData) do

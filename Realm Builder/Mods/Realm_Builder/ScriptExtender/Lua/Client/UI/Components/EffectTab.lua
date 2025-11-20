@@ -129,7 +129,7 @@ function EffectTab:RenderEffectsTab()
 end
 
 function EffectTab:RenderEffects()
-    local fxNames = GetDataFromUuid(self.guid).fxNames or {}
+    local FxNames = GetDataFromUuid(self.guid).FxNames or {}
 
     self.effectsTimelineWin = self.effectsInfoTab:AddChildWindow("EffectsTimeline")
 
@@ -138,7 +138,7 @@ function EffectTab:RenderEffects()
 
     self.effectsInfos = {}
 
-    for _, fxName in ipairs(fxNames) do
+    for _, fxName in ipairs(FxNames) do
         local data = GetDataFromUuid(fxName) --[[@as table]]
         local effectTree = self.effectsRoot:AddTree(data.DisplayName or fxName)
         local effectIcon = effectTree:AddTreeIcon(self.icon, IMAGESIZE.ROW)
@@ -167,131 +167,14 @@ function EffectTab:RenderEffects()
             self:PlayEffect(effectTree)
         end
 
-        effectTree:Tooltip():AddText(GetLoca("Click to play effect, or drag to custom effect slot"))
-
-        local fxNamePrefix = effectTree:AddText(GetLoca("FxName: "))
-        local fxNameInput = effectTree:AddInputText("", fxName)
-        fxNameInput.IDContext = "EffectFxName"
-        fxNameInput.SameLine = true
-        fxNameInput.ReadOnly = true
-
-        local repeatText = effectTree:AddText(GetLoca("Repeat Count: "))
-        local repeatInput = effectTree:AddInputInt("", tonumber(data.Repeat or 1))
-        repeatInput.IDContext = "EffectRepeatCount"
-        repeatInput.SameLine = true
-        repeatInput.ReadOnly = true
+        StyleHelpers.AddReadOnlyAttrTable(effectTree, {
+            [GetLoca("Fx Name")] = effectTree.UserData.FxName,
+            [GetLoca("Name")] = effectTree.UserData.TemplateName,
+            [GetLoca("Source Bone")] = effectTree.UserData.SourceBone,
+            [GetLoca("Target Bone")] = effectTree.UserData.TargetBone,
+            [GetLoca("Repeat Count")] = effectTree.UserData.Repeat,
+        })
         
-        local sourceBoneText = table.concat(data.SourceBones or {}, ", ")
-        local sourceBonePrefix = effectTree:AddText(GetLoca("Source Bones: "))
-
-        local sourceBoneInput = effectTree:AddInputText("", sourceBoneText)
-        sourceBoneInput:Tooltip():AddText(GetLoca("Right click to auto fill the best match bone"))
-        sourceBoneInput.IDContext = "EffectSourceBone"
-        sourceBoneInput.SameLine = true
-
-        sourceBoneInput.OnChange = function(text)
-            local input = text.Text
-            if not input or input == "" then
-                effectTree.UserData.SourceBone = nil
-            else
-                effectTree.UserData.SourceBone = input
-            end
-        end
-
-        sourceBoneInput.OnRightClick = function(text)
-            local bestMatch = FindBestMatchBone(text.Text)
-            text.Text = bestMatch
-            effectTree.UserData.SourceBone = bestMatch
-        end
-
-        local sourceBoneResetButton = effectTree:AddButton(GetLoca("Reset"))
-        sourceBoneResetButton.IDContext = "EffectSourceBoneReset"
-        sourceBoneResetButton.SameLine = true
-
-        sourceBoneResetButton.OnClick = function()
-            effectTree.UserData.SourceBone = nil
-            sourceBoneInput.Text = table.concat(data.SourceBones or {}, ", ")
-        end
-
-        local targetBoneText = table.concat(data.TargetBones or {}, ", ")
-        local targetBonePrefix = effectTree:AddText(GetLoca("Target Bones: "))
-
-        local targetBoneInput = effectTree:AddInputText("", targetBoneText)
-        targetBoneInput:Tooltip():AddText(GetLoca("Enter a name (e.g. \"RightHand\") and right-click to auto-fill the best-matching bone."))
-        targetBoneInput.IDContext = "EffectTargetBone"
-        targetBoneInput.SameLine = true
-        
-        targetBoneInput.OnChange = function(text)
-            local input = text.Text
-            if not input or input == "" then
-                effectTree.UserData.TargetBone = nil
-            else
-                effectTree.UserData.TargetBone = input
-            end
-        end
-
-        targetBoneInput.OnRightClick = function(text)
-            local bestMatch = FindBestMatchBone(text.Text)
-            text.Text = bestMatch
-            effectTree.UserData.TargetBone = bestMatch
-        end
-
-        local targetBoneResetButton = effectTree:AddButton(GetLoca("Reset"))
-        targetBoneResetButton.IDContext = "EffectTargetBoneReset"
-        targetBoneResetButton.SameLine = true
-
-        targetBoneResetButton.OnClick = function()
-            effectTree.UserData.TargetBone = nil
-            targetBoneInput.Text = table.concat(data.TargetBones or {}, ", ")
-        end
-
-        local fxNameData = GetDataFromUuid(fxName) or {}
-        local isLoop = Contains(data.DisplayName, "PrepareEffect") or Contains(data.DisplayName, "StatusEffect") or fxNameData.isLoop or false
-        effectTree.UserData.isLoop = isLoop
-        if isLoop then
-            effectTree.UserData.isLoop = true
-        end
-        local playLoopCheckbox = effectTree:AddCheckbox(GetLoca("Play Loop"), isLoop)
-        playLoopCheckbox.OnChange = function(checkbox)
-            effectTree.UserData.isLoop = checkbox.Checked
-        end
-
-        local isBeam = data.isBeam or false
-        effectTree.UserData.isBeam = isBeam
-        local isBeamCheckbox = effectTree:AddCheckbox(GetLoca("Beam"), isBeam)
-        isBeamCheckbox.SameLine = true
-        isBeamCheckbox:Tooltip():AddText(GetLoca("Check if this effect is a beam effect."))
-        isBeamCheckbox.OnChange = function(checkbox)
-            effectTree.UserData.isBeam = checkbox.Checked
-        end
-
-        local playAtPositionCheckbox = effectTree:AddCheckbox(GetLoca("Play at Position"), false)
-        playAtPositionCheckbox.SameLine = true
-        playAtPositionCheckbox.OnChange = function(checkbox)
-            effectTree.UserData.PlayAtPosition = checkbox.Checked
-        end
-
-        local playAtPosAndRotCheckbox = effectTree:AddCheckbox(GetLoca("Play at Position and Rotation"), false)
-        playAtPosAndRotCheckbox.SameLine = true
-        playAtPosAndRotCheckbox.OnChange = function(checkbox)
-            effectTree.UserData.PlayAtPositionAndRotation = checkbox.Checked
-        end
-
-        local effectScaleSlider = effectTree:AddSlider(GetLoca("Effect Scale"), 1.0, 0.1, 10.0)
-        effectScaleSlider.OnChange = function(slider)
-            effectTree.UserData.Scale = slider.Value[1]
-        end
-
-        local stopFxNameButton = effectTree:AddButton(GetLoca("Stop Same Loop Effect"))
-
-        stopFxNameButton.OnClick = function()
-            local postdata = {
-                Type = "FxName",
-                FxName = fxName,
-            }
-            NetChannel.StopEffect:SendToServer(postdata)
-        end
-
         effectTree:AddSeparator()
     end
 end
@@ -306,16 +189,17 @@ function EffectTab:RenderControlPanel(parent)
     local repeatPlayButton = parent:AddButton(GetLoca("Timed Repeat"))
     local repeatDelaySlider = parent:AddSlider("ms", 1000, 1, 60000)
     local stopAllButton = parent:AddButton(GetLoca("Stop All"))
-    local stoprepeatButton = parent:AddButton(GetLoca("Stop Repeat"))
 
     repeatPlayButton.SameLine = true
     repeatDelaySlider.SameLine = true
-    stoprepeatButton.SameLine = true
     
     repeatPlayButton.OnClick = function()
         if self.repeatTimer then
             Timer:Cancel(self.repeatTimer)
             self.repeatTimer = nil
+
+            repeatPlayButton.Text = GetLoca("Timed Repeat")
+            return 
         end
 
         if self.repeatDelay > 100 then
@@ -326,18 +210,12 @@ function EffectTab:RenderControlPanel(parent)
                 else
                 end
             end)
+            repeatPlayButton.Text = GetLoca("Stop Repeating")
         end
     end
 
     repeatDelaySlider.OnChange = function ()
         self.repeatDelay = repeatDelaySlider.Value[1]
-    end
-
-    stoprepeatButton.OnClick = function ()
-        if self.repeatTimer then
-            Timer:Cancel(self.repeatTimer)
-            self.repeatTimer = nil
-        end
     end
 
     stopAllButton.OnClick = function ()
@@ -439,8 +317,7 @@ function EffectTab:CreatePicker(fieldName, labelText, parent)
                     cell:AddText(", ").SameLine = true
                 end
                 local guid = GetGuidFromDisplayName(name)
-                local tempImage = cell:AddImage(GetIcon(guid))
-                tempImage.ImageData.Size = { 32 * SCALE_FACTOR, 32 * SCALE_FACTOR }
+                local tempImage = cell:AddImage(GetIcon(guid), IMAGESIZE.ROW)
                 local tempText = cell:AddText(name)
                 if i > 1  and i % 4 ~= 0 then
                     tempImage.SameLine = true

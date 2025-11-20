@@ -138,12 +138,19 @@ function TransformToolbar:RegisterKeyInputEvents()
 
     ttMod:RegisterEvent("OpenVisualTab", function (e)
         if e.Event ~= "KeyDown" then return end
-        local pick = GetPickingGuid()
-        if not pick or pick == "" then
-            pick = CGetHostCharacter()
+        local pick = GetPickingEntity()
+        local pickId = HandleToUuid(pick)
+
+        if not pick then
+            pickId = CGetHostCharacter()
         end
-        local visualTab = VisualTab.new(pick, GetName(pick), nil, nil)
-        visualTab:Render()
+
+        if pickId then
+            VisualTab.new(pickId, GetName(pickId), nil, nil):Render()
+        elseif pick.Scenery then
+            VisualHelpers.RegisterScenery(pick)
+            VisualTab.CreateByEntity(pick, pick.Scenery.Uuid, "Scenery"):Render()
+        end
     end)
 
     ttMod:RegisterEvent("OpenNearbyPopup", function (e)
@@ -557,12 +564,10 @@ function TransformToolbar:RenderTopBar()
     operatorInput.Hint = GetLoca("Input any number key when dragging gizmo to start")
     local inputTooltip = operatorInput:Tooltip()
     inputTooltip:AddSeparatorText("Numeric Input"):SetStyle("SeparatorTextAlign", 0.5, 0)
-    inputTooltip:AddText("You can input commands like 'GX1', just like in blender.")
     inputTooltip:AddBulletText("G/R/S: ") inputTooltip:AddText("Switch to Move/Rotate/Scale mode")
     inputTooltip:AddBulletText("X/Y/Z: ") inputTooltip:AddText("Constrain to X/Y/Z axis")
     inputTooltip:AddBulletText("Shift + '-' :") inputTooltip:AddText("Toggle negative number input")
     inputTooltip:AddBulletText("F1/F2/F3/F4 :") inputTooltip:AddText("Switch to Global/Local/View/Parent space")
-    inputTooltip:AddBulletText("Supported Operators:") inputTooltip:AddText(" + - * / % ^ ( )")
     inputTooltip:AddBulletText("Enter | LMB :") inputTooltip:AddText("Confirm the operation")
     inputTooltip:AddBulletText("Esc | RMB :") inputTooltip:AddText("Cancel the operation")
 

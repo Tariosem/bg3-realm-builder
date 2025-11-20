@@ -6,17 +6,16 @@
 --- @field ParamSetProxy ParametersSetProxy -- ParameterSetProxy instance for easier parameter access
 --- @field Instance fun():Material
 --- @field ParamsSrc fun():MaterialParametersSet
---- @field new fun(originMaterial: GUIDSTRING, matSrc:fun():Material , paramsSrc:fun():MaterialParametersSet, materialPreset: GUIDSTRING?):MaterialEditor
+--- @field new fun(originMaterial: GUIDSTRING, matSrc:fun():Material , paramsSrc:fun():MaterialParametersSet):MaterialEditor
 MaterialEditor = _Class("MaterialEditor")
 
 ---@param originMaterial string
 ---@param matSrc fun():Material
 ---@param paramsSrc fun():MaterialParametersSet
----@param materialPreset string?
-function MaterialEditor:__init(originMaterial, matSrc, paramsSrc, materialPreset)
+function MaterialEditor:__init(originMaterial, matSrc, paramsSrc)
     local matRes = Ext.Resource.Get(originMaterial, "Material") --[[@as ResourceMaterialResource]]
     if not matRes then
-        Error("MaterialEditor: Could not find origin material resource for '" .. tostring(originMaterial) .. "'. Cannot create MaterialEditor.")
+        Error("MaterialEditor: Could not find origin material resource for '" .. tostring(originMaterial) .. "'.")
         return
     end
 

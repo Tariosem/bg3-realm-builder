@@ -52,7 +52,8 @@ function MaterialTab:Render(parent)
     }
 
     parentNode.OnDragStart = function (sel)
-        sel.DragPreview:AddText(sourceFileName)
+        sel.DragPreview:AddImage(RB_ICONS.Mask, IMAGESIZE.ROW).Tint = HexToRGBA("FFAC3232")
+        sel.DragPreview:AddText(sourceFileName).SameLine = true
     end
 
     parentNode.OnDragDrop = function (sel, drop)
@@ -525,6 +526,10 @@ function MaterialMixerTab:Render(parent)
     local managePopup = parent:AddPopup("Manage##" .. self.MaterialName)
     self.ContextMenu = managePopup
     self:SetupManagePopup(managePopup)
+
+    parentNode.OnRightClick = function (sel)
+        managePopup:Open()
+    end
 
     parentNode.OnDragDrop = function (sel, drop)
         if drop.UserData and drop.UserData.Parameters then

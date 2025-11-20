@@ -1,9 +1,19 @@
 VisualHelpers = VisualHelpers or {}
 
+local sceneryRegistry = {}
+
+function VisualHelpers.RegisterScenery(scenery)
+    sceneryRegistry[scenery.Scenery.Uuid] = scenery
+end
+
 --- @param handle EntityHandle|GUIDSTRING
 --- @return Visual?
 function VisualHelpers.GetEntityVisual(handle)
     if type(handle) == "string" then
+        if sceneryRegistry[handle] then
+            return sceneryRegistry[handle].Visual.Visual
+        end
+
         if CIsCharacter(handle) then
             local dummy = GetDummyByUuid(handle)
             if dummy then

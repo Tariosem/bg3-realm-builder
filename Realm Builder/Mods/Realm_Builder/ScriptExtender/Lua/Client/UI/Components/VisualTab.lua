@@ -20,12 +20,11 @@ function VisualTab.FetchByGuid(guid)
     return visualTabCache[guid]
 end
 
-
 function VisualTab.new(guid, displayName, parent, templateName, entity)
     local obj = setmetatable({}, VisualTab)
 
     for key, value in pairs(visualTabCache) do
-        if type(key) == "userdata" and #key:GetAllComponentsNames() == 0 then
+        if type(key) == "userdata" and #key:GetAllComponentNames() == 0 then
             visualTabCache[key] = nil
         end
         if type(key) == "string" and not VisualHelpers.GetEntityVisual(key) then
@@ -53,13 +52,20 @@ function VisualTab:GetEntity()
     return Ext.Entity.Get(self.guid)
 end
 
-function VisualTab.CreateByEntity(entity)
+function VisualTab:GetVisual()
+    return VisualHelpers.GetEntityVisual(self.guid)
+end
+
+function VisualTab.CreateByEntity(entity, uuid, displayName)
 
     --- @diagnostic disable-next-line
-    local obj = VisualTab.new(nil, nil, nil, nil, entity)
+    local obj = VisualTab.new(uuid, displayName, nil, nil, entity)
 
     function obj:GetEntity()
         return entity
+    end
+    function obj:GetVisual()
+        return entity.Visual.Visual
     end
 
     return obj
@@ -98,7 +104,7 @@ function VisualTab:__init(guid, displayName, parent, templateName)
                 self:Refresh()
                 Debug("VisualTab: Received template name from server: " .. self.templateName)
             else
-                Error("VisualTab: Could not get template name from server for entity " .. self.guid)
+                --Error("VisualTab: Could not get template name from server for entity " .. self.guid)
             end
         end)
     elseif templateName or (self.guid ~= "" and EntityStore[self.guid]) then
@@ -140,7 +146,7 @@ function VisualTab:GetCurrentPreset()
 end
 
 function VisualTab:Render(retryCnt)
-    if self.isVisible or not self.templateId then
+    if self.isVisible then
         return
     end
 
@@ -162,7 +168,7 @@ function VisualTab:Render(retryCnt)
     local entity = self:GetEntity(self.guid)
 
     if entity == nil or not entity.Visual or not entity.Visual.Visual or (not entity.Visual.Visual.ObjectDescs and not entity.Effect) then
-        --Error("VisualTab: Entity is invalid or does not have visual data.")
+        Error("VisualTab: Entity is invalid or does not have visual data.")
         local tryToRerender = function()
             self:Refresh()
         end
@@ -505,7 +511,7 @@ end
 function VisualTab:RenderAttachmentSection()
     local entity = self:GetEntity(self.guid) --[[@as EntityHandle]]
 
-    local visual = VisualHelpers.GetEntityVisual(self.guid)
+    local visual = self:GetVisual(self.guid)
 
     if not visual then return end
 
@@ -667,7 +673,7 @@ end
 
 function VisualTab:RenderAttachmentEditors()
     local entity = self:GetEntity(self.guid) --[[@as EntityHandle]]
-    local visual = VisualHelpers.GetEntityVisual(self.guid)
+    local visual = self:GetVisual(self.guid)
 
     if not visual then return end
 
@@ -712,7 +718,16 @@ function VisualTab:RenderAttachmentEditors()
 
             local matName = obj.Renderable.ActiveMaterial.Material.Name
             local function getliveMat()
-                return VisualHelpers.GetActiveMaterial(self.guid, descIndex, attIndex)
+                local visual = self:GetVisual(self.guid)
+                if not visual then return nil end
+
+                 local attach = visual.Attachments[attIndex]
+                if not attach then return nil end
+
+                local desc = attach.Visual.ObjectDescs[descIndex]
+                if not desc or not desc.Renderable then return nil end
+
+                return desc.Renderable.ActiveMaterial
             end
 
             --- @return MaterialParametersSet|nil
@@ -763,7 +778,7 @@ function VisualTab:RenderObjectSection()
         return
     end
 
-    local visual = VisualHelpers.GetEntityVisual(self.guid)
+    local visual = self:GetVisual(self.guid)
     if not visual then return end
 
     local renderParent = self.editorWindow
@@ -786,7 +801,7 @@ function VisualTab:RenderObjectSection()
 end
 
 function VisualTab:RenderObjectEditor()
-    local visual = VisualHelpers.GetEntityVisual(self.guid)
+    local visual = self:GetVisual(self.guid)
     if not visual then return end
 
     local lodTree = nil
@@ -814,9 +829,16 @@ function VisualTab:RenderObjectEditor()
         end
 
         local materialNode = StyleHelpers.AddTree(parentTree, meshName .. "##" .. tostring(descIndex), false)
+        materialNode:AddTreeIcon(RB_ICONS.Bounding_Box, IMAGESIZE.ROW).Tint = HexToRGBA("FF268B39")
 
         local function getliveMat()
-            return VisualHelpers.GetMaterial(self.guid, descIndex)
+            local visual = self:GetVisual(self.guid)
+            if not visual then return nil end
+
+            local rend = visual.ObjectDescs[descIndex] and visual.ObjectDescs[descIndex].Renderable
+            if not rend then return nil end
+
+            return rend.ActiveMaterial.Material
         end
 
         local function getliveParams()

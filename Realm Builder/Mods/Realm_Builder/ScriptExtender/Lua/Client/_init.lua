@@ -198,6 +198,7 @@ local function Realm_Builder_Population()
     local effectsFinished = Ext.Timer:MonotonicTime()
     if sumCnt >= 0 then
         RPrintPurple("[Realm Builder] Populating " .. sumCnt .. " root templates took " .. (itemsFinished - now) .. " ms:")
+        --- @diagnostic disable-next-line
         for k,v in SortedPairs(cnts) do
             RPrintPurple("    " .. tostring(k) .. ": " .. tostring(v))
         end

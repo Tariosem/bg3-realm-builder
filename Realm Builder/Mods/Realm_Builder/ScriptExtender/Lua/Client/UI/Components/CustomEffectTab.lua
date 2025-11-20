@@ -18,6 +18,7 @@ function CustomEffectTab:__init(uuid, parent, displayName, searchData)
     self.Group = searchData[uuid].Group or ""
     self.Tags = searchData[uuid].Tags or {}
     self.description = searchData[uuid].Description or ""
+    self.cachedExpandedTrees = {}
 end
 
 function CustomEffectTab:RenderProfile()
@@ -222,7 +223,7 @@ function CustomEffectTab:RenderFilter()
 end
 
 function CustomEffectTab:RenderEffects()
-    local fxNames = self.searchData.fxNames or {}
+    local fxNames = self.searchData.FxNames or {}
     self.effectNameCnt = {}
 
     table.sort(fxNames, function(a, b)
@@ -236,83 +237,24 @@ function CustomEffectTab:RenderEffects()
        return a.DisplayName < b.DisplayName
     end)
 
-    if self.effectTimelineWin then
-        self.effectTimelineWin:Destroy()
-        self.effectTimelineWin = nil
-    end
 
-    self.effectTimelineWin = self.effectsInfoTab:AddChildWindow("EffectsTimeline")
+    self.effectTimelineWin = self.effectTimelineWin or self.effectsInfoTab:AddChildWindow("EffectsTimeline")
 
-    self.effectRoot = StyleHelpers.AddTree(self.effectTimelineWin, GetLoca("Effects List"))
+    self.effectRoot = self.effectRoot or StyleHelpers.AddTree(self.effectTimelineWin, GetLoca("Effects List"), true)
     self.effectRoot:DestroyChildren()
+    self.effectRoot.OnRightClick = function()
+        self.selectedIndex = 0
+        self:OpenContextMenu()
+    end
+    self.effectRoot.OnHoverEnter = function ()
+        self.selectedIndex = 0
+    end
+    self.effectRoot.OnHoverLeave = function ()
+        self.selectedIndex = nil
+    end
 
+    self.updateFuncs = {}
     local root = self.effectRoot
-
-    local clearAllButton = self.effectRoot:AddButton(GetLoca("Clear All Effects"))
-
-    ApplyDangerButtonStyle(clearAllButton)
-    clearAllButton.OnClick = function()
-        ConfirmPopup:DangerConfirm(
-            GetLoca("Are you sure you want to clear all effects?"),
-            function()
-                self.searchData.fxNames = {}
-                self:OnChange()
-                self:RenderEffects()
-            end
-        )
-    end
-
-    self.effectsInfos = {}
-
-    local allPlayPosCheck = {}
-    local allPlayPosRotCheck = {}
-
-    local checkAllPlayAtPos = function(checked)
-        for _, checkbox in ipairs(allPlayPosCheck) do
-            checkbox.Checked = checked
-        end
-        for _, effectsInfo in ipairs(self.effectsInfos) do
-            local userData = effectsInfo.UserData
-            userData.PlayAtPosition = checked
-        end
-    end
-
-    local checkAllPlayAtPosAndRot = function(checked)
-        for _, checkbox in ipairs(allPlayPosRotCheck) do
-            checkbox.Checked = checked
-        end
-        for _, effectsInfo in ipairs(self.effectsInfos) do
-            local userData = effectsInfo.UserData
-            userData.PlayAtPositionAndRotation = checked
-        end
-    end
-
-    local checkAllPlayAtPosButton  = root:AddButton(GetLoca("Check All Play At Position"))
-    checkAllPlayAtPosButton.OnClick = function()
-        local allChecked = true
-        for _, checkbox in ipairs(allPlayPosCheck) do
-            if not checkbox.Checked then
-                allChecked = false
-                break
-            end
-        end
-        checkAllPlayAtPos(not allChecked)
-    end
-
-    local checkAllPlayAtPosAndRotButton  = root:AddButton(GetLoca("Check All Play At Pos And Rot"))
-    checkAllPlayAtPosAndRotButton.OnClick = function()
-        local allChecked = true
-        for _, checkbox in ipairs(allPlayPosRotCheck) do
-            if not checkbox.Checked then
-                allChecked = false
-                break
-            end
-        end
-        checkAllPlayAtPosAndRot(not allChecked)
-    end
-
-    checkAllPlayAtPosAndRotButton.SameLine = true
-    checkAllPlayAtPosButton.SameLine = true
 
     for i, effectObj in ipairs(fxNames) do
         local effectTree = root:AddTree(effectObj.DisplayName)
@@ -321,7 +263,6 @@ function CustomEffectTab:RenderEffects()
         effectTree.UserData.isMultiEffect = false
         local userData = effectTree.UserData
         local oriData = GetDataFromUuid(effectObj.FxName) or {}
-        table.insert(self.effectsInfos, effectTree)
         effectTree.CanDrag = true
         effectTree.DragDropType = "EffectInfo"
 
@@ -330,52 +271,63 @@ function CustomEffectTab:RenderEffects()
         end
 
         effectTree.OnClick = function()
+            effectTree.Selected = false
             self:PlayEffect(effectTree)
+        end
+
+        effectTree.OnRightClick = function ()
+            self.selectedIndex = i
+            self:OpenContextMenu()
+        end
+        effectTree.OnHoverEnter = function ()
+            self.selectedIndex = i
+        end
+        effectTree.OnHoverLeave = function ()
+            self.selectedIndex = nil
         end
 
         effectTree:Tooltip():AddText(GetLoca("Click to play effect, or drag to custom effect slot"))
 
-        if self.cachedOpenTrees and self.cachedOpenTrees[effectObj.DisplayName] then
+        if self.cachedExpandedTrees and self.cachedExpandedTrees[effectObj.DisplayName] then
             effectTree:SetOpen(true)
         end
 
         effectTree.OnExpand = function()
-            self.cachedOpenTrees[effectObj.DisplayName] = true
+            self.cachedExpandedTrees[effectObj.DisplayName] = true
         end
 
         effectTree.OnCollapse = function()
-            self.cachedOpenTrees[effectObj.DisplayName] = nil
+            self.cachedExpandedTrees[effectObj.DisplayName] = nil
         end
 
         local attrTable = StyleHelpers.AddAlignedTable(effectTree)
 
-        local displayNameInput = attrTable:AddInputText(GetLoca("Display Name: "), effectObj.DisplayName)
+        local displayNameInput = attrTable:AddInputText(GetLoca("Display Name"), effectObj.DisplayName)
         displayNameInput.OnClick = function()
             local text = displayNameInput.Text
-            self.cachedOpenTrees[effectObj.DisplayName] = nil
+            self.cachedExpandedTrees[effectObj.DisplayName] = nil
             effectObj.DisplayName = text
-            self.cachedOpenTrees[effectObj.DisplayName] = true
+            self.cachedExpandedTrees[effectObj.DisplayName] = true
             self:OnChange()
             self:RenderEffects()
         end
 
-        local fxNameInput = attrTable:AddInputText(GetLoca("FxName: "), effectObj.FxName)
+        local fxNameInput = attrTable:AddInputText(GetLoca("FxName"), effectObj.FxName)
         fxNameInput.ReadOnly = true
 
-        local repeatSlider = attrTable:AddSliderInt(GetLoca("Repeat: "), math.floor(effectObj.Repeat) or 1, 1, 100)
+        local repeatSlider = attrTable:AddSliderWithStep(GetLoca("Repeat"), math.floor(effectObj.Repeat or 0) or 1, 1, 100, 1, true)
         repeatSlider.OnChange = function(slider)
             effectObj.Repeat = slider.Value[1]
             self:OnChange()
         end
 
-        local timeOffsetSlider = attrTable:AddSlider(GetLoca("Time Offset (s): "), (effectObj.TimeOffset or 0) / 1000, 0, 60, 0.1)
+        local timeOffsetSlider = attrTable:AddSliderWithStep(GetLoca("Time Offset (s)"), (effectObj.TimeOffset or 0) / 1000, 0, 60, 0.1, false)
         timeOffsetSlider.OnChange = function(slider)
             effectObj.TimeOffset = slider.Value[1] * 1000
             self:OnChange()
         end
-    
 
-        local sourceBoneInput, sourceBoneCell = attrTable:AddInputText(GetLoca("Source Bone: "), tostring(effectObj.SourceBone))
+        local sourceBoneInput, sourceBoneCell = attrTable:AddInputText(GetLoca("Source Bone"), tostring(effectObj.SourceBone))
         sourceBoneInput.OnChange = function(text)
             local input = text.Text
             if not input or input == "" then
@@ -402,37 +354,29 @@ function CustomEffectTab:RenderEffects()
             local data = GetDataFromUuid(effectObj.FxName)
             if data and data.SourceBone then
                 effectObj.SourceBone = data.SourceBone
-                --userData.SourceBone = data.SourceBone
                 sourceBoneInput.Text = tostring(data.SourceBone)
             else
                 effectObj.SourceBone = ""
-                --userData.SourceBone = ""
                 sourceBoneInput.Text = ""
             end
         end
 
-        local targetBoneInput, targetBoneCell = attrTable:AddInputText(GetLoca("Target Bone: "), tostring(effectObj.TargetBone))
-
+        local targetBoneInput, targetBoneCell = attrTable:AddInputText(GetLoca("Target Bone"), tostring(effectObj.TargetBone))
         targetBoneInput.IDContext = "EffectTargetBone"
-        targetBoneInput.SameLine = true
 
         targetBoneInput.OnChange = function(text)
             local input = text.Text
             if not input or input == "" then
                 effectObj.TargetBone = nil
-                --userData.TargetBone = nil
             else
                 effectObj.TargetBone = input
-                --userData.TargetBone = input
             end
         end
-
         targetBoneInput.OnRightClick = function(text)
             if text.Text and text.Text ~= "" then
                 local bestMatch = FindBestMatchBone(text.Text)
                 text.Text = bestMatch
                 effectObj.TargetBone = bestMatch
-                --userData.TargetBone = bestMatch
             end
         end
 
@@ -442,7 +386,7 @@ function CustomEffectTab:RenderEffects()
         targetBoneResetButton.SameLine = true
 
         targetBoneResetButton.OnClick = function()
-            local data = GetDataFromUuid(effectObj.FxName)
+            local data = RB_MultiEffectManager.Data[effectObj.FxName]
             if data and data.TargetBone then
                 effectObj.TargetBone = data.TargetBone
                 --userData.TargetBone = data.TargetBone
@@ -478,7 +422,6 @@ function CustomEffectTab:RenderEffects()
         local playAtPos = userData.PlayAtPosition or false
         local playAtPosCheckbox = effectTree:AddCheckbox(GetLoca("Play At Position"), playAtPos)
         playAtPosCheckbox.SameLine = true
-        playAtPosCheckbox:Tooltip():AddText(GetLoca("Play at the caster's position instead of directly on them."))
         playAtPosCheckbox.OnChange = function(checkbox)
             playAtPos = checkbox.Checked
             --userData.PlayAtPosition = playAtPos
@@ -490,21 +433,16 @@ function CustomEffectTab:RenderEffects()
         local PlayAtPositionAndRotation = userData.PlayAtPositionAndRotation or false
         local playAtPosAndRotCheckbox = effectTree:AddCheckbox(GetLoca("Play At Position and Rotation"), PlayAtPositionAndRotation)
         playAtPosAndRotCheckbox.SameLine = true
-        playAtPosAndRotCheckbox:Tooltip():AddText(GetLoca("Play at the caster's position and rotation."))
         playAtPosAndRotCheckbox.OnChange = function(checkbox)
             PlayAtPositionAndRotation = checkbox.Checked
             --userData.PlayAtPositionAndRotation = PlayAtPositionAndRotation
             effectObj.PlayAtPositionAndRotation = PlayAtPositionAndRotation
             self:OnChange()
         end
-
-        table.insert(allPlayPosCheck, playAtPosCheckbox)
-        table.insert(allPlayPosRotCheck, playAtPosAndRotCheckbox)
         
         local scale = userData.Scale or 1.0
-        local scaleInput = attrTable:AddSlider(GetLoca("Scale: "), scale, 0.1, 10.0, 0.1)
+        local scaleInput = attrTable:AddSliderWithStep(GetLoca("Scale"), scale, 0.1, 10.0, 0.1, false)
         scaleInput.IDContext = "EffectScale"
-        scaleInput.SameLine = true
 
         scaleInput.OnChange = function(slider)
             scale = slider.Value[1]
@@ -513,33 +451,18 @@ function CustomEffectTab:RenderEffects()
             self:OnChange()
         end
 
-        local stopButton = effectTree:AddButton(GetLoca("Stop Same Effect"))
-        stopButton:Tooltip():AddText(GetLoca("Stop all effects with the same FxName."))
-
-        stopButton.OnClick = function()
-            local postdata = {
-                Type = "FxName",
-                FxName = effectObj.FxName,
-            }
-            NetChannel.StopEffect(postdata)
-        end
-
-        local removeButton = effectTree:AddButton(GetLoca("Remove"))
-        removeButton.SameLine = true
-
-        
-        ApplyDangerButtonStyle(removeButton)
-        removeButton.SameLine = true
-        removeButton:Tooltip():AddText(GetLoca("Remove this effect from the timeline"))
-        removeButton.OnClick = function()
-            ConfirmPopup:DangerConfirm(
-                GetLoca("Are you sure you want to remove this effect?"),
-                function()
-                    table.remove(self.searchData.fxNames, i)
-                    self:OnChange()
-                    self:RenderEffects()
-                end,
-                nil)
+        self.updateFuncs[i] = function()
+            displayNameInput.Text = effectObj.DisplayName
+            fxNameInput.Text = effectObj.FxName
+            repeatSlider.Value = {effectObj.Repeat or 1}
+            timeOffsetSlider.Value = {(effectObj.TimeOffset or 0) / 1000}
+            sourceBoneInput.Text = tostring(effectObj.SourceBone)
+            targetBoneInput.Text = tostring(effectObj.TargetBone)
+            isLoopCheckbox.Checked = effectObj.isLoop or false
+            isBeamCheckbox.Checked = effectObj.isBeam or false
+            playAtPosCheckbox.Checked = effectObj.PlayAtPosition or false
+            playAtPosAndRotCheckbox.Checked = effectObj.PlayAtPositionAndRotation or false
+            scaleInput.Value = {effectObj.Scale or 1.0}
         end
 
         effectTree:AddSeparator()
@@ -547,28 +470,29 @@ function CustomEffectTab:RenderEffects()
 
     -- Add Effect Slot
 
-    local emptyIcon = root:AddImageButton("EmptyEffect", RB_ICONS.Plus_Square, IMAGESIZE.ROW)
+    local emptyIcon = root:AddImageButton("EmptyEffect", RB_ICONS.Plus_Circle_Fill, IMAGESIZE.ROW)
+    StyleHelpers.SetupImageButton(emptyIcon)
     emptyIcon:Tooltip():AddText(GetLoca("Drag an effect here, or paste an fx name into the box and click."))
     emptyIcon.DragDropType = "EffectInfo"
     emptyIcon.CanDrag = true
 
     emptyIcon.OnDragDrop = function(empty, drop)
         local data = drop.UserData
-        local fxNames = data.FxName
-        if not fxNames or fxNames == "" then
+        local FxNames = data.FxName
+        if not FxNames or FxNames == "" then
             local uuid = data.Uuid
             local libData = GetDataFromUuid(uuid)
             if not libData then
                 Warning("[EffectTab] Cannot find effect data for UUID: " .. tostring(uuid))
                 return
             end
-            fxNames = libData and libData.fxNames or data.FxName
+            FxNames = libData and libData.FxNames or data.FxName
         end
-        if type(fxNames) == "string" then
-            fxNames = {fxNames}
+        if type(FxNames) == "string" then
+            FxNames = {FxNames}
         end
-        for _, fxName in ipairs(fxNames) do
-            local libData = GetDataFromUuid(fxName)
+        for _, fxName in ipairs(FxNames) do
+            local libData = RB_MultiEffectManager.Data[fxName]
             local entry = {
                 Uuid = fxName,
                 FxName = fxName,
@@ -584,7 +508,7 @@ function CustomEffectTab:RenderEffects()
             if entry.Icon == "" or entry.Icon == "Item_Unknown" then
                 entry.Icon = data.Icon or "Item_Unknown"
             end
-            table.insert(self.searchData.fxNames, entry)
+            table.insert(self.searchData.FxNames, entry)
         end
         --_D(libData)
         self:RenderEffects()
@@ -601,8 +525,11 @@ function CustomEffectTab:RenderEffects()
         if not fxName or fxName == "" then
             return
         end
-        local data = GetDataFromUuid(fxName)
-        data = data or {}
+        local data = RB_MultiEffectManager.Data[fxName]
+        if not data then
+            Warning("[EffectTab] Cannot find effect data for FxName: " .. tostring(fxName))
+            return
+        end
         local entry = {
             FxNames = fxName,
             DisplayName = data.DisplayName or fxName,
@@ -612,10 +539,73 @@ function CustomEffectTab:RenderEffects()
             isBeam = data.isBeam or false,
             isLoop = data.isLoop or false,
         }
-        table.insert(self.searchData.fxNames, entry)
+        table.insert(self.searchData.FxNames, entry)
         self:RenderEffects()
         self:OnChange()
     end
+end
+
+function CustomEffectTab:SetupContextMenu()
+    local parent = self.effectTimelineWin:AddPopup("Effects Context Menu")
+    local contextMenu = StyleHelpers.AddContextMenu(parent, "Effects")
+
+    --- @type RB_ContextItem[]
+    local items = {
+        {
+            Label = GetLoca("Remove"),
+            OnClick = function()
+                if self.selectedIndex and self.selectedIndex > 0 then
+                    table.remove(self.searchData.FxNames, self.selectedIndex)
+                    self.selectedIndex = nil
+                    self:OnChange()
+                    self:RenderEffects()
+                elseif self.selectedIndex == 0 then
+                    self.searchData.FxNames = {}
+                    self:OnChange()
+                    self:RenderEffects()
+                end
+            end,
+            Danger = true,
+            Hint = "Del",
+            HotKey = {
+                Key = "DEL",
+            }
+        },
+        {
+            Label = GetLoca("Toggle Play At Position"),
+            OnClick = function()
+                if self.selectedIndex and self.selectedIndex > 0 then
+                    local effectObj = self.searchData.FxNames[self.selectedIndex]
+                    effectObj.PlayAtPosition = not effectObj.PlayAtPosition
+                    if self.updateFuncs and self.updateFuncs[self.selectedIndex] then
+                        self.updateFuncs[self.selectedIndex]()
+                    end
+                elseif self.selectedIndex == 0 then
+                    for i, effectObj in ipairs(self.searchData.FxNames) do
+                        effectObj.PlayAtPosition = not effectObj.PlayAtPosition
+                        if self.updateFuncs and self.updateFuncs[i] then
+                            self.updateFuncs[i]()
+                        end
+                    end
+                end
+            end,
+        },
+    }
+
+    contextMenu:AddContext(items, function()
+        return self.selectedIndex ~= nil
+    end)
+
+    self.contextMenu = parent
+
+    return contextMenu
+end
+
+function CustomEffectTab:OpenContextMenu()
+    if not self.contextMenu then
+        self:SetupContextMenu()
+    end
+    self.contextMenu:Open()
 end
 
 function CustomEffectTab:Add(uuid, parent, displayName, searchData, statsType)

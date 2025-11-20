@@ -334,7 +334,7 @@ function EffectsMenu:RegisterNewEntry(basename)
     local entry = {
         DisplayName = self:GetNewName(basename),
         Icon = "GenericIcon_Intent_Utility",
-        fxNames = {},
+        FxNames = {},
         Note = "",
         Group = "",
         Tags = {},

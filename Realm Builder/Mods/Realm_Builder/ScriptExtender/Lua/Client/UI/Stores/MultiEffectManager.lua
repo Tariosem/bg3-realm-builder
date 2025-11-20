@@ -1,5 +1,6 @@
 --- @class MultiEffectManager:ManagerBase
 --- @field new fun():MultiEffectManager
+--- @field Data table<string, RB_Effect>
 MultiEffectManager = _Class("MultiEffectManager", ManagerBase)
 function MultiEffectManager:__init()
     ManagerBase.__init(self)
@@ -16,7 +17,7 @@ end
 --- @field Icon string
 --- @field isBeam boolean
 --- @field isLoop boolean
---- @field fxNames string[]
+--- @field FxNames string[]
 --- @field SourceBones string[]
 --- @field TargetBones string[]
 --- @field SourceBone string
@@ -34,7 +35,7 @@ function MultiEffectManager:PopulateMultiEffectInfo(uuid)
         TemplateId = uuid,
         DisplayName = raw.Name or "Unknown",
         TemplateName = raw.Name,
-        fxNames = {},
+        FxNames = {},
         isMultiEffect = true,
         isLoop = false,
         Note = "",
@@ -45,7 +46,7 @@ function MultiEffectManager:PopulateMultiEffectInfo(uuid)
 
     for _, effect in ipairs(raw.EffectInfo) do
         local fxName = effect.EffectResourceGuid
-        table.insert(MultiEffectEntry.fxNames, fxName)
+        table.insert(MultiEffectEntry.FxNames, fxName)
 
         local entry = FxNameMap[fxName]
         if entry then
@@ -54,7 +55,7 @@ function MultiEffectManager:PopulateMultiEffectInfo(uuid)
             entry = {
                 Uuid = fxName,
                 DisplayName = nil,
-                fxNames = {fxName},
+                FxNames = {fxName},
                 SourceBones = LightCToArray(effect.SourceBone),
                 TargetBones = LightCToArray(effect.TargetBone),
                 SourceBone = effect.SourceBone and effect.SourceBone[1] or "",
@@ -90,7 +91,7 @@ function MultiEffectManager:PopulateEffect(res)
         TemplateName = res.EffectName,
         DisplayName = res.EffectName or "Unknown",
         Icon = "Item_Unknown",
-        fxNames = {res.Guid},
+        FxNames = {res.Guid},
         isBeam = false,
         isLoop = res.Looping or false,
         SourceBones = {},
@@ -138,14 +139,14 @@ function MultiEffectManager:PopulateAllEffects()
         local effectInfo = GetEffectInfo(uuid)
 
         if effectInfo then
-            entry.Icon = isValidIcon(effectInfo.Icon) and effectInfo.Icon or nil
+            entry.Icon = isValidIcon(effectInfo.Icon) and effectInfo.Icon or ""
             entry.DisplayName = effectInfo.DisplayName
             if effectInfo.Type ~= "" then
                 self:AddTagToData(uuid, effectInfo.Type)
             end
 
             local isLoop = effectInfo.Type == "PrepareEffect" or effectInfo.Type == "StatusEffect" or false
-            for _, fxName in ipairs(entry.fxNames) do
+            for _, fxName in ipairs(entry.FxNames) do
                 if entry.Icon and not isValidIcon(self.Data[fxName].Icon) then
                     self.Data[fxName].Icon = entry.Icon
                 end
@@ -169,7 +170,7 @@ function MultiEffectManager:PopulateAllEffects()
             entry.Icon = "Item_Unknown"
             self:AddTagToData(uuid, "Unknown Icon")
         end
-        if entry.DisplayName == '<LSTag Type="Image" Info="SoftWarning"/> Add <b>Elf</b> Tag.' then
+        if entry.DisplayName == '<LSTag Type="Image" Info="SoftWarning"/> Add <b>Elf</b> Tag.' or entry.DisplayName == "" then
             entry.DisplayName = entry.TemplateName
         end
     end
