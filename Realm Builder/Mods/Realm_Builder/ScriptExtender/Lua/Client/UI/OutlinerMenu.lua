@@ -697,6 +697,10 @@ function OutlinerMenu:CommonContext()
         self:UpdateList()
     end
 
+    local function selectAll()
+        self.propTreeList:SelectAll()
+    end
+
     self.commonContextItems = {
         { Separator = true },
         {
@@ -726,11 +730,20 @@ function OutlinerMenu:CommonContext()
             }
         },
         {
-            Label = GetLoca("Group into Collection"),
+            Label = GetLoca("Group"),
             OnClick = group,
             Hint = "Ctrl G",
             HotKey = {
                 Key = "G",
+                Modifiers = {"CTRL"}
+            }
+        },
+        {
+            Label = GetLoca("Select All"),
+            OnClick = selectAll,
+            Hint = "Ctrl A",
+            HotKey = {
+                Key = "A",
                 Modifiers = {"CTRL"}
             }
         },
@@ -764,18 +777,7 @@ function OutlinerMenu:SetupSelectablePopup()
             table.insert(proxies, MovableProxy.CreateByGuid(guid))
         end
 
-        local originStats = RB_GLOBALS.TransformEditor.Target or {}
-
         RB_GLOBALS.TransformEditor:Select(proxies)
-
-        HistoryManager:PushCommand({
-            Redo = function()
-                RB_GLOBALS.TransformEditor:Select(proxies)
-            end,
-            Undo = function()
-                RB_GLOBALS.TransformEditor:Select(originStats)
-            end,
-        })
     end
 
     local function copy()

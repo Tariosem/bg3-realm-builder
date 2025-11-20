@@ -158,7 +158,13 @@ function SubscribeKeyAndMouse(callback, filterKey)
         return eventIdentifier == filterIdentifier
     end
 
-    subs.Key = SubscribeKeyInput({}, function(e)
+    local function unsub()
+        for subEvent, sub in pairs(subs) do
+            Ext.Events[subEvent]:Unsubscribe(sub)
+        end
+    end
+
+    subs.KeyInput = Ext.Events.KeyInput:Subscribe(function(e)
         if isCalling then return end
         isCalling = true
         local modifs = LightCToArray(e.Modifiers)
@@ -179,12 +185,11 @@ function SubscribeKeyAndMouse(callback, filterKey)
         local returnValue = callback(event)
         isCalling = false
         if returnValue == UNSUBSCRIBE_SYMBOL then
-            subs.Key.Unsubscribe()
-            subs.Mouse.Unsubscribe()
+            unsub()
         end
     end)
 
-    subs.Mouse = SubscribeMouseInput({}, function(e)
+    subs.MouseButtonInput = Ext.Events.MouseButtonInput:Subscribe(function(e)
         if isCalling then return end
         isCalling = true
 
@@ -202,21 +207,9 @@ function SubscribeKeyAndMouse(callback, filterKey)
         local returnValue = callback(event)
         isCalling = false
         if returnValue == UNSUBSCRIBE_SYMBOL then
-            subs.Key.Unsubscribe()
-            subs.Mouse.Unsubscribe()
+            unsub()
         end
     end)
-
-    local function unsub()
-        if subs.Key then
-            subs.Key.Unsubscribe()
-            subs.Key = nil
-        end
-        if subs.Mouse then
-            subs.Mouse.Unsubscribe()
-            subs.Mouse = nil
-        end
-    end
 
     return { Unsubscribe = unsub }
 end

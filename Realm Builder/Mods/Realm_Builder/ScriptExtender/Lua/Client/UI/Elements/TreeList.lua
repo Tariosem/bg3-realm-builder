@@ -552,13 +552,15 @@ function TreeList:SetupDragAndDrop(selectable, key)
         previewTable.ColumnDefs[2] = { WidthFixed = true }
         self:ApplyTreeTableStyle(previewTable)
         local row = previewTable:AddRow()
+        local cell = row:AddCell()
+        cell:AddImage(RB_ICONS.Collection, IMAGESIZE.ROW)
         for ikey, iitem in SortedPairs(self.selectedItems, self.RenderOrder) do
-            local cell = row:AddCell()
-            local fixedCell = row:AddCell()
+            --local cell = row:AddCell()
+            --local fixedCell = row:AddCell()
             --if self.tree:IsLeaf(ikey) then
                 --self:RenderLeaf(ikey, cell, fixedCell) 
             --else
-                cell:AddImage(RB_ICONS.Collection, IMAGESIZE.ROW)
+                --cell:AddImage(RB_ICONS.Collection, IMAGESIZE.ROW)
                 --local ele = self:RenderTree(ikey, cell, fixedCell)
                 --ele.SameLine = true
             --end
@@ -874,7 +876,7 @@ function TreeList:ExpandAll(key)
 end
 
 function TreeList:SelectAll(key)
-    if not key then return end
+    if not key then key = TreeTable.GetRootKey() end
     if key == TreeTable.GetRootKey() then
         for k,_ in pairs(self.nodeRefs) do
             self.selectedItems[k] = true

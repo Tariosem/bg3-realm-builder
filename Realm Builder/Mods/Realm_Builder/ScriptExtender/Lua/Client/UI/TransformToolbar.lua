@@ -89,12 +89,14 @@ function TransformToolbar:RegisterKeyInputEvents()
     end)
 
     ttMod:RegisterEvent("MultiSelect", function (e)
-        if e.Event ~= "KeyDown" then return end
+        if not e.Pressed then return end
         
         if not self.MultiSelecting then
             self.MultiSelecting = true
+            Debug("Multi-Selecting Enabled")
         else
             self.MultiSelecting = false
+            Debug("Multi-Selecting Disabled")
             self.Selecting = {}
         end
     end)
@@ -151,11 +153,11 @@ function TransformToolbar:RegisterKeyInputEvents()
 
     ttMod:RegisterEvent("Move3DCursor", function (e)
         if e.Event ~= "KeyDown" then return end
-        local editor = RB_GLOBALS.TransformEditor
-        if not editor.Cursor then
-            editor:CreateCursor()
+        if not self.Cursor then
+            self:CreateCursor()
+            return
         end
-        editor:MoveCursor()
+        self:MoveCursor()
     end)
 
     buMod:RegisterEvent("BindTo", function (e)
@@ -994,6 +996,59 @@ function TransformToolbar:CreateNearbyPopup()
         end
         tempSubs = {}
     end
+end
+
+
+
+function TransformToolbar:CreateCursor(pos)
+    if self.Cursor and EntityExists(self.Cursor) or (self.creatingCursor) then
+        return
+    end
+
+    self.creatingCursor = true
+        
+    pos = ScreenToWorldRay():At(10)
+    local hostPosition = Vec3.new(pos)
+    local hostRotation = Quat.new(GetCameraRotation())
+
+    NetChannel.Visualize:RequestToServer({
+        Type = "Cursor",
+        Position = hostPosition,
+        Rotation = hostRotation,
+        Duration = -1,
+    }, function (response)
+        for _,viz in pairs(response or {}) do
+            self.Cursor = viz
+            RB_GLOBALS.TransformEditor.Cursor = self.Cursor
+        end
+        self.creatingCursor = false
+    end)
+
+    self.CursorTimer = Timer:EveryFrame(function (timerID)
+        RB_GLOBALS.TransformEditor.Gizmo.Visualizer:Visualize3DCursor(self.Cursor)
+    end)
+end
+
+function TransformToolbar:MoveCursor()
+    if not self.Cursor or not EntityExists(self.Cursor) then
+        self:CreateCursor()
+        return
+    end
+
+    local pos = ScreenToWorldRay():At(10)
+    local rot = Quat.new(GetCameraRotation())
+
+    NetChannel.SetTransform:RequestToServer({ Guid = self.Cursor, Transforms = {
+        [self.Cursor] = {
+            Translate = pos,
+            RotationQuat = rot,
+        }
+    } }, function()
+    end)
+
+    NetChannel.SetAttributes:SendToServer({ Guid = self.Cursor, Attributes = {
+        Visible = true,
+    } })
 end
 
 function TransformToolbar:Add()

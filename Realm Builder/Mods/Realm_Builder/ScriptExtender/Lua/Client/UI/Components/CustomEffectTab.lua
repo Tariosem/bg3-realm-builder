@@ -243,13 +243,12 @@ function CustomEffectTab:RenderEffects()
 
     self.effectTimelineWin = self.effectsInfoTab:AddChildWindow("EffectsTimeline")
 
-    local effectTimelineTable = self.effectTimelineWin:AddTable("EffectsTimelineTable", 1)
+    self.effectRoot = StyleHelpers.AddTree(self.effectTimelineWin, GetLoca("Effects List"))
+    self.effectRoot:DestroyChildren()
 
-    local effectTimelineRow = effectTimelineTable:AddRow()
+    local root = self.effectRoot
 
-    local groupChangeCell = effectTimelineRow:AddCell()
-
-    local clearAllButton = groupChangeCell:AddButton(GetLoca("Clear All Effects"))
+    local clearAllButton = self.effectRoot:AddButton(GetLoca("Clear All Effects"))
 
     ApplyDangerButtonStyle(clearAllButton)
     clearAllButton.OnClick = function()
@@ -288,7 +287,7 @@ function CustomEffectTab:RenderEffects()
         end
     end
 
-    local checkAllPlayAtPosButton  = groupChangeCell:AddButton(GetLoca("Check All Play At Position"))
+    local checkAllPlayAtPosButton  = root:AddButton(GetLoca("Check All Play At Position"))
     checkAllPlayAtPosButton.OnClick = function()
         local allChecked = true
         for _, checkbox in ipairs(allPlayPosCheck) do
@@ -300,7 +299,7 @@ function CustomEffectTab:RenderEffects()
         checkAllPlayAtPos(not allChecked)
     end
 
-    local checkAllPlayAtPosAndRotButton  = groupChangeCell:AddButton(GetLoca("Check All Play At Pos And Rot"))
+    local checkAllPlayAtPosAndRotButton  = root:AddButton(GetLoca("Check All Play At Pos And Rot"))
     checkAllPlayAtPosAndRotButton.OnClick = function()
         local allChecked = true
         for _, checkbox in ipairs(allPlayPosRotCheck) do
@@ -316,91 +315,67 @@ function CustomEffectTab:RenderEffects()
     checkAllPlayAtPosButton.SameLine = true
 
     for i, effectObj in ipairs(fxNames) do
-        local cell = effectTimelineRow:AddCell()
-        local effectIcon = cell:AddImageButton(effectObj.FxName .. effectObj.DisplayName, effectObj.Icon)
-        effectIcon.Image.Size = {64 * SCALE_FACTOR, 64 * SCALE_FACTOR}
-        effectIcon.UserData = effectObj
-        effectIcon.UserData.isMultiEffect = false
-        local userData = effectIcon.UserData
+        local effectTree = root:AddTree(effectObj.DisplayName)
+        local effectIcon = effectTree:AddTreeIcon(effectObj.Icon, IMAGESIZE.ROW)
+        effectTree.UserData = effectObj
+        effectTree.UserData.isMultiEffect = false
+        local userData = effectTree.UserData
         local oriData = GetDataFromUuid(effectObj.FxName) or {}
-        table.insert(self.effectsInfos, effectIcon)
-        effectIcon.CanDrag = true
-        effectIcon.DragDropType = "EffectInfo"
-        effectIcon.DragFlags = {"NoHoldToOpenOthers", "NoDisableHover"}
+        table.insert(self.effectsInfos, effectTree)
+        effectTree.CanDrag = true
+        effectTree.DragDropType = "EffectInfo"
 
-        effectIcon.OnDragStart = function()
-            effectIcon.DragPreview:AddImage(userData.Icon)
+        effectTree.OnDragStart = function()
+            effectTree.DragPreview:AddImage(userData.Icon)
         end
 
-        effectIcon.OnClick = function()
-            self:PlayEffect(effectIcon)
+        effectTree.OnClick = function()
+            self:PlayEffect(effectTree)
         end
 
-        effectIcon:Tooltip():AddText(GetLoca("Click to play effect, or drag to custom effect slot"))
+        effectTree:Tooltip():AddText(GetLoca("Click to play effect, or drag to custom effect slot"))
 
-        local effectHeader = cell:AddTree(self:RegisterEffectName(effectObj.FxName, effectObj.DisplayName))
-        effectHeader.IDContext = "EffectHeader_" .. effectObj.FxName .. effectObj.DisplayName
-        effectHeader.SameLine = true
-        effectHeader.SpanTextWidth = true
-
-        if self.cachedOpenCPs and self.cachedOpenCPs[effectObj.DisplayName] then
-            effectHeader:SetOpen(true)
+        if self.cachedOpenTrees and self.cachedOpenTrees[effectObj.DisplayName] then
+            effectTree:SetOpen(true)
         end
 
-        effectHeader.OnExpand = function()
-            self.cachedOpenCPs[effectObj.DisplayName] = true
+        effectTree.OnExpand = function()
+            self.cachedOpenTrees[effectObj.DisplayName] = true
         end
 
-        effectHeader.OnCollapse = function()
-            self.cachedOpenCPs[effectObj.DisplayName] = nil
+        effectTree.OnCollapse = function()
+            self.cachedOpenTrees[effectObj.DisplayName] = nil
         end
 
-        local displayNameText = effectHeader:AddButton(GetLoca("Display Name") .. ": ")
-        local displayNameInput = effectHeader:AddInputText("", effectObj.DisplayName)
-        displayNameInput.IDContext = "EffectDisplayName"
-        displayNameInput.SameLine = true
+        local attrTable = StyleHelpers.AddAlignedTable(effectTree)
 
-        displayNameText.OnClick = function()
+        local displayNameInput = attrTable:AddInputText(GetLoca("Display Name: "), effectObj.DisplayName)
+        displayNameInput.OnClick = function()
             local text = displayNameInput.Text
-            self.cachedOpenCPs[effectObj.DisplayName] = nil
+            self.cachedOpenTrees[effectObj.DisplayName] = nil
             effectObj.DisplayName = text
-            self.cachedOpenCPs[effectObj.DisplayName] = true
+            self.cachedOpenTrees[effectObj.DisplayName] = true
             self:OnChange()
             self:RenderEffects()
         end
 
-        local fxNamePrefix = effectHeader:AddText(GetLoca("FxName: "))
-
-        local fxNameInput = effectHeader:AddInputText("", effectObj.FxName)
-        fxNameInput.IDContext = "EffectFxName"
-        fxNameInput.SameLine = true
+        local fxNameInput = attrTable:AddInputText(GetLoca("FxName: "), effectObj.FxName)
         fxNameInput.ReadOnly = true
 
-        local repeatText = effectHeader:AddText(GetLoca("Repeat Count: "))
-        local repeatSlider = SafeAddSliderInt(effectHeader, "", effectObj.Repeat or 1, 1, 100)
-        repeatSlider.IDContext = "EffectRepeatCount"
-        repeatSlider.SameLine = true
+        local repeatSlider = attrTable:AddSliderInt(GetLoca("Repeat: "), math.floor(effectObj.Repeat) or 1, 1, 100)
         repeatSlider.OnChange = function(slider)
             effectObj.Repeat = slider.Value[1]
             self:OnChange()
         end
 
-        local timeOffsetText = effectHeader:AddText(GetLoca("Time Offset: "))
-        local timeOffsetSlider = SafeAddSliderInt(effectHeader, "ms", effectObj.TimeOffset or 0, 0, 60000)
-        timeOffsetSlider.IDContext = "EffectTimeOffset"
-        timeOffsetSlider.SameLine = true
+        local timeOffsetSlider = attrTable:AddSlider(GetLoca("Time Offset (s): "), (effectObj.TimeOffset or 0) / 1000, 0, 60, 0.1)
         timeOffsetSlider.OnChange = function(slider)
-            effectObj.TimeOffset = slider.Value[1]
+            effectObj.TimeOffset = slider.Value[1] * 1000
             self:OnChange()
         end
     
-        local sourceBoneText = effectObj.SourceBone
-        local sourceBonePrefix = effectHeader:AddText(GetLoca("Source Bone: "))
 
-        local sourceBoneInput = effectHeader:AddInputText("", sourceBoneText)
-        sourceBoneInput:Tooltip():AddText(GetLoca("Right click to auto fill the best match bone"))
-        sourceBoneInput.IDContext = "EffectSourceBone"
-        sourceBoneInput.SameLine = true
+        local sourceBoneInput, sourceBoneCell = attrTable:AddInputText(GetLoca("Source Bone: "), tostring(effectObj.SourceBone))
         sourceBoneInput.OnChange = function(text)
             local input = text.Text
             if not input or input == "" then
@@ -419,7 +394,7 @@ function CustomEffectTab:RenderEffects()
             end
         end
 
-        local sourceBoneResetButton = effectHeader:AddButton(GetLoca("Reset"))
+        local sourceBoneResetButton = sourceBoneCell:AddButton(GetLoca("Reset"))
         sourceBoneResetButton:Tooltip():AddText(GetLoca("Reset to default source bone"))
         sourceBoneResetButton.SameLine = true
 
@@ -428,7 +403,7 @@ function CustomEffectTab:RenderEffects()
             if data and data.SourceBone then
                 effectObj.SourceBone = data.SourceBone
                 --userData.SourceBone = data.SourceBone
-                sourceBoneInput.Text = data.SourceBone
+                sourceBoneInput.Text = tostring(data.SourceBone)
             else
                 effectObj.SourceBone = ""
                 --userData.SourceBone = ""
@@ -436,10 +411,7 @@ function CustomEffectTab:RenderEffects()
             end
         end
 
-        local targetBoneText = effectObj.TargetBone
-        local targetBonePrefix = effectHeader:AddText(GetLoca("Target Bone: "))
-        local targetBoneInput = effectHeader:AddInputText("", targetBoneText)
-        targetBoneInput:Tooltip():AddText(GetLoca("Enter a name (e.g. \"RightHand\") and right-click to auto-fill the best-matching bone."))
+        local targetBoneInput, targetBoneCell = attrTable:AddInputText(GetLoca("Target Bone: "), tostring(effectObj.TargetBone))
 
         targetBoneInput.IDContext = "EffectTargetBone"
         targetBoneInput.SameLine = true
@@ -464,7 +436,7 @@ function CustomEffectTab:RenderEffects()
             end
         end
 
-        local targetBoneResetButton = effectHeader:AddButton(GetLoca("Reset"))
+        local targetBoneResetButton = targetBoneCell:AddButton(GetLoca("Reset"))
 
         targetBoneResetButton:Tooltip():AddText(GetLoca("Reset to default target bone"))
         targetBoneResetButton.SameLine = true
@@ -483,7 +455,7 @@ function CustomEffectTab:RenderEffects()
         end
 
         local isLoop = userData.isLoop or false
-        local isLoopCheckbox = effectHeader:AddCheckbox(GetLoca("Loop"), isLoop)
+        local isLoopCheckbox = effectTree:AddCheckbox(GetLoca("Loop"), isLoop)
         isLoopCheckbox:Tooltip():AddText(GetLoca("Status and prep effects usually need this checked to play."))
         isLoopCheckbox.OnChange = function(checkbox)
             isLoop = checkbox.Checked
@@ -493,7 +465,7 @@ function CustomEffectTab:RenderEffects()
         end
 
         local isBeam = userData.isBeam or oriData.isBeam or false
-        local isBeamCheckbox = effectHeader:AddCheckbox(GetLoca("Beam"), isBeam)
+        local isBeamCheckbox = effectTree:AddCheckbox(GetLoca("Beam"), isBeam)
         isBeamCheckbox.SameLine = true
         isBeamCheckbox:Tooltip():AddText(GetLoca("Check if this effect is a beam effect."))
         isBeamCheckbox.OnChange = function(checkbox)
@@ -504,7 +476,7 @@ function CustomEffectTab:RenderEffects()
         end
 
         local playAtPos = userData.PlayAtPosition or false
-        local playAtPosCheckbox = effectHeader:AddCheckbox(GetLoca("Play At Position"), playAtPos)
+        local playAtPosCheckbox = effectTree:AddCheckbox(GetLoca("Play At Position"), playAtPos)
         playAtPosCheckbox.SameLine = true
         playAtPosCheckbox:Tooltip():AddText(GetLoca("Play at the caster's position instead of directly on them."))
         playAtPosCheckbox.OnChange = function(checkbox)
@@ -516,7 +488,7 @@ function CustomEffectTab:RenderEffects()
 
 
         local PlayAtPositionAndRotation = userData.PlayAtPositionAndRotation or false
-        local playAtPosAndRotCheckbox = effectHeader:AddCheckbox(GetLoca("Play At Position and Rotation"), PlayAtPositionAndRotation)
+        local playAtPosAndRotCheckbox = effectTree:AddCheckbox(GetLoca("Play At Position and Rotation"), PlayAtPositionAndRotation)
         playAtPosAndRotCheckbox.SameLine = true
         playAtPosAndRotCheckbox:Tooltip():AddText(GetLoca("Play at the caster's position and rotation."))
         playAtPosAndRotCheckbox.OnChange = function(checkbox)
@@ -530,8 +502,7 @@ function CustomEffectTab:RenderEffects()
         table.insert(allPlayPosRotCheck, playAtPosAndRotCheckbox)
         
         local scale = userData.Scale or 1.0
-        local scaleText = effectHeader:AddText(GetLoca("Scale: "))
-        local scaleInput = effectHeader:AddSlider("", scale, 0, 10)
+        local scaleInput = attrTable:AddSlider(GetLoca("Scale: "), scale, 0.1, 10.0, 0.1)
         scaleInput.IDContext = "EffectScale"
         scaleInput.SameLine = true
 
@@ -542,7 +513,7 @@ function CustomEffectTab:RenderEffects()
             self:OnChange()
         end
 
-        local stopButton = effectHeader:AddButton(GetLoca("Stop Same Effect"))
+        local stopButton = effectTree:AddButton(GetLoca("Stop Same Effect"))
         stopButton:Tooltip():AddText(GetLoca("Stop all effects with the same FxName."))
 
         stopButton.OnClick = function()
@@ -553,7 +524,7 @@ function CustomEffectTab:RenderEffects()
             NetChannel.StopEffect(postdata)
         end
 
-        local removeButton = cell:AddButton(GetLoca("Remove"))
+        local removeButton = effectTree:AddButton(GetLoca("Remove"))
         removeButton.SameLine = true
 
         
@@ -571,16 +542,13 @@ function CustomEffectTab:RenderEffects()
                 nil)
         end
 
-        cell:AddSeparator()
+        effectTree:AddSeparator()
     end
 
     -- Add Effect Slot
 
-    local emptyCell = effectTimelineRow:AddCell()
-
-    local emptyIcon = emptyCell:AddImageButton("EmptyEffect", RB_ICONS.Plus_Square)
+    local emptyIcon = root:AddImageButton("EmptyEffect", RB_ICONS.Plus_Square, IMAGESIZE.ROW)
     emptyIcon:Tooltip():AddText(GetLoca("Drag an effect here, or paste an fx name into the box and click."))
-    emptyIcon.Image.Size = {64 * SCALE_FACTOR, 64 * SCALE_FACTOR}
     emptyIcon.DragDropType = "EffectInfo"
     emptyIcon.CanDrag = true
 
@@ -623,7 +591,7 @@ function CustomEffectTab:RenderEffects()
         self:OnChange()
     end
 
-    local emptyIconInput = emptyCell:AddInputText("", "")
+    local emptyIconInput = root:AddInputText("", "")
     emptyIconInput.SameLine = true
 
     emptyIconInput.IDContext = "EmptyEffectInput"

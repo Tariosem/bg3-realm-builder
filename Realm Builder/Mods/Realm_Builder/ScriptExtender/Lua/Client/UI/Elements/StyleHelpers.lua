@@ -68,6 +68,8 @@ function StyleHelpers.AddSliderWithStep(parent, IDContext, defaultValue, min, ma
     ud.Parent = parent
     ud.ResetButton = resetButton
     ud.Step = step
+    ud.DisableRightClickSet = false
+    ud.Clamp = false
 
     --decreButton.SameLine = true
     increButton.SameLine = true
@@ -80,6 +82,10 @@ function StyleHelpers.AddSliderWithStep(parent, IDContext, defaultValue, min, ma
     end
 
     slider.OnRightClick = function(s)
+        if s.UserData.DisableRightClickSet then
+            return
+        end
+
         sliderPopup:Open()
     end
 
@@ -150,6 +156,15 @@ function AddSliderStepButton(parent, label, step, slider, direction)
             stepValue = -stepValue
         end
         local newValue = s.Value[1] + stepValue
+
+        if s.UserData.Clamp then
+            if newValue < s.Min[1] then
+                newValue = s.Min[1]
+            elseif newValue > s.Max[1] then
+                newValue = s.Max[1]
+            end
+        end
+
         s.Value = { newValue, newValue, newValue, newValue }
         if s.OnChange then
             s:OnChange()
@@ -159,6 +174,9 @@ function AddSliderStepButton(parent, label, step, slider, direction)
     button.OnRightClick = function()
         local s = button.UserData.Slider --[[@as ExtuiSliderInt|ExtuiSliderScalar]]
         if not s then
+            return
+        end
+        if s.UserData.DisableRightClickSet then
             return
         end
 
@@ -583,10 +601,6 @@ function TraverseAllChildren(parent, func)
     end
     for _, child in ipairs(parent.Children) do
         func(child)
-        local suc, children = pcall(function() return child.Children end)
-        if suc and children then
-            TraverseAllChildren(children, func)
-        end
     end
 end
 
@@ -739,6 +753,39 @@ function StyleHelpers.AddReadOnlyAttrTable(parent, contents)
     return clos
 end
 
+
+function StyleHelpers.AddAlignedTable(parent)
+    local tab = parent:AddTable("AttrTable##" .. Uuid_v4(), 2) --[[@as ExtuiTable]]
+    tab.BordersInner = true
+    tab.ColumnDefs[1] = { WidthFixed = true }
+    tab.ColumnDefs[2] = { Width = 900 * SCALE_FACTOR }
+
+    local clos = {
+    }
+
+    setmetatable(clos, {
+        __index = function(_, k)
+            if k:sub(1, 3) == "Add" then
+                return function(_, ...)
+                    local args = {...}
+                    local label = table.remove(args, 1)
+                    local row = tab:AddRow() --[[@as ExtuiTableRow]]
+                    local nameCell = row:AddCell()
+                    nameCell:AddText(label)
+                    local valueCell = row:AddCell()
+
+                    return valueCell[k](valueCell, "##" .. label .. "Input", table.unpack(args)), valueCell
+                end
+            end
+        end,
+        __newindex = function(_, k, v)
+            tab[k] = v
+        end
+    })
+
+    return clos
+end
+
 --- @param arrowImage ExtuiImageButton
 function StyleHelpers.SetupImageButton(arrowImage)
     ClearAllBorders(arrowImage)
@@ -782,8 +829,12 @@ local treeClosed = {
 --- @field Children RB_UI_Tree[]
 --- @field SetOpen fun(self: RB_UI_Tree, isOpen: boolean)
 --- @field IsOpen fun(self: RB_UI_Tree): boolean
---- @field AddTree fun(self: RB_UI_Tree, label: string, isOpen: boolean): RB_UI_Tree
+--- @field AddTree fun(self: RB_UI_Tree, label: string, isOpen: boolean?): RB_UI_Tree
 --- @field AddHint fun(self: RB_UI_Tree, hintText: string): ExtuiText
+--- @field AddTreeIcon fun(self: RB_UI_Tree, iconPath: string, iconSize?: IMAGESIZE): ExtuiImage
+--- @field AddChild fun(self: RB_UI_Tree, child: RB_UI_Tree)
+--- @field Destroy fun()
+--- @field DestroyChildren fun()
 --- @field ToggleAll fun(self: RB_UI_Tree)
 --- @field Panel ExtuiGroup
 --- @field OnExpand fun()
@@ -799,17 +850,22 @@ function StyleHelpers.AddTree(parent, label, open)
     end
     label = label or "TreeGroup"
     local uuid = Uuid_v4()
-    local headerGroup = parent:AddGroup(label .. "##uuid_" .. uuid)
+    local panelGroup = parent:AddGroup(label .. "##uuid_" .. uuid)
     
     local children = {}
+    local headerGroup = panelGroup:AddGroup(label .. "_TreeHeaderGroup##uuid_" .. uuid)
     local arrowReserved = headerGroup:AddImageButton("##" .. label .. uuid , open and RB_ICONS.Menu_Down or RB_ICONS.Menu_Right, IMAGESIZE.ROW)
+    local iconReserved = headerGroup:AddGroup("##" .. label .. "_IconReserved_" .. uuid)
     local selectable = headerGroup:AddSelectable(label .. "##" .. uuid)
-    local indent = headerGroup:AddDummy(16 * SCALE_FACTOR, 1)
-    local panel = headerGroup:AddGroup(label .. "_TreeGroup##uuid_" .. uuid)
+    local indent = panelGroup:AddDummy(16 * SCALE_FACTOR, 1)
+    local panel = panelGroup:AddGroup(label .. "_TreeGroup##uuid_" .. uuid)
+    local treeIcon = nil
     panel.Visible = open == true
     panel.SameLine = true
     selectable.SameLine = true
     selectable.AllowItemOverlap = true
+    iconReserved.SameLine = true
+    iconReserved.Visible = false
     arrowReserved.IDContext = "TreeArrowReserved_" .. Uuid_v4()
 
     local closure = {}
@@ -845,11 +901,10 @@ function StyleHelpers.AddTree(parent, label, open)
     selectable.OnClick = arrowReserved.OnClick
 
     closure = {
-        UserData = {
+        __UserData = {
             Is_RB_UI_Tree = true
         },
         ToggleAll = toggleAll,
-        Children = children,
         Panel = panel,
         SetOpen = function(_, isOpen)
             setOpen(isOpen)
@@ -865,7 +920,17 @@ function StyleHelpers.AddTree(parent, label, open)
         AddChild = function(_, child)
             if child and child.UserData and child.UserData.Is_RB_UI_Tree then
                 table.insert(children, child)
+                child.Parent = closure
             end
+        end,
+        AddTreeIcon = function(_, iconName, iconSize)
+            treeIcon = iconReserved:AddImageButton(iconReserved.Label .. "Icon", iconName, iconSize or IMAGESIZE.ROW)
+            ClearAllBorders(treeIcon)
+            treeIcon:SetColor("Button", {0,0,0,0})
+            treeIcon:SetColor("ButtonHovered", {0,0,0,0})
+            treeIcon:SetColor("ButtonActive", {0,0,0,0})
+            iconReserved.Visible = true
+            return treeIcon
         end,
         AddHint = function(_, hintText)
             local hint = headerGroup:AddText(hintText)
@@ -876,8 +941,20 @@ function StyleHelpers.AddTree(parent, label, open)
         end,
         OnExpand = function() end,
         OnCollapse = function() end,
+        Destroy = function()
+            panelGroup:Destroy()
+        end,
+        DestroyChildren = function()
+            for _, child in ipairs(children) do
+                if child.Destroy then
+                    child:Destroy()
+                end
+            end
+            DestroyAllChildren(panel)
+            children = {}
+        end
     }
-    selectable.UserData = closure.UserData
+    selectable.UserData = closure.__UserData
 
     setmetatable(closure, {
         __index = function(_, k)
@@ -887,35 +964,38 @@ function StyleHelpers.AddTree(parent, label, open)
                 end
             elseif k:sub(1, 3) == "Get" or (k:sub(1, 3) == "Set" and k ~= "SetOpen") then
                 return function(_, ...)
-                    return headerGroup[k](headerGroup, ...)
+                    return panelGroup[k](panelGroup, ...)
                 end
+            elseif k == "Children" then
+                return children
+            elseif k == "UserData" then
+                return closure.__UserData
             elseif rawget(closure, k) ~= nil then -- avoid stack overflow
                 return rawget(closure, k)
+            elseif k == "OnExpand" or k == "OnCollapse" then
+                return closure[k]
+            elseif k == "Tooltip" then
+                return function()
+                    return selectable:Tooltip()
+                end
             end
             return selectable[k]
         end,
         __newindex = function(_, k, v)
-            if k == "OnRightClick" then
-                arrowReserved.OnRightClick = function()
-                    toggleAll()
-                    v()
-                end
-                selectable.OnRightClick = arrowReserved.OnRightClick
+            if k == "SameLine" or k == "Visible" then
+                panelGroup[k] = v
                 return
-            elseif k == "OnClick" then
-                arrowReserved.OnClick = function()
-                    selectable.Selected = false
-                    panel.Visible = not panel.Visible
-                    arrowReserved.Image = panel.Visible and treeOpen or treeClosed
-                    v()
-                end
-                selectable.OnClick = arrowReserved.OnClick
-                return
-            elseif k == "SameLine" then
-                headerGroup.SameLine = v
+            elseif k == "UserData" then
+                closure.__UserData = v
+                selectable.UserData = v
+                treeIcon.UserData = v
+                v.Is_RB_UI_Tree = true
                 return
             end
             selectable[k] = v
+            if treeIcon and not ( k == "Selected" or k == "Highlight") then
+                treeIcon[k] = v
+            end
         end
     })
 
@@ -943,12 +1023,14 @@ end
 --- @field Name string
 --- @field Value integer
 
---- @class BitmaskRadioButtonsGroup :ExtuiGroup
+--- @class BitmaskRadioButtonsGroup : ExtuiGroup
 --- @field OnChange fun(radioBtn: ExtuiRadioButton, value: integer)
+--- @field Value integer
 
 --- @param parent ExtuiTreeParent
 --- @param options RadioButtonOption[]
 --- @param initValue integer
+--- @return BitmaskRadioButtonsGroup
 function StyleHelpers.AddBitmaskRadioButtons(parent, options, initValue)
     local group = parent:AddGroup(label or "BitmaskRadioButtonsGroup" .. Uuid_v4())
     local value = initValue or 0
@@ -1005,6 +1087,7 @@ end
 
 --- @class EnumRadioButtonsGroup :ExtuiGroup
 --- @field OnChange fun(radioBtn: ExtuiRadioButton, value: number)
+--- @field Value number
 
 --- @param parent ExtuiTreeParent
 --- @param options RadioButtonOption[]

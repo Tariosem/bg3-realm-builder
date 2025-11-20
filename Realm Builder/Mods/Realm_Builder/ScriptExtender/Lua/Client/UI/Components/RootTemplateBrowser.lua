@@ -33,7 +33,7 @@ function RootTemplateBrowser:SaveToConfig()
     CONFIG.RootTemplateBrowser.IconPerRow = self.iconPR
     CONFIG.RootTemplateBrowser.IconPerColumn = self.iconPC
     CONFIG.RootTemplateBrowser.CellsPadding = self.cellsPadding
-    CONFIG.RootTemplateBrowser.autoSave = self.autoSave
+    CONFIG.RootTemplateBrowser.AutoSave = self.AutoSave
     CONFIG.RootTemplateBrowser.ButtonBgColor = self.iconButtonBgColor
     CONFIG.RootTemplateBrowser.BackgroundColor = self.browserBackgroundColor
     CONFIG.RootTemplateBrowser.LastPosition = self.lastPosition

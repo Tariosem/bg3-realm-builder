@@ -35,7 +35,7 @@ function EntityHelpers.SaveTransform(guid)
     local toSave = {
         Translate = Vec3.new({ CGetPosition(guid) }),
         RotationQuat = Quat.new({ CGetRotation(guid) }),
-        Scale = Vec3.new(CGetScale(guid))
+        Scale = Vec3.new({CGetScale(guid)})
     }
     if not toSave.Translate or #toSave.Translate ~= 3 then
         toSave.Translate = { CGetPosition(CGetHostCharacter()) }
@@ -357,7 +357,7 @@ function CGetScale(guid)
         return nil, nil, nil
     end
 
-    if CIsCharacter(guid) and Ext.IsClient() then
+    if Ext.IsClient() then
         return VisualHelpers.GetVisualScale(guid)
     end
 

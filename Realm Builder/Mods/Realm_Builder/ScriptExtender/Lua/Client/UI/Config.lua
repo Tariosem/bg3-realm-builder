@@ -38,16 +38,16 @@ CONFIG = {
     },
     EntityMenu = {},
     EffectMenu = {
-        autoSave = true,
+        AutoSave = true,
     },
     EffectBrowser = {
-        autoSave = true,
+        AutoSave = true,
     },
     ItemBrowser = {
-        autoSave = true,
+        AutoSave = true,
     },
     SceneMenu = {
-        autoSave = true,
+        AutoSave = true,
     },
     Misc = {
         DangerButtonColor = {0.6, 0.2, 0.2, 0.8},

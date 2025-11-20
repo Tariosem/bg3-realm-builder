@@ -22,7 +22,7 @@ NetChannel.SetVisualTransform:SetHandler(function (data)
                     Warning("SetVisualTransform (delayed): No visual found for guid: " .. guid)
                 end
             end)
-            Debug("SetVisualTransform: No visual found for guid: " .. guid .. ", retrying in 30 ticks.")
+            --Debug("SetVisualTransform: No visual found for guid: " .. guid .. ", retrying in 30 ticks.")
             goto continue
         end
 

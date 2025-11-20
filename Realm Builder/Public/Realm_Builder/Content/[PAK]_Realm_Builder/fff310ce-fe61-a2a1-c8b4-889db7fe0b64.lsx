@@ -22,6 +22,24 @@
 						</node>
 					</children>
 				</node>
+				<node id="Resource">
+					<attribute id="ID" type="FixedString" value="ec476137-2428-4a55-b9ae-7f96ad1eb71c" />
+					<attribute id="Name" type="LSString" value="RB_Cursor" />
+					<attribute id="SourceFile" type="LSString" value="Public/Engine/Assets/Materials/Editor/Gizmo_Letter.lsf" />
+					<attribute id="MaterialType" type="uint8" value="0" />
+					<attribute id="DiffusionProfileUUID" type="FixedString" value="" />
+					<children>
+						<node id="VectorParameters">
+							<attribute id="Enabled" type="bool" value="True" />
+							<attribute id="ParameterName" type="FixedString" value="Color" />
+							<attribute id="GroupName" type="FixedString" value="" />
+							<attribute id="ExportAsPreset" type="bool" value="True" />
+							<attribute id="Value" type="fvec4" value="0.8 0.2 0.2 1" />
+							<attribute id="BaseValue" type="fvec4" value="1 0 0 1" />
+							<attribute id="IsColor" type="bool" value="False" />
+						</node>
+					</children>
+				</node>
 			</children>
 		</node>
 	</region>

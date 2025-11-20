@@ -248,7 +248,7 @@ function MaterialPresetsMenu:SetupWorkspace(parent, ccaModPack, notRenderImport)
             ApplyWarningButtonStyle(exportBtn)
         else
             ApplyOkTooltipStyle(exportTooltip)
-            exportTT.Label = "Click: Export material presets to Realm_Builder/CC_Mods/\nRight Click: Save to CCA Cache for Importing Later"
+            exportTT.Label = "Click: Export material presets to Realm_Builder/CC_Mods/\nRight Click: Save to CC Cache for Importing Later"
             ApplyOkButtonStyle(exportBtn)
         end
     end
@@ -279,8 +279,8 @@ end
 local function setRowColor(row, color)
     --row:SetColor("TableRowBg", color)
     --row:SetColor("TableRowBgAlt", color)
-    row:SetColor("TableRowBg", AdjustColor(color, -0.2, -0.2, -0.4))
-    row:SetColor("TableRowBgAlt", AdjustColor(color, -0.2, -0.2, -0.4))
+    row:SetColor("TableRowBg", AdjustColor(color, -0.4, -0.3, -0.4))
+    row:SetColor("TableRowBgAlt", AdjustColor(color, -0.4, -0.3, -0.4))
     row:SetColor("TableHeaderBg", AdjustColor(color, -0.2, nil, -0.5))
 end
 
@@ -629,11 +629,8 @@ function MaterialPresetsMenu:RenderImportSection(parent, exportSettings, onImpor
 
     function refreshCached()
         DestroyAllChildren(parent)
-
         local cache = nil
-
         cache = self.cachedMods
-        _D(cache)
 
         if not cache then
             cache = {}
@@ -1032,11 +1029,12 @@ function MaterialPresetsMenu:ImportFromFile(modName, version)
 end
 
 function MaterialPresetsMenu:ExportToMod(modPack, progressCallback)
+    local thread
     local threadFunc = function()
-        self:__exportToMod(modPack, progressCallback)
+        self:__exportToMod(modPack, progressCallback, thread)
     end
 
-    local thread = coroutine.create(threadFunc)
+    thread = coroutine.create(threadFunc)
 
     local ok, err = coroutine.resume(thread)
     if not ok then
@@ -1046,13 +1044,11 @@ end
 
 ---@param modPack CCMod_Pack
 ---@param progressCallback fun(progress:number, message:string?)
-function MaterialPresetsMenu:__exportToMod(modPack, progressCallback)
+function MaterialPresetsMenu:__exportToMod(modPack, progressCallback, exportThread)
     local startTime = Ext.Timer.MonotonicTime()
     local suc = true
 
     local lastYieldTime = startTime
-    -- capture the export coroutine so callbacks can check/resume the correct coroutine
-    local exportThread = coroutine.running()
     progressCallback = progressCallback or function(progress, message)
         Debug("MaterialPresetsMenu: ExportToMod Progress: " .. tostring(progress) .. "% " .. (message and (" - " .. message) or ""))
     end
@@ -1091,7 +1087,7 @@ function MaterialPresetsMenu:__exportToMod(modPack, progressCallback)
 
     local function throwError(message)
         progress = -1
-        Warning("MaterialPresetsMenu: ExportToMod Error: " .. message)
+        Error("MaterialPresetsMenu: ExportToMod Error: " .. message)
         progressCallback(progress, message)
         local running = coroutine.running()
         if running and running == exportThread then

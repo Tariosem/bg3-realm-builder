@@ -14,7 +14,7 @@ function EffectBrowser:SaveToConfig()
     CONFIG.EffectBrowser.IconPerRow = self.iconPR
     CONFIG.EffectBrowser.IconPerColumn = self.iconPC
     CONFIG.EffectBrowser.CellsPadding = self.cellsPadding
-    CONFIG.EffectBrowser.autoSave = self.autoSave
+    CONFIG.EffectBrowser.AutoSave = self.AutoSave
     CONFIG.EffectBrowser.ButtonBgColor = self.iconButtonBgColor
     CONFIG.EffectBrowser.LastPosition = self.lastPosition
     CONFIG.EffectBrowser.LastSize = self.lastSize
@@ -30,6 +30,42 @@ function EffectBrowser:TooltipChangeLogic()
         self.tooltipName.Label = GetLoca("Tooltip Name: Display Name")
     end
 end
+
+local function previewEffect(guid, entry)
+        local effectsData = {}
+        local fxNames = entry.fxNames or {}
+        if #fxNames == 0 then
+            return
+        end
+        for _, fxName in ipairs(fxNames) do
+            local fxData = GetDataFromUuid(fxName) or {}
+            local effectData = {
+                Object = guid,
+                Target = guid,
+                FxName = fxName,
+                TargetBone = fxData.TargetBone or "",
+                SourceBone = fxData.SourceBone or "",
+                Tags = {
+                    PlayBeamEffect = fxData.isBeam or false,
+                }
+            }
+            
+            local loopEffectData = DeepCopy(effectData)
+            loopEffectData.Tags.PlayLoop = true
+            local stopdata = {
+                Type = "FxName",
+                FxName = fxName,
+            }
+            Timer:After(5000, function()
+                NetChannel.StopEffect:SendToServer(stopdata)
+            end)
+
+            table.insert(effectsData, effectData)
+            table.insert(effectsData, loopEffectData)
+        end
+        local data = effectsData
+        NetChannel.PlayEffect:SendToServer(data)
+    end
 
 --- @param entry RB_Effect
 --- @param cell ExtuiTableCell
@@ -104,9 +140,33 @@ function EffectBrowser:RenderIcon(entry, cell)
 
     popup = popup or nil
     rPopup = rPopup or nil
-    
-    iconImage.UserData = iconImage.UserData or {}
-    iconImage.UserData.Popups = { popup, rPopup }
+
+    iconImage.CanDrag = true
+    iconImage.DragDropType = "EffectInfo"
+    iconImage.UserData = {
+        Uuid = entry.Uuid,
+        DisplayName = entry.DisplayName,
+        TemplateName = entry.TemplateName,
+        isMultiEffect = self.searchData[entry.Uuid].isMultiEffect or false,
+        FxName = self.searchData[entry.Uuid].fxNames or {},
+        Icon = entry.Icon
+    }
+
+    iconImage.OnDragStart = function()
+        iconImage.DragPreview:AddImage(entry.Icon)
+    end
+
+    iconImage.OnDragEnd = function()
+        Timer:Ticks(10, function (timerID)
+            local pick = GetPickingGuid()
+            if not pick or pick == "" then
+                pick = self.selectedGuid or CGetHostCharacter()
+            end
+            if pick and pick ~= "" then
+                previewEffect(pick, entry)
+            end
+        end)
+    end
 
     local iconTooltip = iconImage:Tooltip()
     local tooltipName = entry[self.iconTooltipName] or ""
@@ -146,46 +206,10 @@ function EffectBrowser:RenderIcon(entry, cell)
     return iconImage
 end
 
-function EffectBrowser:RenderPlayEffectPopup(getPopupFunc, entry, iconImage)
+function EffectBrowser:RenderPlayEffectPopup(getPopupFunc, entry)
     local initialized = false
     local playEffectButton = nil
     local infoButton = nil
-
-    local function previewEffect(guid)
-        local effectsData = {}
-        local fxNames = self.searchData[entry.Uuid].fxNames or {}
-        if #fxNames == 0 then
-            return
-        end
-        for _, fxName in ipairs(fxNames) do
-            local fxData = GetDataFromUuid(fxName) or {}
-            local effectData = {
-                Object = guid,
-                Target = guid,
-                FxName = fxName,
-                TargetBone = fxData.TargetBone or "",
-                SourceBone = fxData.SourceBone or "",
-                Tags = {
-                    PlayBeamEffect = fxData.isBeam or false,
-                }
-            }
-            
-            local loopEffectData = DeepCopy(effectData)
-            loopEffectData.Tags.PlayLoop = true
-            local stopdata = {
-                Type = "FxName",
-                FxName = fxName,
-            }
-            Timer:After(5000, function()
-                NetChannel.StopEffect:SendToServer(stopdata)
-            end)
-
-            table.insert(effectsData, effectData)
-            table.insert(effectsData, loopEffectData)
-        end
-        local data = effectsData
-        NetChannel.PlayEffect:SendToServer(data)
-    end
 
     local popup = getPopupFunc()
     playEffectButton = popup:AddButton(GetLoca("Play"))
@@ -198,38 +222,11 @@ function EffectBrowser:RenderPlayEffectPopup(getPopupFunc, entry, iconImage)
     ApplyInfoButtonStyle(infoButton)
 
     playEffectButton.OnClick = function()
-        previewEffect(self.selectedGuid or CGetHostCharacter())
+        previewEffect(self.selectedGuid or CGetHostCharacter(), entry)
     end
 
     infoButton.OnClick = function()
         EffectTab:Add(entry.Uuid, nil, entry.TemplateName)
-    end
-
-    iconImage.CanDrag = true
-    iconImage.DragDropType = "EffectInfo"
-    iconImage.UserData = {
-        Uuid = entry.Uuid,
-        DisplayName = entry.DisplayName,
-        TemplateName = entry.TemplateName,
-        isMultiEffect = self.searchData[entry.Uuid].isMultiEffect or false,
-        FxName = self.searchData[entry.Uuid].fxNames or {},
-        Icon = entry.Icon
-    }
-
-    iconImage.OnDragStart = function()
-        iconImage.DragPreview:AddImage(entry.Icon)
-    end
-
-    iconImage.OnDragEnd = function()
-        Timer:Ticks(10, function (timerID)
-            local pick = GetPickingGuid()
-            if not pick or pick == "" then
-                pick = self.selectedGuid or CGetHostCharacter()
-            end
-            if pick and pick ~= "" then
-                previewEffect(pick)
-            end
-        end)
     end
 end
 

@@ -175,8 +175,9 @@ end
 
 local debugText = 
 [[
+
     ===========================
-    Create At (%.2f, %.2f, %.2f)
+    Create [%s] At (%.2f, %.2f, %.2f)
     TemplateId : %s
     Spawned As : %s
     ===========================
@@ -217,15 +218,13 @@ function EntityManager:CreateAt(templateId, x, y, z, rx, ry, rz, w)
         return nil
     end
 
-    Debug(debugText:format(x, y, z, tostring(templateId), tostring(newProp)))
+    Debug(debugText:format(tostring(templateObj.TemplateType), x, y, z, tostring(templateId), tostring(newProp)))
 
     OsirisHelpers.Propify(newProp)
 
     if rx and ry and rz and w then
         OsirisHelpers.RotateTo(newProp, rx, ry, rz, w)
     end
-
-    --Info("Prop created with TemplateId: " .. tostring(TemplateId) .. " at position (" .. x .. ", " .. y .. ", " .. z .. ")")
 
     local propData = {
         TemplateId = templateId,
@@ -235,7 +234,6 @@ function EntityManager:CreateAt(templateId, x, y, z, rx, ry, rz, w)
     self.SavedEntities[newProp] = propData
     self:StoreGuid(newProp)
 
-    --Info("Prop added with guid: " .. tostring(newProp))
 
     local TemplateName = TrimTail(templateId, 37)
     if TemplateName == "" then

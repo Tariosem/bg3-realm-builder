@@ -11,6 +11,7 @@ function ItemBrowser:SaveToConfig()
     CONFIG.ItemBrowser.ButtonBgColor = self.iconButtonBgColor
     CONFIG.ItemBrowser.BackgroundColor = self.browserBackgroundColor
     CONFIG.ItemBrowser.IconPerRow = self.iconPR
+    CONFIG.ItemBrowser.AutoSave = self.AutoSave
     CONFIG.ItemBrowser.CellsPadding = self.cellsPadding
     CONFIG.ItemBrowser.LastPosition = self.lastPosition
     CONFIG.ItemBrowser.LastSize = self.lastSize

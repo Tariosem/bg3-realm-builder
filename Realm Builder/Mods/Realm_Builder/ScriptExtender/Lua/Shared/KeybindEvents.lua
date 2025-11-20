@@ -6,7 +6,6 @@
 --- @field new fun(key:SimplifiedInputCode, modifiers:SimplifiedModfier[]|nil):Keybinding
 --- @field CreateIdentifier fun(self: Keybinding): KeybindingIdentifier
 --- @field FromIdentifier fun(identifier: KeybindingIdentifier): Keybinding
-
 Keybinding = _Class("Keybinding")
 
 function Keybinding:__init(key, modifiers)

@@ -221,7 +221,7 @@ end
 function TransformOperator:ParseInput(e)
     if e.Event ~= "KeyDown" then return end
 
-    local shiftDown = table.find(e.Modifiers or {}, "LShift") or table.find(e.Modifiers or {}, "RShift")
+    local shiftDown = table.find(e.Modifiers or {}, "SHIFT") ~= nil
 
     if GLOBAL_COORDINATE[e.Key] then
         self:SetAxis(e.Key, shiftDown)

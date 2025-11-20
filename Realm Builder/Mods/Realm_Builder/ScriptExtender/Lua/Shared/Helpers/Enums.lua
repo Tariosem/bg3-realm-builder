@@ -1,7 +1,5 @@
 UuidToHandle = Ext.Entity.UuidToHandle
 HandleToUuid = Ext.Entity.HandleToUuid
-IntToHandle = Ext.Utils.IntegerToHandle
-HandleToInt = Ext.Utils.HandleToInteger
 
 Enums = {}
 
@@ -131,7 +129,7 @@ local GuiStyleVarCategory = {
 --- @alias GuiColorCategories "Color.Text"|"Color.Background"|"Color.Border"|"Color.Table"|"Color.Button"|"Color.Frame"|"Color.Slider"|"Color.Window"|"Color.Nav"|"Color.Tab"|"Color.Separator"|"Color.Plot"|"Color.Other"
 --- @alias GuiStyleVarCategories "Var.Global"|"Var.Window"|"Var.Child"|"Var.Popup"|"Var.Frame"|"Var.Scrollbar"|"Var.Tab"|"Var.Separator"|"Var.Layout"|"Var.Align"|"Var.Table"|"Var.Other"
 
----@return table <GuiColor, GuiColorCategory>[]
+---@return table<GuiColor, GuiColorCategory>
 function GetAllGuiColorNames()
     local names = {}
     for _, nameObject in pairs(Ext.Enums.GuiColor) do
@@ -142,7 +140,7 @@ function GetAllGuiColorNames()
     return names
 end
 
---- @return table <GuiStyleVar, GuiStyleVarCategory>[]
+--- @return table<GuiStyleVar, GuiStyleVarCategory>
 function GetAllGuiStyleVarNames()
     local names = {}
     for _, nameObject in pairs(Ext.Enums.GuiStyleVar) do
@@ -252,9 +250,6 @@ for uuid, bodyType in pairs(EquipmentRaceToBodyType) do
     end
     table.insert(BodyTypeToEquipmentRace[bodyType], uuid)
 end
-
--- From https://github.com/AtilioA/BG3-MCM/blob/main/Mod%20Configuration%20Menu/Mods/BG3MCM/ScriptExtender/Lua/Shared/Helpers/Keybindings/KeyPresentationMapping.lua
-
 
 --- @enum SimplifiedInputCode
 Enums.SimplifiedInputCode = {
@@ -408,6 +403,7 @@ Enums.SimplifiedInputCode = {
     MMB            = "MMB",
 }
 
+-- From https://github.com/AtilioA/BG3-MCM/blob/main/Mod%20Configuration%20Menu/Mods/BG3MCM/ScriptExtender/Lua/Shared/Helpers/Keybindings/KeyPresentationMapping.lua
 Enums.InputCodeToPresentation = {
     -- Modifiers
     LALT           = "Left Alt",

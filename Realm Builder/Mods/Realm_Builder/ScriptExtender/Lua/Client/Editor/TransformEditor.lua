@@ -67,6 +67,8 @@ local function simpleUnique(t)
     return result
 end
 
+local maxSize = 100
+
 --- @param selection RB_MovableProxy[]
 function TransformEditor:Select(selection, notRecordHistory)
     local oriSelection = self.Target
@@ -90,7 +92,17 @@ function TransformEditor:Select(selection, notRecordHistory)
     end
 
     if chekcIfSameSelection(selection, oriSelection) then return end
-    self.Target = simpleUnique(selection)
+    local tempTarget = simpleUnique(selection)
+
+    if #tempTarget > maxSize then
+        Warning("TransformEditor: Selection size exceeds maximum of "..tostring(maxSize)..". Truncating selection.")
+        local newSelection = {}
+        for i=1, maxSize do
+            table.insert(newSelection, tempTarget[i])
+        end
+        tempTarget = newSelection
+    end
+    self.Target = tempTarget
 
     self:HandleGizmo()
     self:RegisterEvents()
@@ -116,16 +128,20 @@ function TransformEditor:AddTarget(proxy)
 end
 
 function TransformEditor:PopupNotify()
-
     local notif = self.SelectionChangedNotif or Notification.new("Editor Selection Changed")
     self.SelectionChangedNotif = notif
-    notif.Pivot = { 0.1 , 0.8 }
+    notif.Pivot = { 0.8, 0.1 }
     notif.ClickToDismiss = true
-    notif.AnimDirection = "Vertical"
+    notif.AnimDirection = "Horizontal"
     notif.ChangeDirectionWhenFadeOut = true
     notif:Show("Selection Changed", function (panel)
-        for _, proxy in pairs(self.Target or {}) do
+        for i, proxy in pairs(self.Target or {}) do
             proxy:Render(panel)
+            if i > 5 then
+                local moreLabel = panel:AddText("... and "..tostring(#self.Target - 5).." more")
+                moreLabel:SetColor("Text", {1,1,1,0.8})
+                break
+            end
         end
     end)
 end
@@ -183,10 +199,6 @@ function TransformEditor:SetSpace(space)
     if self.IsDragging then return end
     if Enums.TransformEditorSpace[space] then
         self.Space = space
-
-        if self.Space == "Cursor" and not self.Cursor then
-            self:CreateCursor() 
-        end
     else
         Warning("TransformEditor:SetSpace: Invalid space '"..tostring(space))
     end
@@ -196,10 +208,6 @@ function TransformEditor:SetPivotMode(mode)
     if self.IsDragging then return end
     if Enums.TransformEditorPivotMode[mode] then
         self.PivotMode = mode
-
-        if self.PivotMode == "Cursor" and not self.Cursor then
-            self:CreateCursor() 
-        end
     else
         Warning("TransformEditor:SetPivotMode: Invalid mode '"..tostring(mode))
     end
@@ -256,56 +264,6 @@ function TransformEditor:GetPivotRotation()
         rot = Quat.Identity()
     end
     return Quat.new(rot)
-end
-
-function TransformEditor:CreateCursor(pos)
-    if self.Cursor and EntityExists(self.Cursor) or (self.creatingCursor) then
-        return
-    end
-
-    self.creatingCursor = true
-        
-    pos = ScreenToWorldRay():At(10)
-    local hostPosition = Vec3.new(pos)
-    local hostRotation = Quat.new(GetCameraRotation())
-
-    NetChannel.Visualize:RequestToServer({
-        Type = "Cursor",
-        Position = hostPosition,
-        Rotation = hostRotation,
-        Duration = -1,
-    }, function (response)
-        for _,viz in pairs(response or {}) do
-            self.Cursor = viz
-        end
-        self.creatingCursor = false
-    end)
-
-    self.CursorTimer = Timer:EveryFrame(function (timerID)
-        self.Gizmo.Visualizer:Visualize3DCursor(self.Cursor)
-    end)
-end
-
-function TransformEditor:MoveCursor()
-    if not self.Cursor or not EntityExists(self.Cursor) then
-        self:CreateCursor()
-        return
-    end
-
-    local pos = ScreenToWorldRay():At(10)
-    local rot = Quat.new(GetCameraRotation())
-
-    NetChannel.SetTransform:RequestToServer({ Guid = self.Cursor, Transforms = {
-        [self.Cursor] = {
-            Translate = pos,
-            RotationQuat = rot,
-        }
-    } }, function()
-    end)
-
-    NetChannel.SetAttributes:SendToServer({ Guid = self.Cursor, Attributes = {
-        Visible = true,
-    } })
 end
 
 function TransformEditor:RegisterEvents()

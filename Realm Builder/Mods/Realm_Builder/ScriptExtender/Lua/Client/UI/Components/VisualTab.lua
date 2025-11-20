@@ -5,13 +5,13 @@ local visualTabCache = {}
 
 --- @class VisualTab
 --- @field Materials table<string, MaterialTab>
---- @field Effects table<string, table<string, any>> -- EffectType -> EffectProperty -> value
+--- @field Effects table<string, table<string, any>> -- EffectType::index -> EffectProperty -> value
 --- @field guid GUIDSTRING
 --- @field templateName string
---- @field updateFuncs table<string, table<string, fun()>> -- EffectType -> EffectProperty -> update function
---- @field resetFuncs table<string, table<string, fun()>> -- EffectType -> EffectProperty -> reset function
---- @field resetParams table<string, table<string, any>> -- EffectType -> EffectProperty -> reset value
---- @field new fun(guid: GUIDSTRING, displayName: string|nil, parent: ExtuiTreeParent|nil, templateName: string|nil): VisualTab
+--- @field updateFuncs table<string, table<string, fun()>> -- EffectType::index -> EffectProperty -> update function
+--- @field resetFuncs table<string, table<string, fun()>> -- EffectType::index -> EffectProperty -> reset function
+--- @field resetParams table<string, table<string, any>> -- EffectType::index -> EffectProperty -> reset value
+--- @field new fun(guid: GUIDSTRING?, displayName: string?, parent: ExtuiTreeParent?, templateName: string?): VisualTab
 --- @field FetchByGuid fun(guid: GUIDSTRING): VisualTab|nil
 VisualTab = {}
 VisualTab.__index = VisualTab
@@ -20,23 +20,47 @@ function VisualTab.FetchByGuid(guid)
     return visualTabCache[guid]
 end
 
-function VisualTab.new(guid, displayName, parent, templateName)
+
+function VisualTab.new(guid, displayName, parent, templateName, entity)
     local obj = setmetatable({}, VisualTab)
 
     for key, value in pairs(visualTabCache) do
-        if not VisualHelpers.GetEntityVisual(key) then
+        if type(key) == "userdata" and #key:GetAllComponentsNames() == 0 then
+            visualTabCache[key] = nil
+        end
+        if type(key) == "string" and not VisualHelpers.GetEntityVisual(key) then
             visualTabCache[key] = nil
         end
     end
 
-    if visualTabCache[guid] then
+    if guid and visualTabCache[guid] then
         visualTabCache[guid]:Refresh()
         return visualTabCache[guid]
     end
 
     obj:__init(guid, displayName, parent, templateName)
 
-    visualTabCache[guid] = obj
+    if guid then
+        visualTabCache[guid] = obj
+    elseif entity then
+        visualTabCache[entity] = obj
+    end
+
+    return obj
+end
+
+function VisualTab:GetEntity()
+    return Ext.Entity.Get(self.guid)
+end
+
+function VisualTab.CreateByEntity(entity)
+
+    --- @diagnostic disable-next-line
+    local obj = VisualTab.new(nil, nil, nil, nil, entity)
+
+    function obj:GetEntity()
+        return entity
+    end
 
     return obj
 end
@@ -44,7 +68,6 @@ end
 function VisualTab:__init(guid, displayName, parent, templateName)
     self.guid = guid or ""
     self.templateName = templateName or "Unknown"
-    self.param = {}
     self.keys = {}
 
     self.parent = parent or nil
@@ -55,20 +78,17 @@ function VisualTab:__init(guid, displayName, parent, templateName)
     self.isVisible = false
     self.displayName = displayName or "Unknown"
 
-    self.autoReload = true
-    self.allowRepeat = false
-
+    self.Materials = {}
     self.Effects = {}
+
     self.resetParams = {}
 
     self.currentPreset = EntityStore[guid] and EntityStore[guid].VisualPreset or nil
 
     self.updateFuncs = {}
     self.resetFuncs = {}
-    self.Materials = {}
 
-
-    if not templateName and not EntityStore[guid] then
+    if not templateName and self.guid ~= "" and not EntityStore[self.guid] then
         NetChannel.GetTemplate:RequestToServer({ Guid = self.guid }, function(response)
             if response.GuidToTemplateId and response.GuidToTemplateId[self.guid] then
                 self.templateId = response.GuidToTemplateId[self.guid]
@@ -81,7 +101,7 @@ function VisualTab:__init(guid, displayName, parent, templateName)
                 Error("VisualTab: Could not get template name from server for entity " .. self.guid)
             end
         end)
-    else
+    elseif templateName or (self.guid ~= "" and EntityStore[self.guid]) then
         self:SetupTemplate()
     end
 end
@@ -139,7 +159,7 @@ function VisualTab:Render(retryCnt)
 
     self.isVisible = true
 
-    local entity = Ext.Entity.Get(self.guid)
+    local entity = self:GetEntity(self.guid)
 
     if entity == nil or not entity.Visual or not entity.Visual.Visual or (not entity.Visual.Visual.ObjectDescs and not entity.Effect) then
         --Error("VisualTab: Entity is invalid or does not have visual data.")
@@ -258,7 +278,7 @@ function VisualTab:RenderMaterialContextPopup()
 end
 
 function VisualTab:RenderPresetsCell()
-    if Ext.Entity.Get(self.guid) and not self.isAttach then
+    if self:GetEntity(self.guid) and not self.isAttach then
         local icon = GetIcon(self.guid) or "Item_Unknown"
         self.symbol = self.topLeftCell:AddImage(icon)
         self.symbol.ImageData.Size = { 64 * SCALE_FACTOR, 64 * SCALE_FACTOR }
@@ -378,7 +398,7 @@ function VisualTab:RenderPresetsCell()
 
     resetAllButton.OnClick = function(_, notResetOnServer)
         Timer:Ticks(10, function()
-            local entity = Ext.Entity.Get(self.guid) --[[@as EntityHandle]]
+            local entity = self:GetEntity(self.guid) --[[@as EntityHandle]]
             local isChara = CIsCharacter(self.guid)
 
             for key, matTab in pairs(self.Materials) do
@@ -483,7 +503,7 @@ function VisualTab:RenderUtilsCell()
 end
 
 function VisualTab:RenderAttachmentSection()
-    local entity = Ext.Entity.Get(self.guid) --[[@as EntityHandle]]
+    local entity = self:GetEntity(self.guid) --[[@as EntityHandle]]
 
     local visual = VisualHelpers.GetEntityVisual(self.guid)
 
@@ -513,14 +533,14 @@ function VisualTab:DetermineOverrideCharacterParameters()
         {}, -- Vector3Parameters
         {}, -- VectorParameters
     }
-    local entity = Ext.Entity.Get(self.guid) --[[@as EntityHandle]]
+    local entity = self:GetEntity(self.guid) --[[@as EntityHandle]]
     local cca = entity.CharacterCreationAppearance
     if not cca then
         --- @diagnostic disable-next-line
         cca = entity.AppearanceOverride and entity.AppearanceOverride.Visual
     end
     if cca then
-        local ccaPresetgroup = self.attachmentsHeader:AddTree(GetLoca("Character Creation Material Presets"))
+        local ccaPresetgroup = StyleHelpers.AddTree(self.attachmentsHeader, "Character Creation Material Presets")
 
         local allColors = {
             SkinColor = cca.SkinColor,
@@ -546,14 +566,16 @@ function VisualTab:DetermineOverrideCharacterParameters()
             --_D(Ext.StaticData.Get(colorChoice.Material, "CharacterCreationAppearanceMaterial"))
         --end
 
+        local hasCCA = false
         for _, colorIndex in ipairs(colorOrder) do
             local colorType = colorIndex
             local resUuid = allColors[colorType]
-            if not resUuid or resUuid == GUID_NULL then goto continue end
+            if not IsUuid(resUuid) then goto continue end
             local res = Ext.StaticData.Get(resUuid, colorTypes[colorType]) --[[@as ResourceCharacterCreationColor]]
             if not res then goto continue end
             local matPresetRes = MaterialPresetProxy.new(res.MaterialPresetUUID)
             if not matPresetRes then goto continue end
+            hasCCA = true
             for ptype, params in pairs(matPresetRes.Parameters) do
                 for paramName, value in pairs(params) do
                     if colorIndex == "LeftEyeColor" then
@@ -567,8 +589,11 @@ function VisualTab:DetermineOverrideCharacterParameters()
             end
             ::continue::
         end
+        if not hasCCA then
+            ccaPresetgroup.Visible = false
+        end
 
-        ccaPresetgroup.OnHoverEnter = function()
+        ccaPresetgroup.OnExpand = function()
             local twoColTable = ccaPresetgroup:AddTable("CCAPresetsTable", 2)
             local row = twoColTable:AddRow()
             for _, ctype in ipairs(colorOrder) do
@@ -583,9 +608,7 @@ function VisualTab:DetermineOverrideCharacterParameters()
 
                 ::continue::
             end
-
-
-            ccaPresetgroup.OnHoverEnter = nil
+            ccaPresetgroup.OnExpand = nil
         end
     end
 
@@ -643,7 +666,7 @@ function VisualTab:DetermineOverrideCharacterParameters()
 end
 
 function VisualTab:RenderAttachmentEditors()
-    local entity = Ext.Entity.Get(self.guid) --[[@as EntityHandle]]
+    local entity = self:GetEntity(self.guid) --[[@as EntityHandle]]
     local visual = VisualHelpers.GetEntityVisual(self.guid)
 
     if not visual then return end
@@ -658,6 +681,7 @@ function VisualTab:RenderAttachmentEditors()
     for attIndex, attach in ipairs(attachments) do
         if #attach.Visual.ObjectDescs == 0 then goto continue end
         local vres = attach.Visual.VisualResource
+        if not vres then goto continue end
         local source = vres and vres.SourceFile or "Unknown Model"
         local gr2FileName = GetLastPath(source)
 
@@ -668,6 +692,7 @@ function VisualTab:RenderAttachmentEditors()
         end
 
         local attachNode = StyleHelpers.AddTree(self.attachmentsHeader, displayName .. "##" .. tostring(attIndex), false)
+        attachNode:AddTreeIcon(RB_ICONS.Box, IMAGESIZE.ROW).Tint = HexToRGBA("FFB98634")
         local gr2Text = attachNode:AddHint("Model: " .. gr2FileName)
         gr2Text:SetColor("Text", HexToRGBA("FF6D6D6D"))
         gr2Text.SameLine = true
@@ -683,6 +708,7 @@ function VisualTab:RenderAttachmentEditors()
             end
 
             local objNode = parentNode:AddTree(modelName .. "##" .. tostring(attIndex) .. "::" .. tostring(descIndex), false)
+            objNode:AddTreeIcon(RB_ICONS.Bounding_Box, IMAGESIZE.ROW).Tint = HexToRGBA("FF268B39")
 
             local matName = obj.Renderable.ActiveMaterial.Material.Name
             local function getliveMat()
@@ -716,7 +742,7 @@ function VisualTab:RenderAttachmentEditors()
                 materialTab:Render()
                 materialTab:UpdateUIState()
                 materialTab.Panel.Visible = false
-                materialTab.Panel.OnRightClick = function()
+                materialTab.ParentNode.OnRightClick = function()
                     self.SelectedMaterial = keyName
                     self.materialContextPopup:Open()
                 end
@@ -733,7 +759,7 @@ function VisualTab:RenderAttachmentEditors()
 end
 
 function VisualTab:RenderObjectSection()
-    if next(LightCToArray(Ext.Entity.Get(self.guid).Visual.Visual.ObjectDescs)) == nil then
+    if next(LightCToArray(self:GetEntity(self.guid).Visual.Visual.ObjectDescs)) == nil then
         return
     end
 
@@ -819,7 +845,7 @@ function VisualTab:RenderObjectEditor()
         materialNode.OnExpand = function()
             materialEditor:Render()
             materialEditor:UpdateUIState()
-            materialEditor.Panel.OnRightClick = function()
+            materialEditor.ParentNode.OnRightClick = function()
                 self.SelectedMaterial = keyName
                 self.materialContextPopup:Open()
             end
@@ -835,7 +861,7 @@ function VisualTab:RenderObjectEditor()
 end
 
 function VisualTab:RenderEffectSection()
-    local entity = Ext.Entity.Get(self.guid) --[[@as EntityHandle]]
+    local entity = self:GetEntity(self.guid) --[[@as EntityHandle]]
     if entity.Effect == nil then
         return
     end
@@ -862,14 +888,18 @@ function VisualTab:RenderEffectSection()
 end
 
 function VisualTab:RenderEffectEditor()
-    local entity = Ext.Entity.Get(self.guid) --[[@as EntityHandle]]
+    local entity = self:GetEntity(self.guid) --[[@as EntityHandle]]
     --self.effectRoot = self.effectHeader:AddTree(GetLoca("Effects"))
     if not entity.Effect or not entity.Effect.Timeline or not entity.Effect.Timeline.Components then
         return
     end
 
+    Ext.IO.SaveFile("effect_debug.json", Ext.DumpExport(entity.Effect))
+
     self:SetupEffectContextMenu()
     local effectNameCnt = {}
+
+    self:RenderEffectTimelineEditor()
 
     -- WHY is effect so disorderly
     for compIndex, component in ipairs(entity.Effect.Timeline.Components) do
@@ -901,6 +931,74 @@ function VisualTab:RenderEffectEditor()
             self:RenderParticleSystemComponent(newTree, component, compIndex, cnt)
         end
     end
+end
+
+function VisualTab:RenderEffectTimelineEditor()
+    local entity = self:GetEntity(self.guid) --[[@as EntityHandle]]
+    if not entity.Effect or not entity.Effect.Timeline then
+        return
+    end
+
+    local effectObj = entity.Effect
+    if not effectObj or not effectObj.Timeline then
+        return
+    end
+
+    local timeline = effectObj.Timeline
+
+    local timelineTree = StyleHelpers.AddTree(self.effectHeader, GetLoca("Timeline"), false)
+
+    local playPauseButton = timelineTree:AddButton(timeline.IsPaused and GetLoca("Paused") or GetLoca("Playing"))
+    playPauseButton.OnClick = function()
+        local entity = self:GetEntity(self.guid) --[[@as EntityHandle]]
+        if not entity.Effect or not entity.Effect.Timeline then
+            return
+        end
+        entity.Effect.Timeline.IsPaused = not entity.Effect.Timeline.IsPaused
+        playPauseButton.Label = entity.Effect.Timeline.IsPaused and GetLoca("Paused") or GetLoca("Playing")
+    end
+
+    local tab = timelineTree:AddTable("TimelineInfoTable", 2)
+    tab.ColumnDefs[1] = { WidthFixed = true }
+    tab.ColumnDefs[2] = { WidthStretch = true }
+    tab.BordersInnerV = true
+
+    local row = tab:AddRow()
+
+
+    --local phaseCnt = #entity.Effect.Timeline.Header.Phases or 0
+    --[[local phaseSlider = StyleHelpers.AddSliderWithStep(timelineTree, GetLoca("Set Phases"), timeline.PhaseIndex, 1, math.max(1, phaseCnt), 1, true)
+    phaseSlider.UserData.DisableRightClickSet = true
+    phaseSlider.OnChange = function()
+        local entity = self:GetEntity(self.guid)
+        if not entity.Effect or not entity.Effect.Timeline then
+            return
+        end
+        --entity.Effect.Timeline.PhaseIndex = phaseSlider.Value[1]
+        --entity.Effect.Timeline.JumpToPhase = phaseSlider.Value[1]
+    end
+
+    local timeSlider = StyleHelpers.AddSliderWithStep(timelineTree, GetLoca("Set Time"), timeline.TimePlayed, 0, timeline.Duration, 0.1, false)
+
+    timeSlider.UserData.DisableRightClickSet = true
+    timeSlider.OnChange = function()
+        local entity = self:GetEntity(self.guid)
+        if not entity.Effect or not entity.Effect.Timeline then
+            return
+        end
+        entity.Effect.Timeline.JumpToTime = timeSlider.Value[1]
+    end]]
+
+    row:AddCell():AddText(GetLoca("Playing Speed") .. ":")
+    local playSpeedSlider = StyleHelpers.AddSliderWithStep(row:AddCell(), GetLoca("Set Play Speed"), timeline.PlayingSpeed, 0.1, 5.0, 0.1, false)
+    playSpeedSlider.OnChange = function()
+        local entity = self:GetEntity(self.guid) --[[@as EntityHandle]]
+        if not entity.Effect or not entity.Effect.Timeline then
+            return
+        end
+        entity.Effect.Timeline.PlayingSpeed = playSpeedSlider.Value[1]
+    end
+
 end
 
 --- @class EffectComponentRenderInfo
@@ -1078,7 +1176,7 @@ function VisualTab:RenderEffectComponentSliders(panel, getComp, key, componentNa
         self.Effects[key] = self.Effects[key] or {}
         self.Effects[key][componentName] = nil
         if not next(self.Effects[key]) then
-            self.Effects[key] = nil
+                        self.Effects[key] = nil
         end
     end
 
@@ -1090,6 +1188,7 @@ function VisualTab:RenderEffectComponentSliders(panel, getComp, key, componentNa
         colorPicker = slidersCell:AddColorEdit("##ColorPicker_" .. key)
         colorPicker.NoAlpha = #initValue == 3
         colorPicker.AlphaBar = #initValue == 4
+        colorPicker.Color = {initValue[1], initValue[2], initValue[3], #initValue == 4 and initValue[4] or 1 }
 
         colorPicker.OnChange = function()
             local comp = getComp()
@@ -1323,7 +1422,7 @@ function VisualTab:SetupEffectContextMenu()
         if not selectedComp then return end
         local compType = selectedComp.TypeName
 
-        local entity = Ext.Entity.Get(self.guid) --[[@as EntityHandle]]
+        local entity = self:GetEntity(self.guid) --[[@as EntityHandle]]
         if not entity.Effect or not entity.Effect.Timeline or not entity.Effect.Timeline.Components then
             return
         end
@@ -1473,7 +1572,7 @@ function VisualTab:RenderLightEntity(node, component, compIndex)
 
     local key = "Light::" .. compIndex
     local function GetLiveLightEntity()
-        local entity = Ext.Entity.Get(self.guid)
+        local entity = self:GetEntity(self.guid)
         if not entity or not entity.Effect or not entity.Effect.Timeline or not entity.Effect.Timeline.Components[compIndex] or not entity.Effect.Timeline.Components[compIndex].LightEntity then
             return nil
         end
@@ -1687,7 +1786,7 @@ function VisualTab:RenderParticleSystemComponent(node, component, compIndex)
     local key = "ParticleSystem::" .. compIndex
     
     local function GetLiveParticleSystem()
-        local entity = Ext.Entity.Get(self.guid)
+        local entity = self:GetEntity(self.guid)
         if not entity or not entity.Effect or not entity.Effect.Timeline or not entity.Effect.Timeline.Components[compIndex] then
             return nil
         end
@@ -2108,7 +2207,7 @@ function VisualTab:Destroy()
 end
 
 function VisualTab:CheckVisual()
-    local entity = Ext.Entity.Get(self.guid)
+    local entity = self:GetEntity(self.guid)
     if not entity then
         Error("VisualTab:CheckVisual - Entity not found for GUID: " .. self.guid)
         return false

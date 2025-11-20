@@ -122,7 +122,6 @@ function MaterialEditor:ResetParameter(paramName)
     if not mat then return false end
 
     local value = self.ParamSetProxy:GetParameter(paramName)
-    local presetValue = nil
 
     if not value then
         Warning("MaterialEditor: Could not find parameter '" .. tostring(paramName) .. "' in material proxy for material '" .. tostring(self.Material) .. "'. Cannot reset.")
@@ -134,7 +133,7 @@ function MaterialEditor:ResetParameter(paramName)
 
     mat[funcName](mat, paramName, applyValue)
 
-    self.Parameters[#value][paramName] = presetValue and presetValue or nil
+    self.Parameters[#value][paramName] = nil
 
     return true
 end

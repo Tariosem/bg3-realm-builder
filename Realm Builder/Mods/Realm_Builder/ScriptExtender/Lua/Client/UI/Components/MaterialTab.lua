@@ -33,13 +33,14 @@ function MaterialTab:__init(parent, materialName, materialFunc, paramsSrc)
 end
 
 --- @param parent ExtuiTreeParent?
---- @return ExtuiSelectable
+--- @return RB_UI_Tree
 function MaterialTab:Render(parent)
     local sourceFileName = self.ParentNodeName
     parent = parent or self.Parent
-    local uuid = Uuid_v4()
-    local parentNode = StyleHelpers.AddTree(self.Parent, sourceFileName, false) --[[@as ExtuiSelectable ]]
+    local parentNode = StyleHelpers.AddTree(self.Parent, sourceFileName, false)
+    parentNode:AddTreeIcon(RB_ICONS.Mask, IMAGESIZE.ROW).Tint = HexToRGBA("FFAC3232")
     parentNode.AllowItemOverlap = true
+    self.ParentNode = parentNode
     self.Panel = parentNode.Panel
 
     parentNode.CanDrag = true
@@ -51,7 +52,7 @@ function MaterialTab:Render(parent)
     }
 
     parentNode.OnDragStart = function (sel)
-        parentNode.DragPreview:AddText(sourceFileName)
+        sel.DragPreview:AddText(sourceFileName)
     end
 
     parentNode.OnDragDrop = function (sel, drop)
@@ -96,6 +97,7 @@ function MaterialTab:Render(parent)
         local searchBox = typeNode:AddInputText("##" .. self.MaterialName .. propType)
         local paramsGroup = typeNode:AddGroup("AllPropertiesGroup##" .. self.MaterialName .. tostring(math.random()))
 
+        searchBox.IDContext = "MaterialParamSearchBox" .. self.MaterialName .. propType .. tostring(math.random())
         searchBox.Hint = "Search " .. propType .. "..."
         searchBox.OnChange = Debounce(50 ,function (sel)
             if sel.Text == "" then
@@ -167,6 +169,12 @@ function MaterialTab:Render(parent)
                         slider.Visible = not slider.Visible
                     end
                 end
+            end
+
+            propNode.OnRightClick = function(sel)
+                sel.Selected = false
+                sel.Highlight = false
+                self.Editor:ResetParameter(propertyName)
             end
 
             if paramgroup.Visible then
@@ -500,9 +508,8 @@ end
 
 function MaterialMixerTab:Render(parent)
     parent = parent or self.Parent
-    if self.parentNode then
-        self.parentNode:Destroy()
-        self.group:Destroy()
+    if self.ParentNode then
+        self.ParentNode:Destroy()
     end
 
     local parentNode = MaterialTab.Render(self, parent)
@@ -511,10 +518,9 @@ function MaterialMixerTab:Render(parent)
         MaterialProxy = self.ParametersSetProxy,
         Parameters = self.ParametersSetProxy.Parameters
     }
-
     parentNode.Label = "Material Mixer##" .. self.MaterialName
 
-    self.parentNode = parentNode
+    parentNode:SetOpen(true)
 
     local managePopup = parent:AddPopup("Manage##" .. self.MaterialName)
     self.ContextMenu = managePopup

@@ -12,9 +12,9 @@ function StatsTab:__init(uuid, parent, displayName, searchData, statsType)
     self.isStatus = statsType == "StatusData"
     self.isSpell = statsType == "SpellData"
 
-    self.cachedOpenCPs = {}
+    self.cachedExpandedTrees = {}
     self.effectTypeCells = {}
-    self.cachedCP = {}
+    self.cachedTrees = {}
     self.cachedTables = {}
     self.cachedCells = {}
 end
@@ -100,21 +100,9 @@ function StatsTab:RenderEffects()
     end
 
     self.effectTimelineWin = self.effectTimelineWin or self.effectsInfoTab:AddChildWindow("EffectsTimeline")
+    self.effectRoot = StyleHelpers.AddTree(self.effectTimelineWin, "Timeline", true)
 
-    local effectsTable = self.effectTimelineWin:AddTable("EffectTable", 1)
-
-    self.effectRow = effectsTable:AddRow()
-
-    local clickDestroy = function(t)
-        t:Destroy()
-    end
-
-    local warningCell = self.effectRow:AddCell()
-    warningCell = warningCell:AddImage(RB_ICONS.Warning) --[[@as ExtuiImageButton]]
-    warningCell.Tint = {1, 0.5, 0.5, 1}
-    warningCell.ImageData.Size = {32 * SCALE_FACTOR, 32 *SCALE_FACTOR}
-    warningCell.OnClick = clickDestroy
-    warningCell = warningCell:Tooltip()
+    local warningCell = self.effectRoot:Tooltip()
     warningCell:AddText("For each effect type, you can select only one MultiEffect, ")
     warningCell:AddText("or multiple single effects.")
     warningCell:AddText("Drag and drop effects from the browser")
@@ -158,61 +146,34 @@ function StatusTab:RenderEffects()
 end
 
 function StatsTab:RenderEffectType(effectType)
-    local cell = self.cachedCells[effectType] or self.effectRow:AddCell(effectType .. "Cell")
-    self.cachedCells[effectType] = cell
-    local collaspingHeader = self.cachedCP[effectType] or cell:AddCollapsingHeader(effectType .. "##" .. effectType)
-    self.cachedCP[effectType] = collaspingHeader
-    local childTable = self.cachedTables[effectType]
-    if childTable then
-        childTable:Destroy()
-        self.cachedTables[effectType] = nil
-    end
-    childTable = collaspingHeader:AddTable(effectType .. "Table", 1)
-    self.cachedTables[effectType] = childTable
-    local effectRow = childTable:AddRow()
-    local childCell = effectRow:AddCell(effectType .. "ChildCell")
+    local effectTypeTree = self.cachedTrees[effectType] or self.effectRoot:AddTree(effectType .. "##" .. effectType)
+    self.cachedTrees[effectType] = effectTypeTree
+    effectTypeTree:DestroyChildren()
 
-    --local titleSeparator = cell:AddSeparatorText(effectType)
-    if not self.cachedOpenCPs[effectType] then
-        self.cachedOpenCPs[effectType] = {}
+    effectTypeTree.OnRightClick = function ()
+        self.selectedEffectData = nil
+        self.selectedEffectType = effectType
+        self:OpenEffectContextMenu()
+    end
+
+    if not self.cachedExpandedTrees[effectType] then
+        self.cachedExpandedTrees[effectType] = {}
     end
 
     local effectTypeData = self.searchData.fxNames[effectType]
     local effectGroupType = self.searchData.fxGroupType[effectType]
 
     if effectGroupType == "MultiEffect" then
-        self:RenderMultiEffectType(childCell, effectType, effectTypeData)
+        self:RenderMultiEffectType(effectTypeTree, effectType, effectTypeData)
     else
-        self:RenderSingleEffectType(childCell, effectType, effectTypeData)
+        self:RenderSingleEffectType(effectTypeTree, effectType, effectTypeData)
     end
 
 end
 
-function StatsTab:RenderSingleEffectType(cell, effectType)
-    local parent = cell
-    local effectGroupTable = parent:AddTable(effectType .. "effectsGroup", 1)
-    local effectGroupRow = effectGroupTable:AddRow()
+--- @param parent RB_UI_Tree
+function StatsTab:RenderSingleEffectType(parent, effectType)
     local effectTypeData = self.searchData.fxNames[effectType] or {}
-
-    if next(effectTypeData) then
-        local theFirstCell = effectGroupRow:AddCell()
-        local clearAllButton = theFirstCell:AddButton(GetLoca("ClearAll"))
-
-        ApplyDangerButtonStyle(clearAllButton)
-        clearAllButton.OnClick = function()
-            ConfirmPopup:DangerConfirm(
-                GetLoca("Are you sure you want to clear all effects of this type?"), 
-                function()
-                    self.searchData.fxNames[effectType] = {}
-                    self.searchData.fxGroupType[effectType] = nil
-                    self:RenderEffectType(effectType)
-                    self:OnChange()
-                end
-            )
-        end
-
-        theFirstCell:AddSeparator()
-    end
 
     local sortedNames = {}
     for name,_ in pairs(effectTypeData) do
@@ -224,61 +185,61 @@ function StatsTab:RenderSingleEffectType(cell, effectType)
 
     for _, name in ipairs(sortedNames) do
         local data = effectTypeData[name]
-        local effectCell = effectGroupRow:AddCell()
-        local effectButton = effectCell:AddImageButton(name, data.Icon)
-        effectButton.DragDropType = "EffectInfo"
-        effectButton.UserData = data
-        effectButton.Image.Size = {64 * SCALE_FACTOR, 64 * SCALE_FACTOR}
-        effectButton.CanDrag = true
-        effectButton.OnDragDrop = function(button, drop)
+        local effectTree = parent:AddTree(name)
+        local effectIcon = effectTree:AddTreeIcon(data.Icon, IMAGESIZE.ROW)
+        effectTree.DragDropType = "EffectInfo"
+        effectTree.UserData = data
+        effectTree.CanDrag = true
+
+        effectTree.OnRightClick = function ()
+            self.selectedEffectData = data
+            self.selectedEffectType = effectType
+            self:OpenEffectContextMenu()
+        end
+
+        effectTree.OnDragDrop = function(button, drop)
             self:ProcessDropData(effectType, drop.UserData, data)
         end
 
-        effectButton.OnDragStart = function(button)
-            effectButton.DragPreview:AddImage(data.Icon)
+        effectTree.OnDragStart = function(button)
+            effectTree.DragPreview:AddImage(data.Icon)
         end
 
-        local effectHeader = effectCell:AddTree(name)
-        effectHeader.SpanTextWidth = true
-
-        if self.cachedOpenCPs[effectType][name] then
-            effectHeader:SetOpen(true)
+        if self.cachedExpandedTrees[effectType][name] then
+            effectTree:SetOpen(true)
         end
 
-        effectHeader.OnExpand = function()
-            self.cachedOpenCPs[effectType][name] = true
+        effectTree.OnExpand = function()
+            self.cachedExpandedTrees[effectType][name] = true
         end
 
-        effectHeader.OnCollapse = function()
-            self.cachedOpenCPs[effectType][name] = false
+        effectTree.OnCollapse = function()
+            self.cachedExpandedTrees[effectType][name] = false
         end
 
-        effectHeader.IDContext = "EffectHeader_" .. name
-        effectHeader.SameLine = true
+        effectTree.IDContext = "EffectHeader_" .. name
+        effectTree.SameLine = true
 
-        local displayNameInputPrefix = effectHeader:AddButton(GetLoca("DisplayName") .. ":")
-        local displayNameInput = effectHeader:AddInputText("", data.DisplayName or "")
+        local attrTable = StyleHelpers.AddAlignedTable(effectTree)
+        local displayNameInput = attrTable:AddInputText(GetLoca("DisplayName"), data.DisplayName or "")
         displayNameInput.SameLine = true
         displayNameInput.IDContext = "DisplayNameInput_" .. name
-
-        displayNameInputPrefix.OnClick = function()
+        displayNameInput.OnClick = function()
             local input = displayNameInput.Text
-            if input == "" or input == effectHeader.Label then
+            if input == "" or input == data.DisplayName then
                 return
             end
             local savedData = effectTypeData[name]
             local newName = self:GetUniqueNameInType(input, effectType, name)
             savedData.DisplayName = newName
             effectTypeData[newName] = savedData
-            effectHeader.Label = newName
-            self.cachedOpenCPs[effectType][name] = nil
-            self.cachedOpenCPs[effectType][newName] = true
+            self.cachedExpandedTrees[effectType][name] = nil
+            self.cachedExpandedTrees[effectType][newName] = true
             self:RenderEffectType(effectType)
             self:OnChange()
         end
 
-        local boneInputPrefix = effectHeader:AddText("Bone:")
-        local boneInput = effectHeader:AddInputText("", data.Bone or "")
+        local boneInput = attrTable:AddInputText(GetLoca("Bone"), data.Bone or "")
         boneInput.SameLine = true
         boneInput.IDContext = "BoneInput_" .. name
 
@@ -290,8 +251,6 @@ function StatsTab:RenderSingleEffectType(cell, effectType)
                 effectTypeData[name].Bone = input
             end
         end
-
-        
         boneInput.OnRightClick = function()
             if boneInput.Text and boneInput.Text ~= "" then
                 local bestMatch = ParseBoneList(boneInput.Text)
@@ -301,8 +260,7 @@ function StatsTab:RenderSingleEffectType(cell, effectType)
             self:OnChange()
         end
 
-        local removeButton = effectCell:AddButton(GetLoca("Remove"))
-        removeButton.SameLine = true
+        local removeButton = effectTree:AddButton(GetLoca("Remove"))
 
         ApplyDangerButtonStyle(removeButton)
         removeButton.OnClick = function()
@@ -315,25 +273,20 @@ function StatsTab:RenderSingleEffectType(cell, effectType)
                 end
             )
         end
-        effectCell:AddSeparator()
     end
 
-    self:RenderEmptyIcon(effectGroupRow, effectType)
+    self:RenderEmptyIcon(parent, effectType)
 end
 
-function StatsTab:RenderMultiEffectType(cell, effectType)
-    local parent = cell
-    local effectGroupTable = parent:AddTable(effectType .. "effectsGroup", 1)
-    local effectGroupRow = effectGroupTable:AddRow()
+--- @param parent RB_UI_Tree
+function StatsTab:RenderMultiEffectType(parent, effectType)
     local effectTypeData = self.searchData.fxNames[effectType]
 
     for name, data in pairs(effectTypeData) do
-        local effectCell = effectGroupRow:AddCell()
-        local effectButton = effectCell:AddImageButton(name .. "EffectInfoIcon", data.Icon)
-        effectButton.Image.Size = {64 * SCALE_FACTOR, 64 * SCALE_FACTOR}
+        local effectTree = parent:AddTree(name .. "## " .. effectType .. name)
+        local effectButton = effectTree:AddTreeIcon(data.Icon, IMAGESIZE.ROW)
         effectButton.DragDropType = "EffectInfo"
         effectButton.UserData = data
-        effectButton.Image.Size = {64 * SCALE_FACTOR, 64 * SCALE_FACTOR}
         effectButton.CanDrag = true
         effectButton.OnDragDrop = function(button, drop)
             self:ProcessDropData(effectType, drop.UserData, data)
@@ -341,82 +294,63 @@ function StatsTab:RenderMultiEffectType(cell, effectType)
         effectButton.OnDragStart = function(button)
             effectButton.DragPreview:AddImage(data.Icon)
         end
+        effectTree.IDContext = "EffectHeader_" .. name
 
-        local effectHeader = effectCell:AddTree(name)
-        effectHeader.SpanTextWidth = true
-        effectHeader.IDContext = "EffectHeader_" .. name
-        effectHeader.SameLine = true
-
-        if self.cachedOpenCPs[effectType][name] then
-            effectHeader:SetOpen(true)
+        if self.cachedExpandedTrees[effectType][name] then
+            effectTree:SetOpen(true)
         end
 
-        effectHeader.OnExpand = function()
-            self.cachedOpenCPs[effectType][name] = true
+        effectTree.OnExpand = function()
+            self.cachedExpandedTrees[effectType][name] = true
         end
 
-        effectHeader.OnCollapse = function()
-            self.cachedOpenCPs[effectType][name] = false
+        effectTree.OnCollapse = function()
+            self.cachedExpandedTrees[effectType][name] = false
         end
 
-        local displayNameInputPrefix = effectHeader:AddButton(GetLoca("DisplayName") .. ":")
-        local displayNameInput = effectHeader:AddInputText("", data.DisplayName or "")
+        local attrTable = StyleHelpers.AddAlignedTable(effectTree)
+
+        local displayNameInput = attrTable:AddInputText(GetLoca("DisplayName"), data.DisplayName or "")
         displayNameInput.SameLine = true
         displayNameInput.IDContext = "DisplayNameInput_" .. name
 
-        displayNameInputPrefix.OnClick = function()
+        displayNameInput.OnClick = function()
             local input = displayNameInput.Text
-            if input == "" or input == effectHeader.Label then
+            if input == "" or input == data.DisplayName then
                 return
             end
             local savedData = effectTypeData[name]
             local newName = self:GetUniqueNameInType(input, effectType, name)
             savedData.DisplayName = newName
             effectTypeData[newName] = savedData
-            effectCell:Destroy()
-            self.cachedOpenCPs[effectType][name] = nil
-            self.cachedOpenCPs[effectType][newName] = true
+            self.cachedExpandedTrees[effectType][name] = nil
+            self.cachedExpandedTrees[effectType][newName] = true
             self:RenderEffectType(effectType)
             self:OnChange()
-        end
-
-        local removeButton = effectCell:AddButton(GetLoca("Remove"))
-        removeButton.SameLine = true
-
-        ApplyDangerButtonStyle(removeButton)
-        removeButton.OnClick = function()
-            ConfirmPopup:DangerConfirm(
-                GetLoca("Are you sure you want to remove this effect?"), 
-                function()
-                    effectTypeData[name] = nil
-                    self:RenderEffectType(effectType)
-                    self:OnChange()
-                end
-            )
         end
         --return
     end
 
     if not effectTypeData or next(effectTypeData) == nil then
-        self:RenderEmptyIcon(effectGroupRow, effectType)
+        self:RenderEmptyIcon(parent, effectType)
     end
 end
 
-function StatsTab:RenderControlPanel()
-    self.playButton = self.effectsInfoTab:AddButton(GetLoca("Play"))
+function StatsTab:RenderControlPanel(parent)
+    self.playButton = parent:AddButton(GetLoca("Play"))
 
     self.playButton.OnClick = function()
         self:Play()
     end
 end
 
-function StatusTab:RenderControlPanel()
-    StatsTab.RenderControlPanel(self)
+function StatusTab:RenderControlPanel(parent)
+    StatsTab.RenderControlPanel(self, parent)
 
-    local durationSlider = self.effectsInfoTab:AddSlider(GetLoca("Duration"), self.searchData.Duration or 10, 10, 60000)
+    local durationSlider = parent:AddSlider(GetLoca("Duration"), self.searchData.Duration or 10, 10, 60000)
     durationSlider.SameLine = true
     durationSlider:Tooltip():AddText("Enter -1 for infinite duration.")
-    local stopButton = self.effectsInfoTab:AddButton(GetLoca("Stop"))
+    local stopButton = parent:AddButton(GetLoca("Stop"))
 
     durationSlider.OnChange = function(slider)
         self.searchData.Duration = slider.Value[1]
@@ -428,18 +362,18 @@ function StatusTab:RenderControlPanel()
 
 end
 
-function SpellTab:RenderControlPanel()
-    StatsTab.RenderControlPanel(self)
+function SpellTab:RenderControlPanel(parent)
+    StatsTab.RenderControlPanel(self, parent)
 
-    local playAtPositionCheckbox = self.effectsInfoTab:AddCheckbox(GetLoca("Play at Position"), self.spellAtPos)
+    local playAtPositionCheckbox = parent:AddCheckbox(GetLoca("Play at Position"), self.spellAtPos)
     playAtPositionCheckbox.SameLine = true
     playAtPositionCheckbox.OnChange = function(checkbox)
         self.spellAtPos = checkbox.Checked
     end
 
-    local animationInput = self.effectsInfoTab:AddInputText(GetLoca("Animation"), self.searchData.SpellAnimation or GetLoca("Drop here"))
-    local weaponTypeInput = self.effectsInfoTab:AddInputText(GetLoca("Weapon Type"), self.searchData.WeaponTypes or "")
-    local sheathInput = self.effectsInfoTab:AddCombo(GetLoca("Sheath"))
+    local animationInput = parent:AddInputText(GetLoca("Animation"), self.searchData.SpellAnimation or GetLoca("Drop here"))
+    local weaponTypeInput = parent:AddInputText(GetLoca("Weapon Type"), self.searchData.WeaponTypes or "")
+    local sheathInput = parent:AddCombo(GetLoca("Sheath"))
     sheathInput.Options = {"Melee", "Ranged", "Instrument", "Sheathed", "WeaponSet", "Somatic", "DontChange"}
     animationInput.DragDropType = "EffectInfo"
     animationInput.OnDragDrop = function(input, drop)
@@ -466,23 +400,17 @@ function SpellTab:RenderControlPanel()
         self.searchData.Sheathing = GetCombo(input)
     end
 
-    local areaRadiusSlider = StyleHelpers.AddSliderWithStep(self.effectsInfoTab, "AreaRadius", self.searchData.AreaRadius or 9, 1, 100, 1, true)
+    local areaRadiusSlider = StyleHelpers.AddSliderWithStep(parent, "AreaRadius", self.searchData.AreaRadius or 9, 1, 100, 1, true)
     areaRadiusSlider.OnChange = function(slider)
         self.searchData.AreaRadius = slider.Value[1]
     end
-    self.effectsInfoTab:AddText(GetLoca("Hit Radius")).SameLine = true
+    parent:AddText(GetLoca("Hit Radius")).SameLine = true
 
-    local targetRadiusSlider = StyleHelpers.AddSliderWithStep(self.effectsInfoTab, "TargetRadius", self.searchData.TargetRadius or 18, 1, 100, 1, true)
+    local targetRadiusSlider = StyleHelpers.AddSliderWithStep(parent, "TargetRadius", self.searchData.TargetRadius or 18, 1, 100, 1, true)
     targetRadiusSlider.OnChange = function(slider)
         self.searchData.TargetRadius = slider.Value[1]
     end
-    self.effectsInfoTab:AddText(GetLoca("Target Radius")).SameLine = true
-
-    --[[local fxScaleSlider = AddSliderWithStep(self.effectsInfoTab, "FXScale", self.searchData.FXScale or 1, 1, 10, 1, true)
-    fxScaleSlider.OnChange = function(slider)
-        self.searchData.FXScale = slider.Value[1]
-    end
-    self.effectsInfoTab:AddText(GetLoca("FX Scale")).SameLine = true]]
+    parent:AddText(GetLoca("Target Radius")).SameLine = true
 end
 
 function StatusTab:_stopStatus()
@@ -497,11 +425,67 @@ function StatusTab:_stopAllStatus()
     NetChannel.StopStatus:SendToServer({ DisplayName = self.displayName })
 end
 
-function StatsTab:RenderEmptyIcon(row, effectType)
-    local emptyCell = row:AddCell()
+function StatsTab:SetupEffectContextMenu()
+    local parent = self.effectTimelineWin:AddPopup("EffectContextMenu")
+    self.contextMenu = parent
+    local contextMenu = StyleHelpers.AddContextMenu(parent, "Effect")
 
-    local emptyIcon = emptyCell:AddImageButton("EmptyIcon", RB_ICONS.Plus_Square)
-    emptyIcon.Image.Size = {64 * SCALE_FACTOR, 64 * SCALE_FACTOR}
+    --- @type RB_ContextItem[]
+    local contextItems = {
+        {
+            Label = GetLoca("Remove"),
+            OnClick = function()
+                local effectType = self.selectedEffectType
+
+                if not self.selectedEffectData then
+                    ConfirmPopup:DangerConfirm(
+                        GetLoca("Remove this effect?"), 
+                        function()
+                            self.searchData.fxNames[effectType][self.selectedEffectData.DisplayName] = nil
+                            self:RenderEffectType(effectType)
+                            self:OnChange()
+                            self.selectedEffectData = nil
+                        end
+                    )
+                else
+                    ConfirmPopup:DangerConfirm(
+                        GetLoca("Clear all?"),
+                        function()
+                            self.searchData.fxNames[effectType] = {}
+                            self.searchData.fxGroupType[effectType] = nil
+                            self:RenderEffectType(effectType)
+                            self:OnChange()
+                            self.selectedEffectData = nil
+                        end
+                    )
+                end
+            end,
+            Danger = true,
+            Hint = "Del",
+            HotKey = {
+                Key = "DELETE"
+            }
+        }
+    }
+
+    contextMenu:AddItems(contextItems)
+
+    return contextMenu
+end
+
+function StatsTab:OpenEffectContextMenu()
+    if not self.contextMenu then
+        self:SetupEffectContextMenu()
+    end
+    if self.contextMenu then
+        self.contextMenu:Open()
+    end
+end
+
+function StatsTab:RenderEmptyIcon(parent, effectType)
+    local emptyIcon = parent:AddImageButton("EmptyIcon", RB_ICONS.Plus_Circle_Fill, IMAGESIZE.ROW)
+    StyleHelpers.SetupImageButton(emptyIcon)
+    emptyIcon.IDContext = "EmptyIcon_" .. effectType
 
     emptyIcon.DragDropType = "EffectInfo"
 
@@ -510,7 +494,7 @@ function StatsTab:RenderEmptyIcon(row, effectType)
         self:ProcessDropData(effectType, drop.UserData)
     end
 
-    local emptyInput = emptyCell:AddInputText("")
+    local emptyInput = parent:AddInputText("")
     emptyInput.SameLine = true
     emptyInput.IDContext = "EmptyInput_" .. effectType
 

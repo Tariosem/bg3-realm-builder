@@ -157,7 +157,7 @@ function GizmoVisualizer:Visualize3DCursor(guid, factor)
     local baseScale = (clampedDistance / 10.0)
     local scaleVec = Vec3.new({baseScale * factor, baseScale * factor, baseScale * factor})
 
-    local color = Vec4.new(self.AxisLineColor["X"]) - Vec4.new(0, 0, 0, 0.8)
+    local color = Vec4.new(self.AxisLineColor["X"])
     for _,obj in ipairs(objs) do
         obj.Renderable:SetWorldScale(scaleVec)
         obj.Renderable.ActiveMaterial.Material:SetVector4("Color", color)

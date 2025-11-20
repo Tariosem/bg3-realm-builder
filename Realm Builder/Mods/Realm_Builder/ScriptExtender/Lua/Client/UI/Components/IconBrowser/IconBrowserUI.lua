@@ -44,7 +44,7 @@ function IconBrowser:__init(dataManager, DisplayName)
 
     self.selectedGuid = nil
 
-    self.autoSave = not (config and config.autoSave == false)
+    self.AutoSave = not (config and config.AutoSave == false)
 
     self.updateTagsFn = {}
     self.isValid = true
@@ -130,7 +130,7 @@ function IconBrowser:RenderFileMenu()
     self.editMenu:Tooltip():AddText(GetLoca("Save custom tags, groups, and notes."))
     self.fileSave = self.editMenu:AddItem(GetLoca("Save"))
     self.fileLoad = self.editMenu:AddItem(GetLoca("Load"))
-    self.fileAutoSave = self.editMenu:AddItem("Auto Save" .. (self.autoSave and " (On)" or " (Off)"))
+    self.fileAutoSave = self.editMenu:AddItem("Auto Save" .. (self.AutoSave and " (On)" or " (Off)"))
 
     self.fileSave.OnClick = function()
         self:SaveChanges()
@@ -140,14 +140,14 @@ function IconBrowser:RenderFileMenu()
         self:LoadChanges()
     end
 
-    SetAlphaByBool(self.fileAutoSave, self.autoSave)
+    SetAlphaByBool(self.fileAutoSave, self.AutoSave)
 
     self.fileAutoSave.OnClick = function()
-        self.autoSave = not self.autoSave
-        SetAlphaByBool(self.fileAutoSave, self.autoSave)
+        self.AutoSave = not self.AutoSave
+        SetAlphaByBool(self.fileAutoSave, self.AutoSave)
         local config = self.GetConfig and self:GetConfig() or {}
-        config.autoSave = self.autoSave
-        self.fileAutoSave.Label = GetLoca("Auto Save") .. (self.autoSave and " (On)" or " (Off)")
+        config.autoSave = self.AutoSave
+        self.fileAutoSave.Label = GetLoca("Auto Save") .. (self.AutoSave and " (On)" or " (Off)")
         self:SaveToConfig()
     end
 end
@@ -562,7 +562,7 @@ function IconBrowser:RenderIcons()
     end
 
     self.pageInput.OnChange = function(text)
-        local page = tonumber(text.Text)
+        local page = tonumber(text.Value[1])
         if page and page >= 1 and page <= self.allPages then
             self:SetPage(page)
         elseif page and page < 1 then
@@ -575,7 +575,7 @@ function IconBrowser:RenderIcons()
     end
 
     self.pageInput.OnRightClick = function(text)
-        text.Text = tostring(self.currentPage):gsub("%.0+$", "")
+        text.Value = ToVec4Int(self.currentPage)
     end
 
     self.previousButton.OnClick = function()
@@ -757,7 +757,7 @@ function IconBrowser:RenderCustomizationTab(popup, entry)
     noteInput.Text = custom.Note or ""
 
     local function autoSaveChanges()
-        if self.autoSave then
+        if self.AutoSave then
             self:SaveChanges()
         end
     end

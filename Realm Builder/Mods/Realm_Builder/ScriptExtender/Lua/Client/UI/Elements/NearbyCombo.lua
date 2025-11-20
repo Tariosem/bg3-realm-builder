@@ -223,6 +223,7 @@ function NearbyCombo:RenderSelectionTable(parent)
     end
 
     sortButton.OnClick = function (sel)
+        sel.Selected = false
         self.SortFunc = self.SortFunc == defaultSortByName and defaultSortByDistance or defaultSortByName
         sel.Label = self.SortFunc == defaultSortByName and GetLoca("Sort by DisplayName") or GetLoca("Sort by Distance")
         self:UpdateOptions()

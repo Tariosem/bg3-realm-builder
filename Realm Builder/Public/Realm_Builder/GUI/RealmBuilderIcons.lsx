@@ -193,6 +193,34 @@
                     <attribute id="V1" type="float" value="0.37524414"/>
                     <attribute id="V2" type="float" value="0.49975586"/>
                 </node>
+                <node id="IconUV">
+                    <attribute id="MapKey" type="FixedString" value="RB_Bounding_Box_Icon"/>
+                    <attribute id="U1" type="float" value="0.37524414"/>
+                    <attribute id="U2" type="float" value="0.49975586"/>
+                    <attribute id="V1" type="float" value="0.37524414"/>
+                    <attribute id="V2" type="float" value="0.49975586"/>
+                </node>
+                <node id="IconUV">
+                    <attribute id="MapKey" type="FixedString" value="RB_Box_Icon"/>
+                    <attribute id="U1" type="float" value="0.50024414"/>
+                    <attribute id="U2" type="float" value="0.62475586"/>
+                    <attribute id="V1" type="float" value="0.37524414"/>
+                    <attribute id="V2" type="float" value="0.49975586"/>
+                </node>
+                <node id="IconUV">
+                    <attribute id="MapKey" type="FixedString" value="RB_Mask_Icon"/>
+                    <attribute id="U1" type="float" value="0.62524414"/>
+                    <attribute id="U2" type="float" value="0.74975586"/>
+                    <attribute id="V1" type="float" value="0.37524414"/>
+                    <attribute id="V2" type="float" value="0.49975586"/>
+                </node>
+                <node id="IconUV">
+                    <attribute id="MapKey" type="FixedString" value="RB_Plus_Circle_Icon_Fill"/>
+                    <attribute id="U1" type="float" value="0.75024414"/>
+                    <attribute id="U2" type="float" value="0.87475586"/>
+                    <attribute id="V1" type="float" value="0.37524414"/>
+                    <attribute id="V2" type="float" value="0.49975586"/>
+                </node>
             </children>
         </node>
     </region>

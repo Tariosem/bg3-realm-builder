@@ -123,9 +123,11 @@ function Notification:BuildContent()
         TraverseAllChildren(panel, function(child)
             local childOnClick = child.OnClick or function() end
             child.OnClick = function()
-                childOnClick()
+                childOnClick(child)
                 self:Dismiss()
-                child.OnClick = nil
+                child.OnClick = function(c)
+                    childOnClick(c)
+                end
             end
         end)       
     end

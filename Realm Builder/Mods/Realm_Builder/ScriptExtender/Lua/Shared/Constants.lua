@@ -72,6 +72,11 @@ RB_ICONS.Three_Dots = "RB_Three_Dots_Icon"
 RB_ICONS.Export = "RB_Export_Icon"
 RB_ICONS.Import = "RB_Import_Icon"
 
+RB_ICONS.Bounding_Box = "RB_Bounding_Box_Icon"
+RB_ICONS.Box = "RB_Box_Icon"
+RB_ICONS.Mask = "RB_Mask_Icon"
+RB_ICONS.Plus_Circle_Fill = "RB_Plus_Circle_Icon_Fill"
+
 --- vanilla resources
 WARNING_ICON = "PassiveFeature_Generic_Threat"
 LOCK_ICON = "Spell_Abjuration_ArcaneLock"
