@@ -28,6 +28,11 @@ function UpdateNearbyMap(pos, radius)
     end
     radius = radius or 18
 
+    if #pos ~= 3 then
+        Error("Failed To Get Host's Position")
+        return
+    end
+
     local entries = GetNearbyCharactersAndItems(pos, radius)
     if not entries or #entries == 0 then return end
 

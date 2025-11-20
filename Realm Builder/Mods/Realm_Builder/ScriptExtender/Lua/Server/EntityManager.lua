@@ -326,6 +326,9 @@ end
 function EntityManager:LoadFromModVar()
     local modVar = getModVar()
 
+    Debug("Loading from mod var")
+    _D(modVar)
+
     local existingEntities = {}
     for guid,_ in pairs(modVar.DeleteOnNextSession) do
         Osi.RequestDelete(guid)
@@ -348,6 +351,8 @@ function EntityManager:LoadFromModVar()
         ::continue::
     end
     NetChannel.Entities.Added:Broadcast({Entities = self:GetEntities(existingEntities)})
+
+    setModVar(modVar)
 end
 
 function EntityManager:ScanForEntities()
@@ -362,7 +367,6 @@ function EntityManager:ScanForEntities()
     end
 end
 
--- Delete
 function EntityManager:DeleteAll()
     for guid, _ in pairs(self.SavedEntities) do
         self:DeleteEntities(guid)
@@ -464,5 +468,4 @@ function EntityManager:BF_DeleteAll()
     end
 
     NetChannel.Entities.Deleted:Broadcast(broadcastData)
-    --Info("All props deleted")
 end

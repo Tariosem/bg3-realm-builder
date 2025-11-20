@@ -911,6 +911,9 @@ function OutlinerMenu:SetupCollectionSelectablePopup(openKey)
         end
 
         local copy = EntityStore:GetExportCopy(guids)
+        if not next(copy) then
+            return
+        end
         TemplateExportMenu.new(copy)
     end
 

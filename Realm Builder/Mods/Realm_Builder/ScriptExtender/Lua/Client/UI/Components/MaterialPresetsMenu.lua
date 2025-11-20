@@ -248,7 +248,7 @@ function MaterialPresetsMenu:SetupWorkspace(parent, ccaModPack, notRenderImport)
             ApplyWarningButtonStyle(exportBtn)
         else
             ApplyOkTooltipStyle(exportTooltip)
-            exportTT.Label = "Click: Export material presets to Realm_Builder/CC_Mods/\nRight Click: Save to CC Cache for Importing Later"
+            exportTT.Label = "Click: Export material presets to Realm_Builder/CC_Mods/\nRight Click: Save Cache for Importing Later"
             ApplyOkButtonStyle(exportBtn)
         end
     end
@@ -320,8 +320,8 @@ function MaterialPresetsMenu:RenderFolderPanel(presetTab, presetHeaders, exportS
 
         newFolderRow = presetTab:AddRow()
         local newFolderCell = newFolderRow:AddCell()
-        local createFolderBtn = newFolderCell:AddButton("+ New Folder##CreateMaterialPresetFolderBtn")
-
+        local createFolderBtn = newFolderCell:AddImageButton("##CreateMaterialPresetFolderBtn", RB_ICONS.Plus_Square, IMAGESIZE.ROW)
+        StyleHelpers.SetupImageButton(createFolderBtn)
         createFolderBtn.OnClick = function()
             local folderName = "merged"
             local suffix = 1
@@ -519,7 +519,7 @@ function MaterialPresetsMenu:RenderImportSection(parent, exportSettings, onImpor
             self:SaveModCacheRef()
 
             refreshCached()
-            Warning("Failed to import CCA mod pack for mod " .. modName .. " version " .. version)
+            Warning("Failed to import CC mod pack for mod " .. modName .. " version " .. version)
             return
         end
 
@@ -532,7 +532,7 @@ function MaterialPresetsMenu:RenderImportSection(parent, exportSettings, onImpor
         exportSettings.Folders = DeepCopy(ccaModPack.Folders or {})
         exportSettings.FolderDefinitions = DeepCopy(ccaModPack.FolderDefinitions or {})
 
-        Debug("MaterialPresetsMenu: Imported CCA mod pack for mod " .. modName .. " version " .. version)
+        Debug("MaterialPresetsMenu: Imported CC mod pack for mod " .. modName .. " version " .. version)
         onImportComplete()
     end
 
@@ -611,7 +611,7 @@ function MaterialPresetsMenu:RenderImportSection(parent, exportSettings, onImpor
                 self.cachedMods[modName].Cache[version] = nil
                 self:SaveModCacheRef()
                 refreshCached()
-                Warning("Failed to import CCA mod pack for mod " .. modName .. " version " .. version)
+                Warning("Failed to import CC mod pack for mod " .. modName .. " version " .. version)
                 return
             end
             ccaModPack = DeepCopy(ccaModPack)
@@ -1012,14 +1012,14 @@ function MaterialPresetsMenu:ImportFromFile(modName, version)
     local jsonStr = Ext.IO.LoadFile(filePath)
 
     if not jsonStr then
-        Warning("ImportFromFile: Failed to load CCA mod cache file at " .. filePath)
+        Warning("ImportFromFile: Failed to load CC mod cache file at " .. filePath)
         return nil
     end
 
     local cacheFile = Ext.Json.Parse(jsonStr) --- @type CCMod_Pack
 
     if not cacheFile or not cacheFile.MaterialPresets then
-        Warning("ImportFromFile: Invalid CCA mod cache file at " .. filePath)
+        Warning("ImportFromFile: Invalid CC mod cache file at " .. filePath)
         return nil
     end
 

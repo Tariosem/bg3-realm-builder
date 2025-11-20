@@ -74,7 +74,6 @@ end
 function VisualTab:__init(guid, displayName, parent, templateName)
     self.guid = guid or ""
     self.templateName = templateName or "Unknown"
-    self.keys = {}
 
     self.parent = parent or nil
     self.isAttach = true
@@ -184,21 +183,19 @@ function VisualTab:Render(retryCnt)
         return
     end
 
+    local topTable = self.panel:AddTable("VisualTop", 2)
 
-    self.keys = {}
+    topTable.ColumnDefs[1] = { WidthStretch = true }
+    topTable.ColumnDefs[2] = { WidthStretch = false, WidthFixed = true }
 
-    self.topTable = self.panel:AddTable("VisualTop", 2)
+    local topRow = topTable:AddRow("VisualTopRow")
 
-    self.topTable.ColumnDefs[1] = { WidthStretch = true }
-    self.topTable.ColumnDefs[2] = { WidthStretch = false, WidthFixed = true }
+    local leftCell = topRow:AddCell()
+    local rightCell = topRow:AddCell()
 
-    self.topRow = self.topTable:AddRow("VisualTopRow")
+    self:RenderPresetsCell(leftCell)
 
-    self.topLeftCell = self.topRow:AddCell()
-    self.topRightCell = self.topRow:AddCell()
-
-    self:RenderPresetsCell()
-    self:RenderUtilsCell()
+    self:RenderUtilsCell(rightCell)
 
     self:RenderMaterialContextPopup()
 
@@ -283,28 +280,28 @@ function VisualTab:RenderMaterialContextPopup()
     end)
 end
 
-function VisualTab:RenderPresetsCell()
+function VisualTab:RenderPresetsCell(parent)
     if self:GetEntity(self.guid) and not self.isAttach then
         local icon = GetIcon(self.guid) or "Item_Unknown"
-        self.symbol = self.topLeftCell:AddImage(icon)
+        self.symbol = parent:AddImage(icon)
         self.symbol.ImageData.Size = { 64 * SCALE_FACTOR, 64 * SCALE_FACTOR }
         if EntityStore[self.guid] and EntityStore[self.guid].IconTintColor then
             self.symbol.Tint = EntityStore[self.guid].IconTintColor
         end
-        self.displayNameText = self.topLeftCell:AddText(self.displayName)
+        self.displayNameText = parent:AddText(self.displayName)
         self.displayNameText.SameLine = true
     end
 
-    self.saveInput = self.topLeftCell:AddInputText("")
-    self.saveButton = self.topLeftCell:AddButton(GetLoca("Save"))
+    self.saveInput = parent:AddInputText("")
+    self.saveButton = parent:AddButton(GetLoca("Save"))
 
     self.saveButton.SameLine = true
 
     self.saveInput.IDContext = "PresetSave"
 
-    self.loadCombo = self.topLeftCell:AddCombo("")
-    self.loadButton = self.topLeftCell:AddButton(GetLoca("Load"))
-    local removeButton = self.topLeftCell:AddButton(GetLoca("Remove"))
+    self.loadCombo = parent:AddCombo("")
+    self.loadButton = parent:AddButton(GetLoca("Load"))
+    local removeButton = parent:AddButton(GetLoca("Remove"))
 
     self.loadButton.SameLine = true
     removeButton.SameLine = true
@@ -383,16 +380,16 @@ function VisualTab:RenderPresetsCell()
             end)
     end
 
-    local resetAllButton = self.topLeftCell:AddButton(GetLoca("Reset All"))
+    local resetAllButton = parent:AddButton(GetLoca("Reset All"))
 
-    local reapplyBtn = self.topLeftCell:AddButton(GetLoca("Reapply Changes"))
+    local reapplyBtn = parent:AddButton(GetLoca("Reapply Changes"))
 
     reapplyBtn.SameLine = true
     reapplyBtn.OnClick = function()
         self:ReapplyCurrentChanges()
     end
 
-    local warningImage = self.topLeftCell:AddImage(RB_ICONS.Warning) --[[@as ExtuiImageButton]]
+    local warningImage = parent:AddImage(RB_ICONS.Warning) --[[@as ExtuiImageButton]]
     warningImage.Tint = { 1, 0.5, 0.5, 1 }
     warningImage.ImageData.Size = { 32 * SCALE_FACTOR, 32 * SCALE_FACTOR }
     warningImage.SameLine = true
@@ -404,7 +401,6 @@ function VisualTab:RenderPresetsCell()
 
     resetAllButton.OnClick = function(_, notResetOnServer)
         Timer:Ticks(10, function()
-            local entity = self:GetEntity(self.guid) --[[@as EntityHandle]]
             local isChara = CIsCharacter(self.guid)
 
             for key, matTab in pairs(self.Materials) do
@@ -441,9 +437,9 @@ function VisualTab:RenderPresetsCell()
     --#endregion Left Cell Content
 end
 
-function VisualTab:RenderUtilsCell()
-    local detachCell = AddRightAlignCell(self.topRightCell)
-    local loadCell = self.topRightCell
+function VisualTab:RenderUtilsCell(parent)
+    local detachCell = AddRightAlignCell(parent)
+    local loadCell = parent
 
     local detachButton = detachCell:AddButton(GetLoca("Detach"))
 
@@ -932,7 +928,7 @@ function VisualTab:RenderEffectEditor()
             local cnt = effectNameCnt[component.TypeName]
             local nodeName = GetLoca("Light") .. (cnt ~= 1 and " (" .. cnt .. ")" or "")
             newTree = StyleHelpers.AddTree(self.effectHeader, nodeName, false)
-            newTree.Panel.OnRightClick = function()
+            newTree.OnRightClick = function()
                 self.SelectedEffectComponent = "Light::" .. tostring(compIndex)
                 self.effectContextPopup:Open()
             end
@@ -946,7 +942,7 @@ function VisualTab:RenderEffectEditor()
             local cnt = effectNameCnt[component.TypeName]
             local nodeName = GetLoca("Particle System") .. (cnt ~= 1 and " (" .. cnt .. ")" or "")
             newTree = StyleHelpers.AddTree(self.effectHeader, nodeName, false)
-            newTree.Panel.OnRightClick = function()
+            newTree.OnRightClick = function()
                 self.SelectedEffectComponent = "ParticleSystem::" .. tostring(compIndex)
                 self.effectContextPopup:Open()
             end
@@ -1078,8 +1074,8 @@ function VisualTab:RenderEffectComponentEditor(parent, key, getComp, renderInfo)
     local groupTrees = {
         Default = parent,
     }
-    self.resetFuncs[key] = {}
-    self.updateFuncs[key] = {}
+    self.resetFuncs[key] = self.resetFuncs[key] or {}
+    self.updateFuncs[key] = self.updateFuncs[key] or {}
     self.resetParams[key] = self.resetParams[key] or {}
     local seen = {}
     for _, propName in ipairs(renderOrder) do
@@ -1191,14 +1187,13 @@ function VisualTab:RenderEffectComponentSliders(panel, getComp, key, componentNa
 
         local applyValue = #initValue == 1 and initValue[1] or initValue
         local comp = getComp()
-
         if not comp then return end
 
         applyMethod(applyValue)
         self.Effects[key] = self.Effects[key] or {}
         self.Effects[key][componentName] = nil
         if not next(self.Effects[key]) then
-                        self.Effects[key] = nil
+            self.Effects[key] = nil
         end
     end
 
@@ -1757,9 +1752,6 @@ function VisualTab:RenderLightComponent(node, component, compIndex)
 
 
     local key = "Light::" .. compIndex
-    self.resetFuncs[key] = {}
-    self.updateFuncs[key] = {}
-    self.resetParams[key] = self.resetParams[key] or {}
     self:RenderEffectComponentEditor(compNode, key, function()
         return VisualHelpers.GetEffectComponent(self.guid, compIndex) --[[@as AspkLightComponent]]
     end, {
@@ -2203,13 +2195,6 @@ function VisualTab:Refresh(retryCnt)
 
     self:Collapsed()
     self:Render(retryCnt)
-end
-
-function VisualTab:CheckKey(key)
-    if self.keys[key] then
-        Warning("Duplicate key detected in VisualTab: " .. key)
-    end
-    self.keys[key] = true
 end
 
 function VisualTab:Destroy()

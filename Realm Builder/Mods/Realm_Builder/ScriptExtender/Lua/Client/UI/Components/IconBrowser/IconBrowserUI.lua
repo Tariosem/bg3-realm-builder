@@ -37,10 +37,10 @@ function IconBrowser:__init(dataManager, DisplayName)
     self.iconPC = config and config.IconPerColumn or 10
     self.iconPR = config and config.IconPerRow or 10
     self.cellsPadding = config and config.CellsPadding or { 10 * SCALE_FACTOR, 10 * SCALE_FACTOR }
-    self.browserWidth = self.iconPR * self.iconWidth + 20
-    self.browserHeight = self.iconPC * self.iconWidth + 20 + 240 * SCALE_FACTOR
+    self.browserWidth = self.iconPR * ( self.iconWidth + self.cellsPadding[1] ) + 20 * SCALE_FACTOR
+    self.browserHeight = self.iconPC * (self.iconWidth + self.cellsPadding[2]) + 280 * SCALE_FACTOR
     self.lastPosition = config.LastPosition or { screenWidth * 0.6, screenHeight * 0.15 }
-    self.lastSize = config.LastSize or { self.browserWidth * 1.5, self.browserHeight * 1.5 }
+    self.lastSize = config.LastSize or { self.browserWidth * 1.2, self.browserHeight * 1.2 }
 
     self.selectedGuid = nil
 

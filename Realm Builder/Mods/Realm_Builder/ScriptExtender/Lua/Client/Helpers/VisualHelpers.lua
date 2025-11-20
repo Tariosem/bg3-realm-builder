@@ -1,17 +1,17 @@
 VisualHelpers = VisualHelpers or {}
 
-local sceneryRegistry = {}
+local visualRegistry = {}
 
-function VisualHelpers.RegisterScenery(scenery)
-    sceneryRegistry[scenery.Scenery.Uuid] = scenery
+function VisualHelpers.RegisterVisual(scenery)
+    visualRegistry[scenery.Scenery.Uuid] = scenery
 end
 
 --- @param handle EntityHandle|GUIDSTRING
 --- @return Visual?
 function VisualHelpers.GetEntityVisual(handle)
     if type(handle) == "string" then
-        if sceneryRegistry[handle] then
-            return sceneryRegistry[handle].Visual.Visual
+        if visualRegistry[handle] then
+            return visualRegistry[handle].Visual.Visual
         end
 
         if CIsCharacter(handle) then

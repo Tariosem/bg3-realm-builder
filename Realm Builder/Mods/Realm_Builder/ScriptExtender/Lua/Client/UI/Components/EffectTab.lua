@@ -139,7 +139,7 @@ function EffectTab:RenderEffects()
     self.effectsInfos = {}
 
     for _, fxName in ipairs(FxNames) do
-        local data = GetDataFromUuid(fxName) --[[@as table]]
+        local data = RB_MultiEffectManager.Data[fxName]
         local effectTree = self.effectsRoot:AddTree(data.DisplayName or fxName)
         local effectIcon = effectTree:AddTreeIcon(self.icon, IMAGESIZE.ROW)
         effectTree.UserData = { 
@@ -152,18 +152,20 @@ function EffectTab:RenderEffects()
             SourceBone = data.SourceBone or "", 
             TargetBone = data.TargetBone or "",
             Bone = data.TargetBone,
-            isMultiEffect = data.isMultiEffect
+            isMultiEffect = data.isMultiEffect,
+            isLoop = data.isLoop,
+            isBeam = data.isBeam
         }
         table.insert(self.effectsInfos, effectTree)
         effectTree.CanDrag = true
         effectTree.DragDropType = "EffectInfo"
-        --effectIcon.DragFlags = {"NoHoldToOpenOthers", "NoDisableHover"}
 
         effectTree.OnDragStart = function(sel)
             sel.DragPreview:AddImage(effectTree.UserData.Icon)
         end
 
         effectTree.OnClick = function()
+            effectTree.Selected = false
             self:PlayEffect(effectTree)
         end
 
@@ -174,7 +176,7 @@ function EffectTab:RenderEffects()
             [GetLoca("Target Bone")] = effectTree.UserData.TargetBone,
             [GetLoca("Repeat Count")] = effectTree.UserData.Repeat,
         })
-        
+
         effectTree:AddSeparator()
     end
 end
@@ -186,19 +188,20 @@ function EffectTab:RenderControlPanel(parent)
         self:Play()
     end
 
+    self.repeatDelay = self.repeatDelay or 1000
     local repeatPlayButton = parent:AddButton(GetLoca("Timed Repeat"))
-    local repeatDelaySlider = parent:AddSlider("ms", 1000, 1, 60000)
-    local stopAllButton = parent:AddButton(GetLoca("Stop All"))
+    parent:AddText("Repeat Interval (s)")
+    local repeatDelaySlider = StyleHelpers.AddSliderWithStep(parent, nil, self.repeatDelay / 1000, 0.1, 60, 0.1)
+    
 
-    repeatPlayButton.SameLine = true
-    repeatDelaySlider.SameLine = true
+    local stopAllButton = parent:AddButton(GetLoca("Stop All"))
     
     repeatPlayButton.OnClick = function()
         if self.repeatTimer then
             Timer:Cancel(self.repeatTimer)
             self.repeatTimer = nil
 
-            repeatPlayButton.Text = GetLoca("Timed Repeat")
+            repeatPlayButton.Label = GetLoca("Timed Repeat")
             return 
         end
 
@@ -210,12 +213,14 @@ function EffectTab:RenderControlPanel(parent)
                 else
                 end
             end)
-            repeatPlayButton.Text = GetLoca("Stop Repeating")
+            repeatPlayButton.Label = GetLoca("Stop Repeating")
+        else
+        
         end
     end
 
     repeatDelaySlider.OnChange = function ()
-        self.repeatDelay = repeatDelaySlider.Value[1]
+        self.repeatDelay = repeatDelaySlider.Value[1] * 1000
     end
 
     stopAllButton.OnClick = function ()

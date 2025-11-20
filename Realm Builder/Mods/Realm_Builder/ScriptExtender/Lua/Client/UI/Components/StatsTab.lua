@@ -100,7 +100,7 @@ function StatsTab:RenderEffects()
     end
 
     self.effectTimelineWin = self.effectTimelineWin or self.effectsInfoTab:AddChildWindow("EffectsTimeline")
-    self.effectRoot = StyleHelpers.AddTree(self.effectTimelineWin, "Timeline", true)
+    self.effectRoot = StyleHelpers.AddTree(self.effectTimelineWin, "Effects List", true)
 
     local warningCell = self.effectRoot:Tooltip()
     warningCell:AddText("For each effect type, you can select only one MultiEffect, ")
@@ -126,6 +126,7 @@ function SpellTab:RenderEffects()
     for _, effectType in ipairs(effectTypeArray) do
         if spellEffectWhitelist[effectType] then
             self:RenderEffectType(effectType)
+            self.effectRoot:AddSeparator()
         end
     end
 
@@ -141,6 +142,7 @@ function StatusTab:RenderEffects()
     for _, effectType in ipairs(effectTypeArray) do
         if statusEffectWhitelist[effectType] then
             self:RenderEffectType(effectType)
+            self.effectRoot:AddSeparator()
         end
     end
 end
@@ -278,6 +280,8 @@ function StatsTab:RenderSingleEffectType(parent, effectType)
             end
             self:OnChange()
         end
+
+        parent:AddSeparator()
     end
 
     self:RenderEmptyIcon(parent, effectType)
@@ -321,7 +325,8 @@ function StatsTab:RenderMultiEffectType(parent, effectType)
             self:RenderEffectType(effectType)
             self:OnChange()
         end
-        --return
+        
+        parent:AddSeparator()
     end
 
     if not effectTypeData or next(effectTypeData) == nil then
@@ -440,7 +445,7 @@ function StatsTab:SetupEffectContextMenu()
                             self.selectedEffectData = nil
                         end
                     )
-                else
+                elseif effectType then
                     ConfirmPopup:DangerConfirm(
                         GetLoca("Clear all?"),
                         function()

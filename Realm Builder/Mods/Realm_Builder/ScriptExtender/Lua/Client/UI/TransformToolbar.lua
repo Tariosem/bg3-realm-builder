@@ -147,9 +147,13 @@ function TransformToolbar:RegisterKeyInputEvents()
 
         if pickId then
             VisualTab.new(pickId, GetName(pickId), nil, nil):Render()
-        elseif pick.Scenery then
-            VisualHelpers.RegisterScenery(pick)
-            VisualTab.CreateByEntity(pick, pick.Scenery.Uuid, "Scenery"):Render()
+        elseif pick.Visual then
+            VisualHelpers.RegisterVisual(pick)
+            if pick.Scenery then
+                VisualTab.CreateByEntity(pick, pick.Scenery.Uuid, "Scenery"):Render()
+            else
+                _D(pick:GetAllComponents())
+            end
         end
     end)
 
@@ -688,9 +692,6 @@ function TransformToolbar:RenderOtherConfigOptions(panel)
             editor.Gizmo:SetScale(e.Value[1])
         end
     end
-
-    local tips = panel:AddText("Tips: Use Alt + Mode Key to reset the transform.")
-    tips:SetColor("Text", HexToRGBA("FFFFAA00"))
 end
 
 function TransformToolbar:SetupOperator(mode, space, axis)
@@ -898,6 +899,7 @@ function TransformToolbar:CreateNearbyPopup()
     local nearbyNotif = self.NearbyNotif or Notification.new("Nearby Entities")
     self.NearbyNotif = nearbyNotif
 
+    nearbyNotif.InstantDismiss = true
     nearbyNotif.NoAnimation = true
     nearbyNotif.AutoFadeOut = false
     nearbyNotif.Pivot = Vec2.new(GetCursorPos()) / Vec2.new(GetScreenSize())

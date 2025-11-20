@@ -299,26 +299,6 @@ function EntityTab:RenderMonitorTab()
     end)
 
     self.monitorTimers = { self.positionTimer, self.rotationTimer, self.levelTimer }
-
-
-    local releasePropBtn = monitorTab:AddButton(GetLoca("Release Prop"))
-    releasePropBtn:Tooltip():AddText(GetLoca("Release the prop so it won't be tracked by Realm Builder anymore."))
-
-    releasePropBtn.OnClick = function()
-        ConfirmPopup:DangerConfirm(
-            GetLoca("Are you sure you want to release") .. " " .. self.displayName .. "?",
-            function()
-                NetChannel.ManageEntity:SendToServer({
-                    Action = "Remove",
-                    Guid = self.guid,
-                })
-                self:Destroy()
-                EntityStore:RemoveEntity(self.guid)
-                DeleteWindowsByGuid(self.guid)
-            end,
-            nil
-        )
-    end
 end
 
 function EntityTab:RenderFilterTab()

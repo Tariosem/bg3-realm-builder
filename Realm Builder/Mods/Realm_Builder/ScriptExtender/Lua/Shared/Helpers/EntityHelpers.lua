@@ -599,7 +599,7 @@ end
 ---@param radius number
 ---@return table<number, {Entity:EntityHandle, Guid:string, Distance:number, DisplayName:string}>
 function GetNearbyCharactersAndItems(pos, radius)
-    radius = radius or 10
+    radius = radius or 18
     local nearbyEntities = {}
 
     for _, entity in pairs(Ext.Entity.GetEntitiesAroundPosition(pos, radius)) do
@@ -607,7 +607,13 @@ function GetNearbyCharactersAndItems(pos, radius)
         local guid = HandleToUuid(entity)
         if IsGizmo(guid) then goto continue end
         if not guid then goto continue end
-        local distance = Ext.Math.Distance(pos, { CGetPosition(guid) })
+        local targetPos = { CGetPosition(guid) }
+        local distance = 0
+        if #targetPos < 3 then
+            Warning("Failed to get [" .. guid .. "] Position")     
+        else
+            distance = Ext.Math.Distance(pos, targetPos)
+        end
         if distance and distance <= radius then
             table.insert(nearbyEntities, {
                 Entity = entity,

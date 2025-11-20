@@ -60,6 +60,10 @@ function GetIcon(guid)
         return icon
     end
 
+    if not entity then
+        return defaultIcon
+    end
+
     if entity.Scenery then
         return RB_ICONS.Scenery_Fill
     end

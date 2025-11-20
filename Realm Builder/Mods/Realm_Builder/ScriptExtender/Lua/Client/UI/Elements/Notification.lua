@@ -23,6 +23,7 @@
 --- @field ChangeDirectionWhenFadeOut boolean
 --- @field NeverShowAgain boolean
 --- @field NoAnimation boolean
+--- @field InstantDismiss boolean
 --- @field Title string
 --- @field MessageRenderFunc fun(panel: ExtuiWindow) A function that takes the panel and adds content to it
 --- @field new fun(name:string):Notification
@@ -56,6 +57,7 @@ function Notification:__init(name)
     self.NeverShowAgain = false
     self.NoAnimation = false
     self.FlickToDismiss = false
+    self.InstantDismiss = false
     self.Fps = 90
     self.Title = name
     self.MessageRenderFunc = function(panel) panel:AddText("No Content") end
@@ -86,7 +88,12 @@ end
 
 function Notification:BuildContent()
     if self.NeverShowAgain then return end
-    self:QuickDismiss()
+    if self.InstantDismiss then
+        self:Close() 
+    else
+        self:QuickDismiss()
+    end
+
     self:ValidateConfig()
 
     local screenWidth, screenHeight = GetScreenSize()

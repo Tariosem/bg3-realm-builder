@@ -189,6 +189,7 @@ RegisterOnSessionLoaded(function()
     if RBMenu == nil then
         RBMenu = Menu:Add()
         RBMenu.panel.Open = false
+        NetChannel.ManageEntity:SendToServer({ Action = "Load" })
     end
 end, 100)
 
