@@ -114,8 +114,9 @@ function GetDataFromName(name)
     return GetDataFromUuid(uuid)
 end
 
+--- @return table<string, integer>, integer
 local function PopulateAllTemplates()
-    if RB_ItemManager.populated then return -1 end
+    if RB_ItemManager.populated then return {}, 0 end
     local itemCnt = 0
     local characterCnt = 0
     local sceneryCnt = 0
@@ -172,7 +173,6 @@ local function PopulateAllTemplates()
             RB_PrefabManager:PopulatePrefab(object)
             prefabCnt = prefabCnt + 1
         end
-        ::continue::
     end
 
     RB_CharacterManager.populated = true
@@ -198,7 +198,6 @@ local function Realm_Builder_Population()
     local effectsFinished = Ext.Timer:MonotonicTime()
     if sumCnt >= 0 then
         RPrintPurple("[Realm Builder] Populating " .. sumCnt .. " root templates took " .. (itemsFinished - now) .. " ms:")
-        --- @diagnostic disable-next-line
         for k,v in SortedPairs(cnts) do
             RPrintPurple("    " .. tostring(k) .. ": " .. tostring(v))
         end
@@ -214,4 +213,3 @@ Ext.RegisterConsoleCommand("rb_open_the_bloody_gates", function()
         GLOBAL_DEBUG_WINDOW.Open = true
     end
 end, "Opens the Realm Builder debug window.")
-

@@ -6,28 +6,7 @@ function IconBrowser:SaveTagHierarchy()
 
     local treeData = self.dataManager.tagTree:ToTable()
 
-    local savedata = Ext.Json.Stringify(treeData)
-    local toSave = {}
-    local fileContent = Ext.IO.LoadFile(GetModPath(self.displayName))
-    local success = true
-    if not fileContent or fileContent == "" then
-        toSave.TagHierarchy = treeData
-    else
-        local existingData = Ext.Json.Parse(fileContent)
-        if type(existingData) ~= "table" then
-            existingData = {}
-        end
-        toSave = existingData
-        toSave.TagHierarchy = treeData
-    end
-
-    success = Ext.IO.SaveFile(GetModPath(self.displayName), Ext.Json.Stringify(toSave))
-
-    if success then
-        --Info("Tag hierarchy saved successfully.")
-    else
-        Error("Failed to save tag hierarchy.")
-    end
+    self:SaveToFile("TagHierarchy", treeData)
 end
 
 function IconBrowser:SaveChanges()
@@ -38,32 +17,11 @@ function IconBrowser:SaveChanges()
         return
     end
 
-    local toSave = {}
-
-    local fileContent = Ext.IO.LoadFile(GetModPath(self.displayName))
-    if fileContent and fileContent ~= "" then
-        local existingData = Ext.Json.Parse(fileContent)
-        if type(existingData) ~= "table" then
-            existingData = {}
-        end
-        toSave = existingData
-        toSave.Customizations = data
-    else
-        toSave.Customizations = data
-    end
-
-    local savedata = Ext.Json.Stringify(toSave)
-
-    local ok = Ext.IO.SaveFile(GetModPath(self.displayName), savedata)
-    if ok then
-        --Info("Changes saved successfully.")
-    else
-        Error("Failed to save changes: ")
-    end
+    self:SaveToFile("Customizations", data)
 end
 
 function IconBrowser:LoadChanges()
-    local data = Ext.IO.LoadFile(GetModPath(self.displayName))
+    local data = Ext.IO.LoadFile(RealmPath.GetBrowserSettingPath(self.displayName))
     if not data or data == "" then
         --Error("Failed to load changes: " .. tostring(data))
         return
@@ -75,12 +33,63 @@ function IconBrowser:LoadChanges()
         return
     end
 
+    if changes.Settings then
+        local settings = changes.Settings
+        self.lastPosition = settings.LastPosition or self.lastPosition
+        self.lastSize = settings.LastSize or self.lastSize
+        self.iconWidth = settings.IconWidth or self.iconWidth
+        self.iconPR = settings.IconPerRow or self.iconPR
+        self.iconPC = settings.IconPerColumn or self.iconPC
+        self.cellsPadding = settings.CellsPadding or self.cellsPadding
+        self.AutoSave = settings.AutoSave or self.AutoSave
+        self.iconButtonBgColor = settings.ButtonBgColor or self.iconButtonBgColor
+        self.browserBackgroundColor = settings.BackgroundColor or self.browserBackgroundColor
+    end
+
     if changes.Customizations then
         self.dataManager:ImportCustomizations(changes.Customizations)
     end
 
     if changes.TagHierarchy then
-        self.dataManager.tagTree:FromTable((changes.TagHierarchy))
+        self.dataManager.tagTree:FromTable(changes.TagHierarchy)
     end
-    --Info("Changes loaded successfully.")
+end
+
+function IconBrowser:SaveToConfig()
+    self.lastPosition = self.panel.LastPosition
+    self.lastSize = self.panel.LastSize
+    local setting = {}
+    setting.IconWidth = self.iconWidth
+    setting.IconPerRow = self.iconPR
+    setting.IconPerColumn = self.iconPC
+    setting.CellsPadding = self.cellsPadding
+    setting.AutoSave = self.AutoSave
+    setting.ButtonBgColor = self.iconButtonBgColor
+    setting.LastPosition = self.lastPosition
+    setting.LastSize = self.lastSize
+    self:SaveToFile("Settings", setting)
+end
+
+function IconBrowser:SaveToFile(field, content)
+    local filePath = RealmPath.GetBrowserSettingPath(self.displayName)
+
+    local fileContent = Ext.IO.LoadFile(filePath)
+    if not fileContent or fileContent == "" then
+        fileContent = "{}"
+    end
+
+    local parsed = Ext.Json.Parse(fileContent)
+    if not parsed then
+        Warning("Failed to parse existing browser settings file. Overwriting.")
+        parsed = {}
+    end
+
+    parsed[field] = content
+
+    local ok = Ext.IO.SaveFile(filePath, Ext.Json.Stringify(parsed))
+    if not ok then
+        Error("Failed to save browser settings to file: " .. tostring(filePath))
+    end
+
+    return ok
 end

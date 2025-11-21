@@ -2,25 +2,6 @@
 --- @field SaveToConfig fun(self:EffectBrowser)
 EffectBrowser = _Class("EffectBrowser", IconBrowser)
 
---- @class EffectIconsBrowser : IconsBrowser
-function EffectBrowser:GetConfig()
-    return CONFIG.EffectBrowser or {}
-end
-
-function EffectBrowser:SaveToConfig()
-    self.lastPosition = self.panel.LastPosition
-    self.lastSize = self.panel.LastSize
-    CONFIG.EffectBrowser.IconWidth = self.iconWidth
-    CONFIG.EffectBrowser.IconPerRow = self.iconPR
-    CONFIG.EffectBrowser.IconPerColumn = self.iconPC
-    CONFIG.EffectBrowser.CellsPadding = self.cellsPadding
-    CONFIG.EffectBrowser.AutoSave = self.AutoSave
-    CONFIG.EffectBrowser.ButtonBgColor = self.iconButtonBgColor
-    CONFIG.EffectBrowser.LastPosition = self.lastPosition
-    CONFIG.EffectBrowser.LastSize = self.lastSize
-    SaveConfig("EffectsBrowser")
-end
-
 function EffectBrowser:TooltipChangeLogic()
     if self.iconTooltipName == "DisplayName" then
         self.iconTooltipName = "TemplateName"
@@ -52,13 +33,7 @@ local function previewEffect(guid, entry)
             
             local loopEffectData = DeepCopy(effectData)
             loopEffectData.Tags.PlayLoop = true
-            local stopdata = {
-                Type = "FxName",
-                FxName = fxName,
-            }
-            Timer:After(5000, function()
-                NetChannel.StopEffect:SendToServer(stopdata)
-            end)
+            loopEffectData.Duration = 5000
 
             table.insert(effectsData, effectData)
             table.insert(effectsData, loopEffectData)

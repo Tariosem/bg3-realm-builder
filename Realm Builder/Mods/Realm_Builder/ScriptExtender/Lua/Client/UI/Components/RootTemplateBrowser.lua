@@ -4,42 +4,18 @@
 RootTemplateBrowser = _Class("RootTemplateBrowser", IconBrowser)
 
 function RootTemplateBrowser:SubclassInit()
-    local config = self:GetConfig()
-
     self.iconToName = true
     self.iconTooltipName = "TemplateName"
-    self.iconPR = config.IconPerRow or 2
-    self.iconPC = config.IconPerColumn or 20
-    self.iconWidth = config.IconWidth or 600
+    self.iconPR = 2
+    self.iconPC = 20
+    self.iconWidth = 600
     self.browserWidth = self.iconPR * self.iconWidth + 20
     self.browserHeight = self.iconPC * (36 * SCALE_FACTOR + self.cellsPadding[2]) + 240 * SCALE_FACTOR
-    self.lastSize = config.LastSize or { self.browserWidth * 1.5, self.browserHeight * 1.5 }
+    self.lastSize = { self.browserWidth * 1.5, self.browserHeight * 1.5 }
 
-    self.iconButtonBgColor = config.ButtonBgColor or HexToRGBA("FF615238")
+    self.iconButtonBgColor = HexToRGBA("FF615238")
 end
 
-function RootTemplateBrowser:GetConfig()
-    if not CONFIG.RootTemplateBrowser then
-        CONFIG.RootTemplateBrowser = {}
-    end
-
-    return CONFIG.RootTemplateBrowser
-end
-
-function RootTemplateBrowser:SaveToConfig()
-    self.lastPosition = self.panel.LastPosition
-    self.lastSize = self.panel.LastSize
-    CONFIG.RootTemplateBrowser.IconWidth = self.iconWidth
-    CONFIG.RootTemplateBrowser.IconPerRow = self.iconPR
-    CONFIG.RootTemplateBrowser.IconPerColumn = self.iconPC
-    CONFIG.RootTemplateBrowser.CellsPadding = self.cellsPadding
-    CONFIG.RootTemplateBrowser.AutoSave = self.AutoSave
-    CONFIG.RootTemplateBrowser.ButtonBgColor = self.iconButtonBgColor
-    CONFIG.RootTemplateBrowser.BackgroundColor = self.browserBackgroundColor
-    CONFIG.RootTemplateBrowser.LastPosition = self.lastPosition
-    CONFIG.RootTemplateBrowser.LastSize = self.lastSize
-    SaveConfig("RootTemplateBrowser")
-end
 
 --- @param entry RB_Scenery
 --- @param cell ExtuiTableCell
@@ -92,7 +68,7 @@ function RootTemplateBrowser:RenderIcon(entry, cell)
 
     iconImage.OnRightClick = function()
         if not rPopup then
-            rPopup = cell:AddPopup(GetLoca("Preview Template"))
+            rPopup = cell:AddPopup("Preview Template")
             rPopup.IDContext = entry.Uuid .. "RPopup" .. Uuid_v4()
             self:RenderCustomizationTab(rPopup, entry)
             local actTab = StyleHelpers.AddContextMenu(rPopup, "Actions")

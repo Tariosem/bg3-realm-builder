@@ -32,6 +32,12 @@ EntityManager = {
 
 Ext.Vars.RegisterModVariable(ModuleUUID, "EntityManager", {})
 
+Ext.Events.GameStateChanged:Subscribe(function (e)
+    if e.FromState == "LoadLevel" then
+        EntityManager:LoadFromModVar()
+    end
+end)
+
 local initModVar = Ext.Vars.GetModVariables(ModuleUUID)
 if not initModVar then
     initModVar = {}
@@ -335,6 +341,11 @@ function EntityManager:LoadFromModVar()
         Osi.RequestDeleteTemporary(guid)
         modVar.SavedEntities[guid] = nil
         modVar.DeleteOnNextSession[guid] = nil
+    end
+
+    local gizmos = BF_GetAllGizmos()
+    for _,gizmo in pairs(gizmos) do
+        Osi.RequestDelete(gizmo)
     end
 
     for guid, _ in pairs(modVar.SavedEntities) do

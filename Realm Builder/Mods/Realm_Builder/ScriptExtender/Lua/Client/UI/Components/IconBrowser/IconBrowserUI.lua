@@ -7,6 +7,9 @@
 --- @field dataManager ManagerBase
 --- @field iconsImage table<string, ExtuiImageButton|ExtuiStyledRenderable>
 --- @field CreateCachedSort fun(self:IconBrowser, field:string)
+--- @field Toggle fun(self:IconBrowser)
+--- @field Close fun(self:IconBrowser)
+--- @field SaveToFile fun(self:IconBrowser, field:string, content:any):boolean ok
 IconBrowser = _Class("IconBrowser")
 
 --- @class IconsBrowser
@@ -22,7 +25,6 @@ function IconBrowser:__init(dataManager, DisplayName)
     self.excludeTags = {}   -- { UnknownIcon = true, Timeline = true }
     self.excludeGroups = {} -- { Blacklist = true }
     self.iconTooltipName = "DisplayName"
-    self.iconButtonBgColor = CONFIG.ItemBrowser.ButtonBgColor or nil
     self.iconToName = false
 
     self.matchAllTags = true
@@ -30,21 +32,19 @@ function IconBrowser:__init(dataManager, DisplayName)
 
     self.tempDisableSearch = false
 
-    local config = self.GetConfig and self:GetConfig() or {}
-
-    self.iconButtonBgColor = config and config.ButtonBgColor or nil
-    self.iconWidth = config and config.IconWidth or 75 * SCALE_FACTOR
-    self.iconPC = config and config.IconPerColumn or 10
-    self.iconPR = config and config.IconPerRow or 10
-    self.cellsPadding = config and config.CellsPadding or { 10 * SCALE_FACTOR, 10 * SCALE_FACTOR }
+    self.iconButtonBgColor = nil
+    self.iconWidth = 75 * SCALE_FACTOR
+    self.iconPC =  10
+    self.iconPR = 10
+    self.cellsPadding = { 10 * SCALE_FACTOR, 10 * SCALE_FACTOR }
     self.browserWidth = self.iconPR * ( self.iconWidth + self.cellsPadding[1] ) + 20 * SCALE_FACTOR
     self.browserHeight = self.iconPC * (self.iconWidth + self.cellsPadding[2]) + 280 * SCALE_FACTOR
-    self.lastPosition = config.LastPosition or { screenWidth * 0.6, screenHeight * 0.15 }
-    self.lastSize = config.LastSize or { self.browserWidth * 1.2, self.browserHeight * 1.2 }
+    self.lastPosition = { screenWidth * 0.6, screenHeight * 0.15 }
+    self.lastSize = { self.browserWidth * 1.2, self.browserHeight * 1.2 }
 
     self.selectedGuid = nil
 
-    self.AutoSave = not (config and config.AutoSave == false)
+    self.AutoSave = true
 
     self.updateTagsFn = {}
     self.isValid = true

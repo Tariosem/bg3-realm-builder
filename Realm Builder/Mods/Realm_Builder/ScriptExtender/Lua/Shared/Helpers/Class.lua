@@ -6,7 +6,6 @@
 --- @field new fun(self:Class, ...):Class
 --- @field isInstance fun(self:Class, obj:any):boolean
 
---- Creates a new class
 --- @param name any
 --- @param parent any
 function _Class(name, parent)
@@ -28,11 +27,9 @@ function _Class(name, parent)
         return instance
     end
 
-    function cls:isInstance(obj)
+    function cls:IsInstance(obj)
         return getmetatable(obj) == self
     end
-
-    
 
     return cls
 end

@@ -1,23 +1,6 @@
 --- @class ItemBrowser : IconBrowser
 ItemBrowser = _Class("ItemBrowser", IconBrowser)
 
-function ItemBrowser:GetConfig()
-    return CONFIG.ItemBrowser or {}
-end
-
-function ItemBrowser:SaveToConfig()
-    CONFIG.ItemBrowser.IconWidth = self.iconWidth
-    CONFIG.ItemBrowser.IconPerColumn = self.iconPC
-    CONFIG.ItemBrowser.ButtonBgColor = self.iconButtonBgColor
-    CONFIG.ItemBrowser.BackgroundColor = self.browserBackgroundColor
-    CONFIG.ItemBrowser.IconPerRow = self.iconPR
-    CONFIG.ItemBrowser.AutoSave = self.AutoSave
-    CONFIG.ItemBrowser.CellsPadding = self.cellsPadding
-    CONFIG.ItemBrowser.LastPosition = self.lastPosition
-    CONFIG.ItemBrowser.LastSize = self.lastSize
-    SaveConfig("ItemsBrowser")
-end
-
 function ItemBrowser:TooltipChangeLogic()
     if self.iconTooltipName == "DisplayName" then
         self.iconTooltipName = "TemplateName"
@@ -493,26 +476,6 @@ function ItemBrowser:RenderItemSpawnTab(popup, iconImage, entry)
 
     ApplyConfirmButtonStyle(spawnButton)
     spawnButton.OnClick = function() spawnHandle(false) end
-
-
-    spawnTab:AddDummy(10, 10).SameLine = true
-
-    local deleteAllButton = spawnTab:AddButton(GetLoca("Delete All"))
-    ApplyDangerButtonStyle(deleteAllButton)
-    deleteAllButton.OnClick = function()
-        local data = {
-            Uuid = entry.Uuid,
-            TemplateId = entry.TemplateId,
-        }
-        ConfirmPopup:DangerConfirm(
-            GetLoca("Delete all props with the same template ?"),
-            function()
-                Post("DeletePropsByTemplateId", data)
-            end,
-            nil
-        )
-    end
-    deleteAllButton.SameLine = true
 
     if not entry.CanBePickedUp then return iconImage end
 

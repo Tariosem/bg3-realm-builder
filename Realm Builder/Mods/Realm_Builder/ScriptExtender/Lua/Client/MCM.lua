@@ -15,20 +15,9 @@ local function ToggleBrowser(targetKey)
         return
     end
 
-    local allBrowsers = {
-        effect = RBMenu.effectBrowser,
-        item = RBMenu.itemBrowser,
-        character = RBMenu.characterBrowser,
-        scenery = RBMenu.sceneryBrowser,
-        prefab = RBMenu.prefabBrowser,
-    }
+    local targetBrowser = RBMenu.browsers[targetKey]
 
-    local targetBrowser = allBrowsers[targetKey]
-    if not targetBrowser then
-        return
-    end
-
-    for key, browser in pairs(allBrowsers) do
+    for key, browser in pairs(RBMenu.browsers) do
         if key ~= targetKey and browser and browser.panel and browser.panel.Open then
             browser:Close()
         end

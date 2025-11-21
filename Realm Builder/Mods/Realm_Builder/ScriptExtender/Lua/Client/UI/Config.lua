@@ -36,17 +36,7 @@ CONFIG = {
             autoReload = false,
         }
     },
-    EntityMenu = {},
     EffectMenu = {
-        AutoSave = true,
-    },
-    EffectBrowser = {
-        AutoSave = true,
-    },
-    ItemBrowser = {
-        AutoSave = true,
-    },
-    SceneMenu = {
         AutoSave = true,
     },
     Misc = {

@@ -989,7 +989,7 @@ function StyleHelpers.AddTree(parent, label, open)
                 return children
             elseif k == "UserData" then
                 return closure.__UserData
-            elseif rawget(closure, k) ~= nil then -- avoid stack overflow
+            elseif rawget(closure, k) ~= nil then
                 return rawget(closure, k)
             elseif k == "OnExpand" or k == "OnCollapse" then
                 return rawget(closure, k)

@@ -130,6 +130,12 @@ function EffectsManager:PlayLoopEffect(data)
         ::continue::
     end
 
+    if data.Duration and data.Duration > 0 then
+        Timer:After(data.Duration, function()
+            self:StopEffectByComb(fxname, data.Object)
+        end)
+    end
+
     return fxhandle --[[@as integer]]
 end
 

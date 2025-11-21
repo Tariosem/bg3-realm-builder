@@ -1,12 +1,13 @@
 local configPath = "Realm_Builder/Config.json"
-local visualPresetsPath = "Realm_Builder/VisualPresets/"
-local visRefPath = "Realm_Builder/VisualPresets/References.json"
-local effRefPath = "Realm_Builder/CustomEffects/References.json"
-local effPath = "Realm_Builder/CustomEffects/"
-local presetRefPath = "Realm_Builder/Presets/References.json"
-local presetPath = "Realm_Builder/Presets/"
+local visualPresetsPath = "Realm_Builder/Visual_Presets/"
+local visRefPath = "Realm_Builder/Visual_Presets/References.json"
+local effRefPath = "Realm_Builder/Custom_Effects/References.json"
+local effPath = "Realm_Builder/Custom_Effects/"
+local presetRefPath = "Realm_Builder/Scenes/References.json"
+local presetPath = "Realm_Builder/Scenes/"
 local localGenPath = "Realm_Builder/Localization/"
 local keybindPath = "Realm_Builder/Keybind.json"
+local browserSettingPath = "Realm_Builder/Browsers/%s.json"
 
 local ccaPath = "Realm_Builder/CC_Mods/"
 local ccaModCachePath = "Realm_Builder/CC_Mod_Cache/"
@@ -40,8 +41,7 @@ local mapItemPresetPath = mapModsPath .. "%s/Public/%s/Content/Assets/Items/[PAK
 
 local mapTemplatePath = mapModsPath .. "%s/Mods/%s/Levels/%s/%s/%s.lsx"
 
-
-local mapModCachePath = "Realm_Builder/Map_Mod_Uuids.json"
+local mapModCachePath = mapModsPath .. "Map_Mod_Uuids.json"
 
 RealmPath = {}
 
@@ -192,4 +192,8 @@ end
 
 function RealmPath.GetMapModCachePath()
     return mapModCachePath
+end
+
+function RealmPath.GetBrowserSettingPath(browserName)
+    return string.format(browserSettingPath, browserName)
 end

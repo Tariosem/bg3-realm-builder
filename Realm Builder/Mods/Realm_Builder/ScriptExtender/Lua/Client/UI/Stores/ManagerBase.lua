@@ -1,6 +1,3 @@
---- @class RB_CategorizableObject
---- @field Note string
-
 --- @class ManagerBase
 --- @field Data table<string, table>
 --- @field CountGroupsAndTags fun(self):table<string, number>, table<string, number>, table<string, string[]>, table<string, string[]>

@@ -1,18 +1,19 @@
 MENU_WIDTH = 1000 * SCALE_FACTOR
 MENU_HEIGHT = 1200 * SCALE_FACTOR
 
-Menu = _Class("Menu")
+
 --- @class RB_MainMenu
 --- @field isValid boolean
 --- @field effectsMenu EffectsMenu
 --- @field entityMenu OutlinerMenu
 --- @field sceneMenu SceneMenu
 --- @field styleMenu StyleMenu
---- @field itemBrowser ItemBrowser
---- @field effectBrowser EffectBrowser
+--- @field browsers table<string, IconBrowser>
 --- @field panel ExtuiWindowBase
 --- @field tabBar ExtuiTabBar
 --- @field FocusOnTab fun(self:RB_MainMenu, guid:string, doDetach:boolean|nil)
+Menu = _Class("Menu")
+
 function Menu:__init()
     self.isValid = true
     self.panel = nil
@@ -46,6 +47,9 @@ function Menu:Render()
 
     self.tabBar = self.panel:AddTabBar("TabBar")
     self.tabBar.Reorderable = true
+
+    self.browsers = {}
+
     local now = Ext.Timer.MonotonicTime()
     Timer:Ticks(1, function()
         self.styleMenu = StyleMenu:Add(self.tabBar)
@@ -74,28 +78,29 @@ function Menu:Render()
     end)
 
     Timer:Ticks(7, function()
-        self.itemBrowser = ItemBrowser.new(RB_ItemManager, "Item - Browser")
-        self.itemBrowser:CreateCachedSort("DisplayName")
+
+        self.browsers.item = ItemBrowser.new(RB_ItemManager, "Item - Browser")
+        self.browsers.item:CreateCachedSort("DisplayName")
     end)
 
     Timer:Ticks(8, function()
-        self.effectBrowser = EffectBrowser.new(RB_MultiEffectManager, "Effect - Browser")
-        self.effectBrowser:CreateCachedSort("DisplayName")
+        self.browsers.effect = EffectBrowser.new(RB_MultiEffectManager, "Effect - Browser")
+        self.browsers.effect:CreateCachedSort("DisplayName")
     end)
 
     Timer:Ticks(9, function()
-        self.characterBrowser = RootTemplateBrowser.new(RB_CharacterManager, "Character - Browser")
-        self.characterBrowser:CreateCachedSort("DisplayName")
+        self.browsers.character = RootTemplateBrowser.new(RB_CharacterManager, "Character - Browser")
+        self.browsers.character:CreateCachedSort("TemplateName")
     end)
 
     Timer:Ticks(9, function()
-        self.sceneryBrowser = RootTemplateBrowser.new(RB_SceneryManager, "Scenery - Browser")
-        self.sceneryBrowser:CreateCachedSort("DisplayName")
+        self.browsers.scenery = RootTemplateBrowser.new(RB_SceneryManager, "Scenery - Browser")
+        self.browsers.scenery:CreateCachedSort("TemplateName")
     end)
 
     Timer:Ticks(9, function()
-        self.prefabBrowser = RootTemplateBrowser.new(RB_PrefabManager, "Prefab - Browser")
-        self.prefabBrowser:CreateCachedSort("TemplateName")
+        self.browsers.prefab = RootTemplateBrowser.new(RB_PrefabManager, "Prefab - Browser")
+        self.browsers.prefab:CreateCachedSort("TemplateName")
     end)
 
     Timer:Ticks(9, function()
@@ -189,7 +194,6 @@ RegisterOnSessionLoaded(function()
     if RBMenu == nil then
         RBMenu = Menu:Add()
         RBMenu.panel.Open = false
-        NetChannel.ManageEntity:SendToServer({ Action = "Load" })
     end
 end, 100)
 
