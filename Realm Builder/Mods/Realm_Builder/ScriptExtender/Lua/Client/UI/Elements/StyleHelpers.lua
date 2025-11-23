@@ -1390,7 +1390,7 @@ function StyleHelpers.RenderNumberSliders(parent, label, getter, setter, config)
         setter(initValue)
     end
 
-    if #initValue >= 3 then
+    if #initValue >= 3 and #initValue <=4 and not config.IsInt then
         colorPicker = slidersCell:AddColorEdit("##ColorPicker_" .. uuid)
         colorPicker.NoAlpha = #initValue == 3
         colorPicker.AlphaBar = #initValue == 4
@@ -1412,7 +1412,7 @@ function StyleHelpers.RenderNumberSliders(parent, label, getter, setter, config)
 
     for i = 1, #initValue do
         local slider = StyleHelpers.AddSliderWithStep(slidersCell, i, initValue[i], range.Min, range.Max, range.Step, isInt)
-        slider.Visible = #initValue < 3
+        slider.Visible = colorPicker == nil
         slider.OnChange = function()
             local currentValues = {}
             for j, s in ipairs(sliders) do

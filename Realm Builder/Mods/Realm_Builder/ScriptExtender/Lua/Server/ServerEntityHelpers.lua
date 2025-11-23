@@ -1,4 +1,3 @@
-
 function FindCurrentAtmosphereTrigger()
     local allAtmosTriggers = Ext.Entity.GetAllEntitiesWithComponent("ServerAtmosphereTrigger")
     local player = Osi.GetHostCharacter() --[[@as GUIDSTRING]]
