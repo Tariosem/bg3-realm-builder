@@ -83,13 +83,15 @@ function StripLSTags(desc)
     return desc:gsub("%b<>", ""):gsub("%s+", " "):gsub("^%s+", ""):gsub("%s+$", "")
 end
 
----@param t table
+---@param t table|userdata
 ---@return boolean
 function IsArray(t)
-    if type(t) ~= "table" then
+    if type(t) ~= "table" and type(t) ~= "userdata" then
         return false
     end
+    
     local count = 0
+    --- @diagnostic disable-next-line
     for k, _ in pairs(t) do
         if type(k) ~= "number" then
             return false
@@ -101,6 +103,23 @@ function IsArray(t)
             return false
         end
     end
+    return true
+end
+
+---@param tbl table
+---@param valueType "number"|"string"|"boolean"|"table"|"userdata"|"function"|"thread"|"nil"
+---@return boolean
+function IsArrayOf(tbl, valueType)
+    if type(tbl) ~= "table" and type(tbl) ~= "userdata" then
+        return false
+    end
+
+    for _, v in pairs(tbl) do
+        if type(v) ~= valueType then
+            return false
+        end
+    end
+
     return true
 end
 
@@ -135,6 +154,17 @@ end
 function TableMerge(dest, src)
     for k, v in pairs(src) do
         dest[k] = v
+    end
+end
+
+function DeepTableMerge(dest, src)
+    for k, v in pairs(src) do
+        if type(v) == "table" or type(v) == "userdata" and not IsArray(v) then
+            dest[k] = dest[k] or {}
+            DeepTableMerge(dest[k], v)
+        else
+            dest[k] = v
+        end
     end
 end
 

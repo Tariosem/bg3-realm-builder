@@ -1331,3 +1331,118 @@ function RenderExportSettingPanel(parent, settings)
 
     return refresh
 end
+
+--- @param parent ExtuiTreeParent
+--- @param label string
+--- @param getter fun(): number|number[]
+--- @param setter fun(value: number[])
+--- @param config { IsInt: boolean, Range: { Min: number, Max: number, Step: number }, PreferSliders: boolean }
+--- @return update function
+function StyleHelpers.RenderNumberSliders(parent, label, getter, setter, config)
+    --- @type any[], ExtuiColorEdit
+    local sliders, colorPicker = {}, nil
+
+    local updateMethod = function ()
+        local value = getter()
+        if not value then return end
+        if type(value) ~= "table" then
+            value = { value }
+        end
+        for i, slider in ipairs(sliders) do
+            slider.Value = ToVec4(value[i])
+        end
+        if colorPicker then
+            colorPicker.Color = {value[1], value[2], value[3], value[4] or 1 }
+        end
+    end
+
+    local initValue = getter()
+    if type(initValue) ~= "table" then
+        initValue = { initValue }
+    end
+
+    if #initValue == 0 then
+        return function() end
+    end
+
+    local isInt = config.IsInt or false
+    local range = config.Range or { Min = -10, Max = 10 , Step = 0.1 }
+    local displayName = label
+    local uuid = Uuid_v4()
+
+    local innerTable = parent:AddTable("##table" .. uuid, 2)
+    innerTable.ColumnDefs[1] = { WidthFixed = true }
+    innerTable.ColumnDefs[2] = { WidthStretch = true }
+    innerTable.BordersInnerV = true
+
+    local row = innerTable:AddRow()
+    local displayNameCell = row:AddCell()
+    local slidersCell = row:AddCell()
+    local selectable = displayNameCell:AddSelectable(displayName)
+    local resetChange = function()
+        for i, slider in ipairs(sliders) do
+            slider.Value = ToVec4(initValue[i])
+        end
+        if colorPicker then
+            colorPicker.Color = {initValue[1], initValue[2], initValue[3], initValue[4] or 1 }
+        end
+
+        setter(initValue)
+    end
+
+    if #initValue >= 3 then
+        colorPicker = slidersCell:AddColorEdit("##ColorPicker_" .. uuid)
+        colorPicker.NoAlpha = #initValue == 3
+        colorPicker.AlphaBar = #initValue == 4
+        colorPicker.Color = {initValue[1], initValue[2], initValue[3], #initValue == 4 and initValue[4] or 1 }
+
+        colorPicker.OnChange = function()
+            setter({ colorPicker.Color[1], colorPicker.Color[2], colorPicker.Color[3], #initValue == 4 and colorPicker.Color[4] or nil })
+
+            for i = 1, #initValue do
+                sliders[i].Value = ToVec4(colorPicker.Color[i])
+            end
+        end
+        colorPicker.OnRightClick = function()
+            for i, slider in ipairs(sliders) do
+                slider.Visible = not slider.Visible
+            end
+        end
+    end
+
+    for i = 1, #initValue do
+        local slider = StyleHelpers.AddSliderWithStep(slidersCell, i, initValue[i], range.Min, range.Max, range.Step, isInt)
+        slider.Visible = #initValue < 3
+        slider.OnChange = function()
+            local currentValues = {}
+            for j, s in ipairs(sliders) do
+                currentValues[j] = s.Value[1]
+            end
+            if colorPicker then
+                colorPicker.Color = { currentValues[1], currentValues[2], currentValues[3], #initValue == 4 and currentValues[4] or 1 }
+            end
+            setter(currentValues)
+        end
+        sliders[i] = slider
+    end
+
+    if config.PreferSliders then
+        for i, slider in ipairs(sliders) do
+            slider.Visible = true
+        end
+        if colorPicker then
+            colorPicker.Visible = false
+        end
+    end
+    
+    selectable.OnClick = function ()
+        selectable.Selected = false
+        resetChange()
+    end
+    selectable.OnRightClick = function()
+        resetChange()
+    end
+
+
+    return updateMethod
+end

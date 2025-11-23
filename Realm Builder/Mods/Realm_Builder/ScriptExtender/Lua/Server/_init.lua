@@ -1,5 +1,6 @@
 RequireFiles("Server/", {
     "OsirisHelpers",
+    "ServerEntityHelpers",
     "EntityManager",
     "EffectsManager",
     "BindManager",

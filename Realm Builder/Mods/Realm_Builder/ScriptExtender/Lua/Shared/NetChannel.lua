@@ -116,3 +116,11 @@ NetChannel.GetAtmosphere = Ext.Net.CreateChannel(ModuleUUID, "GetAtmosphere")
 --- @class GetLightingChannel : NetChannel
 --- @field RequestToServer fun(channel:self , data: {}, callback: fun(response: Guid))
 NetChannel.GetLighting = Ext.Net.CreateChannel(ModuleUUID, "GetLighting")
+
+--- @class SetAtmosphereChannel : NetChannel
+--- @field RequestToServer fun(channel:self , data: {Atmosphere: ResourceAtmosphere}, callback: fun(response: boolean))
+NetChannel.SetAtmosphere = Ext.Net.CreateChannel(ModuleUUID, "SetAtmosphere")
+
+--- @class SetLightingChannel : NetChannel
+--- @field RequestToServer fun(channel:self , data: {Lighting: Lighting}, callback: fun(response: boolean))
+NetChannel.SetLighting = Ext.Net.CreateChannel(ModuleUUID, "SetLighting")

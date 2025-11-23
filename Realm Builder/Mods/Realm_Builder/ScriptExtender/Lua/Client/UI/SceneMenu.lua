@@ -275,17 +275,13 @@ function SceneMenu:SavePreset(name, overwrite, candiates)
         entInfo.Level = levelName
 
         local template = TakeTailTemplate(entInfo.TemplateId)
-        local templateData = Ext.Template.GetTemplate(TakeTailTemplate(entInfo.TemplateId))
-        if not templateData then
+        local templateObj = Ext.Template.GetTemplate(TakeTailTemplate(entInfo.TemplateId))
+        if not templateObj then
             Warning("PresetMenu:SavePreset: Template data not found for " .. tostring(entInfo.TemplateId))
             goto continue
         end
-        local modId, modName = templa
-        if modId and modId ~= "" and modName and modName ~= "" then
-            modList[modId] = { Name = modName , Author = templateData.ModAuthor }
-            entInfo.Mod = modName .. " (" .. modId .. ")"
-            entInfo.ModId = modId
-
+        if templateObj.TemplateType == "Item" then
+            local statObj = Ext.Stats.Get(templateObj.Stats) --[[@as StatsObject]]
         end
 
         if self.visibleOnly then
