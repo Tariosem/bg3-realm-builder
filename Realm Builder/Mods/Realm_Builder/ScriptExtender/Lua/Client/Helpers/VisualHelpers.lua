@@ -333,7 +333,7 @@ function VisualHelpers.ApplyValueToLightComponent(guid, compIndex, value, propNa
 end
 
 --- @param guid string
---- @param preset table
+--- @param preset RB_VisualPreset
 --- @param retryCnt number?
 function VisualHelpers.ApplyVisualParams(guid, preset, retryCnt)
     if not guid or not preset then

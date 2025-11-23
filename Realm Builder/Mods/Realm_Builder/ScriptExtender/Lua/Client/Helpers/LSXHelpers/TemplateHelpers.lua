@@ -330,6 +330,38 @@ function LSXHelpers.BuildLocalization(handleToName, versions)
     return content
 end
 
+--- @param existingNameToHandles table<string, string[]>
+--- @param names string[]
+--- @return string, table<string, string[]>, table<string, string> -- content, string -> handle[], handle -> string
+function LSXHelpers.BuildAndGenerateLocalization(existingNameToHandles, names)
+    local toGen = {}
+    local handleToString = {}
+
+    local stringToHandles = DeepCopy(existingNameToHandles)
+
+    for _, name in ipairs(names) do
+        local handles = stringToHandles[name]
+
+        if not handles or #handles == 0 then
+            table.insert(toGen, name)
+        else
+            local handle = table.remove(handles, 1)
+            handleToString[handle] = name
+        end
+    end
+
+    for _, name in ipairs(toGen) do
+        local handle = MakeTranslatedHandle()
+        handleToString[handle] = name
+
+        stringToHandles[name] = stringToHandles[name] or {}
+        table.insert(stringToHandles[name], handle)
+    end
+
+    local content = LSXHelpers.BuildLocalization(handleToString)
+    return content, stringToHandles, handleToString
+end
+
 function LSXHelpers.LSValueType(value)
     if type(value) == "boolean" then
         return LSValueType.bool

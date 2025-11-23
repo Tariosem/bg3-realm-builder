@@ -365,7 +365,7 @@ end
 --- @param o T
 --- @return T
 function DeepCopy(o)
-    if type(o) ~= 'table' then
+    if type(o) ~= 'table' and type(o) ~= 'userdata' then
         return o
     end
 

@@ -138,11 +138,18 @@ function TransformToolbar:RegisterKeyInputEvents()
 
     ttMod:RegisterEvent("OpenVisualTab", function (e)
         if e.Event ~= "KeyDown" then return end
+        local host = CGetHostCharacter()
+
+        if IsInCharacterCreationMirror() then
+            VisualTab.new(host, GetName(host), nil, nil):Render()
+            return
+        end
+
         local pick = GetPickingEntity()
         local pickId = HandleToUuid(pick)
 
         if not pick then
-            pickId = CGetHostCharacter()
+            pickId = host
         end
 
         if pickId then
@@ -601,13 +608,15 @@ function TransformToolbar:RenderTopBar()
     pivotCombo.ItemWidth = 300 * SCALE_FACTOR
     local indexToPivot = {
         "Individual",
-        "Average",
+        "Median",
         "Cursor",
+        --"Active",
     }
     local localizedPivot = {
-        GetLoca("Individual"),
-        GetLoca("Average"),
+        GetLoca("Individual Origins"),
+        GetLoca("Median Point"),
         GetLoca("3D Cursor"),
+        --GetLoca("Active Element"),
     }
     pivotCombo.Options = localizedPivot
     pivotCombo.SelectedIndex = 0
@@ -1004,8 +1013,6 @@ function TransformToolbar:CreateNearbyPopup()
         tempSubs = {}
     end
 end
-
-
 
 function TransformToolbar:CreateCursor(pos)
     if self.Cursor and EntityExists(self.Cursor) or (self.creatingCursor) then

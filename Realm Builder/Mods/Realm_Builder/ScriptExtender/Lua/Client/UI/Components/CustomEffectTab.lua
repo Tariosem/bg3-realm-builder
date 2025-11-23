@@ -262,7 +262,7 @@ function CustomEffectTab:RenderEffects()
         effectTree.UserData = effectObj
         effectTree.UserData.isMultiEffect = false
         local userData = effectTree.UserData
-        local oriData = GetDataFromUuid(effectObj.FxName) or {}
+        local oriData = RB_MultiEffectManager.Data[effectObj.FxName] or {}
         effectTree.CanDrag = true
         effectTree.DragDropType = "EffectInfo"
 
@@ -351,7 +351,7 @@ function CustomEffectTab:RenderEffects()
         sourceBoneResetButton.SameLine = true
 
         sourceBoneResetButton.OnClick = function()
-            local data = GetDataFromUuid(effectObj.FxName)
+            local data = RB_MultiEffectManager.Data[effectObj.FxName]
             if data and data.SourceBone then
                 effectObj.SourceBone = data.SourceBone
                 sourceBoneInput.Text = tostring(data.SourceBone)
@@ -481,7 +481,7 @@ function CustomEffectTab:RenderEffects()
         local FxNames = data.FxName
         if not FxNames or FxNames == "" then
             local uuid = data.Uuid
-            local libData = GetDataFromUuid(uuid)
+            local libData = RB_MultiEffectManager.Data[uuid]
             if not libData then
                 Warning("[EffectTab] Cannot find effect data for UUID: " .. tostring(uuid))
                 return

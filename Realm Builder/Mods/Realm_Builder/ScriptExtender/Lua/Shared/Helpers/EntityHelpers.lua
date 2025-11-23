@@ -206,6 +206,10 @@ function GetLevel(guid)
 end
 
 function CGetHostCharacter()
+    if Ext.IsServer() then
+        return Osi.GetHostCharacter() --[[@as GUIDSTRING]]
+    end
+
     for _, entity in pairs(Ext.Entity.GetAllEntitiesWithComponent("ClientControl")) do
         if entity.UserReservedFor.UserID == 1 then
             return HandleToUuid(entity)
@@ -352,6 +356,8 @@ function CGetScale(guid)
         return nil, nil, nil
     end
 
+    if IsCamera(guid) then return 1, 1, 1 end
+
     local entity = UuidToHandle(guid)
     if not entity then
         return nil, nil, nil
@@ -388,7 +394,7 @@ function GetAllPartyMembers()
     return partyMembers
 end
 
-function CIsTagged(guid)
+function CIsTaggedProp(guid)
     local entity = UuidToHandle(guid)
 
     if not entity then
@@ -459,14 +465,24 @@ function GetAllUuidsWithComponent(componentName)
 end
 
 function IsProp(uuid)
+    if not uuid or uuid == "" then return false end
+
+    if RB_FlagHelpers.HasFlag(uuid, "IsSpawned") then
+        return true
+    end
+
     if Ext.IsClient() or true then
-        return CIsTagged(uuid)
+        return CIsTaggedProp(uuid)
     end
     return Osi.IsTagged(uuid, RB_PROP_TAG) == 1
 end
 
 function IsGizmo(uuid)
     if not uuid or uuid == "" then return false end
+
+    if RB_FlagHelpers.HasFlag(uuid, "IsGizmo") then
+        return true
+    end
 
     if Ext.IsClient() or true then
         local entity = UuidToHandle(uuid)
@@ -486,7 +502,12 @@ end
 
 function BF_GetAllTagged()
     local props = {}
-    local AllUuids = GetAllUuidsWithComponent("Tag")
+    local AllUuids = Ext.Vars.GetEntitiesWithVariable(RB_Flags_Field)
+
+    if not AllUuids or #AllUuids == 0 then
+        AllUuids = GetAllUuidsWithComponent("Tag")
+    end
+
     for _, uuid in ipairs(AllUuids) do
         if IsProp(uuid) then
             table.insert(props, uuid)
@@ -497,7 +518,12 @@ end
 
 function BF_GetAllGizmos()
     local gizmos = {}
-    local AllUuids = GetAllUuidsWithComponent("Tag")
+    local AllUuids = Ext.Vars.GetEntitiesWithVariable(RB_Flags_Field)
+
+    if not AllUuids or #AllUuids == 0 then
+        AllUuids = GetAllUuidsWithComponent("Tag")
+    end
+
     for _, uuid in ipairs(AllUuids) do
         if IsGizmo(uuid) then
             table.insert(gizmos, uuid)

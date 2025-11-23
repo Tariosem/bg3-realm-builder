@@ -21,6 +21,8 @@ function OsirisHelpers.Propify(guids)
         Osi.SetTag(guid, RB_PROP_TAG)
         Osi.SetCanFight(guid, 0)
         Osi.SetCanJoinCombat(guid, 0)
+
+        RB_FlagHelpers.SetFlag(guid, "IsSpawned")
     end
 end
 
@@ -241,6 +243,7 @@ function OsirisHelpers.PreviewTemplate(templateId, x, y, z, p, yaw, r, w, visual
     OsirisHelpers.Propify(preview)
     Osi.SetCanInteract(preview, 0)
     Osi.ClearTag(preview, RB_PROP_TAG)
+    RB_FlagHelpers.SetFlag(preview, "IsGizmo")
     
     Timer:After(500, function ()
         NetChannel.ApplyVisualPreset:Broadcast({ Guid=preview, TemplateName=templateName, VisualPreset=visualPreset })
@@ -248,6 +251,7 @@ function OsirisHelpers.PreviewTemplate(templateId, x, y, z, p, yaw, r, w, visual
     
     Timer:After(10000, function ()
         Osi.RequestDelete(preview)
+        Osi.RequestDeleteTemporary(preview)
     end)
 end
 

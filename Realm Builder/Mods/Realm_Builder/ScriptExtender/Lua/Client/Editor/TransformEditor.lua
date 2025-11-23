@@ -170,6 +170,17 @@ function TransformEditor:HandleGizmo()
             else
                 pivotPos = Vec3.new(CGetPosition(CGetHostCharacter()))
             end
+        elseif self.PivotMode == "Active" then
+            local latestProxy = self.Target[#self.Target]
+            while not latestProxy:IsValid() do
+                table.remove(self.Target, #self.Target)
+                if #self.Target == 0 then
+                    Debug("TransformEditor: GetPivot no valid target selected")
+                    return Vec3.new(GetHostPosition()), Quat.Identity()
+                end
+                latestProxy = self.Target[#self.Target]
+            end
+            pivotPos = latestProxy:GetWorldTranslate() or Vec3.new(GetHostPosition())
         else
             local validCount = 0
             for _,proxy in pairs(self.Target or {}) do

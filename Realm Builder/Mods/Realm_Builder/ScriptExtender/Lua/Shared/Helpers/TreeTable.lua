@@ -213,20 +213,18 @@ function TreeTable:AddPath(path)
     
     local currentParent = ROOT
     for _, segment in ipairs(path) do
+        if segment == currentParent and segment ~= ROOT then
+            return false
+        end
         local existingNode = self:Find(segment)
-        if existingNode and not self:IsLeaf(segment) then
-            -- existing node is already a tree; ensure it's under the expected parent
-            if self:GetParentKey(segment) ~= currentParent then self:Reparent(segment, currentParent) end
-        elseif existingNode and self:IsLeaf(segment) then
-            -- existing key is a leaf: convert it to a tree under the desired parent
-            local newNode = self:ForceAddTree(segment, currentParent)
-            if not newNode then return false end
+        if existingNode then
+            return false
         else
-            -- key doesn't exist: add it as a tree under the desired parent
             local newNode = self:AddTree(segment, currentParent)
             if not newNode then return false end
         end
         currentParent = segment
+        ::continue::
     end
 
     return true

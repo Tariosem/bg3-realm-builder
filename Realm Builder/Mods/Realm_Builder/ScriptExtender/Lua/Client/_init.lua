@@ -66,6 +66,12 @@ if GLOBAL_DEBUG_WINDOW then
     debugButton.OnClick = function()
         ErrorNotify("Debug", "Memory Usage: " .. tostring(Ext.Utils.GetMemoryUsage()/1024/1024) .. " MB")
         ErrorNotify("Error", "This is a test error notification.")
+
+        local entities = Ext.Entity.GetAllEntitiesWithComponent("ServerAtmosphereTrigger")
+
+        for cnt,ent in pairs(entities) do
+            Ext.IO.SaveFile("Atmosphere_" .. cnt .. ".Json", Ext.DumpExport(ent:GetAllComponents()))
+        end
     end
 
     local visualizeMouseRay = GLOBAL_DEBUG_WINDOW:AddButton("Visualize Mouse Ray")
@@ -87,6 +93,69 @@ if GLOBAL_DEBUG_WINDOW then
 
 end
 
+local PhysicsGroupFlags = Ext.Enums.PhysicsGroupFlags
+local PhysicsType = Ext.Enums.PhysicsType
+
+local configurableIntersect = {
+    PhysicsType = PhysicsType.Dynamic | PhysicsType.Static,
+    PhysicsGroupFlags = PhysicsGroupFlags.Item 
+        | PhysicsGroupFlags.Character
+        | PhysicsGroupFlags.Scenery
+        | PhysicsGroupFlags.VisibleItem,
+    PhysicsGroupFlagsExclude = PhysicsGroupFlags.Terrain,
+    Function = "RaycastClosest"
+}
+
+--- @return PhxPhysicsHit
+function Ray:IntersectDebug()
+    return Ext.Level[configurableIntersect.Function](self.Origin, self.Direction, configurableIntersect.PhysicsType, configurableIntersect.PhysicsGroupFlags, configurableIntersect.PhysicsGroupFlagsExclude, 1)
+end
+
+if false and GLOBAL_DEBUG_WINDOW then
+    local header = GLOBAL_DEBUG_WINDOW:AddCollapsingHeader("Raycast Options")
+
+    local funcCombo = header:AddCombo("Function")
+    funcCombo.Options = {"RaycastClosest", "RaycastAll"}
+    funcCombo.OnChange = function (ev)
+        configurableIntersect.Function = GetCombo(ev)
+    end
+
+    --- @type RadioButtonOption[]
+    local options = {}
+
+    for flagName,flagValue in pairs(PhysicsGroupFlags) do
+        if type(flagName) == "string" then
+            table.insert(options, {Name = flagName, Value = flagValue})
+        end
+    end
+
+    local separator = header:AddSeparatorText("Include Groups")
+    local includeGroup = StyleHelpers.AddBitmaskRadioButtons(header, options, configurableIntersect.PhysicsGroupFlags)
+
+    includeGroup.OnChange = function (radioBtn, value)
+        configurableIntersect.PhysicsGroupFlags = value
+    end
+
+    local excludeSeparator = header:AddSeparatorText("Exclude Groups")
+    local excludeGroup = StyleHelpers.AddBitmaskRadioButtons(header, options, configurableIntersect.PhysicsGroupFlagsExclude)
+
+    excludeGroup.OnChange = function (radioBtn, value)
+        configurableIntersect.PhysicsGroupFlagsExclude = value
+    end
+
+    local debugBtn = header:AddButton("Debug Raycast")
+    debugBtn.OnClick = function ()
+        local ray = ScreenToWorldRay()
+        if not ray then
+            return
+        end
+        local hit = ray:IntersectDebug()
+        _D(hit)
+    end
+end
+
+
+
 RB_CharacterManager = CharacterManager.new()
 RB_ItemManager = ItemManager.new()
 RB_MultiEffectManager = MultiEffectManager.new()
@@ -102,18 +171,6 @@ function GetDataFromUuid(uuid)
     TakeTailTemplate(uuid)
     return RB_ItemManager.Data[uuid] or RB_MultiEffectManager.Data[uuid] or {}
 end
-
-function GetDataFromName(name)
-    if not name or name == "" then
-        return nil
-    end
-    local uuid = RB_ItemManager.TemplateNameToUuid[name] or RB_MultiEffectManager.EffectNameToUuid[name] or nil
-    if not uuid then
-        return nil
-    end
-    return GetDataFromUuid(uuid)
-end
-
 --- @return table<string, integer>, integer
 local function PopulateAllTemplates()
     if RB_ItemManager.populated then return {}, 0 end

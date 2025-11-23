@@ -62,6 +62,8 @@ end
 
 function Gizmo:UpdatePicker()
     if not self.PivotPosition or not self.PivotRotation then return end
+    if not #self.PivotPosition == 3 then return end
+
     local scale = self.Visualizer:UpdateScale(self.PivotPosition)
     self.Picker:SetTransform(self.PivotPosition, self.PivotRotation, scale)
 end

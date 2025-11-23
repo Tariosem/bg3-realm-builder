@@ -21,7 +21,6 @@ function StyleMenu:Render()
         self.isWindow = false
     else
         self.panel = RegisterWindow("generic", GetLoca("Style"), "Menu", self, {STYLEMENU_WIDTH, STYLEMENU_HEIGHT})
-        self.panel.AlwaysAutoResize = true
         self.isWindow = true
     end
 
@@ -128,7 +127,8 @@ function StyleMenu:RenderColorPickers()
         bgColorPicker.OnChange()
     end
 
-    local colorsHeader = self.panel:AddCollapsingHeader(GetLoca("Colors"))
+    local colorsHeader = StyleHelpers.AddTree(self.panel, GetLoca("Colors"))
+    colorsHeader.Framed = true
 
     local colorPickers = {}
 
@@ -168,7 +168,7 @@ function StyleMenu:RenderColorPickers()
     for _,obj in ipairs(colorsArray) do
         local category = obj.Value
         if not colorTrees[category] then
-            colorTrees[category] = colorsHeader:AddTree(category)
+            colorTrees[category] = StyleHelpers.AddTree(colorsHeader, category)
         end
     end
 
@@ -252,7 +252,8 @@ function StyleMenu:RenderStyleSliders()
     local baseBorderSlider = self.panel:AddSlider(GetLoca("Base Border"), CONFIG.Theme.Style.BaseBorder, 0, 5)
     basePaddingSlider.Visible = false
 
-    local styleVarHeader = self.panel:AddCollapsingHeader(GetLoca("Style Variables"))
+    local styleVarHeader = StyleHelpers.AddTree(self.panel, GetLoca("Style Variables"))
+    styleVarHeader.Framed = true
 
     local styleVarSlider = {}
 
@@ -332,7 +333,7 @@ function StyleMenu:RenderStyleSliders()
     for _,obj in ipairs(varsArray) do
         local category = obj.Value
         if not styleVarTrees[category] then
-            styleVarTrees[category] = styleVarHeader:AddTree(category)
+            styleVarTrees[category] = StyleHelpers.AddTree(styleVarHeader, category)
         end
     end
 

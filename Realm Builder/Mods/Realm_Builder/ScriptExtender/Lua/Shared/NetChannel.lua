@@ -65,7 +65,13 @@ NetChannel.Visualize = Ext.Net.CreateChannel(ModuleUUID, "Visualize")
 
 --- @class SetTransformChannel : NetChannel
 --- @field SendToServer fun(channel:self , data: {Guid: GUIDSTRING[]|GUIDSTRING, Transforms: table<GUIDSTRING, Transform>})
+--- @field RequestToServer fun(channel:self , data: {Guid: GUIDSTRING[]|GUIDSTRING, Transforms: table<GUIDSTRING, Transform>}, callback: fun(response: boolean))
 NetChannel.SetTransform = Ext.Net.CreateChannel(ModuleUUID, "SetTransform")
+
+--- @class TeleportToChannel : NetChannel
+--- @field SendToServer fun(channel:self , data: {Guid: GUIDSTRING[]|GUIDSTRING, Position: Vec3, Rotation: Quat})
+--- @field RequestToServer fun(channel:self , data: {Guid: GUIDSTRING[]|GUIDSTRING, Position: Vec3, Rotation: Quat}, callback: fun(response: boolean))
+NetChannel.TeleportTo = Ext.Net.CreateChannel(ModuleUUID, "TeleportTo")
 
 --- @class SetAttributesChannel : NetChannel
 --- @field SendToServer fun(channel:self , data: {Guid: GUIDSTRING[]|GUIDSTRING, Attributes: table<'Moveable'|'Persistent'|'Gravity'|'Visible', boolean>})
@@ -102,3 +108,11 @@ NetChannel.CreateStat = Ext.Net.CreateChannel(ModuleUUID, "CreateStat")
 --- @class StopStatusChannel
 --- @field SendToServer fun(self, data: {Type: "All"|"Status", DisplayName: string, Object: GUIDSTRING|nil})
 NetChannel.StopStatus = Ext.Net.CreateChannel(ModuleUUID, "StopStatus")
+
+--- @class GetAtmosphereChannel : NetChannel
+--- @field RequestToServer fun(channel:self , data: {}, callback: fun(response: Guid))
+NetChannel.GetAtmosphere = Ext.Net.CreateChannel(ModuleUUID, "GetAtmosphere")
+
+--- @class GetLightingChannel : NetChannel
+--- @field RequestToServer fun(channel:self , data: {}, callback: fun(response: Guid))
+NetChannel.GetLighting = Ext.Net.CreateChannel(ModuleUUID, "GetLighting")

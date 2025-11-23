@@ -4,6 +4,7 @@
 --- @field SetImguiDisabled fun(extui: ExtuiRenderable, disabled: boolean)
 --- @field SetAlphaByBool fun(s: ExtuiRenderable, bool: boolean)
 --- @field AddPrefixInput fun(parent: ExtuiTreeParent, prefix: string?, text: string, readOnly: boolean?): ExtuiInputText
+--- @field AddReadOnlyAttrTable fun(parent:ExtuiTreeParent, contents:table<string, string>):AttrTable
 StyleHelpers = StyleHelpers or {}
 
 ---@param parent ExtuiTreeParent|ExtuiStyledRenderable
@@ -15,6 +16,87 @@ StyleHelpers = StyleHelpers or {}
 function SafeAddSliderInt(parent, label, default, min, max)
     --- @diagnostic disable-next-line
     return parent:AddSliderInt(label or "", math.floor(default or 0), math.floor(min or 0), math.floor(max or 100))
+end
+
+--- @param parent ExtuiTreeParent
+--- @param label string
+--- @param step number
+--- @param slider? ExtuiSliderInt|ExtuiSliderScalar
+--- @param direction? '<'|'>'
+--- @return ExtuiButton
+local function AddSliderStepButton(parent, label, step, slider, direction)
+    local button = parent:AddButton(label)
+    button.IDContext = Uuid_v4()
+
+    button.UserData = { Slider = slider }
+
+    button.OnClick = function()
+        local s = button.UserData.Slider
+        if not s then
+            return
+        end
+        local stepValue = s.UserData and s.UserData.Step or (step or 1)
+        if direction == "<" then
+            stepValue = -stepValue
+        end
+        local newValue = s.Value[1] + stepValue
+
+        if s.UserData.Clamp then
+            if newValue < s.Min[1] then
+                newValue = s.Min[1]
+            elseif newValue > s.Max[1] then
+                newValue = s.Max[1]
+            end
+        end
+
+        s.Value = { newValue, newValue, newValue, newValue }
+        if s.OnChange then
+            s:OnChange()
+        end
+    end
+
+    button.OnRightClick = function()
+        local s = button.UserData.Slider --[[@as ExtuiSliderInt|ExtuiSliderScalar]]
+        if not s then
+            return
+        end
+        if s.UserData.DisableRightClickSet then
+            return
+        end
+
+        local dir = direction == "<" and "<" or ">"
+        local factor = 10.0
+
+        if s.UserData.IsInteger then
+            factor = 10
+        end
+
+        if dir == ">" then
+            local newMin = Vec4.new(s.Min) * factor
+            local newMax = Vec4.new(s.Max) * factor
+            if s.UserData.IsInteger then
+                newMin = Vec4.new(math.floor(newMin[1]), math.floor(newMin[2]), math.floor(newMin[3]),
+                    math.floor(newMin[4]))
+                newMax = Vec4.new(math.floor(newMax[1]), math.floor(newMax[2]), math.floor(newMax[3]),
+                    math.floor(newMax[4]))
+            end
+            s.Min = newMin
+            s.Max = newMax
+        else
+            local newMin = Vec4.new(s.Min) / factor
+            local newMax = Vec4.new(s.Max) / factor
+            if s.UserData.IsInteger then
+                newMin = Vec4.new(math.floor(newMin[1]), math.floor(newMin[2]), math.floor(newMin[3]),
+                    math.floor(newMin[4]))
+                newMax = Vec4.new(math.floor(newMax[1]), math.floor(newMax[2]), math.floor(newMax[3]),
+                    math.floor(newMax[4]))
+            end
+            s.Min = newMin
+            s.Max = newMax
+        end
+    end
+
+    return button
 end
 
 --- @param parent ExtuiTreeParent
@@ -134,86 +216,7 @@ function StyleHelpers.AddSliderWithStep(parent, IDContext, defaultValue, min, ma
     return sliderProxy
 end
 
---- @param parent ExtuiTreeParent
---- @param label string
---- @param step number
---- @param slider? ExtuiSliderInt|ExtuiSliderScalar
---- @param direction? '<'|'>'
---- @return ExtuiButton
-function AddSliderStepButton(parent, label, step, slider, direction)
-    local button = parent:AddButton(label)
-    button.IDContext = Uuid_v4()
 
-    button.UserData = { Slider = slider }
-
-    button.OnClick = function()
-        local s = button.UserData.Slider
-        if not s then
-            return
-        end
-        local stepValue = s.UserData and s.UserData.Step or (step or 1)
-        if direction == "<" then
-            stepValue = -stepValue
-        end
-        local newValue = s.Value[1] + stepValue
-
-        if s.UserData.Clamp then
-            if newValue < s.Min[1] then
-                newValue = s.Min[1]
-            elseif newValue > s.Max[1] then
-                newValue = s.Max[1]
-            end
-        end
-
-        s.Value = { newValue, newValue, newValue, newValue }
-        if s.OnChange then
-            s:OnChange()
-        end
-    end
-
-    button.OnRightClick = function()
-        local s = button.UserData.Slider --[[@as ExtuiSliderInt|ExtuiSliderScalar]]
-        if not s then
-            return
-        end
-        if s.UserData.DisableRightClickSet then
-            return
-        end
-
-        local dir = direction == "<" and "<" or ">"
-        local factor = 10.0
-
-        if s.UserData.IsInteger then
-            factor = 10
-        end
-
-        if dir == ">" then
-            local newMin = Vec4.new(s.Min) * factor
-            local newMax = Vec4.new(s.Max) * factor
-            if s.UserData.IsInteger then
-                newMin = Vec4.new(math.floor(newMin[1]), math.floor(newMin[2]), math.floor(newMin[3]),
-                    math.floor(newMin[4]))
-                newMax = Vec4.new(math.floor(newMax[1]), math.floor(newMax[2]), math.floor(newMax[3]),
-                    math.floor(newMax[4]))
-            end
-            s.Min = newMin
-            s.Max = newMax
-        else
-            local newMin = Vec4.new(s.Min) / factor
-            local newMax = Vec4.new(s.Max) / factor
-            if s.UserData.IsInteger then
-                newMin = Vec4.new(math.floor(newMin[1]), math.floor(newMin[2]), math.floor(newMin[3]),
-                    math.floor(newMin[4]))
-                newMax = Vec4.new(math.floor(newMax[1]), math.floor(newMax[2]), math.floor(newMax[3]),
-                    math.floor(newMax[4]))
-            end
-            s.Min = newMin
-            s.Max = newMax
-        end
-    end
-
-    return button
-end
 
 function AddWarningIcon(parent, text)
     local image = parent:AddImage(RB_ICONS.Warning) --[[@as ExtuiImageButton]]
@@ -695,8 +698,8 @@ function AddSelectableButton(parent, label, onClick)
 end
 
 --- @class AttrTable : ExtuiTable
---- @field AddNewLine fun(self: AttrTableProxy): ExtuiTableCell, ExtuiTableCell
---- @field SetValue fun(self: AttrTableProxy, name: string, value: string)
+--- @field AddNewLine fun(self: AttrTable): ExtuiTableCell, ExtuiTableCell
+--- @field SetValue fun(self: AttrTable, name: string, value: string)
 
 ---@param parent ExtuiTreeParent
 ---@param contents table<string, string>
@@ -726,6 +729,7 @@ function StyleHelpers.AddReadOnlyAttrTable(parent, contents)
         addRow(name, value)
     end
 
+    --- @type AttrTable
     local clos = {
         AddNewLine = function()
             local row = tab:AddRow() --[[@as ExtuiTableRow]]
@@ -877,6 +881,7 @@ function StyleHelpers.AddTree(parent, label, open)
     local selectable = headerGroup:AddSelectable(label .. "##" .. uuid .. "_Selectable")
     local indent = panelGroup:AddDummy(16 * SCALE_FACTOR, 1)
     local panel = panelGroup:AddGroup(label .. "_TreeGroup##uuid_" .. uuid)
+    local isFramed = false
     local treeIcon = nil
     panel.Visible = open == true
     panel.SameLine = true
@@ -899,7 +904,11 @@ function StyleHelpers.AddTree(parent, label, open)
 
     StyleHelpers.SetupImageButton(arrowReserved)
     arrowReserved.OnClick = function()
-        selectable.Selected = false
+        if isFramed then
+            selectable.Selected = true
+        else
+            selectable.Selected = false
+        end
         setOpen(not panel.Visible)
     end
 
@@ -989,14 +998,14 @@ function StyleHelpers.AddTree(parent, label, open)
                 return children
             elseif k == "UserData" then
                 return closure.__UserData
-            elseif rawget(closure, k) ~= nil then
-                return rawget(closure, k)
             elseif k == "OnExpand" or k == "OnCollapse" then
                 return rawget(closure, k)
             elseif k == "Tooltip" then
                 return function()
                     return selectable:Tooltip()
                 end
+            elseif rawget(closure, k) ~= nil then
+                return rawget(closure, k)
             end
             return selectable[k]
         end,
@@ -1009,6 +1018,11 @@ function StyleHelpers.AddTree(parent, label, open)
                 selectable.UserData = v
                 treeIcon.UserData = v
                 v.Is_RB_UI_Tree = true
+                return
+            elseif k == "Framed" then
+                isFramed = v
+                selectable.Selected = v
+                selectable.SpanAllColumns = v
                 return
             end
             selectable[k] = v
@@ -1082,8 +1096,10 @@ function StyleHelpers.AddBitmaskRadioButtons(parent, options, initValue)
         end
     })
 
+    local uuid = Uuid_v4()
     for i, option in ipairs(options) do
         local radio = group:AddRadioButton(option.Name or ("Option" .. i))
+        radio.IDContext = "BitmaskRadioButton__" .. option.Name .. "__" .. i .. "__" .. uuid
         radio.Active = initValue and (initValue & option.Value) ~= 0 or false
         radio.OnChange = function(r)
             r.Active = not r.Active

@@ -30,6 +30,7 @@ MATERIALPRESET_DRAGDROP_TYPE = "MaterialPreset"
 --- @field isVisible boolean
 --- @field panel ExtuiWindow
 --- @field cachedMods table<string, CCMod_Reference>
+--- @field modLocalizations table<string, table<string, string[]>>
 --- @field UpdateCustomMaterialPresetsList fun(self:MaterialPresetsMenu)
 --- @field SaveMaterialPreset fun(self:MaterialPresetsMenu, mat:MaterialEditor)
 --- @field RenderPresetColorBox fun(self:MaterialPresetsMenu, preset:ResourceCharacterCreationColor, parent:ExtuiTreeParent):ExtuiColorEdit
@@ -66,6 +67,7 @@ end
 function MaterialPresetsMenu:Render(parent)
     if self.isVisible then return end
     self.cachedMods = {} --- @type table<string, table<string, CCMod_Pack>>
+    self.modLocalizations = {} --- @type table<string, table<string, string>>
 
     self.isVisible = true
     self:LoadSaveFromCache()
@@ -370,7 +372,10 @@ function MaterialPresetsMenu:RenderFolderRow(presetTab, folderName, openedFolder
     folderColorBox.CanDrag = true
     folderColorBox.DragDropType = MATERIALPRESET_DRAGDROP_TYPE
     folderColorBox.Color = folderDef.UIColor or { 0.5, 0.5, 0.5, 1 }
+    local tooltipColor = folderColorBox:Tooltip():AddColorEdit("##FolderColorBoxTooltip_" .. folderName)
+    tooltipColor.Color = folderColorBox.Color
     folderColorBox.OnChange = function()
+        tooltipColor.Color = folderColorBox.Color
         folderDef.UIColor = folderColorBox.Color
         setRowColor(folderRow, folderDef.UIColor)
     end
@@ -1038,6 +1043,7 @@ function MaterialPresetsMenu:ExportToMod(modPack, progressCallback)
 
     local ok, err = coroutine.resume(thread)
     if not ok then
+        progressCallback(-1, "Error: " .. tostring(err))
         Warning("Error starting export coroutine: " .. tostring(err))
     end
 end
@@ -1062,6 +1068,7 @@ function MaterialPresetsMenu:__exportToMod(modPack, progressCallback, exportThre
     local folders = modPack.Folders or {}
     local existUuid = modPack.ModuleUUID --[[@type GUIDSTRING?]]
     local folderDefs = modPack.FolderDefinitions or {}
+    local existingLoca = self.modLocalizations[modInternalName] or {}
 
     local presetCnt = CountMap(matPresets)
     local folderCnt = CountMap(folders)
@@ -1300,7 +1307,7 @@ function MaterialPresetsMenu:__exportToMod(modPack, progressCallback, exportThre
     if not suc then throwError("ExportToMod: Failed to save CCA mod cache reference file.") end
     advance("Saved CCA mod cache reference file.")
 
-    completeAdvance("Export complete !")
+    completeAdvance("Export complete.")
 end
 
 ---@param modPack CCMod_Pack

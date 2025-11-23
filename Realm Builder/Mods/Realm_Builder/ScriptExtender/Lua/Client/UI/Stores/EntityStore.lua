@@ -204,8 +204,7 @@ function EntityStore:AddEntity(guid, data)
     self:RegisterDisplayName(data.DisplayName or GetDisplayNameForTemplateId(data.TemplateId), guid)
         
     if not self.Tree:Find(guid) then
-        if data.Path and #data.Path > 0 then
-            self.Tree:AddPath(data.Path)
+        if data.Path and #data.Path > 0 and self.Tree:AddPath(data.Path) then
             self.Tree:AddLeaf(guid, "end", data.Path[#data.Path])
         else
             self.Tree:AddLeaf(guid, "end")
@@ -230,10 +229,6 @@ function EntityStore:SetProp(guid, data)
             EntityDatas[guid][k] = v
         end
     end
-end
-
-function EntityStore:MapScenery(guid, entity)
-    sceneryMap[guid] = entity
 end
 
 --- @param guid string

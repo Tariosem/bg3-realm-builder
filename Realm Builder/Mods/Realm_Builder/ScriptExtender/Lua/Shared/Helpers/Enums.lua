@@ -598,8 +598,9 @@ Enums.TransformEditorMode = {
 --- @enum TransformEditorPivotMode
 Enums.TransformEditorPivotMode = {
     Individual = "Individual",
-    Average = "Average",
-    Cursor = "Cursor"
+    Median = "Median",
+    Cursor = "Cursor",
+    Active = "Active"
 }
 
 --- @enum TransformAxis

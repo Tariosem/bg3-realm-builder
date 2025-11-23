@@ -163,6 +163,16 @@ end
 function CharacterMovableProxy:SetTransform(transform)
     local transforms = {}
     transforms[self.Guid] = transform
+
+    if not VisualHelpers.GetEntityVisual(self.Guid) then
+        NetChannel.TeleportTo:SendToServer({
+            Guid = self.Guid,
+            Position = transform.Translate or self:GetWorldTranslate(),
+            Rotation = transform.RotationQuat or self:GetWorldRotation()
+        })
+        return
+    end
+
     VisualHelpers.SetVisualTransform({self.Guid}, transforms)
 end
 

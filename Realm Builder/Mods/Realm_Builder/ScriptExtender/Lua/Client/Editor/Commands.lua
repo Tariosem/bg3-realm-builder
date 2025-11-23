@@ -208,6 +208,10 @@ function Commands.SpawnCommand(template, entInfo)
     local spawnedGuid = nil
 
     local templateObj = Ext.Template.GetTemplate(TakeTailTemplate(template))
+    if not templateObj then
+        Warning("[SpawnCommand] Template not found: " .. tostring(template))
+        return
+    end
     if templateObj.TemplateType == "prefab" then
         spawnPrefab(templateObj, entInfo)
         return

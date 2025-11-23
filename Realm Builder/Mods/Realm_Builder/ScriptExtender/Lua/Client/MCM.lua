@@ -26,15 +26,15 @@ local function ToggleBrowser(targetKey)
 end
 
 local browserMenu = RegisterWindow("generic", "Browser Menu", "Guide Menu")
-browserMenu.AlwaysAutoResize = true
 browserMenu.Closeable = true
+browserMenu:SetSize({ 300 * SCALE_FACTOR, 400 * SCALE_FACTOR })
 
 local allAvailableBrowsers = {
-    {Key = "item", Label = "Item Browser"},
-    {Key = "effect", Label = "Effect Browser"},
-    {Key = "character", Label = "Character Browser"},
-    {Key = "scenery", Label = "Scenery Browser"},
-    {Key = "prefab", Label = "Prefab Browser"},
+    {Key = "item", Label = "Item"},
+    {Key = "effect", Label = "Effect"},
+    {Key = "character", Label = "Character"},
+    {Key = "scenery", Label = "Scenery"},
+    {Key = "prefab", Label = "Prefab"},
 }
 table.sort(allAvailableBrowsers, function(a,b) return a.Label < b.Label end)
 

@@ -107,13 +107,18 @@ function GizmoPicker:UpdateParamsByScale()
 end
 
 function GizmoPicker:SetTransform(pos, rot, scale)
-
     self.Position = pos or self.Position
     self.Rotation = rot or self.Rotation
 
     self.Scale = scale or self.Scale
 
-    self.AABB = { Min = pos - { scale, scale, scale }, Max = pos + { scale, scale, scale } }
+    local min = Vec3.new(-1,-1,-1) * scale
+    local max = Vec3.new(1,1,1) * scale
+
+    local worldMin = Ext.Math.Add(self.Position, min)
+    local worldMax = Ext.Math.Add(self.Position, max)
+
+    self.AABB = { Min = worldMin, Max = worldMax }
     self.axesDirty = true
 end
 

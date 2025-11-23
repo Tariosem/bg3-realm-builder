@@ -3,6 +3,68 @@ local VISUALTAB_HEIGHT = 1000 * SCALE_FACTOR
 
 local visualTabCache = {}
 
+local ClientVisualPresetData = {}
+local ClientOriginalVisualData = {}
+
+local function LoadVisualPresetData()
+    local refFile = GetVisualReferencePath()
+    local refData = Ext.Json.Parse(Ext.IO.LoadFile(refFile) or "{}")
+    for templateName, data in pairs(refData) do
+        local visualPresetFile = GetVisualPresetsPath(templateName)
+        local visualPresetData = Ext.Json.Parse(Ext.IO.LoadFile(visualPresetFile) or "{}")
+        if visualPresetData then
+            ClientVisualPresetData[templateName] = visualPresetData
+        else
+            Warning("VisualPresetDataLoadFromFile: Failed to load preset data for template: " .. templateName)
+        end
+    end
+end
+
+local function UpdateVisualPresetDataFromServer(data)
+    for templateName, presets in pairs(data) do
+        if not ClientVisualPresetData[templateName] then
+            ClientVisualPresetData[templateName] = {}
+        end
+        for presetName, presetData in pairs(presets) do
+            if not ClientVisualPresetData[templateName][presetName] then
+                ClientVisualPresetData[templateName][presetName] = presetData
+            end
+        end
+    end
+end
+
+local function ClearOriginalVisualData(templateName)
+    if templateName then
+        ClientOriginalVisualData[templateName] = nil
+    else
+        ClientOriginalVisualData = {}
+    end
+    --Info("Cleared original visual data for template: " .. tostring(templateName or "all"))
+end
+
+function GetVisualPresetData(templateName, presetName)
+    if not templateName or not presetName then
+        Warning("GetVisualPresetData: Invalid templateName or presetName")
+        return nil
+    end
+
+    local templateData = ClientVisualPresetData[templateName]
+    if not templateData then
+        Warning("GetVisualPresetData: No data found for template: " .. templateName)
+        return nil
+    end
+
+    return templateData[presetName]
+end
+
+RegisterOnSessionLoaded(function()
+    --local now = Ext.Utils.MonotonicTime()
+    LoadVisualPresetData()
+    ClearOriginalVisualData()
+    --Debug("Visual preset data loaded in " .. (Ext.Utils.MonotonicTime() - now) .. "ms")
+end)
+
+
 --- @class VisualTab
 --- @field Materials table<string, MaterialTab>
 --- @field Effects table<string, table<string, any>> -- EffectType::index -> EffectProperty -> value
@@ -156,7 +218,7 @@ function VisualTab:Render(retryCnt)
         self.panel = self.parent:AddTabItem(GetLoca("Visual"))
         self.isWindow = false
     else
-        self.panel = RegisterWindow(self.guid, self.displayName, "VisualTab", self, self.lastPosition,
+        self.panel = RegisterWindow(self.guid, self.displayName .. " - Visual Editor", "VisualTab", self, self.lastPosition,
             self.lastSize or { VISUALTAB_WIDTH, VISUALTAB_HEIGHT })
         self.isWindow = true
         self:OnDetach()
@@ -172,7 +234,7 @@ function VisualTab:Render(retryCnt)
             self:Refresh()
         end
         if not retryCnt or retryCnt < 1 then
-            Timer:After(500, function()
+            Timer:Ticks(30, function()
                 self:Refresh((retryCnt or 0) + 1)
             end)
         else
@@ -362,6 +424,11 @@ function VisualTab:RenderPresetsCell(parent)
             --Info("Loaded VisualTab preset: " .. selectedName)
         end
     end
+
+    self.loadCombo.OnHoverEnter = function()
+        --self.saveInput:OnChange()
+    end
+    self.saveInput:OnChange()
 
     ApplyDangerButtonStyle(removeButton)
     removeButton.OnClick = function()
@@ -564,8 +631,9 @@ function VisualTab:DetermineOverrideCharacterParameters()
         }
 
         --for _, colorChoice in pairs(cca.Elements) do
+            --local mat = Ext.StaticData.Get(colorChoice.Material, "CharacterCreationAppearanceMaterial")
             --_D(Ext.StaticData.Get(colorChoice.Color, "ColorDefinition"))
-            --_D(Ext.StaticData.Get(colorChoice.Material, "CharacterCreationAppearanceMaterial"))
+            --_D(Ext.Resource.Get(mat.MaterialPresetUUID, "MaterialPreset"))
         --end
 
         local hasCCA = false
@@ -710,7 +778,7 @@ function VisualTab:RenderAttachmentEditors()
             end
 
             local objNode = parentNode:AddTree(modelName .. "##" .. tostring(attIndex) .. "::" .. tostring(descIndex), false)
-            objNode:AddTreeIcon(RB_ICONS.Bounding_Box, IMAGESIZE.ROW).Tint = HexToRGBA("FF268B39")
+            objNode:AddTreeIcon(RB_ICONS.Bounding_Box, IMAGESIZE.ROW).Tint = HexToRGBA("FF27B040")
 
             local matName = obj.Renderable.ActiveMaterial.Material.Name
             local function getliveMat()
@@ -1898,13 +1966,21 @@ function VisualTab:Save(name, overwrite)
             Mats[key] = params
         end
 
+    
         local objStart = self.resetParams[key]
+
+        if objStart == nil then
+            goto continue
+        end
+
         local currentScale = VisualHelpers.GetRenderableScale(self.guid, objStart.DescIndex, objStart.AttachIndex)
         if EqualArrays(currentScale, objStart.Scale) == false then
             localTransforms[key] = {
                 Scale = currentScale
             }
         end
+
+        ::continue::
     end
 
     oriFile[saveName] = {
@@ -2085,6 +2161,11 @@ function VisualTab:LoadPreset(name)
 
     local preset = self.savedPresets[name]
 
+    if not preset then
+        Error("No saved preset found with name: " .. name)
+        return false
+    end
+
     for _, resetFunc in pairs(self.resetFuncs) do
         for _, func in pairs(resetFunc) do
             if func then
@@ -2138,7 +2219,7 @@ function VisualTab:_getAllPresetNames()
         table.insert(names, name)
     end
     table.sort(names)
-    Debug("VisualTab:_getAllPresetNames - Found presets: " .. table.concat(names, ", "))
+    --Debug("VisualTab:_getAllPresetNames - Found presets: " .. table.concat(names, ", "))
     return names
 end
 

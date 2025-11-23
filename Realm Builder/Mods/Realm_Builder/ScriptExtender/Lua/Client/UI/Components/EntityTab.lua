@@ -52,8 +52,7 @@ function EntityTab:__init(guid, templateId, parent, initAttach)
 
     self.parent = parent or nil
     self.panel = nil
-    local _,visualtab = CheckWindowExists(self.guid, "VisualTab")
-    self.visualTab = visualtab or VisualTab.new(self.guid, self.displayName, nil, self.templateName)
+    self.visualTab = VisualTab.new(self.guid, self.displayName, nil, self.templateName) --[[@as VisualTab]]
 
     self.isAttach = initAttach or false
     self.isVisible = false
@@ -438,7 +437,7 @@ end
 function EntityTab:RenderVisualTab()
 
     if not self.visualTab then
-        self.visualTab = VisualTab:Add(self.guid, self.displayName, self.tabBar, self.templateName)
+        self.visualTab = VisualTab:Add(self.guid, self.displayName, self.tabBar, self.templateName) --[[@as VisualTab]]
     elseif self.visualTab and self.visualTab.isWindow then
         self.visualTab.parent = self.tabBar
         if self.visualTab.panel then

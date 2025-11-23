@@ -201,6 +201,18 @@ NetChannel.SetTransform:SetRequestHandler(function(data, userID)
     return {} --finished
 end)
 
+NetChannel.TeleportTo:SetHandler(function(data, userID)
+    local toTeleport = NormalizeGuidList(data.Guid)
+    for _, guid in ipairs(toTeleport) do
+        local position = data.Position
+        Osi.TeleportToPosition(guid, position[1], position[2], position[3])
+
+        if BindManager then
+            BindManager:UpdateOffset(guid)
+        end
+    end
+end)
+
 NetChannel.Replicate:SetHandler(function (data, userID)
 
     for _, guid in ipairs(NormalizeGuidList(data.Guid)) do
@@ -258,6 +270,10 @@ NetChannel.Visualize:SetRequestHandler(function(data, userID)
             [cursorEntity] = { Scale = {0, 0, 0} }
         }})
     end
+    for _,e in pairs(entityHandles) do
+        RB_FlagHelpers.SetFlag(e, "IsGizmo")
+    end
+
     if duration > 0 then
         Timer:After(duration, function()
             for _,e in pairs(entityHandles) do
@@ -341,6 +357,7 @@ NetChannel.ManageGizmo:SetRequestHandler(function(data, userID)
     local guid = Osi.CreateAt(GIZMO_ITEM[data.GizmoType], data.Position[1], data.Position[2], data.Position[3], 1, 0, "") --[[@as string]]
     Osi.SetVisible(guid, 0)
 
+    RB_FlagHelpers.SetFlag(guid, "IsGizmo")
     Timer:Ticks(30, function (timerID)
         NetChannel.SetVisualTransform:Broadcast({Guid = guid, Transforms = {
             [guid] = { Scale = {0, 0, 0} }
@@ -416,4 +433,11 @@ NetChannel.StopStatus:SetHandler(function (data, userID)
     data.DisplayName = data.DisplayName .. tostring(userID)
 
     EM:RemoveStatus(data)
+end)
+
+
+NetChannel.SetAtmosphere:SetHandler(function (data, userID)
+    local trigger
+
+
 end)

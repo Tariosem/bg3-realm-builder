@@ -137,20 +137,20 @@ end
 --- @return Hit|nil, Hit[]|nil
 function Ray:IntersectAABB(min, max)
     if not min or not max then return nil end
-    local tmin = (min.x - self.Origin.x) / self.Direction.x
-    local tmax = (max.x - self.Origin.x) / self.Direction.x
+    local tmin = (min[1] - self.Origin[1]) / self.Direction[1]
+    local tmax = (max[1] - self.Origin[1]) / self.Direction[1]
     if tmin > tmax then tmin, tmax = tmax, tmin end
 
-    local tymin = (min.y - self.Origin.y) / self.Direction.y
-    local tymax = (max.y - self.Origin.y) / self.Direction.y
+    local tymin = (min[2] - self.Origin[2]) / self.Direction[2]
+    local tymax = (max[2] - self.Origin[2]) / self.Direction[2]
     if tymin > tymax then tymin, tymax = tymax, tymin end
 
     if (tmin > tymax) or (tymin > tmax) then return nil end
     if tymin > tmin then tmin = tymin end
     if tymax < tmax then tmax = tymax end
 
-    local tzmin = (min.z - self.Origin.z) / self.Direction.z
-    local tzmax = (max.z - self.Origin.z) / self.Direction.z
+    local tzmin = (min[3] - self.Origin[3]) / self.Direction[3]
+    local tzmax = (max[3] - self.Origin[3]) / self.Direction[3]
     if tzmin > tzmax then tzmin, tzmax = tzmax, tzmin end
 
     if (tmin > tzmax) or (tzmin > tmax) then return nil end
@@ -301,34 +301,6 @@ function Ray:IntersectSphere(center, radius)
             nil
         )
     end
-end
-
-local PhysicsGroupFlags = Ext.Enums.PhysicsGroupFlags
-local PhysicsType = Ext.Enums.PhysicsType
-
-local configurableIntersect = {
-    PhysicsType = PhysicsType.Dynamic | PhysicsType.Static,
-    PhysicsGroupFlags = PhysicsGroupFlags.Item 
-        | PhysicsGroupFlags.Character
-        | PhysicsGroupFlags.Scenery
-        | PhysicsGroupFlags.VisibleItem,
-    PhysicsGroupFlagsExclude = PhysicsGroupFlags.Terrain,
-    Function = "RaycastClosest"
-}
-
-if GLOBAL_DEBUG_WINDOW then
-    local header = GLOBAL_DEBUG_WINDOW:AddCollapsingHeader("Raycast Options")
-
-    local funcCombo = header:AddCombo("Function")
-    funcCombo.Options = {"RaycastClosest", "RaycastAll"}
-    funcCombo.OnChange = function (ev)
-        configurableIntersect.Function = GetCombo(ev)
-    end
-end
-
---- @return PhxPhysicsHit
-function Ray:IntersectDebug()
-    return Ext.Level[configurableIntersect.Function](self.Origin, self.Direction, configurableIntersect.PhysicsType, configurableIntersect.PhysicsGroupFlags, configurableIntersect.PhysicsGroupFlagsExclude, 1)
 end
 
 ---@param entity EntityHandle|GUIDSTRING

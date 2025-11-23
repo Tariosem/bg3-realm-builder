@@ -30,8 +30,6 @@ EntityManager = {
 --- @field SavedEntities table<string, boolean>
 --- @field DeleteOnNextSession table<string, boolean>
 
-Ext.Vars.RegisterModVariable(ModuleUUID, "EntityManager", {})
-
 Ext.Events.GameStateChanged:Subscribe(function (e)
     if e.FromState == "LoadLevel" then
         EntityManager:LoadFromModVar()
@@ -113,6 +111,7 @@ function EntityManager:DeleteEntities(guids)
         self.SavedEntities[guid] = nil
 
         OsirisHelpers.TeleportTo(guid, 0, -10000, 0)
+        Osi.TeleportToPosition(guid, 0, -10000, 0)
 
         Osi.SetVisible(guid, 0)
         Osi.SetCanInteract(guid, 0)
@@ -133,6 +132,7 @@ function EntityManager:RestoreEntities(guids)
 
         local transform = self.CachedTransforms and self.CachedTransforms[guid]
         if transform then
+            Osi.TeleportToPosition(guid, transform.Translate[1], transform.Translate[2], transform.Translate[3])
             OsirisHelpers.ToTransform(guid, transform)
         else
             --- @diagnostic disable-next-line
@@ -196,7 +196,12 @@ function EntityManager:CreateAt(templateId, x, y, z, rx, ry, rz, w)
         return nil
     end
 
-    if x == nil or y == nil or z == nil then
+    if x == nil or y == nil or z == nil then 
+        x, y, z = GetHostPosition()
+        if not x or not y or not z then
+            x, y, z = 0, 0, 0
+        end
+    elseif x == 0 and y == 0 and z == 0 then
         x, y, z = GetHostPosition()
         if not x or not y or not z then
             x, y, z = 0, 0, 0
@@ -219,6 +224,8 @@ function EntityManager:CreateAt(templateId, x, y, z, rx, ry, rz, w)
 
     local newProp = Osi.CreateAt(spawnTemplate, x, y, z, tempoFlag, 0, "") --[[@as string]]
 
+
+
     if not newProp then
         Error("Failed to create prop with TemplateId: " .. tostring(templateId))
         return nil
@@ -231,6 +238,9 @@ function EntityManager:CreateAt(templateId, x, y, z, rx, ry, rz, w)
     if rx and ry and rz and w then
         OsirisHelpers.RotateTo(newProp, rx, ry, rz, w)
     end
+    if templateObj.TemplateType == "character" then
+        NetChannel.SetVisualTransform:Broadcast({Guid = newProp, Transforms = { [newProp] = { RotationQuat = {rx, ry, rz, w}, Translate = {x, y, z} } } })
+    end
 
     local propData = {
         TemplateId = templateId,
@@ -239,7 +249,6 @@ function EntityManager:CreateAt(templateId, x, y, z, rx, ry, rz, w)
 
     self.SavedEntities[newProp] = propData
     self:StoreGuid(newProp)
-
 
     local TemplateName = TrimTail(templateId, 37)
     if TemplateName == "" then
@@ -371,7 +380,7 @@ function EntityManager:ScanForEntities()
     local allEntities = Ext.Entity.GetAllEntitiesWithComponent("Tag")
     for _, entity in pairs(allEntities) do
         local uuid = entity.Uuid.EntityUuid
-        if CIsTagged(uuid) and not modVar.DeleteOnNextSession[uuid] and not self.SavedEntities[uuid] then
+        if CIsTaggedProp(uuid) and not modVar.DeleteOnNextSession[uuid] and not self.SavedEntities[uuid] then
             self:AddEntity(uuid)
             NetChannel.Entities.Added:Broadcast({Entities = self:GetEntities({uuid})})
         end
@@ -467,7 +476,7 @@ function EntityManager:BF_DeleteAll()
     local broadcastData = {}
     for _, entity in pairs(allEntities) do
         local uuid = entity.Uuid.EntityUuid
-        if CIsTagged(uuid) then
+        if CIsTaggedProp(uuid) then
             Osi.ClearTag(uuid, RB_PROP_TAG)
             Osi.RequestDelete(uuid)
             Osi.RequestDeleteTemporary(uuid)

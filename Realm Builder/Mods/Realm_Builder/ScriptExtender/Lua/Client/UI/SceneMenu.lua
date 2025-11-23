@@ -1,6 +1,21 @@
 SCENEMENU_WIDTH = 1000 * SCALE_FACTOR
 SCENEMENU_HEIGHT = 1200 * SCALE_FACTOR
 
+local ClientPresetData = {}
+
+local function UpdatePresetDataFromServer(data)
+    if not data or not data.Presets then
+        Warning("UpdatePresetDataFromServer: Invalid data received")
+        return
+    end
+
+    for name, presetData in ipairs(data) do
+        if not ClientPresetData[name] then
+            ClientPresetData[name] = presetData 
+        end
+    end
+end
+
 --- @class SceneData
 --- @field PresetType "Relative"|"Absolute"
 --- @field Name string
@@ -27,7 +42,6 @@ function SceneMenu:__init(parent)
     self.currentPreset = nil
 
     self.visibleOnly = true
-    self.autoSave = CONFIG.SceneMenu.autoSave or false
     self.isRelative = true
 
     self:LoadFromFile()
@@ -261,17 +275,17 @@ function SceneMenu:SavePreset(name, overwrite, candiates)
         entInfo.Level = levelName
 
         local template = TakeTailTemplate(entInfo.TemplateId)
-        local templateData = GetDataFromUuid(template)
+        local templateData = Ext.Template.GetTemplate(TakeTailTemplate(entInfo.TemplateId))
         if not templateData then
             Warning("PresetMenu:SavePreset: Template data not found for " .. tostring(entInfo.TemplateId))
             goto continue
         end
-        local modId, modName = templateData.ModId, templateData.Mod
+        local modId, modName = templa
         if modId and modId ~= "" and modName and modName ~= "" then
             modList[modId] = { Name = modName , Author = templateData.ModAuthor }
             entInfo.Mod = modName .. " (" .. modId .. ")"
             entInfo.ModId = modId
-            entInfo.ModAuthor = templateData.ModAuthor
+
         end
 
         if self.visibleOnly then
@@ -285,13 +299,21 @@ function SceneMenu:SavePreset(name, overwrite, candiates)
         ::continue::
     end
 
+    local lca = EntityStore.Tree:FindLCA(candiates)
+
+    if not lca then
+        lca = TreeTable.GetRootKey()
+    end
+
+    local tree = DeepCopy(EntityStore.Tree:Find(lca))
+
     self.presets[name] = {
         PresetType = self.isRelative and "Relative" or "Absolute",
         Name = name,
         Level = _C().Level.LevelName,
         ModList = modList,
         Spawned = spawned,
-        Tree = EntityStore.Tree:ToTable(),
+        Tree = tree,
     }
 
     self:SaveToFile(name)
@@ -905,7 +927,7 @@ function SceneMenu:RenderPresetObjectInfo(parent, entInfo, presetName, presetTyp
             Type = "Preview",
             EntInfo = {
                 VisualPreset = visualPreset,
-                Positon = fpos,
+                Position = fpos,
                 Rotation = frot,
             },
             TemplateId = entInfo.TemplateId,

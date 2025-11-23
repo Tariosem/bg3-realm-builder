@@ -3,4 +3,5 @@ RequireFiles("Shared/Helpers/Math/", {
     "Quat",
     "Matrix",
     "MathHelpers",
+    "Ray",
 })

@@ -97,7 +97,7 @@ function EffectTab:RenderProfile()
     self.iconNameInput = AddPrefixInput(row2:AddCell(), nil, self.icon, true)
 
     -- Template Name
-    local templateName = GetDataFromUuid(self.guid).TemplateName
+    local templateName = RB_MultiEffectManager.Data[self.guid] and RB_MultiEffectManager.Data[self.guid].TemplateName or "Unknown"
     local row3 = leftAlighTable:AddRow()
     row3:AddCell():AddText(GetLoca("Effect Name: "))
     self.templateNameText = AddPrefixInput(row3:AddCell(), nil, templateName, true)
@@ -564,7 +564,7 @@ function EffectTab:PlayEffect(userdata)
 
     local info = userdata.UserData
     local tags = {}
-    local fxNameData = GetDataFromUuid(info.FxName) --[[@as table]]
+    local fxNameData = RB_MultiEffectManager.Data[info.FxName] or {}
     local data = {
         Object = objs,
         Target = targets,
@@ -617,7 +617,7 @@ function EffectTab:Play()
     for _, userdata in ipairs(self.effectsInfos) do
         local info = userdata.UserData
         local tags = {}
-        local libData = GetDataFromUuid(info.FxName)
+        local libData = RB_MultiEffectManager.Data[info.FxName] or {}
 
         local data = {
             Object = objs,

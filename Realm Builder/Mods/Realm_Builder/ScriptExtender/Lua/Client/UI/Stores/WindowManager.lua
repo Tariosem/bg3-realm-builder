@@ -7,8 +7,7 @@
 --- @field instance Class
 --- @field isValid boolean
 
---- @class WindowMap
---- @field [string] table<WindowEntry>
+--- @alias WindowMap table<string, WindowEntry[]>
 
 --- @type WindowMap
 local WindowMap = {}
@@ -62,6 +61,13 @@ function RegisterWindow(guid, displayName, iType, instance, pos, size)
 
     if guid ~= "Citadel" then
         ApplyGuiParams(windowHandle)
+    end
+
+    if pos[1] + size[1] > screenWidth then
+        pos[1] = screenWidth - size[1]
+    end
+    if pos[2] + size[2] > screenHeight then
+        pos[2] = screenHeight - size[2]
     end
 
     windowHandle:SetPos(pos)
@@ -145,34 +151,6 @@ function DeleteAllWindowsAndInstances()
         end
         WindowMap[guid] = nil
     end
-end
-
-function GetInstancesByTemplateId(templateId)
-    local instances = {}
-    for guid, windows in pairs(WindowMap) do
-        if guid ~= "generic" then
-            for _, win in ipairs(windows) do
-                if win.isValid and win.instance and TakeTailTemplate(win.instance.templateId) == TakeTailTemplate(templateId) then
-                    table.insert(instances, win.instance)
-                end
-            end
-        end
-    end
-    return instances
-end
-
-function GetInstancesByType(iType)
-    local instances = {}
-    for guid, windows in pairs(WindowMap) do
-        if guid ~= "generic" then
-            for _, win in ipairs(windows) do
-                if win.isValid and win.type == iType and win.instance then
-                    table.insert(instances, win.instance)
-                end
-            end
-        end
-    end
-    return instances
 end
 
 function CheckWindowExists(guid, iType)

@@ -176,6 +176,7 @@ function MaterialTab:Render(parent)
                 sel.Selected = false
                 sel.Highlight = false
                 self.Editor:ResetParameter(propertyName)
+                self.UpdateFuncs[propertyName]()
             end
 
             if paramgroup.Visible then
@@ -259,6 +260,8 @@ function MaterialTab:RenderProperty(node, propertyName, propertyValue)
         colorPicker.Color = ToVec4(propertyValue)
         colorPicker.AlphaBar = (#propertyValue == 4)
         colorPicker.NoAlpha = (#propertyValue == 3)
+        colorPicker.NoInputs = true
+        colorPicker.ItemWidth = 400 * SCALE_FACTOR
         colorPicker.OnChange = function (sel)
             local newValue = { sel.Color[1], sel.Color[2], sel.Color[3], sel.Color[4] } --[[@as number[] ]]
 

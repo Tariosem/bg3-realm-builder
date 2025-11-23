@@ -19,7 +19,7 @@ local function previewEffect(guid, entry)
             return
         end
         for _, fxName in ipairs(FxNames) do
-            local fxData = GetDataFromUuid(fxName) or {}
+            local fxData = RB_MultiEffectManager.Data[fxName] or {}
             local effectData = {
                 Object = guid,
                 Target = guid,

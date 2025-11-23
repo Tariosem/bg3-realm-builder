@@ -1,0 +1,68 @@
+Ext.Vars.RegisterModVariable(ModuleUUID, "EntityManager", {})
+
+--- @enum RB_UserVars_Flags
+local RB_UserVars_Flags = {
+    None = 1,
+    IsSpawned = 1 << 1,
+    IsGizmo = 1 << 2,
+    [1] = "None",
+    [2] = "IsSpawned",
+    [4] = "IsGizmo",
+    
+}
+
+RB_Flags_Field = "RB_Flags"
+
+Ext.Vars.RegisterUserVariable(RB_Flags_Field, {
+    Client = true,
+})
+
+RB_FlagHelpers = {}
+
+--- @param entity GUIDSTRING|EntityHandle
+--- @param flag RB_UserVars_Flags
+--- @return boolean
+function RB_FlagHelpers.HasFlag(entity, flag)
+    if type(flag) == "string" then
+        flag = RB_UserVars_Flags[flag]
+    end
+    if type(entity) == "string" then
+        entity = Ext.Entity.Get(entity) --[[@as EntityHandle]]
+    end
+    if not entity then return false end
+
+    local flags = entity.Vars[RB_Flags_Field] or RB_UserVars_Flags.None
+    return (flags & flag) ~= 0
+end
+
+--- @param entity GUIDSTRING|EntityHandle
+--- @param flag RB_UserVars_Flags
+--- @return boolean
+function RB_FlagHelpers.SetFlag(entity, flag)
+    if type(flag) == "string" then
+        flag = RB_UserVars_Flags[flag]
+    end
+    if type(entity) == "string" then
+        entity = Ext.Entity.Get(entity) --[[@as EntityHandle]]
+    end
+    if not entity then return false end
+
+    local flags = entity.Vars[RB_Flags_Field] or RB_UserVars_Flags.None
+    entity.Vars[RB_Flags_Field] = flags | flag
+    return true
+end
+
+function RB_FlagHelpers.ClearFlag(entity, flag)
+    if type(flag) == "string" then
+        flag = RB_UserVars_Flags[flag]
+    end
+    if type(entity) == "string" then
+        entity = Ext.Entity.Get(entity) --[[@as EntityHandle]]
+    end
+    if not entity then return false end
+
+    local flags = entity.Vars[RB_Flags_Field] or RB_UserVars_Flags.None
+    entity.Vars[RB_Flags_Field] = flags & (~flag)
+    return true
+end
+

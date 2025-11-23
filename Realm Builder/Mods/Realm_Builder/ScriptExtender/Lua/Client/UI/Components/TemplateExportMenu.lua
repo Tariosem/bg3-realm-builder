@@ -137,7 +137,9 @@ function TemplateExportMenu:RenderExportEntities(panel)
             return nameA < nameB
         end) do
             local treeChild = self:RenderTemplateEntry(typeRow:AddCell(), entData)
-            cell.UserData:AddChild(treeChild)
+            if treeChild then
+                cell.UserData:AddChild(treeChild)
+            end
         end
     end
 
@@ -156,7 +158,11 @@ end
 --- @param cell ExtuiTableCell
 --- @param entData EntityData
 function TemplateExportMenu:RenderTemplateEntry(cell, entData)
-    local templateObj = Ext.Template.GetTemplate(entData.TemplateId)
+    local templateObj = Ext.Template.GetTemplate(TakeTailTemplate(entData.TemplateId))
+    if not templateObj then
+        Warning("[TemplateExportMenu] Failed to get template object for template ID: " .. tostring(entData.TemplateId))
+        return nil
+    end
     local icon = cell:AddImageButton("##" .. entData.Guid .. "icon", entData.DisplayIcon, IMAGESIZE.SMALL)
     local header = StyleHelpers.AddTree(cell, entData.DisplayName or templateObj.Name or entData.TemplateId)
     local attrTable = header:AddTable("Attributes", 2)

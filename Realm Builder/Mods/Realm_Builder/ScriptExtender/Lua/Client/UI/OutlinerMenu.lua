@@ -1039,17 +1039,18 @@ end
 
 function OutlinerMenu:FocusEntityVisualTab(guid)
     local entityTab = self.entityTabs[guid]
-    if entityTab and entityTab.isValid then
-
-        if entityTab.visualTab.isWindow and entityTab.visualTab.isVisible then
-            FocusWindow(entityTab.visualTab.panel)
-        else
-            entityTab.visualTab.isAttach = false
-            entityTab.visualTab:Refresh()
-            FocusWindow(entityTab.visualTab.panel)
-        end
-        return true
+    if not (entityTab and entityTab.isValid and entityTab.visualTab) then
+        return false
     end
+
+    if entityTab.visualTab.isWindow and entityTab.visualTab.isVisible then
+        FocusWindow(entityTab.visualTab.panel)
+    else
+        entityTab.visualTab.isAttach = false
+        entityTab.visualTab:Refresh()
+        FocusWindow(entityTab.visualTab.panel)
+    end
+    return true
 end
 
 function OutlinerMenu:UpdateList()

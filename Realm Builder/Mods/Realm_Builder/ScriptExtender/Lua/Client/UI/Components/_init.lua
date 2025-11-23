@@ -13,4 +13,5 @@ RequireFiles("Client/UI/Components/", {
     "StatsTab",
     "MaterialPresetsMenu",
     "TemplateExportMenu",
+    "AtmosEditor",
 })
