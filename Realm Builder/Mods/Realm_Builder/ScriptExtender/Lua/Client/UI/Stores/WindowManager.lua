@@ -77,15 +77,6 @@ function RegisterWindow(guid, displayName, iType, instance, pos, size)
     return windowHandle
 end
 
-function UpdateWindowsGuid(guid, oldGuid)
-    if WindowMap[oldGuid] then
-        WindowMap[guid] = WindowMap[oldGuid]
-        WindowMap[oldGuid] = nil
-    else
-        --Warning("[Window] No windows found for GUID: " .. oldGuid)
-    end
-end
-
 function DeleteWindow(handle)
     for guid, windows in pairs(WindowMap) do
         for i = #windows, 1, -1 do
@@ -119,40 +110,6 @@ function IsWindowValid(handle)
     return false
 end
 
-function DeleteWindowsByGuid(guid)
-    local windows = WindowMap[guid]
-    if not windows then
-        --Warning("[Window] No windows found for GUID: " .. guid)
-        return false
-    end
-
-    for i = #windows, 1, -1 do
-        local entry = windows[i]
-        if entry.isValid and entry.window then
-            entry.window:Destroy()
-            entry.isValid = false
-        end
-        table.remove(windows, i)
-    end
-
-    WindowMap[guid] = nil
-    return true
-end
-
-function DeleteAllWindowsAndInstances()
-    for guid, windows in pairs(WindowMap) do
-        for i = #windows, 1, -1 do
-            local entry = windows[i]
-            if entry.instance.Destroy then
-                entry.instance:Destroy()
-            end
-            entry.window:Destroy()
-            table.remove(windows, i)
-        end
-        WindowMap[guid] = nil
-    end
-end
-
 function CheckWindowExists(guid, iType)
     if not guid or not iType then
         return false
@@ -182,6 +139,9 @@ function GetAllValidWindows()
                 table.insert(validWindows, win.window)
             end
         end
+    end
+    if GLOBAL_DEBUG_WINDOW then
+        table.insert(validWindows, GLOBAL_DEBUG_WINDOW)
     end
     return validWindows
 end

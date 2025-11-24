@@ -6,7 +6,7 @@ local defaultIcon = "Item_Unknown"
 local ECMODLoaded = Ext.Mod.IsModLoaded("5b5ad5b6-ce37-4a63-8dea-a1fee4cee156")
 local FocusAddonLoaded = Ext.Mod.IsModLoaded("ff8b5278-f929-45d1-9a51-7efa609620c4")
 local defautlCharacterIcon = RB_ICONS.Character
-local originIconPrefix = ECMODLoaded and "EC_Portrait_" or FocusAddonLoaded and "FOCUSLODESTONES_Lodestone_" or nil
+local originIconPrefix = ECMODLoaded and "EC_Portrait_" or nil
 local defaultPartyMemberIcon = RB_ICONS.Character_Fill
 local windowForCheckIcon = GLOBAL_DEBUG_WINDOW
 

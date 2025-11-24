@@ -2,6 +2,7 @@ function FindCurrentAtmosphereTrigger()
     local allAtmosTriggers = Ext.Entity.GetAllEntitiesWithComponent("ServerAtmosphereTrigger")
     local player = Osi.GetHostCharacter() --[[@as GUIDSTRING]]
 
+    local allHits = {}
     local px, py, pz = CGetPosition(player)
 
     for i, trigger in ipairs(allAtmosTriggers) do

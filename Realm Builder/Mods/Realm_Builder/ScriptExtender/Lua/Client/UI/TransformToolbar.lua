@@ -543,10 +543,10 @@ function TransformToolbar:RenderTopBar()
     panel.NoMove = true
     panel.NoTitleBar = true
 
-    local table = AddMiddleAlignTable(panel, "TopBar")
-    table.ColumnDefs[3] = { WidthFixed = true }
+    local topAlignedTable = AddMiddleAlignTable(panel, "TopBar")
+    topAlignedTable.ColumnDefs[3] = { WidthFixed = true }
 
-    local row = table:AddRow()
+    local row = topAlignedTable:AddRow()
     local leftCell = row:AddCell()
     local centerCell = row:AddCell()
     local rightCell = row:AddCell()
@@ -604,6 +604,7 @@ function TransformToolbar:RenderTopBar()
         GetLoca("Parent"),
         GetLoca("3D Cursor"),
     }
+    centerCell:AddDummy(30 * SCALE_FACTOR, 1).SameLine = true
     local pivotCombo = centerCell:AddCombo("Pivot")
     pivotCombo.ItemWidth = 300 * SCALE_FACTOR
     local indexToPivot = {
@@ -619,7 +620,7 @@ function TransformToolbar:RenderTopBar()
         --GetLoca("Active Element"),
     }
     pivotCombo.Options = localizedPivot
-    pivotCombo.SelectedIndex = 0
+    pivotCombo.SelectedIndex = table.find(indexToPivot, RB_GLOBALS.TransformEditor.PivotMode) - 1
     pivotCombo.SameLine = true
     pivotCombo.OnChange = function (e)
         local mode = indexToPivot[e.SelectedIndex + 1]
@@ -628,7 +629,7 @@ function TransformToolbar:RenderTopBar()
     self.pivotCombo = pivotCombo
 
     spaceCombo.Options = localizedMode
-    spaceCombo.SelectedIndex = 0
+    spaceCombo.SelectedIndex = table.find(indexToMode, RB_GLOBALS.TransformEditor.Space) - 1
     spaceCombo.OnChange = function (e)
         local mode = indexToMode[e.SelectedIndex + 1]
         RB_GLOBALS.TransformEditor:SetSpace(mode)
@@ -686,7 +687,6 @@ function TransformToolbar:RenderOtherConfigOptions(panel)
 
     row1:AddCell():AddText("Move Step")
     local stepSlider = StyleHelpers.AddSliderWithStep(row1:AddCell(), "Step", 1, 0.1, 3, 0.05)
-    stepSlider.UserData.StepInput.Visible = false
     stepSlider.OnChange = function (e)
         if not RB_GLOBALS.TransformEditor.Gizmo then return end
         RB_GLOBALS.TransformEditor.Gizmo.Step = e.Value[1]
@@ -694,7 +694,6 @@ function TransformToolbar:RenderOtherConfigOptions(panel)
 
     row2:AddCell():AddText("Gizmo Size")
     local gizmoSizeSlider = StyleHelpers.AddSliderWithStep(row2:AddCell(), "Gizmo Size", 0.1, 0.01, 2, 0.01)
-    gizmoSizeSlider.UserData.StepInput.Visible = false
     gizmoSizeSlider.OnChange = function (e)
         local editor = RB_GLOBALS.TransformEditor
         if editor.Gizmo then
@@ -712,6 +711,7 @@ function TransformToolbar:SetupOperator(mode, space, axis)
     if not self.Operator then
         if mode == "Scale" then axis = {X = true, Y = true, Z = true} end
         self.Operator = TransformOperator.new(targets, space, mode, axis)
+        self.Operator.Cursor = self.Cursor
     end
     
     local inputSub = SubscribeKeyAndMouse(function (e)

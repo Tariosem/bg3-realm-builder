@@ -68,7 +68,8 @@ function MaterialPresetsMenu:Render(parent)
     if self.isVisible then return end
     self.cachedMods = {} --- @type table<string, table<string, CCMod_Pack>>
     self.modLocalizations = {} --- @type table<string, table<string, string>>
-
+    self.Recent = {} --- @type table<string, ResourceCharacterCreationColor[]>
+    
     self.isVisible = true
     self:LoadSaveFromCache()
 end
@@ -1470,7 +1471,8 @@ function MaterialPresetsMenu:RenderCCPresetList(presetName, parent)
     local recentTable = recentList:AddTable("RecentCCPresets", 4)
     local recentRow = recentTable:AddRow()
 
-    local recentQueue = {}
+    local recentQueue = self.Recent[presetName] or {} --[[@type ResourceCharacterCreationColor[] ]]
+    self.Recent[presetName] = recentQueue
 
     local row = mainTable:AddRow()
 

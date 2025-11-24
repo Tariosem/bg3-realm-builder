@@ -1185,9 +1185,6 @@ end
 
 --- @param panel ExtuiTreeParent
 function VisualTab:RenderEffectComponentSliders(panel, getComp, key, componentName, valueInfo)
-    --- @type any[], ExtuiColorEdit
-    local sliders, colorPicker = {}, nil
-
     local applyMethod = valueInfo.ApplyMethod or function (value)
         local comp = getComp()
         if not comp then return end
@@ -1199,19 +1196,6 @@ function VisualTab:RenderEffectComponentSliders(panel, getComp, key, componentNa
         if not comp then return nil end
 
         return comp[componentName]
-    end
-    local updateMethod = function ()
-        local value = getMethod()
-        if not value then return end
-        if type(value) ~= "table" then
-            value = { value }
-        end
-        for i, slider in ipairs(sliders) do
-            slider.Value = ToVec4(value[i])
-        end
-        if colorPicker then
-            colorPicker.Color = {value[1], value[2], value[3], value[4] or 1 }
-        end
     end
 
     local initValue = self.resetParams[key] and self.resetParams[key][componentName] or getMethod()
@@ -1236,28 +1220,7 @@ function VisualTab:RenderEffectComponentSliders(panel, getComp, key, componentNa
         self.Effects[key][componentName] = value
     end
 
-    local innerTable = panel:AddTable("EffectComponentSliderTable_" .. key, 2)
-    innerTable.ColumnDefs[1] = { WidthFixed = true }
-    innerTable.ColumnDefs[2] = { WidthStretch = true }
-    innerTable.BordersInnerV = true
-
-    local row = innerTable:AddRow()
-    local displayNameCell = row:AddCell()
-    local slidersCell = row:AddCell()
-    local selectable = displayNameCell:AddSelectable(compDisplayName)
-    local resetChange = function()
-        for i, slider in ipairs(sliders) do
-            slider.Value = ToVec4(initValue[i])
-        end
-        if colorPicker then
-            colorPicker.Color = {initValue[1], initValue[2], initValue[3], initValue[4] or 1 }
-        end
-
-        local applyValue = #initValue == 1 and initValue[1] or initValue
-        local comp = getComp()
-        if not comp then return end
-
-        applyMethod(applyValue)
+    local onReset = function()
         self.Effects[key] = self.Effects[key] or {}
         self.Effects[key][componentName] = nil
         if not next(self.Effects[key]) then
@@ -1265,64 +1228,13 @@ function VisualTab:RenderEffectComponentSliders(panel, getComp, key, componentNa
         end
     end
 
-    if #initValue == 0 then
-        Warning("VisualTab:RenderEffectComponentSliders - initValue has no components for " .. componentName)
-    end
+    local updateMethod = StyleHelpers.AddNumberSliders(panel, compDisplayName, getMethod, saveChanged, { IsInt = isInt, Range = range, OnReset = onReset, ResetValue = initValue, IsColor = valueInfo.IsColor })
 
-    if #initValue >= 3 then
-        colorPicker = slidersCell:AddColorEdit("##ColorPicker_" .. key)
-        colorPicker.NoAlpha = #initValue == 3
-        colorPicker.AlphaBar = #initValue == 4
-        colorPicker.Color = {initValue[1], initValue[2], initValue[3], #initValue == 4 and initValue[4] or 1 }
-
-        colorPicker.OnChange = function()
-            local comp = getComp()
-            if not comp then return end
-            saveChanged({ colorPicker.Color[1], colorPicker.Color[2], colorPicker.Color[3], #initValue == 4 and colorPicker.Color[4] or nil })
-
-            for i = 1, #initValue do
-                sliders[i].Value = ToVec4(colorPicker.Color[i])
-            end
-        end
-        colorPicker.OnRightClick = function()
-            for i, slider in ipairs(sliders) do
-                slider.Visible = not slider.Visible
-            end
-        end
+    self.resetFuncs[key][componentName] = function()
+        applyMethod(self.resetParams[key][componentName])
+        updateMethod()
+        onReset()
     end
-
-    for i = 1, #initValue do
-        local slider = StyleHelpers.AddSliderWithStep(slidersCell, componentName .. " " .. i, initValue[i], range.Min, range.Max, range.Step, isInt)
-        slider.Visible = #initValue < 3
-        slider.OnChange = function()
-            local currentValues = {}
-            for j, s in ipairs(sliders) do
-                currentValues[j] = s.Value[1]
-            end
-            if colorPicker then
-                colorPicker.Color = { currentValues[1], currentValues[2], currentValues[3], #initValue == 4 and currentValues[4] or 1 }
-            end
-            saveChanged(currentValues)
-        end
-        sliders[i] = slider
-    end
-
-    if valueInfo.PreferSliders then
-        for i, slider in ipairs(sliders) do
-            slider.Visible = true
-        end
-        colorPicker.Visible = false
-    end
-    
-    selectable.OnClick = function ()
-        selectable.Selected = false
-        resetChange()
-    end
-    selectable.OnRightClick = function()
-        resetChange()
-    end
-
-    self.resetFuncs[key][componentName] = resetChange
     self.updateFuncs[key][componentName] = function()
         updateMethod()
     end
@@ -1629,7 +1541,7 @@ function VisualTab:RenderLightEntity(node, component, compIndex)
             Range = { Min = 0, Max = 100, Step = 1 },
             DisplayName = "Direction Light Dimensions",
             Group = "Directional Light Settings",
-            PreferSliders = true,
+            IsColor = false,
         },
         Color = {
             Range = { Min = -1, Max = 1, Step = 0.01 },

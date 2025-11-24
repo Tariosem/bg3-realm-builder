@@ -207,29 +207,36 @@ function TreeTable:AddTree(key, parent)
 end
 
 function TreeTable:AddPath(path)
-    if #path == 0 or (#path == 1 and path[1] == ROOT) then
+    if #path <= 1 and path[1] == ROOT then
         return false
     end
-    
+
     local currentParent = ROOT
+
     for _, segment in ipairs(path) do
         if segment == currentParent and segment ~= ROOT then
             return false
         end
+
         local existingNode = self:Find(segment)
+
         if existingNode then
-            return false
+            local parent = self:GetParentKey(segment)
+            if parent ~= currentParent then
+                return false
+            end
+
         else
             local newNode = self:AddTree(segment, currentParent)
-            if not newNode then return false end
+            if not newNode then
+                return false
+            end
         end
         currentParent = segment
-        ::continue::
     end
 
     return true
 end
-
 --- @param key any
 --- @param parent? any
 --- @return table|nil

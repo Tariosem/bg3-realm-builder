@@ -33,3 +33,8 @@ NetChannel.Entities.Added = Ext.Net.CreateChannel(ModuleUUID, "EntitiesAdded")
 --- @field Broadcast fun(self, data: GUIDSTRING[])
 --- @field OnMessage fun(self, data: GUIDSTRING[])
 NetChannel.Entities.Deleted = Ext.Net.CreateChannel(ModuleUUID, "EntitiesDeleted")
+
+--- @class ClearHistoryChannel : NetChannel
+--- @field Broadcast fun(self, data: {})
+--- @field OnMessage fun(self, data: {})
+NetChannel.ClearHistory = Ext.Net.CreateChannel(ModuleUUID, "ClearHistory")

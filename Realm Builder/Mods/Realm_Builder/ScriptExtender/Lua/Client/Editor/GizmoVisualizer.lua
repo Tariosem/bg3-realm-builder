@@ -299,6 +299,7 @@ function GizmoVisualizer:SetLineLength(guid, length, width)
     if not width then
         width = self.Scale[1] * 0.15
     end
+    length = length / 10
 
     local entity = Ext.Entity.Get(guid)
     if not entity then return end

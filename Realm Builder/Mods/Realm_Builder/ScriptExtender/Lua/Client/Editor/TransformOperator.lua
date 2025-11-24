@@ -75,6 +75,13 @@ function TransformOperator:GetAxesBySpace(proxy, space)
                 Z = GLOBAL_COORDINATE.Z,
             }
         end
+    elseif space == "Cursor" then
+        local cursor = self.Cursor or CGetHostCharacter()
+        local cursorRot = {CGetRotation(cursor)}
+        local x = Ext.Math.QuatRotate(cursorRot, GLOBAL_COORDINATE.X)
+        local y = Ext.Math.QuatRotate(cursorRot, GLOBAL_COORDINATE.Y)
+        local z = Ext.Math.QuatRotate(cursorRot, GLOBAL_COORDINATE.Z)
+        self.AxesCache[proxy][space] = { X = x, Y = y, Z = z }
     else
         Warning("Invalid mode: "..tostring(space))
         return {
@@ -141,7 +148,7 @@ function TransformOperator:Visualize()
 
         NetChannel.Visualize:RequestToServer({
             Type = "Line",
-            Position = ray:At(-100),
+            Position = ray:At(-30),
             EndPosition = ray:At(100),
             Width = self.Visualizer.Scale[1] * 0.3,
             Duration = -1,
@@ -155,7 +162,7 @@ function TransformOperator:Visualize()
                 end
                 if not VisualHelpers.GetEntityVisual(viz) then tryCnt = tryCnt + 1 return end
                 self.Visualizer:SetLineFxColor(viz, color)
-                self.Visualizer:SetLineLength(viz, 20)
+                self.Visualizer:SetLineLength(viz, 200)
                 return UNSUBSCRIBE_SYMBOL
             end)
             table.insert(self.Visualizations, viz)
@@ -172,10 +179,10 @@ function TransformOperator:ChangeVisualization()
         cnt = cnt - 1
         table.insert(visualizations, viz)
         self.Visualizer:SetLineFxColor(viz, self.Visualizer.AxisLineColor[next(self.Axis)] or {1,1,0,1})
-        self.Visualizer:SetLineLength(viz, 20)
+        self.Visualizer:SetLineLength(viz, 200)
         local axis = self:GetAxesBySpace(proxy, self.Space)[next(self.Axis)]
         local ray = Ray.new(proxy:GetSavedTransform().Translate, axis)
-        local pos = ray:At(-100)
+        local pos = ray:At(-30)
         local dir = DirectionToQuat( axis * -1 )
         local newTransform = {
             Translate = pos,

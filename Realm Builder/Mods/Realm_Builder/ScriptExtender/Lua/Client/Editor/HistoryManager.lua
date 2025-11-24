@@ -42,3 +42,7 @@ function HistoryManager:Clear()
     self.UndoStack = {}
     self.RedoStack = {}
 end
+
+NetChannel.ClearHistory:SetHandler(function(self, data)
+    HistoryManager:Clear()
+end)

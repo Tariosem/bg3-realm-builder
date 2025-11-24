@@ -80,11 +80,16 @@ function TreeList:SetupKeyListeners()
 end
 
 function TreeList:Render()
-    self.panel = self.parent
+    self.panel = self.parent --[[@as ExtuiTreeParent]]
     self:OnAttach()
 
 
     self:RenderTopBar()
+
+    self.listWindow = self.panel:AddChildWindow("##" .. self.label .. "ListWindow")
+    Ext.OnNextTick(function()
+        self.listWindow.Size = { 0, 800 * SCALE_FACTOR }
+    end)
     self:RenderList()
 end
 
@@ -132,6 +137,22 @@ function TreeList:RenderTopBar()
         self.SearchKeyword = searchInput.Text
         self:Hide(searchInput.Text)
     end)
+
+    local settingPopup = rightA:AddPopup("##" .. self.label .. "SettingsPopupSettings")
+    
+    local openSettingsBtn = rightA:AddImageButton("##" .. self.label .. "SettingsBtn", RB_ICONS.Sliders, IMAGESIZE.ROW)
+    openSettingsBtn.OnClick = function()
+        settingPopup:Open()
+    end
+    StyleHelpers.SetupImageButton(openSettingsBtn)
+
+    local alignedTable = StyleHelpers.AddAlignedTable(settingPopup)
+    
+    local sliderHeight = alignedTable:AddSliderWithStep("WindowHeight", 800 * SCALE_FACTOR, 200, 2000, 10, true)
+    sliderHeight.OnChange = function(slider)
+        local height = slider.Value[1]
+        self.listWindow.Size = { 0, height  }
+    end
 end
 
 --- return true to show the item
@@ -280,7 +301,7 @@ function TreeList:RenderList()
     end
 
     --- @type ExtuiTable
-    self.rootTable = self.rootTable or self.panel:AddTable(self.label .. "##Root", 1)
+    self.rootTable = self.rootTable or self.listWindow:AddTable(self.label .. "##Root", 1)
     self.rootTable.UserData = self.rootTable.UserData or {}
     if self.rootTable.UserData.Row then
         self.rootTable.UserData.Row:Destroy()
@@ -303,7 +324,7 @@ function TreeList:RenderList()
             return rawget(t, k)
         end
     })
-    local leafCnt = 1
+    local itemCnt = 1
 
     local function collectChildren(key)
         local collector = {}
@@ -380,9 +401,9 @@ function TreeList:RenderList()
             ele.AllowItemOverlap = true
             self.itemRefs[key] = ele
             self.nodeRefs[key] = cell
-            self.indexRefs[key] = leafCnt
-            self.indexRefsReverse[leafCnt] = key
-            leafCnt = leafCnt + 1
+            self.indexRefs[key] = itemCnt
+            self.indexRefsReverse[itemCnt] = key
+            itemCnt = itemCnt + 1
         end
     end
 

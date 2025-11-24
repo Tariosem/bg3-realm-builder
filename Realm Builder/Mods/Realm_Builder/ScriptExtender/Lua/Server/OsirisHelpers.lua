@@ -1,8 +1,8 @@
 --- @class OsirisHelpers
 --- @field Propify fun(guids: GUIDSTRING|GUIDSTRING[])
---- @field DrawLine fun(startPos: Vec3, endPos: Vec3, width:number, user:GUIDSTRING):GUIDSTRING
---- @field DrawBox fun(min:Vec3, max:Vec3, LineThickness:number, user:GUIDSTRING):GUIDSTRING[]
---- @field DrawOrientedBox fun(center:Vec3, halfSizes:Vec3, rotation: Quat, LineThickness:number, user:GUIDSTRING):GUIDSTRING[]
+--- @field DrawLine fun(startPos: Vec3, endPos: Vec3, width:number, user:number):GUIDSTRING?
+--- @field DrawBox fun(min:Vec3, max:Vec3, LineThickness:number, user:number):GUIDSTRING[]
+--- @field DrawOrientedBox fun(center:Vec3, halfSizes:Vec3, rotation: Quat, LineThickness:number, user:number):GUIDSTRING[]
 --- @field TeleportTo fun(uuid:GUIDSTRING, x:number, y:number, z:number):boolean
 --- @field TeleportToTarget fun(uuid:GUIDSTRING, targetUuid:GUIDSTRING):boolean
 --- @field RotateTo fun(guid:GUIDSTRING, rx:number, ry:number, rz:number, w:number):boolean
@@ -137,11 +137,6 @@ function OsirisHelpers.TeleportTo(uuid, x, y, z)
     end
     if not x or not y or not z then
         Warning("Called TeleportTo with Invalid position")
-        return false
-    end
-
-    if not EntityExists(uuid) then
-        --Warning("TeleportTo: Entity does not exist: " .. tostring(uuid))
         return false
     end
 

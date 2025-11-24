@@ -32,7 +32,7 @@ function TransformEditor:__init()
     self.Cursor = nil
     self.Subscriptions = {}
     self.Space = "World"
-    self.PivotMode = "Individual"
+    self.PivotMode = "Median"
     self.Disabled = false
 end
 
@@ -350,18 +350,21 @@ end
 --- @param color vec3
 --- @param index integer
 function TransformEditor:MakeAxisLineVisualization(gizmo, ray, color, index)
+    local beamDirection = ray.Direction * -1
+    local startPoint = ray:At(-30)
+
     if self.LineVisualizations[index] then
         local lineGuid = self.LineVisualizations[index]
         gizmo.Visualizer:SetLineFxColor(lineGuid, color)
         local newLineTransform = {
-            Translate = ray:At(-100),
-            RotationQuat = DirectionToQuat(ray.Direction * -1),
+            Translate = startPoint,
+            RotationQuat = DirectionToQuat(beamDirection),
         }
         NetChannel.SetTransform:RequestToServer({ Guid = lineGuid, Transforms = {[lineGuid] = newLineTransform} }, function (response)
             -- prevent flickering
             Timer:Ticks(5, function (timerID)
                 if not self.IsDragging then return end
-                gizmo.Visualizer:SetLineLength(lineGuid, 20)
+                gizmo.Visualizer:SetLineLength(lineGuid, 200)
             end)
         end)
         return
@@ -369,7 +372,7 @@ function TransformEditor:MakeAxisLineVisualization(gizmo, ray, color, index)
 
     NetChannel.Visualize:RequestToServer({
         Type = "Line",
-        Position = ray:At(-100),
+        Position = startPoint,
         EndPosition = ray:At(100),
         Width = gizmo.Visualizer.Scale[1] * 0.3,
         Duration = -1,
@@ -380,7 +383,7 @@ function TransformEditor:MakeAxisLineVisualization(gizmo, ray, color, index)
             if tryCnt > 300 or not self.IsDragging then Debug("TransformEditor: Line viz timeout") return UNSUBSCRIBE_SYMBOL end
             if not VisualHelpers.GetEntityVisual(viz) then tryCnt = tryCnt + 1 return end
             gizmo.Visualizer:SetLineFxColor(viz, color)
-            gizmo.Visualizer:SetLineLength(viz, 20)
+            gizmo.Visualizer:SetLineLength(viz, 200)
             return UNSUBSCRIBE_SYMBOL
         end)
         table.insert(self.LineVisualizations, viz)
@@ -465,10 +468,9 @@ function TransformEditor:SetupGizmo()
                 end
             end
 
-            local rot = pivotRot
-            if not rot then return end
+            if not pivotRot then return end
             local vector = GLOBAL_COORDINATE[selectedAxis]
-            local ray = Ray.new(pivotPos, rot:Rotate(vector))
+            local ray = Ray.new(pivotPos, pivotRot:Rotate(vector))
             self:MakeAxisLineVisualization(gizmo, ray, color, 1)
             return
         end

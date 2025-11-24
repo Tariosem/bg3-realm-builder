@@ -439,31 +439,59 @@ end)
 NetChannel.GetAtmosphere:SetRequestHandler(function (data, userID)
     local trigger = FindCurrentAtmosphereTrigger()
     if not trigger then
-        return {Guid = ""}
+        return {Guid = "", ResourceUUIDs = {}}
     end
     local atmosphereUuid = trigger.ServerAtmosphereTrigger.CurrentAtmosphereResourceID
-    return {Guid = atmosphereUuid}
+    local allResources = LightCToArray(trigger.ServerAtmosphereTrigger.AtmosphereResourceIDs)
+    for i=#allResources,1,-1 do
+        local resUUID = allResources[i]
+        if not IsUuid(resUUID) then
+            table.remove(allResources, i)
+        end
+    end
+    return {Guid = atmosphereUuid, ResourceUUIDs = allResources}
 end)
 
 NetChannel.GetLighting:SetRequestHandler(function (data, userID)
     local trigger = FindCurrentLightingTrigger()
     if not trigger then
-        return {Guid = ""}
+        return {Guid = "", ResourceUUIDs = {}}
     end
     local lightingUuid = trigger.ServerLightingTrigger.CurrentLightingResourceID
-    return {Guid = lightingUuid}
+    local allResources = LightCToArray(trigger.ServerLightingTrigger.LightingResourceIDs)
+    for i=#allResources,1,-1 do
+        local resUUID = allResources[i]
+        if not IsUuid(resUUID) then
+            table.remove(allResources, i)
+        end
+    end
+    return {Guid = lightingUuid, ResourceUUIDs = allResources}
 end)
 
 NetChannel.SetAtmosphere:SetRequestHandler(function (data, userID)
     local toSet = data.ResourceUUID
 
+    if data.Atmosphere then
+        local currentAtmRes = Ext.Resource.Get(toSet, "Atmosphere") --[[@as ResourceAtmosphere]]
+        if not currentAtmRes then
+            Warning("Invalid atmosphere resource UUID: " .. tostring(toSet))
+            return false
+        end
+
+        for k,v in pairs(data.Atmosphere) do
+            currentAtmRes.Atmosphere[k] = v
+        end
+    end
+
     if data.Reset then
-        local trigger = FindCurrentAtmosphereTrigger()
-        if not trigger then
+        local triggers = Ext.Entity.GetAllEntitiesWithComponent("ServerAtmosphereTrigger")
+        if not triggers then
             Warning("No atmosphere trigger found to reset.")
             return false
         end
-        Osi.TriggerResetAtmosphere(trigger.Uuid.EntityUuid)
+        for _, trigger in pairs(triggers) do
+            Osi.TriggerResetAtmosphere(trigger.Uuid.EntityUuid)
+        end
         return true
     end
 
@@ -475,19 +503,8 @@ NetChannel.SetAtmosphere:SetRequestHandler(function (data, userID)
         end
         Osi.TriggerResetAtmosphere(trigger.Uuid.EntityUuid)
         Osi.TriggerSetAtmosphere(trigger.Uuid.EntityUuid, toSet)
-        --trigger.ServerAtmosphereTrigger.CurrentAtmosphereResourceID = toSet
+        trigger.ServerAtmosphereTrigger.CurrentAtmosphereResourceID = toSet
         return true
-    end
-
-    --_D(data.Atmosphere)
-    local currentAtmRes = Ext.Resource.Get(toSet, "Atmosphere") --[[@as ResourceAtmosphere]]
-    if not currentAtmRes then
-        Warning("Invalid atmosphere resource UUID: " .. tostring(toSet))
-        return false
-    end
-
-    for k,v in pairs(data.Atmosphere) do
-        currentAtmRes.Atmosphere[k] = v
     end
 
     return true
@@ -495,14 +512,39 @@ end)
 
 NetChannel.SetLighting:SetRequestHandler(function (data, userID)
     local toSet = data.ResourceUUID
+
+    if data.Lighting then
+        local currentLightRes = Ext.Resource.Get(toSet, "Lighting") --[[@as Lighting]]
+        if not currentLightRes then
+            Warning("Invalid lighting resource UUID: " .. tostring(toSet))
+            return false
+        end
+
+        for k,v in pairs(data.Lighting) do
+            currentLightRes.Lighting[k] = v
+        end
+
+        if data.Reset then
+            local trigger = FindCurrentLightingTrigger()
+            if trigger then
+                Osi.TriggerResetLighting(trigger.Uuid.EntityUuid)
+                return true
+            else
+                Warning("No lighting trigger found to reset.")
+                return false
+            end
+        end
+    end
     
     if data.Reset then
-        local trigger = FindCurrentLightingTrigger()
-        if not trigger then
+        local triggers = Ext.Entity.GetAllEntitiesWithComponent("ServerLightingTrigger")
+        if not triggers then
             Warning("No lighting trigger found to reset.")
             return false
         end
-        Osi.TriggerResetLighting(trigger.Uuid.EntityUuid)
+        for _, trigger in pairs(triggers) do
+            Osi.TriggerResetLighting(trigger.Uuid.EntityUuid)
+        end
         return true
     end
 
@@ -514,20 +556,11 @@ NetChannel.SetLighting:SetRequestHandler(function (data, userID)
         end
         Osi.TriggerResetLighting(trigger.Uuid.EntityUuid)
         Osi.TriggerSetLighting(trigger.Uuid.EntityUuid, toSet)
-        --trigger.ServerLightingTrigger.CurrentLightingResourceID = toSet
+        trigger.ServerLightingTrigger.CurrentLightingResourceID = toSet
         return true
     end
 
-    --_D(data.Lighting)
-    local currentLightRes = Ext.Resource.Get(toSet, "Lighting") --[[@as ResourceLightingResource]]
-    if not currentLightRes then
-        Warning("Invalid lighting resource UUID: " .. tostring(toSet))
-        return false
-    end
 
-    for k,v in pairs(data.Lighting) do
-        currentLightRes.Lighting[k] = v
-    end
 
     return true
 end)

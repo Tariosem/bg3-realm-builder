@@ -31,8 +31,10 @@ EntityManager = {
 --- @field DeleteOnNextSession table<string, boolean>
 
 Ext.Events.GameStateChanged:Subscribe(function (e)
+    Debug("GameStateChanged: " .. tostring(e.FromState) .. " -> " .. tostring(e.ToState))
     if e.FromState == "LoadLevel" then
         EntityManager:LoadFromModVar()
+        NetChannel.ClearHistory:Broadcast({})
     end
 end)
 

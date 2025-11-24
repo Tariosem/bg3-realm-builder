@@ -168,6 +168,31 @@ function DeepTableMerge(dest, src)
     end
 end
 
+function TableCover(dest, src)
+    for k, v in pairs(dest) do
+        if src[k] == nil then
+            dest[k] = nil
+        else
+            dest[k] = DeepCopy(src[k])
+        end
+    end
+end
+function DeepTableCover(dest, src)
+    for k, v in pairs(dest) do
+        local sv = src[k]
+
+        if sv == nil then
+            dest[k] = nil
+
+        elseif type(v) == "table" and type(sv) == "table" then
+            DeepTableCover(v, sv)
+        else
+            dest[k] = DeepCopy(sv)
+        end
+    end
+end
+
+
 function TableContains(tbl, value)
     if type(tbl) ~= "table" then
         tbl = LightCToArray(tbl)

@@ -116,17 +116,15 @@ function StyleHelpers.AddSliderWithStep(parent, IDContext, defaultValue, min, ma
     local slider = nil
     local decreButton = nil
     local increButton = nil
-    local sliderPopup = parent:AddPopup(IDContext .. "_SliderPopup")
-    sliderPopup.AlwaysAutoResize = false
+    local sliderPopup = nil
     step = step or 0.1
     if isInteger then
         step = math.floor(step)
-        stepInput = sliderPopup:AddInputInt("Step", step)
+        step = math.max(1, step)
         decreButton = AddSliderStepButton(parent, "<", -step, nil, "<")
         slider = SafeAddSliderInt(parent, "", defaultValue or 0, min or 0, max or 100)
         increButton = AddSliderStepButton(parent, ">", step, nil, ">")
     else
-        stepInput = sliderPopup:AddInputScalar("Step", step)
         decreButton = AddSliderStepButton(parent, "<", -step, nil, "<")
         slider = parent:AddSlider("", defaultValue or 0, min or 0, max or 100) --[[@as ExtuiSliderScalar]]
         increButton = AddSliderStepButton(parent, ">", step, nil, ">")
@@ -136,7 +134,6 @@ function StyleHelpers.AddSliderWithStep(parent, IDContext, defaultValue, min, ma
     increButton.UserData.Slider = slider
 
     local allEles = { decreButton, slider, increButton, resetButton }
-    stepInput.IDContext = IDContext .. "_StepInput"
     increButton.IDContext = IDContext .. "_IncreButton"
     slider.IDContext = IDContext .. "_Slider"
     decreButton.IDContext = IDContext .. "_DecreButton"
@@ -144,7 +141,6 @@ function StyleHelpers.AddSliderWithStep(parent, IDContext, defaultValue, min, ma
     slider.UserData = {}
     local ud = slider.UserData
     ud.IsInteger = isInteger
-    ud.StepInput = stepInput
     ud.DecreButton = decreButton
     ud.IncreButton = increButton
     ud.Parent = parent
@@ -156,16 +152,22 @@ function StyleHelpers.AddSliderWithStep(parent, IDContext, defaultValue, min, ma
     --decreButton.SameLine = true
     increButton.SameLine = true
     slider.SameLine = true
-    --stepInput.SameLine = true
-
-    stepInput.OnChange = function()
-        step = stepInput.Value[1]
-        slider.UserData.Step = step
-    end
 
     slider.OnRightClick = function(s)
         if s.UserData.DisableRightClickSet then
             return
+        end
+
+        if not sliderPopup then
+            sliderPopup = parent:AddPopup("SliderPopup##" .. IDContext)
+            sliderPopup.IDContext = IDContext .. "_SliderPopup"
+            stepInput = isInteger and sliderPopup:AddInputInt("Step", math.floor(step)) or sliderPopup:AddInputScalar("Step", step)
+            stepInput.IDContext = IDContext .. "_StepInput"
+            stepInput.OnChange = function(input)
+                local val = isInteger and math.floor(input.Value[1]) or input.Value[1]
+                s.UserData.Step = val
+            end
+            s.UserData.StepInput = stepInput
         end
 
         sliderPopup:Open()
@@ -607,7 +609,14 @@ function TraverseAllChildren(parent, func)
     end
 end
 
+
 function AddStyleDebugWindow(extui, symbol)
+    local readonly = {
+        LastSize = true,
+        LastPosition = true,
+        Handle = true,
+
+    }
     symbol = symbol or ""
     local window = Ext.IMGUI.NewWindow("Style Debugger " .. symbol .. "##" .. Uuid_v4())
     window.Closeable = true
@@ -615,17 +624,29 @@ function AddStyleDebugWindow(extui, symbol)
         window:Destroy()
     end
     for idon, value in pairs(extui) do
+        if readonly[idon] then
+            goto continue
+        end
         if type(value) == "boolean" then
             ---@diagnostic disable
             window:AddCheckbox(idon).OnChange = function(c)
                 extui[idon] = c.Checked
             end
-        end
-        if type(value) == "number" then
+        elseif type(value) == "number" then
             window:AddSliderInt(idon, value, 0, 100).OnChange = function(s)
                 extui[idon] = s.Value[1]
             end
+        elseif IsArrayOf(value, "number") then
+            StyleHelpers.AddNumberSliders(window, idon, function ()
+                return type(extui[idon]) == "number" and { extui[idon] } or LightCToArray(extui[idon])
+            end, function (v)
+                extui[idon] = #v == 1 and v[1] or v
+            end, 
+            {
+                IsInt = math.type(value[1]) == "integer",
+            })
         end
+        ::continue::
     end
 
     for colorName, colorValue in pairs(GetAllGuiColorNames()) do
@@ -859,6 +880,7 @@ local treeClosed = {
 --- @field DestroyChildren fun()
 --- @field ToggleAll fun(self: RB_UI_Tree)
 --- @field Panel ExtuiGroup
+--- @field Indent number
 --- @field OnExpand fun()
 --- @field OnCollapse fun()
 
@@ -892,6 +914,7 @@ function StyleHelpers.AddTree(parent, label, open)
     iconReserved.Visible = false
 
     local closure = {}
+    local expandAll = not panel.Visible 
     local function setOpen(isOpen)
         panel.Visible = isOpen
         arrowReserved.Image = panel.Visible and treeOpen or treeClosed
@@ -912,13 +935,17 @@ function StyleHelpers.AddTree(parent, label, open)
         setOpen(not panel.Visible)
     end
 
-    local toggleAll = function ()
+    local toggleAll = function (sel, syncState)
+        if syncState ~= nil then
+            expandAll = syncState
+        end
         for _, child in ipairs(children) do
             if child.SetOpen then
-                child:SetOpen(not child:IsOpen())
-                child:ToggleAll()
+                child:SetOpen(expandAll)
+                child:ToggleAll(expandAll)
             end
         end
+        expandAll = not expandAll
     end
 
     arrowReserved.OnRightClick = function()
@@ -1004,6 +1031,8 @@ function StyleHelpers.AddTree(parent, label, open)
                 return function()
                     return selectable:Tooltip()
                 end
+            elseif k == "Indent" then
+                return indent.Width
             elseif rawget(closure, k) ~= nil then
                 return rawget(closure, k)
             end
@@ -1023,6 +1052,10 @@ function StyleHelpers.AddTree(parent, label, open)
                 isFramed = v
                 selectable.Selected = v
                 selectable.SpanAllColumns = v
+                arrowReserved.Tint = v and {2, 2, 2, 2} or {1, 1, 1, 1}
+                return
+            elseif k == "Indent" then
+                indent.Width = v
                 return
             end
             selectable[k] = v
@@ -1336,18 +1369,27 @@ end
 --- @param label string
 --- @param getter fun(): number|number[]
 --- @param setter fun(value: number[])
---- @param config { IsInt: boolean, Range: { Min: number, Max: number, Step: number }, PreferSliders: boolean }
---- @return update function
-function StyleHelpers.RenderNumberSliders(parent, label, getter, setter, config)
+--- @param config { IsInt: boolean, Range: { Min: number, Max: number, Step: number }, IsColor: boolean, OnReset: fun(), ResetValue: number[] }?
+--- @return function -- update function
+function StyleHelpers.AddNumberSliders(parent, label, getter, setter, config)
     --- @type any[], ExtuiColorEdit
     local sliders, colorPicker = {}, nil
+    config = config or {}
 
     local updateMethod = function ()
         local value = getter()
         if not value then return end
+
         if type(value) ~= "table" then
             value = { value }
         end
+
+        if config.IsInt then
+            for i = 1, #value do
+                value[i] = math.floor(value[i])
+            end
+        end
+
         for i, slider in ipairs(sliders) do
             slider.Value = ToVec4(value[i])
         end
@@ -1356,7 +1398,7 @@ function StyleHelpers.RenderNumberSliders(parent, label, getter, setter, config)
         end
     end
 
-    local initValue = getter()
+    local initValue = config.ResetValue or getter()
     if type(initValue) ~= "table" then
         initValue = { initValue }
     end
@@ -1367,10 +1409,8 @@ function StyleHelpers.RenderNumberSliders(parent, label, getter, setter, config)
 
     local isInt = config.IsInt or false
     local range = config.Range or { Min = -10, Max = 10 , Step = 0.1 }
-    local displayName = label
     local uuid = Uuid_v4()
-
-    local innerTable = parent:AddTable("##table" .. uuid, 2)
+    local innerTable = parent:AddTable("table", 2)
     innerTable.ColumnDefs[1] = { WidthFixed = true }
     innerTable.ColumnDefs[2] = { WidthStretch = true }
     innerTable.BordersInnerV = true
@@ -1378,7 +1418,7 @@ function StyleHelpers.RenderNumberSliders(parent, label, getter, setter, config)
     local row = innerTable:AddRow()
     local displayNameCell = row:AddCell()
     local slidersCell = row:AddCell()
-    local selectable = displayNameCell:AddSelectable(displayName)
+    local selectable = displayNameCell:AddSelectable(label)
     local resetChange = function()
         for i, slider in ipairs(sliders) do
             slider.Value = ToVec4(initValue[i])
@@ -1388,6 +1428,26 @@ function StyleHelpers.RenderNumberSliders(parent, label, getter, setter, config)
         end
 
         setter(initValue)
+        if config.OnReset then
+            config.OnReset()
+        end
+    end
+
+    local function renderSliders()
+        for i = 1, #initValue do
+            local slider = StyleHelpers.AddSliderWithStep(slidersCell, i, initValue[i], range.Min, range.Max, range.Step, isInt)
+            slider.OnChange = function()
+                local currentValues = {}
+                for j, s in ipairs(sliders) do
+                    currentValues[j] = s.Value[1]
+                end
+                if colorPicker then
+                    colorPicker.Color = { currentValues[1], currentValues[2], currentValues[3], #initValue == 4 and currentValues[4] or 1 }
+                end
+                setter(currentValues)
+            end
+            sliders[i] = slider
+        end
     end
 
     if #initValue >= 3 and #initValue <=4 and not config.IsInt then
@@ -1403,35 +1463,20 @@ function StyleHelpers.RenderNumberSliders(parent, label, getter, setter, config)
                 sliders[i].Value = ToVec4(colorPicker.Color[i])
             end
         end
+    end
+
+    if not colorPicker or not config.IsColor then
+        if colorPicker then colorPicker.Visible = false end
+        renderSliders()
+    else
         colorPicker.OnRightClick = function()
+            if not next(sliders) then
+                renderSliders()
+                return
+            end
             for i, slider in ipairs(sliders) do
                 slider.Visible = not slider.Visible
             end
-        end
-    end
-
-    for i = 1, #initValue do
-        local slider = StyleHelpers.AddSliderWithStep(slidersCell, i, initValue[i], range.Min, range.Max, range.Step, isInt)
-        slider.Visible = colorPicker == nil
-        slider.OnChange = function()
-            local currentValues = {}
-            for j, s in ipairs(sliders) do
-                currentValues[j] = s.Value[1]
-            end
-            if colorPicker then
-                colorPicker.Color = { currentValues[1], currentValues[2], currentValues[3], #initValue == 4 and currentValues[4] or 1 }
-            end
-            setter(currentValues)
-        end
-        sliders[i] = slider
-    end
-
-    if config.PreferSliders then
-        for i, slider in ipairs(sliders) do
-            slider.Visible = true
-        end
-        if colorPicker then
-            colorPicker.Visible = false
         end
     end
     
@@ -1442,7 +1487,6 @@ function StyleHelpers.RenderNumberSliders(parent, label, getter, setter, config)
     selectable.OnRightClick = function()
         resetChange()
     end
-
 
     return updateMethod
 end

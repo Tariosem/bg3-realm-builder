@@ -112,6 +112,7 @@ function EffectTab:RenderEffectsTab()
     self.effectsInfoTab = self.uniTabBar:AddTabItem(GetLoca("Effects"))
 
     local topTree = StyleHelpers.AddTree(self.effectsInfoTab, GetLoca("General"))
+    topTree.Framed = true
 
     self.selectionHeader = topTree:AddTree(GetLoca("Caster and Target"))
 
