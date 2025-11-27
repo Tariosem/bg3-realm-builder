@@ -91,36 +91,32 @@ function MaterialTab:Render(parent)
     self.UpdateFuncs = {}
     self.ResetFuncs = {}
     self.ParamTableRefs = {}
+    local searchBar = parentNode:AddInputText("####" .. self.MaterialName .. "Global")
+    searchBar.IDContext = "MaterialParamSearchBox" .. self.MaterialName .. "Global" .. tostring(math.random())
+    searchBar.Hint = "Search parameters..."
+    searchBar.OnChange = Debounce(50 ,function(sel)
+        if sel.Text == "" then
+            for _, node in pairs(self.ParamTableRefs) do
+                node.Visible = true
+            end
+            return
+        end
+
+        local searchTerm = sel.Text:lower()
+        for paramName,cell in pairs(self.ParamTableRefs) do
+            if paramName:lower():find(searchTerm) then
+                cell.Visible = true
+            else
+                cell.Visible = false
+            end
+        end
+    end)
     for paramType,propNames in ipairs(params) do
         local propType = indexToDisplay[paramType]
         if #propNames < 1 then goto continue end
         local typeNode = parentNode:AddTree(propType .. "##" .. self.MaterialName, self.cachedExpandedState[paramType] == true) --[[@as ExtuiSelectable ]]
-        local searchBox = typeNode:AddInputText("##" .. self.MaterialName .. propType)
         local paramsGroup = typeNode:AddGroup("AllPropertiesGroup##" .. self.MaterialName .. tostring(math.random()))
 
-        searchBox.IDContext = "MaterialParamSearchBox" .. self.MaterialName .. propType .. tostring(math.random())
-        searchBox.Hint = "Search " .. propType .. "..."
-        searchBox.OnChange = Debounce(50 ,function (sel)
-            if sel.Text == "" then
-                for _, node in pairs(self.ParamTableRefs) do
-                    node.Visible = true
-                end
-                return
-            end
-
-            local searchTerm = sel.Text:lower()
-            for _,propertyName in ipairs(propNames) do
-                local propNode = self.ParamTableRefs[propertyName]
-                if propNode then
-                    if searchTerm == "" or propertyName:lower():find(searchTerm) then
-                        propNode.Visible = true
-                    else
-                        propNode.Visible = false
-                    end
-                end
-            end
-        end)
-        
         self.ParamTypeNodeRefs[paramType] = typeNode
         local allParamNode = {}
         local paramTable = paramsGroup:AddTable("ParameterTable##" .. self.MaterialName .. propType, 1)
@@ -257,6 +253,23 @@ function MaterialTab:RenderProperty(node, propertyName, propertyValue)
 
     if #propertyValue >= 3 then
         colorPicker = node:AddColorEdit("##" .. self.MaterialName .. propertyName)
+        local resetButton = node:AddImageButton("Reset##" .. self.MaterialName .. propertyName, RB_ICONS.Arrow_CounterClockwise, IMAGESIZE.ROW)
+        resetButton.SameLine = true
+        resetButton.OnClick = function (sel)
+            self:ResetValue(propertyName)
+
+            local newValue = self:GetParameter(propertyName)
+            if newValue then
+                colorPicker.Color = ToVec4(newValue)
+                for i=1, #newValue do
+                    if sliders[i] then
+                        sliders[i].Value = {newValue[i], 0, 0, 0}
+                    end
+                end
+            end
+
+            self.ParamNodeRefs[propertyName].Highlight = self:HasChanged(propertyName) and true or false
+        end
         colorPicker.Color = ToVec4(propertyValue)
         colorPicker.AlphaBar = (#propertyValue == 4)
         colorPicker.NoAlpha = (#propertyValue == 3)
@@ -300,6 +313,7 @@ function MaterialTab:RenderProperty(node, propertyName, propertyValue)
 
         if colorPicker then
             slider.Visible = false
+            slider.HideResetButton = true
         end
         slider.OnChange = function (sel)
             local newValue = { sliders[1].Value[1], sliders[2] and sliders[2].Value[1] or 0, sliders[3] and sliders[3].Value[1] or 0, sliders[4] and sliders[4].Value[1] or 0 } --[[@as number[] ]]

@@ -20,6 +20,14 @@ function IsUuid(object)
     return object:match("^%x%x%x%x%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%x%x%x%x%x%x%x%x$") ~= nil
 end
 
+function IsUuidIncludingNull(object)
+    if not object then return false end
+
+    if type(object) ~= "string" then return false end
+
+    return object:match("^%x%x%x%x%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%x%x%x%x%x%x%x%x$") ~= nil
+end
+
 ---@param major string|number
 ---@param minor string|number
 ---@param revision string|number
@@ -190,28 +198,6 @@ function DeepTableCover(dest, src)
             dest[k] = DeepCopy(sv)
         end
     end
-end
-
-
-function TableContains(tbl, value)
-    if type(tbl) ~= "table" then
-        tbl = LightCToArray(tbl)
-    end
-
-    if type(tbl) ~= "table" then
-        return false
-    end
-
-    if tbl[value] then
-        return true
-    end
-
-    for _, v in ipairs(tbl) do
-        if v == value then
-            return true
-        end
-    end
-    return false
 end
 
 function MergeArrays(arr1, arr2)
@@ -457,18 +443,42 @@ function RequireFiles(folderPath, files)
 
         local path = folderPath .. filename .. ".lua"
 
-        local ok, res = pcall(Ext.Require, path)
+        Ext.Require(path)
+    
+        --[[local ok, res = pcall(Ext.Require, path)
         if not ok then
             _P("RequireFiles", "Failed to load " .. path .. ": " .. tostring(res))
-        end
+        end]]
     end
 end
 
+function PadSuffix(str, len)
+    local toPad = len - #str
+    if toPad > 0 then
+        return str .. string.rep(" ", toPad)
+    end
+    return str
+end
+
+function PadPrefix(str, len)
+    local toPad = len - #str
+    if toPad > 0 then
+        return string.rep(" ", toPad) .. str
+    end
+    return str
+end
+
+--- @param obj string
+--- @param count integer
+--- @return string
 function TrimTail(obj, count)
     if not obj or type(obj) ~= "string" then return obj end
     return string.sub(obj, 1, #obj - count)
 end
 
+--- @param obj string
+--- @param count integer
+--- @return string
 function TakeTail(obj, count)
     return string.sub(obj, -count)
 end
@@ -481,21 +491,12 @@ function ToLowerAlphaOnly(obj)
     return string.lower(obj):gsub("[^a-z]", "")
 end
 
+--- @param num number
+--- @param size integer
+--- @return string
 function PadNumber(num, size)
     local s = tostring(num)
     return string.format("%0" .. size .. "d", tonumber(s))
-end
-
-function Contains(obj, substr, caseSensitive)
-    local isCaseSensitive = caseSensitive or false
-    if type(obj) ~= "string" or type(substr) ~= "string" then
-        return false
-    end
-    if not isCaseSensitive then
-        obj = obj:lower()
-        substr = substr:lower()
-    end
-    return string.find(obj, substr) ~= nil
 end
 
 --- @generic K, V
@@ -667,12 +668,10 @@ end
 ---@param delay number ms
 ---@return function
 function Debounce(delay, func)
-    local lastCall = 0
     local timerId = nil
 
     return function(...)
         local args = { ... }
-        local now = Ext.Timer.MonotonicTime()
 
         if timerId then
             Ext.Timer.Cancel(timerId)

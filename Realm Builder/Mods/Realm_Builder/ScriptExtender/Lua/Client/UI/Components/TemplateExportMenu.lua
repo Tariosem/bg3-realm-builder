@@ -445,7 +445,7 @@ function TemplateExportMenu:__export(exportSettings, progressCallback)
             progressCallback(-1, message)
         end)
         Error(message)
-        coroutine.yield()
+        
     end
 
     local function yield()
@@ -473,6 +473,7 @@ function TemplateExportMenu:__export(exportSettings, progressCallback)
         suc = Ext.IO.SaveFile(path, content)
         if not suc then
             throwError("Failed to save file at " .. path)
+            return
         end
         yield()
     end
@@ -490,6 +491,7 @@ function TemplateExportMenu:__export(exportSettings, progressCallback)
         suc = Ext.IO.SaveFile(modCache, Ext.Json.Stringify(modCachedUuids))
         if not suc then
             throwError("Failed to save mod cache file at " .. modCache)
+            return
         end
     end
 

@@ -84,6 +84,7 @@ function OutlinerMenu:Render()
 
     self:RenderMenu()
     self:RenderTreeList()
+
     self:RenderMainArea()
 end
 
@@ -219,7 +220,7 @@ function OutlinerMenu:RenderTreeList()
         end
 
         local eyeIcon = propData.Visible and RB_ICONS.Eye or RB_ICONS.Eye_Slash
-        local eyeImage = fixedCell:AddImageButton("EyeButton##" .. key, eyeIcon, {36, 36}) --[[@as ExtuiImageButton]]
+        local eyeImage = fixedCell:AddImageButton("EyeButton##" .. key, eyeIcon, IMAGESIZE.ROW) --[[@as ExtuiImageButton]]
         self.eyeImageRefs[key] = fixedCell
         setupEyeHover(eyeImage, eyeIcon)
         local toggleVisible
@@ -228,7 +229,7 @@ function OutlinerMenu:RenderTreeList()
             if not fixedCell then return end
             DestroyAllChildren(fixedCell)
             local newEyeIcon = propData.Visible and RB_ICONS.Eye or RB_ICONS.Eye_Slash
-            eyeImage = fixedCell:AddImageButton("EyeButton##" .. key, newEyeIcon, {36, 36}) --[[@as ExtuiImageButton]]
+            eyeImage = fixedCell:AddImageButton("EyeButton##" .. key, newEyeIcon, IMAGESIZE.ROW) --[[@as ExtuiImageButton]]
             setupEyeHover(eyeImage, newEyeIcon)
             eyeImage.OnClick = toggleVisible
         end
@@ -425,7 +426,7 @@ function OutlinerMenu:SetupLeaf(sel, key, node)
 
     local propData = EntityStore:GetStoredData(key) --[[@as EntityData]]
     selectable.OnRightClick = function()
-        if not TableContains(self.selectedGuids, propData.Guid) and #self.selectedGuids < 2 then
+        if not table.find(self.selectedGuids, propData.Guid) and #self.selectedGuids < 2 then
             self.selectedGuids = { propData.Guid }
         end
         self:SetupSelectablePopup()
@@ -977,7 +978,7 @@ function OutlinerMenu:CreateEntityTab(ent, opts)
 
     local entityTab = nil
 
-    if TableContains(opts, "Add") then
+    if table.find(opts, "Add") then
         entityTab = EntityTab:Add(ent.Guid, ent.TemplateId, self.mainArea, opts, ent.IconTintColor)
     else
         entityTab = EntityTab.new(ent.Guid, ent.TemplateId, self.mainArea, opts)

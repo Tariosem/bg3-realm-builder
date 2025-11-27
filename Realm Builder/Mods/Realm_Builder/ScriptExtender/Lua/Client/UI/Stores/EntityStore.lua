@@ -10,10 +10,6 @@ local entityNameBlacklist = {
     ["Camera"] = true,
 }
 
-EntityStore = {
-    Tree = TreeTable.new(),
-    BindSubscriptions = {}
-}
 
 --- @class EntityData
 --- @field Guid string
@@ -48,9 +44,11 @@ EntityStore = {
 --- @field AddEntity fun(self:EntityStore, guid:string, data:EntityData|ServerEntityData)
 --- @field RemoveEntity fun(self:EntityStore, guid:string)
 --- @field SetEntity fun(self:EntityStore, guid:string, data:EntityData)
---- @field GetEntity fun(self:EntityStore, guid:string):EntityData
---- @field GetEntities fun(self:EntityStore, guids:string[]):table<string, EntityData>
---- @field GetAllEntities fun(self:EntityStore):table<string, EntityData>
+--- @field GetEntity fun(self:EntityStore, guid:string):EntityHandle?
+--- @field GetStoredData fun(self:EntityStore, guid:string):EntityData|nil
+--- @field GetStoredDatas fun(self:EntityStore, guids:string[]):table<string, EntityData>
+--- @field GetExportCopy fun(self:EntityStore, guids:GUIDSTRING[]):table<GUIDSTRING, EntityData>
+--- @field GetAllStored fun(self:EntityStore):table<string, EntityData>
 --- @field CountGroupAndTag fun(self:EntityStore): (table<string, number>, table<string, number>)
 --- @field Filter fun(self:EntityStore, fn:fun(guid:string, data:EntityData):boolean):table<string, EntityData>
 --- @field FilterByTag fun(self:EntityStore, tag:string):table<string, EntityData>
@@ -58,10 +56,14 @@ EntityStore = {
 --- @field FilterByGroup fun(self:EntityStore, group:string):table<string, EntityData>
 --- @field SearchByNote fun(self:EntityStore, keyword:string):table<string, EntityData>
 --- @field GetDisplayNameFromGuid fun(self:EntityStore, guid:string):string|nil
---- @field GetGuidFromDisplayName fun(self:EntityStore, displayName:string):string
---- @field RegisterDisplayName fun(self:EntityStore, displayName:string, guid?:string, discardName?:string):string
---- @field RemoveDisplayName fun(self:EntityStore, displayName:string)
+--- @field GetGuidFromDisplayName fun(self:EntityStore, displayName:string?):string
+--- @field RegisterDisplayName fun(self:EntityStore, displayName:string, guid?:string, discardName?:string):string?
+--- @field RemoveDisplayName fun(self:EntityStore, displayName:string?)
 --- @field GetAllDisplayNames fun(self:EntityStore):string[]
+EntityStore = {
+    Tree = TreeTable.new(),
+    BindSubscriptions = {}
+}
 
 setmetatable(EntityStore, {
     __index = function(t, k)
@@ -263,18 +265,22 @@ function EntityStore:GetStoredData(guid)
     return data
 end
 
-function EntityStore:GetEntities(guids)
+function EntityStore:GetStoredDatas(guids)
     local results = {}
     for _, guid in pairs(guids) do
         if EntityDatas[guid] then
-            results[guid] = EntityDatas[guid]
+            results[guid] = DeepCopy(EntityDatas[guid])
         end
     end
     return results
 end
 
-function EntityStore:GetAll()
+function EntityStore:GetAllStored()
     return DeepCopy(EntityDatas)
+end
+
+function EntityStore:GetEntity(guid)
+    return Ext.Entity.Get(guid)
 end
 
 function EntityStore:CountGroupAndTag()
@@ -307,7 +313,7 @@ end
 
 function EntityStore:FilterByTag(tag)
     return self:Filter(function(guid, data)
-        return data.Tags and TableContains(data.Tags, tag)
+        return data.Tags and table.find(data.Tags, tag)
     end)
 end
 
@@ -317,7 +323,7 @@ function EntityStore:FilterByTags(tags)
             return false
         end
         for _, tag in pairs(tags) do
-            if not TableContains(data.Tags, tag) then
+            if not table.find(data.Tags, tag) then
                 return false
             end
         end

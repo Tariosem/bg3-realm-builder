@@ -1,7 +1,3 @@
-MENU_WIDTH = 1000 * SCALE_FACTOR
-MENU_HEIGHT = 1200 * SCALE_FACTOR
-
-
 --- @class RB_MainMenu
 --- @field isValid boolean
 --- @field effectsMenu EffectsMenu
@@ -12,9 +8,9 @@ MENU_HEIGHT = 1200 * SCALE_FACTOR
 --- @field panel ExtuiWindowBase
 --- @field tabBar ExtuiTabBar
 --- @field FocusOnTab fun(self:RB_MainMenu, guid:string, doDetach:boolean|nil)
-Menu = _Class("Menu")
+RealmBuilderMainMenu = _Class("Menu")
 
-function Menu:__init()
+function RealmBuilderMainMenu:__init()
     self.isValid = true
     self.panel = nil
     self.tabs = {}
@@ -22,10 +18,10 @@ function Menu:__init()
     self:RegisterEvents()
 end
 
-function Menu:RegisterEvents()
-    local meMod = KeybindManager:CreateModule("Generic")
+function RealmBuilderMainMenu:RegisterEvents()
+    local meMod = KeybindManager:CreateModule("General Shortcuts")
 
-    meMod:RegisterEvent("ToggleMenu", function(e)
+    meMod:RegisterEvent("OpenMenu", function(e)
         if e.Event ~= "KeyDown" then return end
 
         if self.panel then
@@ -35,14 +31,64 @@ function Menu:RegisterEvents()
 
     meMod:RegisterEvent("OpenTransformToolbar", function(e)
         if e.Event ~= "KeyDown" then return end
-        if self.editorMenu then
-            self.editorMenu:Toggle()
+        if self.transformBar then
+            self.transformBar:Toggle()
+        end
+    end)
+
+    meMod:RegisterEvent("OpenBrowserMenu", function(e)
+        if e.Event ~= "KeyDown" then return end
+        if self.browserMenu then
+            self.browserMenu.Open = not self.browserMenu.Open
         end
     end)
 end
 
-function Menu:Render()
-    self.panel = RegisterWindow("Citadel", "Realm Builder", "MainMenu", self, nil, {MENU_WIDTH, MENU_HEIGHT})
+function RealmBuilderMainMenu:RenderBrowserMenu()
+    local function ToggleBrowser(targetKey)
+
+        local targetBrowser = self.browsers[targetKey]
+
+        for key, browser in pairs(self.browsers) do
+            if key ~= targetKey and browser and browser.panel and browser.panel.Open then
+                browser:Close()
+            end
+        end
+        targetBrowser:Toggle()
+    end
+
+    local browserMenu = RegisterWindow("generic", "Browser Menu", "Browser Menu")
+    browserMenu.Closeable = true
+    browserMenu:SetSize({ 300 * SCALE_FACTOR, 400 * SCALE_FACTOR })
+
+    local allAvailableBrowsers = {
+        {Key = "item", Label = "Item"},
+        {Key = "effect", Label = "Effect"},
+        {Key = "character", Label = "Character"},
+        {Key = "scenery", Label = "Scenery"},
+        {Key = "prefab", Label = "Prefab"},
+    }
+    table.sort(allAvailableBrowsers, function(a,b) return a.Label < b.Label end)
+
+    for _, browser in pairs(allAvailableBrowsers) do
+        browserMenu:AddButton(browser.Label).OnClick = function()
+            ToggleBrowser(browser.Key)
+        end
+    end
+    allAvailableBrowsers = nil
+
+    self.browserMenu = browserMenu
+    browserMenu.Open = false
+end
+
+function RealmBuilderMainMenu:Render()
+    local screenWidth, screenHeight = GetScreenSize()
+    local MENU_WIDTH = screenWidth * 0.25
+    local MENU_HEIGHT = screenHeight
+    local MENU_X = screenWidth - MENU_WIDTH
+    local MENU_Y = 0
+
+    self.panel = RegisterWindow("Citadel", "Realm Builder", "MainMenu", self, { MENU_X, MENU_Y}, {MENU_WIDTH, MENU_HEIGHT})
     self.panel.Closeable = true
 
     self.tabBar = self.panel:AddTabBar("TabBar")
@@ -70,7 +116,8 @@ function Menu:Render()
 
 
     Timer:Ticks(5, function()
-        self.editorMenu = TransformToolbar:Add(self.tabBar)
+        self.transformBar = TransformToolbar:Add(self.tabBar)
+        self.transformBar:Toggle()
     end)
 
     Timer:Ticks(6, function()
@@ -78,7 +125,6 @@ function Menu:Render()
     end)
 
     Timer:Ticks(7, function()
-
         self.browsers.item = ItemBrowser.new(RB_ItemManager, "Item - Browser")
         self.browsers.item:CreateCachedSort("DisplayName")
     end)
@@ -104,6 +150,10 @@ function Menu:Render()
     end)
 
     Timer:Ticks(9, function()
+        self:RenderBrowserMenu()
+    end)
+
+    Timer:Ticks(9, function()
         local tab = self.tabBar:AddTabItem("Materials")
         local childWin = tab:AddChildWindow("Material Presets Workshop")
         local window = RegisterWindow("generic", "Material Presets Workshop", "Material Presets Workshop", MaterialPresetsMenu)
@@ -118,7 +168,6 @@ function Menu:Render()
 
             childWin.OnRightClick = tabDetachFunc
             isWindow = false
-
         
             DestroyAllChildren(childWin)
             DestroyAllChildren(window)
@@ -142,19 +191,19 @@ function Menu:Render()
     end)
 end
 
-function Menu:NewEntityAdded(guid)
+function RealmBuilderMainMenu:NewEntityAdded(guid)
     if self.entityMenu then
         self.entityMenu:NewEntityAdded(guid)
     end
 end
 
-function Menu:EntityDeleted(guid)
+function RealmBuilderMainMenu:EntityDeleted(guid)
     if self.entityMenu then
         self.entityMenu:EntityDeleted(guid)
     end
 end
 
-function Menu:Destroy()
+function RealmBuilderMainMenu:Destroy()
     if not self.isValid then
         return
     end
@@ -182,8 +231,8 @@ function Menu:Destroy()
 end
 
 --- @return RB_MainMenu
-function Menu:Add()
-    local menu = Menu.new()
+function RealmBuilderMainMenu:Add()
+    local menu = RealmBuilderMainMenu.new()
     menu:Render()
     return menu
 end
@@ -192,7 +241,7 @@ end
 RBMenu = nil
 RegisterOnSessionLoaded(function()
     if RBMenu == nil then
-        RBMenu = Menu:Add()
+        RBMenu = RealmBuilderMainMenu:Add()
         RBMenu.panel.Open = false
     end
 end, 100)

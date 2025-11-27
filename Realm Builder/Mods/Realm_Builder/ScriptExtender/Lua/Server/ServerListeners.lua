@@ -134,6 +134,7 @@ NetChannel.SpawnPreview:SetRequestHandler(function(data, userID)
 
     local preview = Osi.CreateAt(template, position[1], position[2], position[3], 0, 0, "") --[[@as string]]
     if not preview then return {Guid = nil, TemplateId = template} end
+    RB_FlagHelpers.SetFlag(preview, "DeleteLater")
     OsirisHelpers.RotateTo(preview, rotation[1], rotation[2], rotation[3], rotation[4])
     OsirisHelpers.Propify(preview)
     Osi.ClearTag(preview, RB_PROP_TAG)
@@ -270,6 +271,7 @@ NetChannel.Visualize:SetRequestHandler(function(data, userID)
             [cursorEntity] = { Scale = {0, 0, 0} }
         }})
     end
+
     for _,e in pairs(entityHandles) do
         RB_FlagHelpers.SetFlag(e, "IsGizmo")
     end
@@ -287,7 +289,6 @@ NetChannel.Visualize:SetRequestHandler(function(data, userID)
     end
 
     return entityHandles
-    
 end)
 
 NetChannel.SetAttributes:SetHandler(function(data, userID)
@@ -330,11 +331,13 @@ NetChannel.Bind:SetHandler(function(data, userID)
     BindManager:BroadcastBindState(tobind)
 end)
 
-
 local gizmoUserStack = {}
 NetChannel.ManageGizmo:SetRequestHandler(function(data, userID)
     if data.Clear then
         local stack = gizmoUserStack[tostring(userID)] or {}
+        if #stack == 0 then
+            stack = GetAllGizmos()
+        end
         if #stack == 0 then
             stack = BF_GetAllGizmos()
         end
@@ -356,8 +359,8 @@ NetChannel.ManageGizmo:SetRequestHandler(function(data, userID)
 
     local guid = Osi.CreateAt(GIZMO_ITEM[data.GizmoType], data.Position[1], data.Position[2], data.Position[3], 1, 0, "") --[[@as string]]
     Osi.SetVisible(guid, 0)
-
     RB_FlagHelpers.SetFlag(guid, "IsGizmo")
+    
     Timer:Ticks(30, function (timerID)
         NetChannel.SetVisualTransform:Broadcast({Guid = guid, Transforms = {
             [guid] = { Scale = {0, 0, 0} }
@@ -437,7 +440,7 @@ end)
 
 
 NetChannel.GetAtmosphere:SetRequestHandler(function (data, userID)
-    local trigger = FindCurrentAtmosphereTrigger()
+    local trigger = FindCurrentAtmosphereTrigger(data.Position)
     if not trigger then
         return {Guid = "", ResourceUUIDs = {}}
     end
@@ -453,7 +456,7 @@ NetChannel.GetAtmosphere:SetRequestHandler(function (data, userID)
 end)
 
 NetChannel.GetLighting:SetRequestHandler(function (data, userID)
-    local trigger = FindCurrentLightingTrigger()
+    local trigger = FindCurrentLightingTrigger(data.Position)
     if not trigger then
         return {Guid = "", ResourceUUIDs = {}}
     end

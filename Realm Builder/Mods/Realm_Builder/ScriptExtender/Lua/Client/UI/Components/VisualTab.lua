@@ -173,6 +173,11 @@ function VisualTab:__init(guid, displayName, parent, templateName)
     end
 end
 
+function VisualTab:GetVisualTemplate()
+
+
+end
+
 function VisualTab:SetupTemplate()
     local stored = EntityStore:GetStoredData(self.guid)
     self.templateId = self.templateId or (stored and stored.TemplateId) or nil
@@ -384,7 +389,7 @@ function VisualTab:RenderPresetsCell(parent)
         local comboOpts = {}
 
         for _, name in ipairs(self:_getAllPresetNames()) do
-            if Contains(name, text) then
+            if name:find(text) then
                 table.insert(comboOpts, name)
             end
         end
@@ -595,6 +600,126 @@ function VisualTab:RenderAttachmentSection()
     end
 end
 
+--- @type table<string, fun(element: CharacterCreationAppearanceMaterialSetting):RB_ParameterSet>
+local colorDefinitionMap = {
+    Tattoo = function(element)
+        local params = {}
+        local colorDef = Ext.StaticData.Get(element.Color, "ColorDefinition") --[[@as ResourceColor]]
+
+        return params
+    end,
+    HairHighlight = function (element)
+        local params = {}
+        local colorDef = Ext.StaticData.Get(element.Color, "ColorDefinition") --[[@as ResourceColor]]
+        local vec3Color = {colorDef.Color[1], colorDef.Color[2], colorDef.Color[3]}
+
+        params = {
+            [1] = {
+                ["Highlight_Intensity"] = {
+                    element.ColorIntensity or 0.0
+                },
+            },
+            [2] = {},
+            [3] = {
+                ["Highlight_Color"] = vec3Color or {1.0, 1.0, 1.0},
+                ["Beard_Highlight_Color"] = vec3Color or {1.0, 1.0, 1.0}
+            }
+        }
+        return params
+    end,
+    HairGraying = function (element)
+        local params = {}
+        local colorDef = Ext.StaticData.Get(element.Color, "ColorDefinition") --[[@as ResourceColor]]
+        local vec3Color = {colorDef.Color[1], colorDef.Color[2], colorDef.Color[3]}
+        params = {
+            [1] = {
+                ["Graying_Intensity"] = {
+                    element.ColorIntensity or 0.0
+                },
+                ["Beard_Graying_Intensity"] = {
+                    element.ColorIntensity or 0.0
+                }
+            },
+            [2] = {},
+            [3] = {
+                ["Hair_Graying_Color"] = vec3Color or {1.0, 1.0, 1.0},
+                ["Beard_Graying_Color"] = vec3Color or {1.0, 1.0, 1.0}
+            }
+        }
+
+        return params
+    end,
+    HornColor = function (element)
+        local params = {}
+        local colorDef = Ext.StaticData.Get(element.Color, "ColorDefinition") --[[@as ResourceColor]]
+        local vec3Color = {colorDef.Color[1], colorDef.Color[2], colorDef.Color[3]}
+
+        params = {
+            [1] = {},
+            [2] = {},
+            [3] = {
+                ["NonSkinColor"] = vec3Color or {1.0, 1.0, 1.0}
+            }
+        }
+
+        return params
+    end,
+    HornTipColor = function (element)
+        local params = {}
+        local colorDef = Ext.StaticData.Get(element.Color, "ColorDefinition") --[[@as ResourceColor]]
+        local vec3Color = {colorDef.Color[1], colorDef.Color[2], colorDef.Color[3]}
+        params = {
+            [1] = {},
+            [2] = {},
+            [3] = {
+                ["NonSkinTipColor"] = vec3Color or {1.0, 1.0, 1.0}
+            }
+        }
+
+        return params
+    end,
+    LipsMakeup = function (element)
+        local params = {}
+        local colorDef = Ext.StaticData.Get(element.Color, "ColorDefinition") --[[@as ResourceColor]]
+        local vec3Color = {colorDef.Color[1], colorDef.Color[2], colorDef.Color[3]}
+
+        params = {
+            [1] = {
+                ["LipsMakeupIntensity"] = {
+                    element.ColorIntensity or 0.0
+                },
+                ["LipsMakeupMetalness"] = {
+                    element.MetallicTint or 0.0
+                },
+                ["LipsMakeupRoughness"] = {
+                    1 - (element.GlossyTint or 0.0)
+                }
+            },
+            [2] = {},
+            [3] = {
+                ["Lips_Makeup_Color"] = vec3Color or {1.0, 1.0, 1.0},
+            }
+        }
+
+        return params
+    end,
+}
+local additionalChoicesHandle = {
+    [1] = "Vitiligo",
+    [2] = "Freckle",
+    [3] = "Age_Weight",
+    [4] = "Freckle_Intensity",
+}
+
+local function mergeParameterSets(base, override)
+    for ptype, typeParams in pairs(override) do
+        base[ptype] = base[ptype] or {}
+        for paramName, value in pairs(typeParams) do
+            base[ptype][paramName] = value
+        end
+    end
+end
+
 function VisualTab:DetermineOverrideCharacterParameters()
     local overrideCharacterParams = {
         {}, -- ScalarParameters
@@ -603,12 +728,17 @@ function VisualTab:DetermineOverrideCharacterParameters()
         {}, -- VectorParameters
     }
     local entity = self:GetEntity(self.guid) --[[@as EntityHandle]]
+    local ccDummy = GetMirrotDummyEntity()
+    --- @type CharacterCreationAppearance|CharacterCreationAppearanceComponent
     local cca = entity.CharacterCreationAppearance
+    if ccDummy and ccDummy.ClientCCChangeAppearanceDefinition then
+        cca = ccDummy.ClientCCChangeAppearanceDefinition.Definition.Visual
+    end
     if not cca then
-        --- @diagnostic disable-next-line
-        cca = entity.AppearanceOverride and entity.AppearanceOverride.Visual
+        cca = entity.AppearanceOverride and entity.AppearanceOverride.Visual --[[@as CharacterCreationAppearanceComponent]]
     end
     if cca then
+        
         local ccaPresetgroup = StyleHelpers.AddTree(self.attachmentsHeader, "Character Creation Material Presets")
 
         local allColors = {
@@ -630,11 +760,32 @@ function VisualTab:DetermineOverrideCharacterParameters()
             "SkinColor",
         }
 
-        --for _, colorChoice in pairs(cca.Elements) do
-            --local mat = Ext.StaticData.Get(colorChoice.Material, "CharacterCreationAppearanceMaterial")
-            --_D(Ext.StaticData.Get(colorChoice.Color, "ColorDefinition"))
-            --_D(Ext.Resource.Get(mat.MaterialPresetUUID, "MaterialPreset"))
-        --end
+        ---[[ 1 = Vitiligo, 2 = Freckle Quantity, 3 = Maturity, 4 = Freckle Intensity]]
+        for i, num in pairs(cca.AdditionalChoices) do
+            local params = {}
+            local paramName = additionalChoicesHandle[i]
+            params[1] = {}
+            if i == 3 then
+                num = num * 0.4
+            end
+            params[1][paramName] = { num or 0.0 }
+            mergeParameterSets(overrideCharacterParams, params)
+        end
+        
+        for i, colorChoice in pairs(cca.Elements) do
+            local mat = Ext.StaticData.Get(colorChoice.Material, "CharacterCreationAppearanceMaterial") --[[@as ResourceCharacterCreationAppearanceMaterial]]
+            local mp = MaterialProxy.new(mat.MaterialPresetUUID)
+            if mp and next(mp.Parameters) and next(mp.Parameters[1]) then
+                mergeParameterSets(overrideCharacterParams, mp.Parameters)
+                goto continue
+            end
+            if not mat or not colorDefinitionMap[mat.MaterialType2] then
+                goto continue
+            end
+            local params = colorDefinitionMap[mat.MaterialType2](colorChoice)
+            mergeParameterSets(overrideCharacterParams, params)
+            ::continue::
+        end
 
         local hasCCA = false
         for _, colorIndex in ipairs(colorOrder) do
@@ -980,8 +1131,6 @@ function VisualTab:RenderEffectEditor()
         return
     end
 
-    Ext.IO.SaveFile("effect_debug.json", Ext.DumpExport(entity.Effect))
-
     self:SetupEffectContextMenu()
     local effectNameCnt = {}
 
@@ -1098,6 +1247,8 @@ end
 --- @field IsInt boolean
 --- @field Range { Min:number, Max:number, Step:number }
 --- @field Options RadioButtonOption[]?
+--- @field Setter fun(value:any)
+--- @field Getter fun():any
 
 --- @class EffectPropertyMap
 --- @field Boolean table<string, EffectComponentParameterInfo>
@@ -1160,7 +1311,8 @@ function VisualTab:RenderEffectComponentEditor(parent, key, getComp, renderInfo)
         local propInfo = propMap[propType][propName]
         local groupName = propInfo.Group or "Default"
         if not groupTrees[groupName] then
-            groupTrees[groupName] = StyleHelpers.AddTree(parent, groupName, true)
+            groupTrees[groupName] = StyleHelpers.AddTree(parent, groupName)
+            parent:AddSeparator():SetStyle("ItemSpacing", 0, 10)
         end
 
         renderHandlers[propType](groupTrees[groupName], propName, propInfo)
@@ -1173,7 +1325,8 @@ function VisualTab:RenderEffectComponentEditor(parent, key, getComp, renderInfo)
 
             local groupName = propInfo.Group or "Default"
             if not groupTrees[groupName] then
-                groupTrees[groupName] = StyleHelpers.AddTree(parent, groupName, true)
+                groupTrees[groupName] = StyleHelpers.AddTree(parent, groupName)
+                parent:AddSeparator():SetStyle("ItemSpacing", 0, 10)
             end
 
             renderHandlers[propType](groupTrees[groupName], propName, propInfo)
@@ -1185,13 +1338,13 @@ end
 
 --- @param panel ExtuiTreeParent
 function VisualTab:RenderEffectComponentSliders(panel, getComp, key, componentName, valueInfo)
-    local applyMethod = valueInfo.ApplyMethod or function (value)
+    local applyMethod = valueInfo.Setter or function (value)
         local comp = getComp()
         if not comp then return end
 
         comp[componentName] = value
     end
-    local getMethod = valueInfo.GetMethod or function ()
+    local getMethod = valueInfo.Getter or function ()
         local comp = getComp()
         if not comp then return nil end
 
@@ -1249,7 +1402,6 @@ function VisualTab:RenderEffectComponentBooleanCheckbox(panel, getComp, key, com
     local checkbox = panel:AddCheckbox("##EffectComponentCheckbox_" .. key, initValue)
     checkbox.Label = displayName or componentName
 
-    checkbox:Tooltip():AddText("Right click to reset to default value.")
     checkbox.OnChange = function()
         local comp = getComp()
         if not comp then return end
@@ -1257,19 +1409,6 @@ function VisualTab:RenderEffectComponentBooleanCheckbox(panel, getComp, key, com
         comp[componentName] = checkbox.Checked
         self.Effects[key] = self.Effects[key] or {}
         self.Effects[key][componentName] = checkbox.Checked
-    end
-
-    checkbox.OnRightClick = function()
-        checkbox.Checked = initValue
-        local comp = getComp()
-        if not comp then return end
-        comp[componentName] = initValue
-
-        self.Effects[key] = self.Effects[key] or {}
-        self.Effects[key][componentName] = nil
-        if not next(self.Effects[key]) then
-            self.Effects[key] = nil
-        end
     end
 
     self.resetFuncs[key][componentName] = function()
@@ -1301,7 +1440,7 @@ function VisualTab:RenderEffectComponentBitmaskRadioButtons(panel, getComp, key,
     local displayName = bitMaskInfo.DisplayName or componentName
     local options = bitMaskInfo.Options or {}
 
-    local tab = panel:AddTable("EffectComponentBitmaskRadioTable_" .. key, 2)
+    local tab = panel:AddTable("SameTable" .. panel.Label, 2)
     tab.ColumnDefs[1] = { WidthFixed = true }
     tab.ColumnDefs[2] = { WidthStretch = true }
     local row = tab:AddRow()
@@ -1320,6 +1459,10 @@ function VisualTab:RenderEffectComponentBitmaskRadioButtons(panel, getComp, key,
     end
 
     local resetChange = function()
+        local comp = getComp()
+        if not comp then return end
+
+        comp[componentName] = initValue
         radioGroup.Value = initValue
         self.Effects[key] = self.Effects[key] or {}
         self.Effects[key][componentName] = nil
@@ -1354,7 +1497,7 @@ function VisualTab:RenderEffectComponentEnumRadioButtons(panel, getComp, key, co
     local displayName = enumInfo.DisplayName or componentName
     local options = enumInfo.Options or {}
 
-    local tab = panel:AddTable("EffectComponentEnumRadioTable_" .. key, 2)
+    local tab = panel:AddTable("SameTable" .. panel.Label, 2)
     tab.ColumnDefs[1] = { WidthFixed = true }
     tab.ColumnDefs[2] = { WidthStretch = true }
     local row = tab:AddRow()
@@ -1373,6 +1516,10 @@ function VisualTab:RenderEffectComponentEnumRadioButtons(panel, getComp, key, co
     end
 
     local resetChange = function()
+        local comp = getComp()
+        if not comp then return end
+
+        comp[componentName] = initValue
         radioGroup.Value = initValue
         self.Effects[key] = self.Effects[key] or {}
         self.Effects[key][componentName] = nil
@@ -1465,7 +1612,14 @@ function VisualTab:RenderLightEntity(node, component, compIndex)
         },
         Flags = {
             Options = {
-                { Name = "Fill Light", Value = 1 << 3 },
+                { Name = "Use Temperature", Value = 0x1 },
+                { Name = "Is Flickering", Value = 0x2 },
+                { Name = "Is Moving", Value = 0x4 },
+                { Name = "Cast Shadow", Value = 0x8 },
+                { Name = "Cast Volumetric Shadow", Value = 0x10 },
+                { Name = "Enabled", Value = 0x20 },
+                { Name = "Pre Expose", Value = 0x40 },
+                { Name = "Fill Light", Value = 0x80 },
             },
             DisplayName = "Light Flags",
             Group = "Light Flags",
@@ -1519,6 +1673,16 @@ function VisualTab:RenderLightEntity(node, component, compIndex)
             DisplayName = "Scattering Intensity Scale",
             Group = "General Light Settings",
         },
+        IntensityOffset = {
+            Range = { Min = -100, Max = 100, Step = 0.1 },
+            DisplayName = "Intensity Offset",
+            Group = "General Light Settings",
+        },
+        --[[Kelvin = {
+            Range = { Min = 1000, Max = 40000, Step = 100 },
+            DisplayName = "Color Temperature (Kelvin)",
+            Group = "General Light Settings",
+        },]]
         DirectionLightAttenuationEnd = {
             Range = { Min = 0, Max = 2, Step = 0.05 },
             DisplayName = "Attenuation End",
@@ -1535,7 +1699,6 @@ function VisualTab:RenderLightEntity(node, component, compIndex)
             Group = "Directional Light Settings",
         },
     }
-
     local vector3ParamMap = {
         DirectionLightDimensions = {
             Range = { Min = 0, Max = 100, Step = 1 },
@@ -1547,6 +1710,7 @@ function VisualTab:RenderLightEntity(node, component, compIndex)
             Range = { Min = -1, Max = 1, Step = 0.01 },
             DisplayName = "Light Entity Color",
             Group = "General Light Settings",
+            IsColor = true,
         },
     }
     
@@ -1648,7 +1812,7 @@ function VisualTab:RenderLightComponent(node, component, compIndex)
                 if hasABCDField then break end
             end
             if hasABCDField then
-                prop.ApplyMethod = function(value)
+                prop.Setter = function(value)
                     lcomp = VisualHelpers.GetEffectComponent(self.guid, compIndex) --[[@as AspkLightComponent]]
                     if not lcomp then return end
                     for _, keyFrame in pairs(lcomp.IntensityProperty.KeyFrames or {}) do
@@ -1660,7 +1824,7 @@ function VisualTab:RenderLightComponent(node, component, compIndex)
                         end
                     end
                 end
-                prop.GetMethod = function()
+                prop.Getter = function()
                     local comp = VisualHelpers.GetEffectComponent(self.guid, compIndex) --[[@as AspkLightComponent]]
                     if not comp then return nil end
 
@@ -1677,10 +1841,10 @@ function VisualTab:RenderLightComponent(node, component, compIndex)
             end
         end
 
-        prop.ApplyMethod = function(value)
+        prop.Setter = function(value)
             applyToFrames(value, propName, "KeyFrames")
         end
-        prop.GetMethod = function()
+        prop.Getter = function()
             local comp = VisualHelpers.GetEffectComponent(self.guid, compIndex) --[[@as AspkLightComponent]]
             if not comp then return nil end
 
@@ -1697,21 +1861,23 @@ function VisualTab:RenderLightComponent(node, component, compIndex)
             Range = { Min = -1, Max = 1, Step = 0.01 },
             DisplayName = "Color",
             Group = "Appearance",
+            IsColor = true,
         },
     }
 
     for propName, prop in pairs(vec4NameMap) do
-        prop.ApplyMethod = function(value)
+        prop.Setter = function(value)
             applyToFrames(value, propName, "Frames")
         end
-        prop.GetMethod = function()
+        prop.Getter = function()
             local comp = VisualHelpers.GetEffectComponent(self.guid, compIndex) --[[@as AspkLightComponent]]
             if not comp then return nil end
 
             local property = comp[propName]
             if not property or not property.Frames then return nil end
 
-            return property.Frames[1] and property.Frames[1].Color or nil
+            local lc = property.Frames[1] and property.Frames[1].Color or {}
+            return LightCToArray(lc)
         end
     end
 

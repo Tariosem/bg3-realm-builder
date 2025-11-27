@@ -19,11 +19,12 @@ LightingEditor = _Class("LightingEditor", ResourceEditor)
 local cachedResourceEditors = {}
 
 local readOnlyFields = {
-    "GUID",
-    "Guid"
+    ["GUID"] = true,
+    ["Guid"] = true,
+    ["WhiteBalanceMatrix"] = true,
 }
 
-local preassignedRanged = {
+local preassignedRanges = {
     Yaw = { Min = 0, Max = 180, Step = 1 },
     Pitch = { Min = 0, Max = 180, Step = 1 },
     Roll = { Min = 0, Max = 180, Step = 1 },
@@ -71,10 +72,11 @@ function ResourceEditor:Render()
 
     self.Panel = window
     local updateUIState = nil
-    local setter = Debounce(100, function()
+    local debouceDelay = self.ResourceType == "Lighting" and 1000 or 10
+    local setter = function()
         if self.ResourceType == "Lighting" then
             self.SetChannel:RequestToServer(
-            { [self.ResourceType] = self.ModfiedResource, ResourceUUID = self.ResourceUUID, Reset = true },
+                { [self.ResourceType] = self.ModfiedResource, ResourceUUID = self.ResourceUUID, Reset = true },
                 function(response)
                     self.SetChannel:RequestToServer({ Apply = true, ResourceUUID = self.ResourceUUID },
                         function(response)
@@ -93,7 +95,8 @@ function ResourceEditor:Render()
                     end
                 end)
             end)
-    end)
+    end
+    local delaySetter = Debounce(debouceDelay, setter)
 
     local resetBtn = window:AddButton("Reset World " .. self.ResourceType)
     resetBtn.OnClick = function()
@@ -130,7 +133,7 @@ function ResourceEditor:Render()
             local res = Ext.Resource.Get(self.ResourceUUID, self.ResourceType) --[[@as ResourceAtmosphereResource]]
             self.ModfiedResource[field] = value
             res[self.ResourceType][field] = value
-            setter()
+            delaySetter()
         end)
 end
 
@@ -146,13 +149,17 @@ function ResourceEditor:RenderArrayEditor(parent, label, objGetter, objSetter)
         row:Destroy()
         row = tab:AddRow()
         for i, value in ipairs(objGetter()) do
-            local cell = row:AddCell(tostring(value))
+            local cell = row:AddCell()
             if type(value) == "string" then
                 local input = cell:AddInputText("## string" .. label .. i .. "Setter", value)
+                input.AutoSelectAll = true
                 input.OnChange = function(text)
                     local arr = objGetter()
                     arr[i] = text.Text
                     objSetter(arr)
+                end
+                input.OnRightClick = function()
+                    input.Text = value
                 end
             elseif type(value) == "boolean" then
                 local input = cell:AddCheckbox("## boolean " .. label .. i .. "Setter", value)
@@ -161,7 +168,11 @@ function ResourceEditor:RenderArrayEditor(parent, label, objGetter, objSetter)
                     arr[i] = checkbox.Checked
                     objSetter(arr)
                 end
+                input.OnRightClick = function()
+                    input.Checked = value
+                end
             end
+
         end
     end
 
@@ -180,14 +191,10 @@ function ResourceEditor:RenderEditor(parent, label, objGetter, objSetter)
     end
 
     for field, initValue in SortedPairs(objGetter()) do
-        if readOnlyFields[field] then
-            goto continue
-        end
+        if readOnlyFields[field] then goto continue end
 
         local updateFunc = nil
-        if field == "WhiteBalanceMatrix" then
-            goto continue
-        elseif type(initValue) == "number" or IsArrayOf(initValue, "number") then
+        if type(initValue) == "number" or IsArrayOf(initValue, "number") then
             local function getter()
                 local val = objGetter()[field]
                 if type(val) == "number" then
@@ -205,7 +212,7 @@ function ResourceEditor:RenderEditor(parent, label, objGetter, objSetter)
             end
 
             local currentVal = getter()
-            local range = preassignedRanged[field]
+            local range = preassignedRanges[field]
             local isInt = math.type(currentVal[1]) == "integer"
             local isColor = field:lower():find("color") ~= nil or field:lower():find("colour") ~= nil
             if not range then
@@ -222,7 +229,8 @@ function ResourceEditor:RenderEditor(parent, label, objGetter, objSetter)
                 }
             end
 
-            updateFunc = StyleHelpers.AddNumberSliders(parent, field, getter, setter, { IsColor = isColor, Range = range, IsInt = isInt })
+            updateFunc = StyleHelpers.AddNumberSliders(parent, field, getter, setter,
+                { IsColor = isColor, Range = range, IsInt = isInt })
         elseif type(initValue) == "boolean" then
             local function getter()
                 return objGetter()[field]
@@ -232,13 +240,42 @@ function ResourceEditor:RenderEditor(parent, label, objGetter, objSetter)
                 objSetter(field, value)
             end
 
-            local checkBox = parent:AddCheckbox(field .. "##" .. tostring(objGetter), initValue)
+            local alignedTable = StyleHelpers.AddAlignedTable(parent)
+            local checkBox = alignedTable:AddCheckbox(field, initValue)
             checkBox.OnChange = function()
                 setter(checkBox.Checked)
+            end
+            checkBox.OnRightClick = function()
+                checkBox.Checked = initValue
             end
 
             updateFunc = function()
                 checkBox.Checked = getter()
+            end
+        elseif type(initValue) == "string" then
+            local function getter()
+                return objGetter()[field]
+            end
+
+            local function setter(value)
+                objSetter(field, value)
+            end
+
+            local alignedTable = StyleHelpers.AddAlignedTable(parent)
+            local input = alignedTable:AddInputText(field, initValue)
+            input.AutoSelectAll = true
+            input.OnChange = function()
+                if IsUuidIncludingNull(initValue) and not IsUuidIncludingNull(input.Text) then
+                    return
+                end
+
+                setter(input.Text)
+            end
+            input.OnRightClick = function()
+                input.Text = initValue
+            end
+            updateFunc = function()
+                input.Text = getter()
             end
         elseif IsArrayOf(initValue, "string") or IsArrayOf(initValue, "boolean") then
             updateFunc = self:RenderArrayEditor(parent, field,
@@ -282,7 +319,7 @@ function ResourceEditor:RenderEditor(parent, label, objGetter, objSetter)
                         if not parentTbl then
                             parentTbl = {}
                         end
-                        
+
                         parentTbl[subField] = value
                         objSetter(field, parentTbl)
                     end)
@@ -290,7 +327,7 @@ function ResourceEditor:RenderEditor(parent, label, objGetter, objSetter)
             end
         end
         if updateFunc then
-            parent:AddSeparator()
+            parent:AddSeparator():SetStyle("ItemSpacing", 0, 10 * SCALE_FACTOR)
             table.insert(updateFuncs, updateFunc)
         end
         ::continue::
@@ -327,7 +364,7 @@ if GLOBAL_DEBUG_WINDOW then
         inputForCopy.AutoSelectAll = true
         inputs[resType] = inputForCopy
         local combo = GLOBAL_DEBUG_WINDOW:AddCombo("Select " .. resType .. " Resource")
-        combo.OnHoverEnter = function ()
+        combo.OnHoverEnter = function()
             NetChannel["Get" .. resType]:RequestToServer({}, function(response)
                 local currentUuid = response.Guid
                 local allAvaiable = response.ResourceUUIDs
@@ -345,7 +382,6 @@ if GLOBAL_DEBUG_WINDOW then
                     combo.SelectedIndex = -1
                 end
             end)
-
         end
         combo.OnChange = function(cmb)
             local selectedName = GetCombo(cmb)
@@ -387,7 +423,8 @@ if GLOBAL_DEBUG_WINDOW then
 
     local notif = Notification.new("Resource Editor")
     GLOBAL_DEBUG_WINDOW:AddButton("Open Atmosphere Editor").OnClick = function()
-        NetChannel.GetAtmosphere:RequestToServer({}, function(response)
+        local cameraPos = {GetCameraPosition()}
+        NetChannel.GetAtmosphere:RequestToServer({ Position = cameraPos }, function(response)
             local atmosphereUuid = response.Guid
             if atmosphereUuid == "" then
                 notif:Show("Resource Editor", function(panel)
@@ -409,7 +446,8 @@ if GLOBAL_DEBUG_WINDOW then
         end)
     end
     GLOBAL_DEBUG_WINDOW:AddButton("Open Lighting Editor").OnClick = function()
-        NetChannel.GetLighting:RequestToServer({}, function(response)
+        local cameraPos = {GetCameraPosition()}
+        NetChannel.GetLighting:RequestToServer({ Position = cameraPos }, function(response)
             local lightingUuid = response.Guid
             if lightingUuid == "" then
                 notif:Show("Resource Editor", function(panel)

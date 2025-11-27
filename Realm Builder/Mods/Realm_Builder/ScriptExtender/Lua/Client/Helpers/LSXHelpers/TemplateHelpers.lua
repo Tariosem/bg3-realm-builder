@@ -618,7 +618,7 @@ end
 --- @param name string
 --- @param uuid GUIDSTRING
 --- @return LSXNode
-function LSXHelpers.BuidlPatrolSpline(origin, nodes, levelName, name, uuid)
+function LSXHelpers.BuildPatrolSpline(origin, nodes, levelName, name, uuid)
     local templateNode = LSXHelpers.BuildTemplatesRegionNode()
     local splineNode = templateNode:AppendChild(LSXNode.new("node", { id = "GameObjects" }))
 

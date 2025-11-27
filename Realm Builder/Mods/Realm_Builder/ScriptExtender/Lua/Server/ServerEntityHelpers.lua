@@ -1,28 +1,27 @@
-function FindCurrentAtmosphereTrigger()
+function FindCurrentAtmosphereTrigger(pos, user)
     local allAtmosTriggers = Ext.Entity.GetAllEntitiesWithComponent("ServerAtmosphereTrigger")
     local player = Osi.GetHostCharacter() --[[@as GUIDSTRING]]
 
-    local allHits = {}
-    local px, py, pz = CGetPosition(player)
+    pos = pos or {CGetPosition(player)}
 
     for i, trigger in ipairs(allAtmosTriggers) do
         local max = trigger.TriggerArea.Bounds.BoundsMax
         local min = trigger.TriggerArea.Bounds.BoundsMin
 
-        local pos = trigger.Transform.Transform.Translate
+        local triggerPos = trigger.Transform.Transform.Translate
 
         local worldMin = {
-            min[1] + pos[1],
-            min[2] + pos[2],
-            min[3] + pos[3],
+            min[1] + triggerPos[1],
+            min[2] + triggerPos[2],
+            min[3] + triggerPos[3],
         }
         local worldMax = {
-            max[1] + pos[1],
-            max[2] + pos[2],
-            max[3] + pos[3],
+            max[1] + triggerPos[1],
+            max[2] + triggerPos[2],
+            max[3] + triggerPos[3],
         }
 
-        if IsInBoundingBox({px, py, pz}, worldMin, worldMax) then
+        if IsInBoundingBox(pos, worldMin, worldMax) then
             return trigger
         end
     end
@@ -30,30 +29,29 @@ function FindCurrentAtmosphereTrigger()
     return nil
 end
 
-function FindCurrentLightingTrigger()
+function FindCurrentLightingTrigger(pos, user)
     local allLightTriggers = Ext.Entity.GetAllEntitiesWithComponent("ServerLightingTrigger")
     local player = Osi.GetHostCharacter() --[[@as GUIDSTRING]]
 
-    local px, py, pz = CGetPosition(player)
-
+    pos = pos or {CGetPosition(player)}
     for i, trigger in ipairs(allLightTriggers) do
         local max = trigger.TriggerArea.Bounds.BoundsMax
         local min = trigger.TriggerArea.Bounds.BoundsMin
 
-        local pos = trigger.Transform.Transform.Translate
+        local triggerPos = trigger.Transform.Transform.Translate
 
         local worldMin = {
-            min[1] + pos[1],
-            min[2] + pos[2],
-            min[3] + pos[3],
+            min[1] + triggerPos[1],
+            min[2] + triggerPos[2],
+            min[3] + triggerPos[3],
         }
         local worldMax = {
-            max[1] + pos[1],
-            max[2] + pos[2],
-            max[3] + pos[3],
+            max[1] + triggerPos[1],
+            max[2] + triggerPos[2],
+            max[3] + triggerPos[3],
         }
 
-        if IsInBoundingBox({px, py, pz}, worldMin, worldMax) then
+        if IsInBoundingBox(pos, worldMin, worldMax) then
             return trigger
         end
     end

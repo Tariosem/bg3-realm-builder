@@ -1,5 +1,6 @@
 --- @class RB_ItemManager:ManagerBase
 --- @field new fun():RB_ItemManager
+--- @field CheckHostValidEquipmentVisual fun(self: RB_ItemManager, guid:string)
 ItemManager = _Class("ItemManager", ManagerBase)
 
 function ItemManager:__init()
@@ -277,10 +278,6 @@ function ItemManager:PopulateItem(template, statsObj)
 
     if entry.Icon == "Item_BLD_Village_House_Door_A_Wood_Scenery_B" then
         self:AddTagToData(entry.Uuid, "Destruction")
-    end
-
-    if ITEM_BLACKLIST[entry.TemplateId] then
-        entry.Note = ITEM_BLACKLIST[entry.TemplateId]
     end
 
     if template.StoryItem then

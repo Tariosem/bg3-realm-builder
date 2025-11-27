@@ -163,6 +163,7 @@ function EffectTab:RenderEffects()
 
         effectTree.OnDragStart = function(sel)
             sel.DragPreview:AddImage(effectTree.UserData.Icon)
+            sel.DragPreview:AddText(effectTree.UserData.DisplayName).SameLine = true
         end
 
         effectTree.OnClick = function()
@@ -529,7 +530,7 @@ function EffectTab:AddTagToData(tag)
         if not self.Tags then
             self.Tags = {}
         end
-        if not Contains(self.Tags, tag) then
+        if not table.find(self.Tags, tag) then
             table.insert(self.Tags, tag)
             if self.tagsInput then
                 self.tagsInput.Text = ""
@@ -541,7 +542,7 @@ end
 
 function EffectTab:RemoveTagFromData(tag)
     if self.isCustom then
-        if self.Tags and TableContains(self.Tags, tag) then
+        if self.Tags and table.find(self.Tags, tag) then
             ToggleEntry(self.Tags, tag)
             if self.tagsInput then
                 self.tagsInput.Text = ""

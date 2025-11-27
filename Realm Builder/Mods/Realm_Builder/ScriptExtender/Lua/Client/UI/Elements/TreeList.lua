@@ -88,8 +88,22 @@ function TreeList:Render()
 
     self.listWindow = self.panel:AddChildWindow("##" .. self.label .. "ListWindow")
     Ext.OnNextTick(function()
-        self.listWindow.Size = { 0, 800 * SCALE_FACTOR }
+        self.listWindow.Size = { -20, 800 * SCALE_FACTOR }
     end)
+    self.listWindow.NoResize = false
+
+    local _, screenHeight = GetScreenSize()
+    local sliderHeight = self.panel:AddSliderInt("##windowHeight", 800 * SCALE_FACTOR, screenHeight, 200)
+    sliderHeight:SetColor("Text", {0,0,0,0})
+    sliderHeight.SameLine = true
+    sliderHeight.Vertical = true
+    sliderHeight.VerticalSize = {20, 800 * SCALE_FACTOR + 1}
+    sliderHeight.Value = ToVec4Int(800 * SCALE_FACTOR)
+    sliderHeight.OnChange = function(slider)
+        local height = slider.Value[1]
+        self.listWindow.Size = { -20, height + 1}
+        sliderHeight.VerticalSize = {20, height + 1}
+    end
     self:RenderList()
 end
 
@@ -145,14 +159,9 @@ function TreeList:RenderTopBar()
         settingPopup:Open()
     end
     StyleHelpers.SetupImageButton(openSettingsBtn)
-
-    local alignedTable = StyleHelpers.AddAlignedTable(settingPopup)
+    --local alignedTable = StyleHelpers.AddAlignedTable(self.panel)
     
-    local sliderHeight = alignedTable:AddSliderWithStep("WindowHeight", 800 * SCALE_FACTOR, 200, 2000, 10, true)
-    sliderHeight.OnChange = function(slider)
-        local height = slider.Value[1]
-        self.listWindow.Size = { 0, height  }
-    end
+
 end
 
 --- return true to show the item

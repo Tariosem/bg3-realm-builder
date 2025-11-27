@@ -231,9 +231,9 @@ function SceneMenu:SavePreset(name, overwrite, candiates)
 
     local infos = {}
     if candiates then
-        infos = EntityStore:GetEntities(candiates)
+        infos = EntityStore:GetStoredDatas(candiates)
     else
-        infos = EntityStore:GetAll()
+        infos = EntityStore:GetAllStored()
     end
     if not infos or CountMap(infos) == 0 then
         ConfirmPopup:Popup("No props found to save in preset.")
@@ -244,7 +244,7 @@ function SceneMenu:SavePreset(name, overwrite, candiates)
         ConfirmPopup:QuickConfirm(
             string.format(GetLoca("A preset with name : '%s' already exists. Overwrite?"), name),
             function()
-                self:SavePreset(name, true)
+                self:SavePreset(name, true, candiates)
             end,
             nil,
             10
@@ -301,7 +301,7 @@ function SceneMenu:SavePreset(name, overwrite, candiates)
         lca = TreeTable.GetRootKey()
     end
 
-    local tree = DeepCopy(EntityStore.Tree:Find(lca))
+    local tree = { [lca] = DeepCopy(EntityStore.Tree:Find(lca)) }
 
     self.presets[name] = {
         PresetType = self.isRelative and "Relative" or "Absolute",
@@ -380,13 +380,21 @@ function SceneMenu:LoadPreset(name, isPreview, force)
         return nil
     end
 
+    local parentObj = self:GetSelectedObject()
+    if not parentObj or parentObj == "" then
+        parentObj = CGetHostCharacter()
+    end
+
     local data = DeepCopy(self.presets[name])
+    if data == self.presets[name] then
+        Debug("SceneMenu:LoadPreset: DeepCopy failed, using original data.")
+        data = DeepCopy(self.presets[name])
+    end
     if isPreview then
         data.SpawnType = "Preview"
     end
-    data.Position = {CGetPosition(self:GetSelectedObject())}
-    data.Rotation = {GetQuatRotation(self:GetSelectedObject())}
-
+    data.Position = {CGetPosition(parentObj)}
+    data.Rotation = {GetQuatRotation(parentObj)}
     Commands.SpawnPreset(data)
 
     return nil

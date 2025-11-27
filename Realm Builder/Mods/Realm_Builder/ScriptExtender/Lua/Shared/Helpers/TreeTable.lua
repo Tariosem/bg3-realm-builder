@@ -905,7 +905,7 @@ function TreeTable:SortTreesByDepth(order, candidates, ignoreRoot)
             goto continue
         end
         if type(node) == "table" and not self:IsLeaf(key) then
-            if not candidates or TableContains(candidates, key) then
+            if not candidates or table.find(candidates, key) then
                 table.insert(trees, { Key = key, Depth = self:GetDepth(key) })
             end
         end
@@ -940,7 +940,7 @@ function TreeTable:SortNodesByDepth(order, candidates, ignoreRoot)
         if ignoreRoot and key == ROOT then
             goto continue
         end
-        if not candidates or TableContains(candidates, key) then
+        if not candidates or table.find(candidates, key) then
             table.insert(nodes, { Key = key, Node = node, Depth = self:GetDepth(key), IsLeaf = self:IsLeaf(key) })
         end
         ::continue::

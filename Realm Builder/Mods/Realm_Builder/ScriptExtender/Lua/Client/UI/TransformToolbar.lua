@@ -395,7 +395,7 @@ function TransformToolbar:SetupBoxSelect()
         for _,guid in pairs(GetAllPartyMembers()) do
             table.insert(toCheck, guid)
         end
-        for guid,_ in pairs(EntityStore:GetAll()) do
+        for guid,_ in pairs(EntityStore:GetAllStored()) do
             table.insert(toCheck, guid)
         end
 
@@ -962,6 +962,7 @@ function TransformToolbar:CreateNearbyPopup()
                 OnClick = function (selectable)
                     if not selected or selected == "" then return end
                     local proxy = MovableProxy.CreateByGuid(selected)
+                    if not proxy then return end
                     RB_GLOBALS.TransformEditor:AddTarget(proxy)
                 end,
                 Hint = "A",

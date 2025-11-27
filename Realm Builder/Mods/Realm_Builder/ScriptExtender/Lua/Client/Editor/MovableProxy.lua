@@ -12,7 +12,7 @@
 --- @field GetSavedTransform fun(self: RB_MovableProxy): Transform
 --- @field RestoreTransform fun(self: RB_MovableProxy)
 --- @field GetParent fun(self: RB_MovableProxy): RB_MovableProxy|nil
---- @field CreateByGuid fun(guid: GUIDSTRING):RB_MovableProxy
+--- @field CreateByGuid fun(guid: GUIDSTRING):RB_MovableProxy?
 --- @field CreateByGuids fun(guids: GUIDSTRING[]):RB_MovableProxy[]
 --- @field IsValid fun(self: RB_MovableProxy):boolean
 --- @field Render fun(self: RB_MovableProxy, parent: ExtuiTreeParent)
@@ -117,15 +117,26 @@ function ItemMovableProxy:GetTransform()
 end
 
 function ItemMovableProxy:SetTransform(transform)
+    if Ext.IsServer() then
+        OsirisHelpers.ToTransform(self.Guid, transform)
+        return
+    end
+
     local transforms = {}
     transforms[self.Guid] = transform
     SetItemTransform({self.Guid}, transforms)
 end
 
 function ItemMovableProxy:GetParent()
-    local parentGuid = EntityStore:GetBindParent(self.Guid)
-    if parentGuid then
-        return MovableProxy.CreateByGuid(parentGuid)
+    local parent = nil
+    if Ext.IsServer() then
+        parent = BindManager:GetParent(self.Guid)
+    else
+        parent = EntityStore:GetBindParent(self.Guid)
+    end
+
+    if parent then
+        return MovableProxy.CreateByGuid(parent)
     end
     return nil
 end
@@ -163,6 +174,11 @@ end
 function CharacterMovableProxy:SetTransform(transform)
     local transforms = {}
     transforms[self.Guid] = transform
+
+    if Ext.IsServer() then
+        NetChannel.SetVisualTransform:Broadcast({Guids={self.Guid}, Transforms=transforms})
+        return
+    end
 
     if not VisualHelpers.GetEntityVisual(self.Guid) then
         NetChannel.TeleportTo:SendToServer({
@@ -274,8 +290,9 @@ local function clearCache()
 end
 
 --- @param guid string
---- @return RB_MovableProxy
+--- @return RB_MovableProxy?
 function MovableProxy.CreateByGuid(guid)
+    if not IsUuid(guid) then return nil end
     clearCache()
     local proxy = movabelCache[guid]
     if proxy then

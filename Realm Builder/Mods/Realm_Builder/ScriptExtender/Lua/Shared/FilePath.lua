@@ -81,15 +81,15 @@ function RealmPath.GetKeybindPath()
     return keybindPath
 end
 
-function RealmPath.GetCCAModMetaPath(modName)
-    return string.format(ccaModMetaFile, modName, modName)
+function RealmPath.GetCCAModMetaPath(modName, modFolderName)
+    return string.format(ccaModMetaFile, modName, modFolderName)
 end
 
 ---@param modName string
 ---@param lang string
 ---@return string
-function RealmPath.GetCCALocalizationPath(modName, lang)
-    return string.format(ccaLocalizationFile, modName, lang, modName)
+function RealmPath.GetCCALocalizationPath(modName, modFolderName, lang)
+    return string.format(ccaLocalizationFile, modName, lang, modFolderName)
 end
 
 function RealmPath.GetCCAModCachePath(modName, version)
@@ -104,7 +104,7 @@ function RealmPath.GetCCAModCacheRefPath()
     return ccaModCacheRefPath
 end
 
-function RealmPath.GetCCAMaterialPresetsFile(presetType, modName, customName)
+function RealmPath.GetCCAMaterialPresetsFile(presetType, modName, modFolderName, customName)
     local ccaMatPresetPath = {
         CharacterCreationEyeColors = ccaEyeColorPath,
         CharacterCreationHairColors = ccaHairColorPath,
@@ -116,14 +116,14 @@ function RealmPath.GetCCAMaterialPresetsFile(presetType, modName, customName)
         return nil
     end
 
-    local path = string.format(ccaMatPresetPath[presetType], modName, modName, modName)
+    local path = string.format(ccaMatPresetPath[presetType], modName, modFolderName, modFolderName)
 
     local filePath = path .. "_" .. (customName or "merged") .. ".lsx"
 
     return filePath
 end
 
-function RealmPath.GetCCAPresetsFile(presetType, modName)
+function RealmPath.GetCCAPresetsFile(presetType, modName, modFolderName)
     local ccaPresetPath = {
         CharacterCreationEyeColors = ccaEyeColorFile,
         CharacterCreationHairColors = ccaHairColorFile,
@@ -135,7 +135,7 @@ function RealmPath.GetCCAPresetsFile(presetType, modName)
         return nil
     end
 
-    return string.format(ccaPresetPath[presetType], modName, modName)
+    return string.format(ccaPresetPath[presetType], modName, modFolderName)
 end
 
 function RealmPath.GetCCASkinColorPath(modName)

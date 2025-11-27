@@ -299,7 +299,7 @@ local debuglevelCommandDes =
     - Warning - 2
     - Info - 3
     - Debug - 4
-    - Trace - 5
+    - Trace - 5 
 ]]
 
 RegisterConsoleCommand("rb_debug_level", function(cmd, level)
@@ -319,10 +319,10 @@ RegisterConsoleCommand("rb_debug_level", function(cmd, level)
     end
 end, debuglevelCommandDes)
 
-Ext.RegisterConsoleCommand("rb_how_many_globals", function()
+RegisterConsoleCommand("rb_how_many_globals", function()
     local count = 0
     for k, v in pairs(Mods["Realm_Builder"]) do
-        _P(" -" .. k)
+        _P(" -" .. tostring(k))
         count = count + 1
     end
     _P("Total: " .. count)

@@ -122,6 +122,7 @@ function EffectBrowser:RenderIcon(entry, cell)
 
     iconImage.OnDragStart = function()
         iconImage.DragPreview:AddImage(entry.Icon)
+        iconImage.DragPreview:AddText(entry[self.iconTooltipName] or "Unknown").SameLine = true
     end
 
     iconImage.OnDragEnd = function()
@@ -152,17 +153,9 @@ function EffectBrowser:RenderIcon(entry, cell)
     local iconTooltipNote = nil
     local noteElement = {}
 
-    local addSeparator = function ()
-        local sep = iconTooltip:AddSeparator()
-        ApplyDefaultSeparatorStyle(sep)
-        return sep
-    end
-
     local function addTooltipNote()
         if entry.Note and entry.Note ~= "" then
-            table.insert(noteElement, addSeparator())
             table.insert(noteElement, iconTooltip:AddSeparatorText(GetLoca("Note")))
-            table.insert(noteElement, addSeparator())
 
             iconTooltipNote = iconTooltip:AddText(entry.Note or "")
             iconTooltipNote.TextWrapPos = self.browserWidth

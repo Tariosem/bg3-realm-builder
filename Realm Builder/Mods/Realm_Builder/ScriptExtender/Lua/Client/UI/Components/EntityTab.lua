@@ -297,6 +297,16 @@ function EntityTab:RenderMonitorTab()
 
     end)
 
+    local scaleLine = {attrTable:AddNewLine()}
+    scaleLine[1]:AddText("Scale:")
+    self.scaleTextMonitor = scaleLine[2]:AddInputScalar("") --[[@as ExtuiInputScalar]]
+    self.scaleTextMonitor.Components = 3
+
+    self.scaleTextMonitor.OnChange = function(sel)
+        local newScale = {sel.Value[1], sel.Value[2], sel.Value[3]}
+        Commands.SetTransform({MovableProxy.CreateByGuid(self.guid)}, { Scale = newScale })
+    end
+
     self.monitorTimers = { self.positionTimer, self.rotationTimer, self.levelTimer }
 end
 
@@ -367,7 +377,7 @@ function EntityTab:RenderFilterTab()
             if not entInfo.Tags then
                 entInfo.Tags = {}
             end
-            if TableContains(entInfo.Tags, tag) then
+            if table.find(entInfo.Tags, tag) then
                 Warning("[EntityTab] Cannot add duplicate tag: " .. tag .. " for GUID: " .. self.guid)
                 return
             end
@@ -385,7 +395,7 @@ function EntityTab:RenderFilterTab()
     self.tagsRemoveButton.OnClick = function()
         local tag = self.tagsInput.Text
         if tag and tag ~= "" then
-            if TableContains(entInfo.Tags, tag) then
+            if table.find(entInfo.Tags, tag) then
                 ToggleEntry(entInfo.Tags, tag)
             else
                 Warning("[EntityTab] Cannot remove tag that doesn't exist: " .. tag .. " for GUID: " .. self.guid)
@@ -604,7 +614,7 @@ function EntityTab:Attach(parent)
 end
 
 function EntityTab:Add(guid, templateId, parent, opts, iconTintColor)
-    local initAttach = TableContains(opts or {}, "IsAttach")
+    local initAttach = table.find(opts or {}, "IsAttach")
 
     local EntityTab = EntityTab.new(guid, templateId, parent, initAttach)
     EntityTab.IconTintColor = iconTintColor or {1,1,1,1}

@@ -99,6 +99,12 @@ local function AddSliderStepButton(parent, label, step, slider, direction)
     return button
 end
 
+--- @class RB_SliderWithStep : ExtuiSliderScalar
+--- @field Value number
+--- @field Visible boolean
+--- @field SameLine boolean
+--- @field HideResetButton boolean
+
 --- @param parent ExtuiTreeParent
 --- @param IDContext string?
 --- @param defaultValue number
@@ -106,7 +112,7 @@ end
 --- @param max number
 --- @param step number
 --- @param isInteger? boolean
---- @return ExtuiSliderInt|ExtuiSliderScalar
+--- @return RB_SliderWithStep
 function StyleHelpers.AddSliderWithStep(parent, IDContext, defaultValue, min, max, step, isInteger)
     local sliderProxy = {}
     if not IDContext then
@@ -129,9 +135,15 @@ function StyleHelpers.AddSliderWithStep(parent, IDContext, defaultValue, min, ma
         slider = parent:AddSlider("", defaultValue or 0, min or 0, max or 100) --[[@as ExtuiSliderScalar]]
         increButton = AddSliderStepButton(parent, ">", step, nil, ">")
     end
-    local resetButton = parent:AddButton("Reset")
+    local resetButtonReserved = parent:AddGroup("ResetButton_" .. IDContext)
+    resetButtonReserved.SameLine = true
+    local resetButton = resetButtonReserved:AddImageButton("##ResetButton_" .. IDContext, RB_ICONS.Arrow_CounterClockwise, IMAGESIZE.ROW) --[[@as ExtuiImageButton]]
+    resetButton.PositionOffset = { 0, 4 * SCALE_FACTOR }
     decreButton.UserData.Slider = slider
     increButton.UserData.Slider = slider
+    decreButton:SetStyle("ItemSpacing", 0, 0)
+    increButton:SetStyle("ItemSpacing", 0, 0)
+    slider:SetStyle("ItemSpacing", 0, 0)
 
     local allEles = { decreButton, slider, increButton, resetButton }
     increButton.IDContext = IDContext .. "_IncreButton"
@@ -139,6 +151,7 @@ function StyleHelpers.AddSliderWithStep(parent, IDContext, defaultValue, min, ma
     decreButton.IDContext = IDContext .. "_DecreButton"
 
     slider.UserData = {}
+    local hideResetBtn = false
     local ud = slider.UserData
     ud.IsInteger = isInteger
     ud.DecreButton = decreButton
@@ -173,7 +186,6 @@ function StyleHelpers.AddSliderWithStep(parent, IDContext, defaultValue, min, ma
         sliderPopup:Open()
     end
 
-    resetButton.SameLine = true
     resetButton.IDContext = IDContext .. "_ResetButton"
     resetButton.OnClick = function()
         slider.Value = ToVec4(defaultValue or 0)
@@ -195,6 +207,9 @@ function StyleHelpers.AddSliderWithStep(parent, IDContext, defaultValue, min, ma
                 for _, ele in ipairs(allEles) do
                     ele.Visible = v
                 end
+                if hideResetBtn then
+                    resetButtonReserved.Visible = false
+                end
             elseif k == "SameLine" then
                 if v == true then
                     for _, ele in ipairs(allEles) do
@@ -209,6 +224,12 @@ function StyleHelpers.AddSliderWithStep(parent, IDContext, defaultValue, min, ma
                         end
                     end
                 end
+            elseif k == "HideResetButton" then
+                hideResetBtn = v
+                resetButtonReserved.Visible = not v
+            elseif k == "Value" then
+                local toFunc = isInteger and ToVec4Int or ToVec4
+                slider.Value = toFunc(v)
             else
                 slider[k] = v
             end
@@ -216,20 +237,6 @@ function StyleHelpers.AddSliderWithStep(parent, IDContext, defaultValue, min, ma
     })
 
     return sliderProxy
-end
-
-
-
-function AddWarningIcon(parent, text)
-    local image = parent:AddImage(RB_ICONS.Warning) --[[@as ExtuiImageButton]]
-    image.Tint = { 1, 0.5, 0.5, 1 }
-    image.ImageData.Size = ToVec2(32 * SCALE_FACTOR)
-    image.SameLine = true
-    image:Tooltip():AddText(text)
-    image.OnClick = function(i)
-        i:Destroy()
-    end
-    return image
 end
 
 function ApplyInfoButtonStyle(button)
@@ -258,10 +265,6 @@ function ApplyConfirmButtonStyle(button)
     button:SetColor("ButtonHovered", CONFIG.Misc.ConfirmButtonHoveredColor)
     button:SetColor("ButtonActive", CONFIG.Misc.ConfirmButtonActiveColor)
     button:SetColor("Text", CONFIG.Misc.ConfirmButtonTextColor)
-end
-
-function ApplyDefaultSeparatorStyle(s)
-    s:SetColor("Separator", { 0.6, 0.6, 0.6, 1 })
 end
 
 --- @param tokens RB_TextToken[]
@@ -373,82 +376,6 @@ function WrapTextTokens(tokens, wrapPos)
     return wrapped
 end
 
-function AddSimpleTextWrap(parent, text, num)
-    local i = 1
-    num = math.floor(num or 100)
-    local len = #text
-    --- @type ExtuiText[]
-    local texts = {}
-    while i <= len do
-        local j = math.min(i + num - 1, len)
-        local chunk = string.sub(text, i, j)
-
-        if j < len and chunk:match("[%w]$") and string.sub(text, j + 1, j + 1):match("[%w]") then
-            local back = chunk:find("([%s%p])[^%s%p]*$")
-            if back then
-                j = i + back - 1
-                chunk = string.sub(text, i, j)
-            end
-        end
-
-        table.insert(texts, parent:AddText(chunk))
-
-        i = j + 1
-        while i <= len and string.sub(text, i, i):match("%s") do
-            i = i + 1
-        end
-    end
-
-    local function destroy()
-        for _, t in ipairs(texts) do
-            t:Destroy()
-        end
-    end
-
-    --- @param guiColor GuiColor
-    --- @param vec4 table
-    local function setColor(sef, guiColor, vec4)
-        for _, t in ipairs(texts) do
-            t:SetColor(guiColor, vec4)
-        end
-    end
-
-    --- @param guiStyleVar GuiStyleVar
-    --- @param a1 number
-    --- @param a2 number
-    local function setStyle(sef, guiStyleVar, a1, a2)
-        for _, t in ipairs(texts) do
-            t:SetStyle(guiStyleVar, a1, a2)
-        end
-    end
-
-    local function Font(sef, name)
-        for _, t in ipairs(texts) do
-            t.Font = name
-        end
-    end
-
-    local function Visible(sef, bool)
-        for _, t in ipairs(texts) do
-            t.Visible = bool
-        end
-    end
-
-    local function sameLine(sef, bool)
-        texts[1].SameLine = bool
-    end
-
-    return {
-        Destroy = destroy,
-        SetColor = setColor,
-        SetStyle = setStyle,
-        Font = Font,
-        Visible = Visible,
-        SameLine =
-            sameLine,
-        Texts = texts
-    }
-end
 
 ---@param parent ExtuiTreeParent
 ---@param prefix string?
@@ -663,6 +590,13 @@ function AddStyleDebugWindow(extui, symbol)
     end
 end
 
+local function addLittleSpacer(parent, size)
+    size = size or (10 * SCALE_FACTOR)
+    local dummy = parent:AddDummy(size, 1)
+    dummy.SameLine = true
+    return dummy
+end
+
 ---@param parent ExtuiTreeParent
 ---@param size number?
 ---@return ExtuiTableCell
@@ -726,7 +660,7 @@ end
 ---@param contents table<string, string>
 ---@return AttrTable
 function StyleHelpers.AddReadOnlyAttrTable(parent, contents)
-    local tab = parent:AddTable("ReadOnlyAttrTable##" .. Uuid_v4(), 2) --[[@as ExtuiTable]]
+    local tab = parent:AddTable(parent.Label, 2) --[[@as ExtuiTable]]
     tab.BordersInner = true
     tab.ColumnDefs[1] = { WidthFixed = true }
     tab.ColumnDefs[2] = { Width = 900 * SCALE_FACTOR }
@@ -735,6 +669,7 @@ function StyleHelpers.AddReadOnlyAttrTable(parent, contents)
         local row = tab:AddRow() --[[@as ExtuiTableRow]]
         local nameCell = row:AddCell()
         nameCell:AddText(name)
+        addLittleSpacer(nameCell)
 
         local valueCell = row:AddCell()
         local input = valueCell:AddInputText("", tostring(value))
@@ -784,7 +719,7 @@ end
 ---@param parent ExtuiTreeParent
 ---@return AlignedTable
 function StyleHelpers.AddAlignedTable(parent)
-    local tab = parent:AddTable("AttrTable##" .. Uuid_v4(), 2) --[[@as ExtuiTable]]
+    local tab = parent:AddTable(parent.Label, 2) --[[@as ExtuiTable]]
     tab.BordersInnerV = true
     tab.ColumnDefs[1] = { WidthFixed = true }
     tab.ColumnDefs[2] = { Width = 900 * SCALE_FACTOR }
@@ -794,6 +729,7 @@ function StyleHelpers.AddAlignedTable(parent)
             local row = tab:AddRow() --[[@as ExtuiTableRow]]
             local nameCell = row:AddCell()
             nameCell:AddText(label)
+            addLittleSpacer(nameCell)
             local valueCell = row:AddCell()
 
             return StyleHelpers.AddSliderWithStep(valueCell, "##" .. label .. "Slider", defaultValue,
@@ -814,6 +750,7 @@ function StyleHelpers.AddAlignedTable(parent)
                     local row = tab:AddRow() --[[@as ExtuiTableRow]]
                     local nameCell = row:AddCell()
                     nameCell:AddText(label)
+                    addLittleSpacer(nameCell)
                     local valueCell = row:AddCell()
 
                     return valueCell[k](valueCell, "##" .. label .. "Input", table.unpack(args)), valueCell
@@ -845,28 +782,8 @@ end
 
 local treeOpenIcon = RB_ICONS.Menu_Down
 local treeClosedIcon = RB_ICONS.Menu_Right
-
-local treeOpen = {
-    UV0 = {
-        RB_ICON_UV[treeOpenIcon].U1,
-        RB_ICON_UV[treeOpenIcon].V1
-    },
-    UV1 = {
-        RB_ICON_UV[treeOpenIcon].U2,
-        RB_ICON_UV[treeOpenIcon].V2
-    }
-}
-
-local treeClosed = {
-    UV0 = {
-        RB_ICON_UV[treeClosedIcon].U1,
-        RB_ICON_UV[treeClosedIcon].V1,
-    },
-    UV1 = {
-        RB_ICON_UV[treeClosedIcon].U2,
-        RB_ICON_UV[treeClosedIcon].V2,
-    }
-}
+local treeOpen = RB_ICON_UV01[treeOpenIcon]
+local treeClosed = RB_ICON_UV01[treeClosedIcon]
 
 --- @class RB_UI_Tree : ExtuiTree
 --- @field Children RB_UI_Tree[]
@@ -960,6 +877,7 @@ function StyleHelpers.AddTree(parent, label, open)
         },
         ToggleAll = toggleAll,
         Panel = panel,
+        Children = children,
         SetOpen = function(_, isOpen)
             setOpen(isOpen)
         end,
@@ -1000,15 +918,23 @@ function StyleHelpers.AddTree(parent, label, open)
             panelGroup:Destroy()
         end,
         DestroyChildren = function()
-            for _, child in ipairs(children) do
+            for i=#children, 1, -1 do
+                local child = children[i]
                 if child.Destroy then
                     child:Destroy()
                 end
+                table.remove(children, i)
             end
             DestroyAllChildren(panel)
-            children = {}
-        end
+        end,
+        GetStyle = function(_, varName)
+            return panelGroup:GetStyle(varName)
+        end,
+        GetColor = function(_, colorName)
+            return panelGroup:GetColor(colorName)
+        end,
     }
+
     selectable.UserData = closure.__UserData
 
     setmetatable(closure, {
@@ -1017,12 +943,6 @@ function StyleHelpers.AddTree(parent, label, open)
                 return function(_, ...)
                     return panel[k](panel, ...)
                 end
-            elseif k:sub(1, 3) == "Get" or (k:sub(1, 3) == "Set" and k ~= "SetOpen") then
-                return function(_, ...)
-                    return panelGroup[k](panelGroup, ...)
-                end
-            elseif k == "Children" then
-                return children
             elseif k == "UserData" then
                 return closure.__UserData
             elseif k == "OnExpand" or k == "OnCollapse" then
@@ -1051,8 +971,6 @@ function StyleHelpers.AddTree(parent, label, open)
             elseif k == "Framed" then
                 isFramed = v
                 selectable.Selected = v
-                selectable.SpanAllColumns = v
-                arrowReserved.Tint = v and {2, 2, 2, 2} or {1, 1, 1, 1}
                 return
             elseif k == "Indent" then
                 indent.Width = v
@@ -1146,7 +1064,7 @@ function StyleHelpers.AddBitmaskRadioButtons(parent, options, initValue)
             end
         end
 
-        radio.SameLine = (i > 1 and i % 4 ~= 1)
+        --radio.SameLine = (i > 1 and i % 4 ~= 1)
         btns[i] = radio
     end
 
@@ -1213,7 +1131,7 @@ function StyleHelpers.AddEnumRadioButtons(parent, options, initValue)
             r.Active = true
             closure.OnChange(r, current)
         end
-        radio.SameLine = i > 1 and i % 4 ~= 1
+        --radio.SameLine = i > 1 and i % 4 ~= 1
     end
 
     return closure
@@ -1367,7 +1285,7 @@ end
 
 --- @param parent ExtuiTreeParent
 --- @param label string
---- @param getter fun(): number|number[]
+--- @param getter fun():number[]
 --- @param setter fun(value: number[])
 --- @param config { IsInt: boolean, Range: { Min: number, Max: number, Step: number }, IsColor: boolean, OnReset: fun(), ResetValue: number[] }?
 --- @return function -- update function
@@ -1410,7 +1328,7 @@ function StyleHelpers.AddNumberSliders(parent, label, getter, setter, config)
     local isInt = config.IsInt or false
     local range = config.Range or { Min = -10, Max = 10 , Step = 0.1 }
     local uuid = Uuid_v4()
-    local innerTable = parent:AddTable("table", 2)
+    local innerTable = parent:AddTable(parent.Label, 2) -- -- Use the same name so tables under the same parent share column widths.
     innerTable.ColumnDefs[1] = { WidthFixed = true }
     innerTable.ColumnDefs[2] = { WidthStretch = true }
     innerTable.BordersInnerV = true
@@ -1418,7 +1336,8 @@ function StyleHelpers.AddNumberSliders(parent, label, getter, setter, config)
     local row = innerTable:AddRow()
     local displayNameCell = row:AddCell()
     local slidersCell = row:AddCell()
-    local selectable = displayNameCell:AddSelectable(label)
+    local selectable = displayNameCell:AddText(label)
+    addLittleSpacer(displayNameCell)
     local resetChange = function()
         for i, slider in ipairs(sliders) do
             slider.Value = ToVec4(initValue[i])
@@ -1459,8 +1378,8 @@ function StyleHelpers.AddNumberSliders(parent, label, getter, setter, config)
         colorPicker.OnChange = function()
             setter({ colorPicker.Color[1], colorPicker.Color[2], colorPicker.Color[3], #initValue == 4 and colorPicker.Color[4] or nil })
 
-            for i = 1, #initValue do
-                sliders[i].Value = ToVec4(colorPicker.Color[i])
+            for i, slider in ipairs(sliders) do
+                slider.Value = ToVec4(colorPicker.Color[i])
             end
         end
     end
@@ -1480,13 +1399,6 @@ function StyleHelpers.AddNumberSliders(parent, label, getter, setter, config)
         end
     end
     
-    selectable.OnClick = function ()
-        selectable.Selected = false
-        resetChange()
-    end
-    selectable.OnRightClick = function()
-        resetChange()
-    end
 
     return updateMethod
 end

@@ -7,28 +7,32 @@ function IconBrowser:GetSearchCriteria()
 end
 
 function IconBrowser:ClearNonExistTagsAndGroups()
+    local cleared = false
     for tag, _ in pairs(self.selectedTags) do
         if not self.tagsMap[tag] then
             self.selectedTags[tag] = nil
+            cleared = true
         end
     end
     for tag, _ in pairs(self.excludeTags) do
         if not self.tagsMap[tag] then
             self.excludeTags[tag] = nil
+            cleared = true
         end
     end
     for group, _ in pairs(self.selectedGroups) do
         if not self.groupMap[group] then
             self.selectedGroups[group] = nil
+            cleared = true
         end
     end
     for group, _ in pairs(self.excludeGroups) do
         if not self.groupMap[group] then
             self.excludeGroups[group] = nil
+            cleared = true
         end
     end
-    if next(self.selectedTags) == nil and next(self.excludeTags) == nil and
-        next(self.selectedGroups) == nil and next(self.excludeGroups) == nil and self.isVisible then
+    if cleared then
         self:Search()
     end
 end

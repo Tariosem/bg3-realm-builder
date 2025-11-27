@@ -192,6 +192,7 @@ function StatsTab:SetupEffectTreeBehaviors(effectTree, effectType, name)
 
     effectTree.OnDragStart = function(sel)
         sel.DragPreview:AddImage(data.Icon)
+        sel.DragPreview:AddText(data.DisplayName).SameLine = true
     end
 
     effectTree.OnRightClick = function ()

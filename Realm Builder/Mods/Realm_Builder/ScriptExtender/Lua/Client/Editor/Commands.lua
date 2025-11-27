@@ -6,6 +6,7 @@
 Commands = Commands or {}
 
 --- @param proxies RB_MovableProxy[]
+--- @param transform table< RB_MovableProxy, {Translate: Vec3|nil, RotationQuat: Quat|nil, Scale: Vec3|nil} >|{Translate: Vec3|nil, RotationQuat: Quat|nil, Scale: Vec3|nil}
 --- @param notRecordHistory boolean|nil
 function Commands.SetTransform(proxies, transform, notRecordHistory)
     local redoTransforms = {}
@@ -20,6 +21,35 @@ function Commands.SetTransform(proxies, transform, notRecordHistory)
             t[proxy] = transform
         end
         redoTransforms = t
+    end
+
+    local function doTransform(isReset)
+        for _, proxy in pairs(proxies) do
+            local targetTransform = isReset and undoTransforms[proxy] or redoTransforms[proxy]
+            if targetTransform then
+                proxy:SetTransform(targetTransform)
+            end
+        end
+    end
+
+    doTransform()
+    if not notRecordHistory then
+        HistoryManager:PushCommand({
+            Undo = function()
+                doTransform(true)
+            end,
+            Redo = function()
+                doTransform(false)
+            end
+        })
+    end
+end
+
+function Commands.SetTransformSeparate(proxies, transforms, notRecordHistory)
+    local redoTransforms = transforms
+    local undoTransforms = {}
+    for _, proxy in pairs(proxies) do
+        undoTransforms[proxy] = proxy:GetTransform()
     end
 
     local function doTransform(isReset)
@@ -89,8 +119,27 @@ function Commands.SnapCommand(targets, onlyRotation, onlyPosition)
         end
     end
     local targetPos = {}
+    local targetProxies = {}
+    local allParentTransform = {}
     for guid, parent in pairs(parents) do
-        targetPos[guid] = { Translate = { CGetPosition(parent) }, RotationQuat = { CGetRotation(parent) } }
+        if allParentTransform[parent] == nil then
+            local parentProxy = MovableProxy.CreateByGuid(parent)
+            if parentProxy then
+                allParentTransform[parent] = parentProxy:GetTransform()
+                allParentTransform[parent].Scale = nil
+            else
+                allParentTransform[parent] = {
+                    Translate = { CGetPosition(parent) },
+                    RotationQuat = { CGetRotation(parent) },
+                }
+            end
+            ::continue::
+        end
+        local proxy = MovableProxy.CreateByGuid(guid)
+        if proxy then
+            table.insert(targetProxies, proxy)
+            targetPos[proxy] = allParentTransform[parent]
+        end
     end
     if onlyRotation then
         for guid, pos in pairs(targetPos) do
@@ -101,16 +150,7 @@ function Commands.SnapCommand(targets, onlyRotation, onlyPosition)
             pos.RotationQuat = nil
         end
     end
-
-    local targetProxies = {}
-    for _, guid in ipairs(targets) do
-        local proxy = MovableProxy.CreateByGuid(guid)
-        if proxy then
-            table.insert(targetProxies, proxy)
-        end
-    end
-
-    Commands.SetTransform(targetProxies, targetPos)
+    Commands.SetTransformSeparate(targetProxies, targetPos)
 end
 
 local function spawnPrefab(prefabObj, entInfo)
@@ -283,38 +323,7 @@ function Commands.DuplicateCommand(targets, path)
         end
     end)
 
-    function spawn()
-        for guid, templateId in pairs(templateMap) do
-            local transform = oriTransforms[guid]
-            
-            local entData = originStats[guid] or {}
-            entData.Path = path
-            entData.Position = transform.Translate
-            entData.Rotation = transform.RotationQuat
-            NetChannel.Spawn:RequestToServer({
-                TemplateId = templateId,
-                EntInfo = entData
-            }, function(response)
-                table.insert(spawnedDuplications, response.Guid)
-                if #spawnedDuplications == CountMap(templateMap) then
-                    coroutine.resume(thread)
-                end
-            end)
-
-            if nonItemNonCharacter[guid] then
-                -- Wait to make template overwirte work properly
-                Timer:Ticks(30, function (timerID)
-                    local ok, suc = coroutine.resume(thread)
-                    if not ok then
-                        Error("Error resuming duplication coroutine: " .. tostring(suc))
-                    end
-                end)
-
-                coroutine.yield()
-            end
-        end
-        coroutine.yield()
-
+    local function selectAndPushCommand()
         local proxies = {}
         for _, guid in pairs(spawnedDuplications) do
             local proxy = MovableProxy.CreateByGuid(guid)
@@ -336,6 +345,38 @@ function Commands.DuplicateCommand(targets, path)
             RB_GLOBALS.TransformEditor:Select(proxies)
             RB_GLOBALS.TransformEditor.Gizmo:StartDragging()
         end)
+    end
+
+    function spawn()
+        for guid, templateId in pairs(templateMap) do
+            local transform = oriTransforms[guid]
+            
+            local entData = originStats[guid] or {}
+            entData.Path = path
+            entData.Position = transform.Translate
+            entData.Rotation = transform.RotationQuat
+            NetChannel.Spawn:RequestToServer({
+                TemplateId = templateId,
+                EntInfo = entData
+            }, function(response)
+                table.insert(spawnedDuplications, response.Guid)
+                if #spawnedDuplications == CountMap(templateMap) then
+                    selectAndPushCommand()
+                end
+            end)
+
+            if nonItemNonCharacter[guid] then
+                -- Wait to make template overwirte work properly
+                Timer:Ticks(30, function (timerID)
+                    local ok, suc = coroutine.resume(thread)
+                    if not ok then
+                        Error("Error resuming duplication coroutine: " .. tostring(suc))
+                    end
+                end)
+
+                coroutine.yield()
+            end
+        end
     end
 end
 
@@ -387,7 +428,7 @@ function Commands.SpawnPreset(data)
         end
 
         if tree then
-            entData.Path = tree:GetPath(savedGuid, true)
+            entData.Path = tree:GetPath(savedGuid, true, true)
         end
 
         if not entData.Group then

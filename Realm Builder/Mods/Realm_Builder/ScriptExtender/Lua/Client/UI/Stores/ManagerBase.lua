@@ -107,9 +107,6 @@ end
 ---@return table<string, table<string, boolean>> groupMap
 ---@return table<string, table<string, boolean>> tagMap
 function ManagerBase:CountGroupsAndTags(guid)
-    if self.CheckHostValidEquipmentVisual then
-        self:CheckHostValidEquipmentVisual(guid)
-    end
     self:UpdateTagTree()
     return self.groupCount, self.tagCount, self.groupMap, self.tagMap
 end
@@ -131,6 +128,10 @@ function ManagerBase:AddTagToData(uuid, tag)
         return
     end
 
+    if self:HasTagInData(uuid, tag) then
+        return
+    end
+
     self.tagCount[tag] = (self.tagCount[tag] or 0) + 1
     self.tagMap[tag] = self.tagMap[tag] or {}
     self.tagMap[tag][uuid] = true
@@ -140,6 +141,26 @@ function ManagerBase:AddTagToData(uuid, tag)
         self.customizationData[uuid].Tags = self.customizationData[uuid].Tags or {}
         table.insert(self.customizationData[uuid].Tags, tag)
     end
+end
+
+function ManagerBase:HasTagInData(uuid, tag)
+    if not uuid or uuid == "" then
+        return false
+    end
+
+    if not self.Data[uuid] then
+        return false
+    end
+
+    if self.tagMap and self.tagMap[tag] and self.tagMap[tag][uuid] then
+        return true
+    end
+
+    if self.populated and self.customizationData[uuid] and self.customizationData[uuid].Tags then
+        return table.find(self.customizationData[uuid].Tags, tag) ~= nil
+    end
+
+    return false
 end
 
 function ManagerBase:RemoveTagFromData(uuid, tag)
@@ -304,16 +325,13 @@ function ManagerBase:ExportCustomizations()
     return self.customizationData
 end
 
+--- @param data table<string, {Group:string, Note:string, Tags:string[]}>
 function ManagerBase:ImportCustomizations(data)
     if not data then
         return
     end
 
     for uuid, customData in pairs(data) do
-        self.customizationData[uuid] = customData
-    end
-
-    for uuid, customData in pairs(self.customizationData) do
         if customData.Group then
             self:ChangeDataGroup(uuid, customData.Group)
         end

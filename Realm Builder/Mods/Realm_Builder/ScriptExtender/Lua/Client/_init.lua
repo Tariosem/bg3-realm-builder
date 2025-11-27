@@ -49,7 +49,7 @@ RequireFiles("Client/", {
     "Localization",
     "Blacklist",
     "Helpers/__init",
-    "KeybindManager",
+    "Keybind/__init",
     "UI/_init",
     "Editor/__init",
     "MCM",
@@ -205,7 +205,6 @@ local function PopulateAllTemplates()
         ::continue::
     end
 
-    local debug = false
     local raw = Ext.ClientTemplate.GetAllRootTemplates()
     for uuid, object in pairs(raw) do
         if object.TemplateType == "item" and not RB_ItemManager.Data[uuid] then
@@ -246,7 +245,6 @@ local function PopulateAllTemplates()
     }, itemCnt + characterCnt + sceneryCnt + constructionsCnt + prefabCnt
 end
 
-
 local function Realm_Builder_Population()
     local now = Ext.Timer:MonotonicTime()
     local cnts, sumCnt = PopulateAllTemplates()
@@ -255,8 +253,14 @@ local function Realm_Builder_Population()
     local effectsFinished = Ext.Timer:MonotonicTime()
     if sumCnt >= 0 then
         RPrintPurple("[Realm Builder] Populating " .. sumCnt .. " root templates took " .. (itemsFinished - now) .. " ms:")
+        local longest = -1
+        local toPrint = {}
         for k,v in SortedPairs(cnts) do
-            RPrintPurple("    " .. tostring(k) .. ": " .. tostring(v))
+            longest = math.max(longest, #k)
+            table.insert(toPrint, {k, v})
+        end
+        for _,pair in pairs(toPrint) do
+            RPrintPurple("    " .. PadSuffix(pair[1] .. ":", longest + 2) .. " " .. pair[2])
         end
         RPrintPurple("[Realm Builder] Populating Effects took " .. (effectsFinished - itemsFinished) .. " ms for " .. effectCnt .. " effects")
     end

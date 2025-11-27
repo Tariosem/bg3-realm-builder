@@ -464,7 +464,7 @@ function GetAllUuidsWithComponent(componentName)
     return uuids
 end
 
-function IsProp(uuid)
+function IsSpawned(uuid)
     if not uuid or uuid == "" then return false end
 
     if RB_FlagHelpers.HasFlag(uuid, "IsSpawned") then
@@ -500,7 +500,7 @@ function IsGizmo(uuid)
     return Osi.IsTagged(uuid, RB_GIZMO_TAG) == 1
 end
 
-function BF_GetAllTagged()
+function GetAllSpawned()
     local props = {}
     local AllUuids = Ext.Vars.GetEntitiesWithVariable(RB_Flags_Field)
 
@@ -509,82 +509,49 @@ function BF_GetAllTagged()
     end
 
     for _, uuid in ipairs(AllUuids) do
-        if IsProp(uuid) then
+        if IsSpawned(uuid) then
             table.insert(props, uuid)
         end
     end
     return props
 end
 
-function BF_GetAllGizmos()
+function BF_GetAllSpawned()
+    local props = {}
+    local AllUuids = GetAllUuidsWithComponent("Tag")
+
+    for _, uuid in ipairs(AllUuids) do
+        if IsSpawned(uuid) then
+            table.insert(props, uuid)
+        end
+    end
+    return props
+end
+
+function GetAllGizmos()
     local gizmos = {}
     local AllUuids = Ext.Vars.GetEntitiesWithVariable(RB_Flags_Field)
-
-    if not AllUuids or #AllUuids == 0 then
-        AllUuids = GetAllUuidsWithComponent("Tag")
-    end
 
     for _, uuid in ipairs(AllUuids) do
         if IsGizmo(uuid) then
             table.insert(gizmos, uuid)
         end
     end
-    if #gizmos == 0 then
-        --Warning("No gizmos found in the game.")
-    end
+
     return gizmos
 end
 
-function GetAllPlayers()
-    local players = Ext.Entity.GetAllEntitiesWithComponent("Player")
-    if not players or #players == 0 then
-        Warning("No players found in the game.")
-        return {}
-    end
-    local uuids = {}
-    for _, player in ipairs(players) do
-        local uuid = HandleToUuid(player)
-        if uuid then
-            table.insert(uuids, uuid)
-        else
-            Warning("Player without UUID found: " .. tostring(player))
-        end
-    end
-    return uuids
-end
+function BF_GetAllGizmos()
+    local gizmos = {}
+    local AllUuids = GetAllUuidsWithComponent("Tag")
 
-function GetAllItems()
-    local items = Ext.Entity.GetAllEntitiesWithComponent("IsItem")
-    if not items or #items == 0 then
-        Warning("No players found in the game.")
-        return {}
-    end
-    local uuids = {}
-    for _, item in ipairs(items) do
-        local uuid = HandleToUuid(item)
-        if uuid then
-            table.insert(uuids, uuid)
-        else
+    for _, uuid in ipairs(AllUuids) do
+        if IsGizmo(uuid) then
+            table.insert(gizmos, uuid)
         end
     end
-    return uuids
-end
 
-function GetAllCharacters()
-    local characters = Ext.Entity.GetAllEntitiesWithComponent("IsCharacter")
-    if not characters or #characters == 0 then
-        Warning("No players found in the game.")
-        return {}
-    end
-    local uuids = {}
-    for _, character in ipairs(characters) do
-        local uuid = HandleToUuid(character)
-        if uuid then
-            table.insert(uuids, uuid)
-        else
-        end
-    end
-    return uuids
+    return gizmos
 end
 
 function GetDistance(uuid1, uuid2)
@@ -820,11 +787,6 @@ function SetDummyPosition(uuid, pos)
             return
         end
     end
-end
-
--- Flip X and Z axis to convert between left-handed and right-handed coordinate systems
-local function FlipCharacter(rot)
-    return FlipAxis(FlipAxis(rot, "X"), "Z")
 end
 
 function GetPartyMemberRotation(uuid)

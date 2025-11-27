@@ -90,6 +90,7 @@ end
 ---@param params RB_ParameterSet
 ---@param srcMat GUIDSTRING
 ---@param uuid string
+---@param customName string?
 ---@return LSXNode?
 function ResourceHelpers.BuildMaterialResource(srcMat, uuid, params, customName)
     local matRes = Ext.Resource.Get(srcMat, "Material") --[[@as ResourceMaterialResource]]
@@ -133,9 +134,9 @@ local function createPresetParamAttrNodes(parameterName, value)
     end
 
     attrs = {
-        lsattrNode("Color", LSValueType.bool, false), -- I don't even know what this does
-        lsattrNode("Custom", LSValueType.bool, false), -- same as above
-        lsattrNode("Enabled", LSValueType.bool, true), -- same as above
+        lsattrNode("Color", LSValueType.bool, false),
+        lsattrNode("Custom", LSValueType.bool, false),
+        lsattrNode("Enabled", LSValueType.bool, true),
         lsattrNode("Value", valueType, saveValue),
         lsattrNode("Parameter", LSValueType.FixedString, parameterName),
     }

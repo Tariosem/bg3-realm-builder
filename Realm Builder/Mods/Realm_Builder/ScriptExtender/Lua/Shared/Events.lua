@@ -60,32 +60,73 @@ local function OnSessionLoaded()
     end
 end
 
-local allCommands = {}
+local clientCommands = {}
+local serverCommands = {}
+
+local CommandChannel = Ext.Net.CreateChannel(ModuleUUID, "SyncCommands") --[[@as NetChannel]]
+
+CommandChannel:SetHandler(function(data, user)
+    local commands = data.Commands
+    if Ext.IsServer() then
+        clientCommands = commands
+    else
+        serverCommands = commands
+    end
+end)
 
 --- @param command string
 --- @param func fun(...:string)
 function RegisterConsoleCommand(command, func, description)
-    allCommands[command] = { 
-        func = func,
-        description = description or "No description provided."
-    }
+    if Ext.IsServer() then
+        serverCommands[command] = {
+            description = description or "No description provided.",
+        }
+    else
+        clientCommands[command] = {
+            description = description or "No description provided.",
+        }
+    end
     Ext.RegisterConsoleCommand(command, function(cmd, args)
         args = SplitBySpace(args)
         func(command, table.unpack(args))
     end)
 end
 
-Ext.RegisterConsoleCommand("rb_help", function(args)
-    print("Realm Builder Console Commands:")
-    local info = allCommands[args]
-    if info then
-        print(args .. ": " .. info.description)
+Ext.Events.SessionLoaded:Subscribe(function (e)
+    if Ext.IsServer() then
+        CommandChannel:Broadcast({
+            Commands = serverCommands,
+        })
     else
-        for cmd,_ in pairs(allCommands) do
-            print(" - " .. cmd)
-        end
-        print(" Type 'rb_help <Command> for more info.")
+        CommandChannel:SendToServer({
+            Commands = clientCommands,
+        })
     end
+end)
+
+Ext.RegisterConsoleCommand("rb_help", function(args)
+    if args and (clientCommands[args] or serverCommands[args]) then
+        local cmdData = clientCommands[args] or serverCommands[args]
+        print(string.format("Command: %s", args))
+        print(string.format("Description: %s", cmdData.description or "No description provided."))
+        return
+    end
+
+    print("Realm Builder Console Commands:\n")
+    print("------- Server Context -------")
+    local index = 1
+    for command, cmdData in pairs(serverCommands) do
+        print(string.format("%d. %s", index, command))
+        index = index + 1
+    end
+    print("\n------- Client Context -------")
+    index = 1
+    for command, cmdData in pairs(clientCommands) do
+        print(string.format("%d. %s", index, command))
+        index = index + 1
+    end
+
+    print("\nUse 'rb_help <command>' to get more information about a specific command.")
 end)
 
 Ext.Events.SessionLoaded:Subscribe(OnSessionLoaded)

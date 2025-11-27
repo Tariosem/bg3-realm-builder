@@ -21,8 +21,6 @@ function OsirisHelpers.Propify(guids)
         Osi.SetTag(guid, RB_PROP_TAG)
         Osi.SetCanFight(guid, 0)
         Osi.SetCanJoinCombat(guid, 0)
-
-        RB_FlagHelpers.SetFlag(guid, "IsSpawned")
     end
 end
 
@@ -41,7 +39,6 @@ function OsirisHelpers.DrawLine(startPos, endPos, width, user)
     Timer:Ticks(10, function (timerID)
         if not EntityExists(fxHandle) then return end
 
-        -- hide on other clients
         NetChannel.SetVisualTransform:Broadcast({
             Guid = fxHandle,
             Transforms = {
@@ -140,7 +137,13 @@ function OsirisHelpers.TeleportTo(uuid, x, y, z)
         return false
     end
 
-    Osi.ToTransform(uuid, x, y, z, Osi.GetRotation(uuid))
+    local rx, ry, rz = Osi.GetRotation(uuid)
+    if not rx or not ry or not rz then
+        Warning("Called TeleportTo on item with invalid rotation: " .. tostring(uuid))
+        return false
+    end
+    
+    Osi.ToTransform(uuid, x, y, z, rx, ry, rz)
 
     --Trace("Item teleported to position: " .. tostring(x) .. ", " .. tostring(y) .. ", " .. tostring(z))
     return true
@@ -207,7 +210,6 @@ function OsirisHelpers.ToTransform(guid, transform)
     end
     entity.Transform.Transform = transform
 
-    --- @diagnostic disable-next-line: param-type-mismatch
     OsirisHelpers.TeleportTo(guid, transform.Translate[1], transform.Translate[2], transform.Translate[3])
     return true
     
@@ -227,7 +229,6 @@ function OsirisHelpers.PreviewTemplate(templateId, x, y, z, p, yaw, r, w, visual
     end
 
     local preview = Osi.CreateAt(templateId, x, y, z, 1, 0, "") --[[@as string]]
-
     if not preview then
         Error("Failed to create preview for template: " .. tostring(templateId))
         return
@@ -238,13 +239,13 @@ function OsirisHelpers.PreviewTemplate(templateId, x, y, z, p, yaw, r, w, visual
     OsirisHelpers.Propify(preview)
     Osi.SetCanInteract(preview, 0)
     Osi.ClearTag(preview, RB_PROP_TAG)
-    RB_FlagHelpers.SetFlag(preview, "IsGizmo")
+    RB_FlagHelpers.SetFlag(preview, "DeleteLater")
     
     Timer:After(500, function ()
         NetChannel.ApplyVisualPreset:Broadcast({ Guid=preview, TemplateName=templateName, VisualPreset=visualPreset })
     end)
     
-    Timer:After(10000, function ()
+    Timer:After(5000, function ()
         Osi.RequestDelete(preview)
         Osi.RequestDeleteTemporary(preview)
     end)

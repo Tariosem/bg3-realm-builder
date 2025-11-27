@@ -207,6 +207,8 @@ function LSXNode:Stringify(opts)
     return self:__stringify(opts)
 end
 
+LSXNode.__tostring = LSXNode.Stringify
+
 function LSXNode:__stringify(stringifyOpts)
     local indentStep = stringifyOpts.Indent
     local lines = {}

@@ -225,17 +225,14 @@ function EntityManager:CreateAt(templateId, x, y, z, rx, ry, rz, w)
     end
 
     local newProp = Osi.CreateAt(spawnTemplate, x, y, z, tempoFlag, 0, "") --[[@as string]]
-
-
-
     if not newProp then
         Error("Failed to create prop with TemplateId: " .. tostring(templateId))
         return nil
     end
-
     Debug(debugText:format(tostring(templateObj.TemplateType), x, y, z, tostring(templateId), tostring(newProp)))
 
     OsirisHelpers.Propify(newProp)
+    RB_FlagHelpers.SetFlag(newProp, "IsSpawned")
 
     if rx and ry and rz and w then
         OsirisHelpers.RotateTo(newProp, rx, ry, rz, w)
@@ -354,7 +351,7 @@ function EntityManager:LoadFromModVar()
         modVar.DeleteOnNextSession[guid] = nil
     end
 
-    local gizmos = BF_GetAllGizmos()
+    local gizmos = GetAllGizmos()
     for _,gizmo in pairs(gizmos) do
         Osi.RequestDelete(gizmo)
     end
@@ -379,14 +376,25 @@ end
 
 function EntityManager:ScanForEntities()
     local modVar = getModVar()
-    local allEntities = Ext.Entity.GetAllEntitiesWithComponent("Tag")
-    for _, entity in pairs(allEntities) do
-        local uuid = entity.Uuid.EntityUuid
-        if CIsTaggedProp(uuid) and not modVar.DeleteOnNextSession[uuid] and not self.SavedEntities[uuid] then
+    local allEntities = Ext.Vars.GetEntitiesWithVariable(RB_Flags_Field)
+
+    if not allEntities or #allEntities == 0 then
+        local entities = Ext.Entity.GetAllEntitiesWithComponent("Tag")
+        for _, entity in pairs(entities) do
+            local uuid = entity.Uuid and entity.Uuid.EntityUuid
+            table.insert(allEntities, uuid)
+        end
+    end
+    
+    local allToBroadcast = {}
+    for _, uuid in pairs(allEntities) do
+        if uuid and (RB_FlagHelpers.HasFlag(uuid, "IsSpawned") or CIsTaggedProp(uuid)) and not modVar.DeleteOnNextSession[uuid] and not self.SavedEntities[uuid] then
             self:AddEntity(uuid)
+            table.insert(allToBroadcast, uuid)
             NetChannel.Entities.Added:Broadcast({Entities = self:GetEntities({uuid})})
         end
     end
+    NetChannel.Entities.Added:Broadcast({Entities = self:GetEntities(allToBroadcast)})
 end
 
 function EntityManager:DeleteAll()

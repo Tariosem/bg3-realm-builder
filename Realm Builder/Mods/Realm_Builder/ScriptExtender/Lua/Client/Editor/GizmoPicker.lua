@@ -41,23 +41,14 @@ if GLOBAL_DEBUG_WINDOW then
     for name,constant in pairs(PICKER_CONSTANTS) do
         local node = header:AddTree(name)
         for k,v in pairs(constant) do
-            if type(v) ~= "number" then 
-                for i=1,#v do
-                    local vecName = k .. "[" .. i .. "]"
-                    local slider = StyleHelpers.AddSliderWithStep(node, vecName, v[i], 0.01, 10, 0.01)
-                    slider.SameLine = true
-                    slider.OnChange = function (s)
-                        constant[k][i] = s.Value[1]
-                    end
-                end
-            else
-                local name = node:AddText(k .. ": " .. tostring(v))
-                local slider = StyleHelpers.AddSliderWithStep(node, k, v, 0.01, 10, 0.01)
-                slider.SameLine = true
-                slider.OnChange = function (s)
-                    constant[k] = s.Value[1]
-                end
+            local getter = function ()
+                return constant[k]
             end
+            local setter = function (val)
+                constant[k] = val
+            end
+
+            StyleHelpers.AddNumberSliders(node, k, getter, setter, { IsColor = false, ResetValue = constant[k], Range = {0, 5, 0.01} })
         end
     end
     GLOBAL_DEBUG_WINDOW.Open = true

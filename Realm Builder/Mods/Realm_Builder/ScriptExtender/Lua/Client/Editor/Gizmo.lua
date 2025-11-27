@@ -231,7 +231,7 @@ function Gizmo:SetupListeners()
         if not self.Guid then return end
         
         local pos, rot = self:GetPivot()
-        local allGuids = { self.Guid }
+        local allGuids = { }
         for _, guid in pairs(self.SavedGizmos) do
             table.insert(allGuids, guid)
         end
@@ -269,6 +269,7 @@ end
 
 function Gizmo:CreateItem()
     -- hide original gizmo if exists
+    if self.creating then return end
     local pos = self.PivotPosition or {0,0,0}
 
     if self.SavedGizmos[self.Mode] and EntityExists(self.SavedGizmos[self.Mode]) then
@@ -295,7 +296,8 @@ function Gizmo:CreateItem()
         NetChannel.Delete:SendToServer({ Guid = self.SavedGizmos[self.Mode] })
         self.SavedGizmos[self.Mode] = nil
     end
-     
+
+    self.creating = true
     NetChannel.ManageGizmo:RequestToServer({
         GizmoType = self.Mode,
         Position = pos
@@ -318,7 +320,7 @@ function Gizmo:CreateItem()
             })
             return UNSUBSCRIBE_SYMBOL
         end)
-
+        self.creating = false
     end)
 end
 
@@ -574,8 +576,6 @@ function Gizmo:SetupDragging()
         end
     end
 
-    local movableGizmo = MovableProxy.CreateByGuid(self.Guid)
-
     self.DraggingTimer = Timer:EveryFrame(function(timerID)
         if not self.IsDragging or not self.Picker or not self.StartHit or not self.SelectedAxis then
             self:StopDragging()
@@ -604,7 +604,14 @@ function Gizmo:SetupDragging()
         elseif self.Mode == "Translate" then
             delta = delta --[[@as Vec3]]
             self:OnDragTranslate(delta)
-            movableGizmo:SetWorldTranslate(self.PivotPosition + delta)
+            NetChannel.SetTransform:SendToServer({
+                Guid = self.Guid,
+                Transforms = {
+                    [self.Guid] = {
+                        Translate = pickerPos + delta,
+                    }
+                }
+            })
         elseif self.Mode == "Scale" then
             delta = delta --[[@as Vec3]]
             self.Visualizer.ScaleMultiplier = delta

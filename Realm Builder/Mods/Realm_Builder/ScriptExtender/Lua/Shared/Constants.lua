@@ -77,6 +77,8 @@ RB_ICONS.Box = "RB_Box_Icon"
 RB_ICONS.Mask = "RB_Mask_Icon"
 RB_ICONS.Plus_Circle_Fill = "RB_Plus_Circle_Icon_Fill"
 
+RB_ICONS.Arrow_CounterClockwise = "RB_Arrow_CounterClockwise_Icon"
+
 --- vanilla resources
 WARNING_ICON = "PassiveFeature_Generic_Threat"
 LOCK_ICON = "Spell_Abjuration_ArcaneLock"
@@ -125,6 +127,15 @@ RB_ICON_UV[RB_ICONS.Menu_Down] = {
     V1 = 0.37524414,
     V2 = 0.49975586,
 }
+
+--- @type table<RB_ICONS, {UV0:number[],UV1:number[]}>
+RB_ICON_UV01 = {}
+for icon,data in pairs(RB_ICON_UV) do
+    RB_ICON_UV01[icon] = {
+        UV0 = {data.U1, data.V1},
+        UV1 = {data.U2, data.V2},
+    }
+end
 
 VANILLA_MODULES = {
     Shared = true,

@@ -348,35 +348,3 @@ function IsInBoundingBox(point, boxMin, boxMax)
            point[2] >= boxMin[2] and point[2] <= boxMax[2] and
            point[3] >= boxMin[3] and point[3] <= boxMax[3]
 end
-
-if Ext.IsServer() then
-    RegisterConsoleCommand("rb_in_which_trigger", function ()
-        local allAtmosTriggers = Ext.Entity.GetAllEntitiesWithComponent("ServerAtmosphereTrigger")
-        local player = Osi.GetHostCharacter() --[[@as GUIDSTRING]]
-
-        local px, py, pz = CGetPosition(player)
-
-        for i, trigger in ipairs(allAtmosTriggers) do
-            local max = trigger.TriggerArea.Bounds.BoundsMax
-            local min = trigger.TriggerArea.Bounds.BoundsMin
-
-            local pos = trigger.Transform.Transform.Translate -- mystery
-
-            local worldMin = {
-                min[1] + pos[1],
-                min[2] + pos[2],
-                min[3] + pos[3],
-            }
-            local worldMax = {
-                max[1] + pos[1],
-                max[2] + pos[2],
-                max[3] + pos[3],
-            }
-
-            if IsInBoundingBox({px, py, pz}, worldMin, worldMax) then
-                Ext.IO.SaveFile("CurrentTrigger__" .. i .. ".json", Ext.DumpExport(trigger:GetAllComponents()))
-            end
-        end
-    end)
-
-end

@@ -60,13 +60,14 @@ local function NormalizeData(data)
         SourceBone = data.SourceBone or "",
         TargetBone = data.TargetBone or "",
         Scale = data.Scale or 1.0,
+        Duration = data.Duration or 5000,
         Tags = {
-            PlayLoop = tags.PlayLoop or TableContains(tags, "PlayLoop") or false,
-            PlayOnObject = tags.PlayOnObject or TableContains(tags, "PlayOnObject") or false,
-            PlayAtObject = tags.PlayAtPosition or TableContains(tags, "PlayAtObject") or false,
-            PlayAtPosition = tags.PlayAtPosition or TableContains(tags, "PlayAtPosition") or false,
-            PlayAtPositionAndRotation = tags.PlayAtPositionAndRotation or TableContains(tags, "PlayAtPositionAndRotation") or false,
-            PlayBeamEffect = tags.PlayBeamEffect or TableContains(tags, "PlayBeamEffect") or false
+            PlayLoop = tags.PlayLoop or table.find(tags, "PlayLoop") or false,
+            PlayOnObject = tags.PlayOnObject or table.find(tags, "PlayOnObject") or false,
+            PlayAtObject = tags.PlayAtPosition or table.find(tags, "PlayAtObject") or false,
+            PlayAtPosition = tags.PlayAtPosition or table.find(tags, "PlayAtPosition") or false,
+            PlayAtPositionAndRotation = tags.PlayAtPositionAndRotation or table.find(tags, "PlayAtPositionAndRotation") or false,
+            PlayBeamEffect = tags.PlayBeamEffect or table.find(tags, "PlayBeamEffect") or false
         }
     }
 end
@@ -186,7 +187,7 @@ function EffectsManager:PlayEffects(datas)
         datas = {datas}
     end
     for _, data in ipairs(datas) do
-        if data.Tags and (data.Tags.PlayLoop or TableContains(data.Tags, "PlayLoop")) then
+        if data.Tags and (data.Tags.PlayLoop or table.find(data.Tags, "PlayLoop")) then
             self:PlayLoopEffect(data)
         else
             self:PlayEffect(data)

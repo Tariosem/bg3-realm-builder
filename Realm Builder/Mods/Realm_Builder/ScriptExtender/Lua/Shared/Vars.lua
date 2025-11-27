@@ -3,12 +3,13 @@ Ext.Vars.RegisterModVariable(ModuleUUID, "EntityManager", {})
 --- @enum RB_UserVars_Flags
 local RB_UserVars_Flags = {
     None = 1,
-    IsSpawned = 1 << 1,
-    IsGizmo = 1 << 2,
+    IsSpawned = 2,
+    IsGizmo = 4,
+    DeleteLater = 8,
     [1] = "None",
     [2] = "IsSpawned",
     [4] = "IsGizmo",
-    
+    [8] = "DeleteLater",
 }
 
 RB_Flags_Field = "RB_Flags"

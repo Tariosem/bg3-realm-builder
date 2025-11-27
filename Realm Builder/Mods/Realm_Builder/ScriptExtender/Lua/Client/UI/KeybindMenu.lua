@@ -7,6 +7,46 @@ KeybindMenu = {
     isVisible = false,
 }
 
+local KEYBIND_MODULE_RENDER_ORDER = {
+    "General Shortcuts",
+    "TransformToolbar",
+    "TransformEditor",
+    "BindUtility",
+}
+
+local KEYBIND_EVENT_RENDER_ORDER = {
+    TransformToolbar = {
+        "MultiSelect",
+        "BoxSelect",
+        "Select",
+        "ClearSelection",
+        "Duplicate",
+        "SlowDown",
+        "Undo",
+        "Redo",
+        "OpenVisualTab",
+        "HideSelection",
+        "ShowSelection",
+        "ApplyGravity",
+        "FreezeGravity",
+    },
+    TransformEditor = {
+        "TranslateMode",
+        "RotateMode",
+        "ScaleMode",
+        "FollowTarget",
+        "DeleteSelection",
+        "DeleteAllGizmos",
+    },
+    BindUtility = {
+        "BindPopup",
+        "BindTo",
+        "Unbind",
+        "Snap",
+        "LookAt",
+    },
+}
+
 function KeybindMenu:Render(parent)
 
     self.parent = parent or self.parent
@@ -144,15 +184,6 @@ local function getPresentation(keybind)
     return table.concat(parts, " + ")
 end
 
---- @param btn ExtuiSelectable
-local function applyButtonStyle(btn)
-    --btn:SetColor("Header", HexToRGBA("#444444"))
-    --btn:SetColor("HeaderHovered", HexToRGBA("#555555"))
-    --btn:SetColor("HeaderActive", HexToRGBA("#666666"))
-    --btn:SetColor("Text", HexToRGBA("#FFFFFF"))
-    --btn:SetColor("TextDisabled", HexToRGBA("#AAAAAA"))
-end
-
 ---@param row ExtuiTableRow
 ---@param moduleName string
 ---@param eventName string
@@ -189,8 +220,6 @@ function KeybindMenu:RenderEvent(row, moduleName, eventName, module, registry)
 
     local keyButton = keyCell:AddButton(keybindText) --[[@as ExtuiSelectable]]
 
-    applyButtonStyle(keyButton)
-
     keyButton.OnClick = function()
         keyButton.Label = "Press any key..."
         keyButton.Disabled = true
@@ -219,9 +248,6 @@ function KeybindMenu:RenderEvent(row, moduleName, eventName, module, registry)
         module:Rebind(eventName, defaultKeybind.Key, defaultKeybind.Modifiers)
         keyButton.Label = getPresentation(module:GetKeyByEvent(eventName))
     end)
-
-    applyButtonStyle(resetButton)
-
 end
 
 function KeybindMenu:Collapsed()

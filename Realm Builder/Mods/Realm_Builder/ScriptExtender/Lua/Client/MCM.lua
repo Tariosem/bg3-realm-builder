@@ -1,49 +1,14 @@
---- @type table
-MCM = MCM or {}
+MCM = MCM
+if not MCM then return end
 
 local function toggleMainWindow()
     if RBMenu and RBMenu.panel then
         RBMenu.panel.Open = not RBMenu.panel.Open
     else
-        RBMenu = Menu:Add()
+        RBMenu = RealmBuilderMainMenu:Add()
     end
     NetChannel.ManageEntity:SendToServer({ Action = "Scan" })
 end
-
-local function ToggleBrowser(targetKey)
-    if not RBMenu then
-        return
-    end
-
-    local targetBrowser = RBMenu.browsers[targetKey]
-
-    for key, browser in pairs(RBMenu.browsers) do
-        if key ~= targetKey and browser and browser.panel and browser.panel.Open then
-            browser:Close()
-        end
-    end
-    targetBrowser:Toggle()
-end
-
-local browserMenu = RegisterWindow("generic", "Browser Menu", "Guide Menu")
-browserMenu.Closeable = true
-browserMenu:SetSize({ 300 * SCALE_FACTOR, 400 * SCALE_FACTOR })
-
-local allAvailableBrowsers = {
-    {Key = "item", Label = "Item"},
-    {Key = "effect", Label = "Effect"},
-    {Key = "character", Label = "Character"},
-    {Key = "scenery", Label = "Scenery"},
-    {Key = "prefab", Label = "Prefab"},
-}
-table.sort(allAvailableBrowsers, function(a,b) return a.Label < b.Label end)
-
-for _, browser in pairs(allAvailableBrowsers) do
-    browserMenu:AddButton(browser.Label).OnClick = function()
-        ToggleBrowser(browser.Key)
-    end
-end
-allAvailableBrowsers = nil
 
 MCM.Keybinding.SetCallback("key_toggle_main_window", function()
     toggleMainWindow()
@@ -54,15 +19,21 @@ MCM.EventButton.RegisterCallback("event_button_toggle_main_widnow", function()
 end)
 
 MCM.Keybinding.SetCallback("key_toggle_browser_menu", function()
-    browserMenu.Open = not browserMenu.Open
-end)
-
-MCM.Keybinding.SetCallback("key_toggle_transform_toolbar", function()
-    if not TransformToolbar or not TransformToolbar.TopToolBar then
+    if RBMenu and not RBMenu.browserMenu then
         return
     end
 
-    TransformToolbar:Toggle()
+    RBMenu.browserMenu.Open = not RBMenu.browserMenu.Open
+
+    --browserMenu.Open = not browserMenu.Open
+end)
+
+MCM.Keybinding.SetCallback("key_toggle_transform_toolbar", function()
+    if not RBMenu and not RBMenu.transformBar then
+        return
+    end
+
+    RBMenu.transformBar:Toggle()
 end)
 
 MCM.EventButton.SetDisabled("event_button_toggle_main_widnow", true, GetLoca("Enabled after loading a save"))

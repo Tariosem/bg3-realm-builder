@@ -84,7 +84,7 @@ Ext.Entity.OnCreate("ClientPaperdoll", function (entity)
     end)
 end)
 
-local ccDummies = {}
+local ccDummy = nil
 
 --- @param entity any
 --- @diagnostic disable-next-line
@@ -105,6 +105,7 @@ Ext.Entity.OnCreate("ClientCCDummyDefinition", function(entity)
                     RB_GLOBALS.TransformEditor:Clear()
                 end
 
+                ccDummy = entity
                 clientVisualDummies[uuid] = entity.ClientCCDummyDefinition.Dummy
                 local visualTab = VisualTab.FetchByGuid(uuid)
                 if visualTab then
@@ -196,6 +197,17 @@ end)
 
 function IsInCharacterCreationMirror()
     return isInMirror
+end
+
+---@return EntityHandle|nil
+function GetMirrotDummyEntity()
+    if ccDummy and #ccDummy:GetAllComponentNames() == 0 then
+        ccDummy = nil
+        isInMirror = false
+        return nil
+    end
+
+    return ccDummy
 end
 
 ---@param ownerUuid string

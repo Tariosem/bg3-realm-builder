@@ -221,6 +221,13 @@
                     <attribute id="V1" type="float" value="0.37524414"/>
                     <attribute id="V2" type="float" value="0.49975586"/>
                 </node>
+                <node id="IconUV">
+                    <attribute id="MapKey" type="FixedString" value="RB_Arrow_CounterClockwise_Icon"/>
+                    <attribute id="U1" type="float" value="0.87524414"/>
+                    <attribute id="U2" type="float" value="0.99975586"/>
+                    <attribute id="V1" type="float" value="0.37524414"/>
+                    <attribute id="V2" type="float" value="0.49975586"/>
+                </node>
             </children>
         </node>
     </region>

@@ -193,7 +193,9 @@ function TransformOperator:ChangeVisualization()
 
     for _,viz in pairs(visualizations) do
         local proxy = MovableProxy.CreateByGuid(viz)
-        proxy:SetTransform(transforms[viz])
+        if proxy then
+            proxy:SetTransform(transforms[viz])
+        end
     end
 end
 

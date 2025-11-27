@@ -9,6 +9,7 @@
 --- @field CreateCachedSort fun(self:IconBrowser, field:string)
 --- @field Toggle fun(self:IconBrowser)
 --- @field Close fun(self:IconBrowser)
+--- @field RenderPage fun(self:IconBrowser)
 --- @field SaveToFile fun(self:IconBrowser, field:string, content:any):boolean ok
 IconBrowser = _Class("IconBrowser")
 
@@ -99,6 +100,13 @@ function IconBrowser:SetupInputSubs()
         return pageKeyHandle(e)
     end)
 
+    local debounceSearch = Debounce(100, function()
+        if not self.isValid then return end
+
+        if self.panel.Open == false then return end
+
+        self:Search()
+    end)
     self.quickFavoriteKeySub = SubscribeKeyInput({ Key = "F" }, function(e)
         if not self.isValid then return UNSUBSCRIBE_SYMBOL end
 
@@ -109,11 +117,19 @@ function IconBrowser:SetupInputSubs()
         if e.Pressed and self.hoveredEntry then
             local entry = self.searchData[self.hoveredEntry]
             if entry then
-                self.dataManager:AddTagToData(entry.Uuid, tag)
+                if not self.dataManager:HasTagInData(entry.Uuid, tag) then
+                    self.dataManager:AddTagToData(entry.Uuid, tag)
+                else
+                    self.dataManager:RemoveTagFromData(entry.Uuid, tag)
+
+                end
                 if self.updateTagsFn[entry.Uuid] then
                     self.updateTagsFn[entry.Uuid]()
                 end
                 self:AddTagsFilter()
+                if self.selectedTags[tag] or self.excludeTags[tag] then
+                    debounceSearch()
+                end
             end
         end
     end)
@@ -438,6 +454,9 @@ function IconBrowser:RenderBrowserBase()
     browserCombo.OnChange = function (sel, guid, displayName)
         self.selectedGuid = guid
         self:AddTagsFilter()
+        if self.dataManager.CheckHostValidEquipmentVisual then
+            self.dataManager:CheckHostValidEquipmentVisual(guid)
+        end
     end
     
     local pageButtonsContainer = pageButtonsRow:AddCell()
@@ -666,6 +685,10 @@ function IconBrowser:RenderPage()
     local toIndex = math.min(fromIndex + self.imagePerPage - 1, #self.uuidsSorted)
 
     if self.iconsContainer then
+        if self.StopRenderingThread then
+            self.StopRenderingThread()
+            self.StopRenderingThread = nil
+        end
         for _, image in pairs(self.iconsImage) do
             for _, popup in pairs(image.UserData and image.UserData.Popups or {}) do
                 popup:Destroy()
@@ -682,12 +705,17 @@ function IconBrowser:RenderPage()
     self.iconsContainer = self.iconsContainer or self.iconsWindow:AddTable("IconsBrowserTable", self.iconPR)
 
     local lastYield = Ext.Timer.MicrosecTime()
+    local stopRendering = false
     local thread
     thread = coroutine.create(function()
         self.panel.Disabled = true -- Disable panel during rendering to prevent interaction issues
         if self.uuidsSorted and #self.uuidsSorted > 0 then
             local row = self.iconsContainer:AddRow()
             for i = fromIndex, toIndex do
+                if stopRendering then 
+                    self.panel.Disabled = false
+                    return
+                end
                 local cell = row:AddCell()
                 local uuid = self.uuidsSorted[i]
                 local entry = self.searchResult[uuid]
@@ -711,6 +739,9 @@ function IconBrowser:RenderPage()
         end
         self.panel.Disabled = false
     end)
+    self.StopRenderingThread = function()
+        stopRendering = true
+    end
     local ok, err = coroutine.resume(thread)
     if not ok then
         Error("[IconBrowser] Error in RenderPage coroutine: " .. tostring(err))

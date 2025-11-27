@@ -485,7 +485,7 @@ function StatsParser:ParsePassives(passives)
                 name.SameLine = true
                 name:SetColor("Text", HexToRGBA("FFFFD06A"))
 
-                local isHidden = TableContains(statsObj.Properties, "IsHidden")
+                local isHidden = table.find(statsObj.Properties, "IsHidden")
                 if isHidden then
                     local hiddenText = parent:AddText(" (Hidden)")
                     name:SetColor("Text", HexToRGBA("FF888888"))

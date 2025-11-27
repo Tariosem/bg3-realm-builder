@@ -1,5 +1,4 @@
 RequireFiles("Client/Editor/", {
-    "Hit",
     "GizmoVisualizer",
     "GizmoPicker",
     "Gizmo",
