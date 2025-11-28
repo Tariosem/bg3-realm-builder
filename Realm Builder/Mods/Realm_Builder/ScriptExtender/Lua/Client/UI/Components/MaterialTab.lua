@@ -124,108 +124,113 @@ function MaterialTab:Render(parent)
         paramTable.BordersOuter = true
         paramTable.RowBg = true
 
-        typeNode.OnExpand = function (isOpen)
-            for _,node in pairs(allParamNode) do
-                node:OnHoverEnter()
-            end
-            self.cachedExpandedState[paramType] = true
-        end
         typeNode.OnCollapse = function ()
             self.cachedExpandedState[paramType] = false
         end
 
-        for _,propertyName in ipairs(propNames) do
-            local rowCell = paramRow:AddCell()
-            local tab = rowCell:AddTable("PropertyTable##" .. self.MaterialName .. propertyName, 3)
-            tab.ColumnDefs[1] = { WidthFixed = true }
-            tab.ColumnDefs[2] = { WidthStretch = true }
-            tab.ColumnDefs[3] = { WidthFixed = true }
-            local row = tab:AddRow()
-            local propCell = row:AddCell()
-            local propNode = propCell:AddSelectable(propertyName .. "##" .. self.MaterialName) --[[@as ExtuiSelectable ]]
-            self.ParamNodeRefs[propertyName] = propNode
-            self.ParamTableRefs[propertyName] = rowCell
-            row:AddCell() -- Spacer
-            local paramgroup = row:AddCell():AddGroup("PropertyGroup##" .. self.MaterialName .. propertyName .. tostring(math.random()))
-            paramgroup.SameLine = true
-            local sliders, colorPicker
+        local function renderParamTable()
+            for _,propertyName in ipairs(propNames) do
+                local rowCell = paramRow:AddCell()
+                local tab = rowCell:AddTable("PropertyTable##" .. self.MaterialName .. propertyName, 3)
+                tab.ColumnDefs[1] = { WidthFixed = true }
+                tab.ColumnDefs[2] = { WidthStretch = true }
+                tab.ColumnDefs[3] = { WidthFixed = true }
+                local row = tab:AddRow()
+                local propCell = row:AddCell()
+                local propNode = propCell:AddSelectable(propertyName .. "##" .. self.MaterialName) --[[@as ExtuiSelectable ]]
+                self.ParamNodeRefs[propertyName] = propNode
+                self.ParamTableRefs[propertyName] = rowCell
+                row:AddCell() -- Spacer
+                local paramgroup = row:AddCell()
+                paramgroup.SameLine = true
+                local sliders, colorPicker
 
-            propNode.OnHoverEnter = function ()
-                local paramValue = self:GetParameter(propertyName)
-                sliders, colorPicker = self:RenderProperty(paramgroup, propertyName, paramValue, rowCell)
-                propNode.OnHoverEnter = function()
-                    propNode.Highlight = self:HasChanged(propertyName) and true or false
-                    typeNode.Highlight = self:HasChangeInType(paramType)
-                end
-            end
-
-            propNode.OnClick = function(sel)
-                sel.Selected = false
-                if colorPicker and sliders then
-                    for _, slider in pairs(sliders) do
-                        slider.Visible = not slider.Visible
+                propNode.OnHoverEnter = function ()
+                    local paramValue = self:GetParameter(propertyName)
+                    sliders, colorPicker = self:RenderProperty(paramgroup, propertyName, paramValue, rowCell)
+                    propNode.OnHoverEnter = function()
+                        propNode.Highlight = self:HasChanged(propertyName) and true or false
+                        typeNode.Highlight = self:HasChangeInType(paramType)
                     end
                 end
-            end
 
-            propNode.OnRightClick = function(sel)
-                sel.Selected = false
-                sel.Highlight = false
-                self.Editor:ResetParameter(propertyName)
-                self.UpdateFuncs[propertyName]()
-            end
-
-            if paramgroup.Visible then
-                propNode.OnHoverEnter()
-            end
-
-            propNode.UserData = {
-                MaterialProxy = self.Editor,
-                ParameterName = propertyName
-            }
-
-            propNode.CanDrag = true
-            propNode.DragDropType = MATERIALPRESET_DRAGDROP_TYPE
-
-            propNode.OnDragStart = function (sel)
-                propNode.DragPreview:AddText(propertyName)
-
-                local value = self:GetParameter(propertyName) --[[@as number[] ]]
-                if not value then return end
-                propNode.UserData.ParameterValue = value
-                if #value >= 3 then
-                    local colorRect = propNode.DragPreview:AddColorEdit("##" .. self.MaterialName .. propertyName)
-                    colorRect.Color = {value[1], value[2], value[3], value[4] or 1}
-                else
-                    for i=1, #value do
-                        value[i] = FormatDecimal(value[i], 2)
-                    end
-                    propNode.DragPreview:AddText("Value: " .. table.concat(value, ", "))
-                end
-            end
-
-            propNode.OnDragDrop = function (sel, drop)
-                if drop.UserData and drop.UserData.ParameterValue then
-                    local newValue = drop.UserData.ParameterValue --[[@as number[] ]]
-                    local currentValue = self:GetParameter(propertyName)
-                    if newValue and currentValue then
-                        if not #newValue == #currentValue then
-                            return
+                propNode.OnClick = function(sel)
+                    sel.Selected = false
+                    if colorPicker and sliders then
+                        for _, slider in pairs(sliders) do
+                            slider.Visible = not slider.Visible
                         end
-                    else
-                        return -- Invalid parameters
-                    end
-
-                    self:SetParameter(propertyName, newValue)
-
-                    local updateFunc = self.UpdateFuncs[propertyName]
-                    if updateFunc then
-                        updateFunc(newValue)
                     end
                 end
-            end
 
-            allParamNode[propertyName] = propNode
+                propNode.OnRightClick = function(sel)
+                    sel.Selected = false
+                    sel.Highlight = false
+                    self.Editor:ResetParameter(propertyName)
+                    self.UpdateFuncs[propertyName]()
+                end
+
+                if paramgroup.Visible then
+                    propNode.OnHoverEnter()
+                end
+
+                propNode.UserData = {
+                    MaterialProxy = self.Editor,
+                    ParameterName = propertyName
+                }
+
+                propNode.CanDrag = true
+                propNode.DragDropType = MATERIALPRESET_DRAGDROP_TYPE
+
+                propNode.OnDragStart = function (sel)
+                    propNode.DragPreview:AddText(propertyName)
+
+                    local value = self:GetParameter(propertyName) --[[@as number[] ]]
+                    if not value then return end
+                    propNode.UserData.ParameterValue = value
+                    if #value >= 3 then
+                        local colorRect = propNode.DragPreview:AddColorEdit("##" .. self.MaterialName .. propertyName)
+                        colorRect.Color = {value[1], value[2], value[3], value[4] or 1}
+                    else
+                        for i=1, #value do
+                            value[i] = FormatDecimal(value[i], 2)
+                        end
+                        propNode.DragPreview:AddText("Value: " .. table.concat(value, ", "))
+                    end
+                end
+
+                propNode.OnDragDrop = function (sel, drop)
+                    if drop.UserData and drop.UserData.ParameterValue then
+                        local newValue = drop.UserData.ParameterValue --[[@as number[] ]]
+                        local currentValue = self:GetParameter(propertyName)
+                        if newValue and currentValue then
+                            if not #newValue == #currentValue then
+                                return
+                            end
+                        else
+                            return -- Invalid parameters
+                        end
+
+                        self:SetParameter(propertyName, newValue)
+
+                        local updateFunc = self.UpdateFuncs[propertyName]
+                        if updateFunc then
+                            updateFunc(newValue)
+                        end
+                    end
+                end
+
+                allParamNode[propertyName] = propNode
+            end
+        end
+
+        typeNode.OnExpand = function (isOpen)
+            renderParamTable()
+            renderParamTable = function() end
+            for _,node in pairs(allParamNode) do
+                node:OnHoverEnter()
+            end
+            self.cachedExpandedState[paramType] = true
         end
         ::continue::
     end
@@ -253,8 +258,7 @@ function MaterialTab:RenderProperty(node, propertyName, propertyValue)
 
     if #propertyValue >= 3 then
         colorPicker = node:AddColorEdit("##" .. self.MaterialName .. propertyName)
-        local resetButton = node:AddImageButton("Reset##" .. self.MaterialName .. propertyName, RB_ICONS.Arrow_CounterClockwise, IMAGESIZE.ROW)
-        resetButton.SameLine = true
+        local resetButton = StyleHelpers.AddResetButton(node, true)
         resetButton.OnClick = function (sel)
             self:ResetValue(propertyName)
 
@@ -310,6 +314,7 @@ function MaterialTab:RenderProperty(node, propertyName, propertyValue)
             range.min = propertyValue[i] / 2
         end
         local slider = StyleHelpers.AddSliderWithStep(node, propertyName .. "##" .. self.MaterialName .. i, propertyValue[i], range.min, range.max, range.step, propertyName:find("Index") ~= nil)
+        slider.ItemWidth = 400 * SCALE_FACTOR
 
         if colorPicker then
             slider.Visible = false
@@ -567,7 +572,7 @@ end
 function MaterialMixerTab:RenderProperty(node, propertyName, propertyValue, propRow)
     local sliders, picker = MaterialTab.RenderProperty(self, node, propertyName, propertyValue, propRow)
 
-    local removeBtn = node:AddImageButton("##" .. self.MaterialName .. propertyName, RB_ICONS.X_Square, IMAGESIZE.ROW)
+    local removeBtn = StyleHelpers.AddMiddleAlignedImageButton(node, RB_ICONS.X_Square, true) --[[@as ExtuiImageButton ]]
     removeBtn.OnClick = function (sel)
         self.ParametersSetProxy:RemoveParameter(propertyName)
         propRow:Destroy()
@@ -576,9 +581,6 @@ function MaterialMixerTab:RenderProperty(node, propertyName, propertyValue, prop
         self.ResetFuncs[propertyName] = nil
         self:UpdateUIState()
     end
-
-    removeBtn.SameLine = true
-
     return sliders, picker
 end
 

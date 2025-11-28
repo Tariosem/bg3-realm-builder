@@ -82,6 +82,15 @@ function EntityTab:Render()
     self:RenderMonitorTab()
     self:RenderFilterTab()
     self:RenderVisualTab()
+
+    local selfTemplate = Ext.Template.GetTemplate(TakeTailTemplate(self.templateId))
+    if not selfTemplate then return end
+
+    if selfTemplate.TemplateType == "character" then
+        self:RenderCharacterTab()
+    elseif selfTemplate.TemplateType == "item" then
+        self:RenderItemTab()
+    end
 end
 
 function EntityTab:RenderTabBar()
@@ -120,20 +129,14 @@ function EntityTab:RenderMonitorTab()
     self.attrTable = attrTable
 
     local levelLine = {attrTable:AddNewLine()}
-
-
     levelLine[1]:AddText(GetLoca("Level") .. ":")
-    self.levelTextMonitor = levelLine[2]:AddInputText("") --[[@as ExtuiInputText]]
-    self.levelTextMonitor.ReadOnly = true
-    self.levelTextMonitor.AutoSelectAll = true
-    self.levelTextMonitor.Text = self.LastLevel or "N/A"
+    local levelTextMonitor = levelLine[2]:AddInputText("") --[[@as ExtuiInputText]]
+    levelTextMonitor.ReadOnly = true
+    levelTextMonitor.AutoSelectAll = true
+    levelTextMonitor.Text = self.LastLevel or "N/A"
 
-    self.levelTimer = Timer:Every(2000, function()
+    local levelTimer = Timer:Every(2000, function(timerID)
         if not self.isValid then
-            if self.levelTimer then
-                Timer:Cancel(self.levelTimer)
-            end
-            self.levelTimer = nil
             return UNSUBSCRIBE_SYMBOL
         end
 
@@ -145,10 +148,10 @@ function EntityTab:RenderMonitorTab()
 
         local level = entity and entity.Level and entity.Level.LevelName or nil
         if level then
-            self.levelTextMonitor.Text = level
+            levelTextMonitor.Text = level
             self.LastLevel = level
         else
-            self.levelTextMonitor.Text = self.LastLevel or "N/A"
+            levelTextMonitor.Text = self.LastLevel or "N/A"
         end
     end)
 
@@ -184,12 +187,9 @@ function EntityTab:RenderMonitorTab()
         local newPos = {sel.Value[1], sel.Value[2], sel.Value[3]}
         Commands.SetTransform({MovableProxy.CreateByGuid(self.guid)}, { Translate = newPos })
     end
-    self.positionTimer = Timer:Every(1000, function()
+    local positionTimer = Timer:Every(1000, function(timerId)
         if not self.isValid then
-            if self.positionTimer then
-                Timer:Cancel(self.positionTimer)
-            end
-            self.positionTimer = nil
+            Timer:Cancel(timerId)
             return
         end
 
@@ -252,13 +252,9 @@ function EntityTab:RenderMonitorTab()
         Commands.SetTransform({MovableProxy.CreateByGuid(self.guid)}, { RotationQuat = finalQuat })
     end
 
-    self.rotationTimer = Timer:Every(1000, function()
+    local rotationTimer = Timer:Every(1000, function(timerId)
         if not self.isValid then
-            if self.rotationTimer then
-                Timer:Cancel(self.rotationTimer)
-            end
-            self.rotationTimer = nil
-            return
+            return UNSUBSCRIBE_SYMBOL
         end
         if not EntityExists(self.guid) then
             rotationMonitor.Value = self.LastRotation or {0, 0, 0, 0}
@@ -299,15 +295,41 @@ function EntityTab:RenderMonitorTab()
 
     local scaleLine = {attrTable:AddNewLine()}
     scaleLine[1]:AddText("Scale:")
-    self.scaleTextMonitor = scaleLine[2]:AddInputScalar("") --[[@as ExtuiInputScalar]]
-    self.scaleTextMonitor.Components = 3
+    local scaleTextMonitor = scaleLine[2]:AddInputScalar("") --[[@as ExtuiInputScalar]]
+    scaleTextMonitor.IDContext = self.guid .. "_ScaleMonitor"
+    scaleTextMonitor.Value = self.LastScale or {1,1,1,0}
+    scaleTextMonitor.Components = 3
 
-    self.scaleTextMonitor.OnChange = function(sel)
+    scaleTextMonitor.OnChange = function(sel)
         local newScale = {sel.Value[1], sel.Value[2], sel.Value[3]}
         Commands.SetTransform({MovableProxy.CreateByGuid(self.guid)}, { Scale = newScale })
     end
 
-    self.monitorTimers = { self.positionTimer, self.rotationTimer, self.levelTimer }
+    local scaleTimer = Timer:Every(2000, function (timerID)
+        if not self.isValid then
+            return UNSUBSCRIBE_SYMBOL
+        end
+
+        local sx, sy, sz = CGetScale(self.guid)
+
+        if not sx or not sy or not sz then
+            scaleTextMonitor.Value = self.LastScale or {1, 1, 1, 0}
+            return
+        end
+
+        local x = FormatDecimal(sx, 2)
+        local y = FormatDecimal(sy, 2)
+        local z = FormatDecimal(sz, 2)
+
+        if x and y and z then
+            scaleTextMonitor.Value = {x, y, z, 0}
+            self.LastScale = {sx, sy, sz, 0}
+        else
+            scaleTextMonitor.Value = {1, 1, 1, 0}
+        end
+    end)
+
+    self.monitorTimers = { positionTimer, rotationTimer, levelTimer, scaleTimer }
 end
 
 function EntityTab:RenderFilterTab()
@@ -505,19 +527,10 @@ function EntityTab:Collapsed()
         self.visualTab:Collapsed()
     end
 
-    if self.positionTimer then
-        Timer:Cancel(self.positionTimer)
-        self.positionTimer = nil
-    end
-
-    if self.rotationTimer then
-        Timer:Cancel(self.rotationTimer)
-        self.rotationTimer = nil
-    end
-
-    if self.levelTimer then
-        Timer:Cancel(self.levelTimer)
-        self.levelTimer = nil
+    for _,timer in pairs(self.monitorTimers or {}) do
+        if timer then
+            Timer:Cancel(timer)
+        end
     end
 
     if self.copySub then
@@ -623,7 +636,167 @@ function EntityTab:Add(guid, templateId, parent, opts, iconTintColor)
 end
 
 function EntityTab:OnChange() end
-
-
 function EntityTab:OnAttach() end
 function EntityTab:OnDetach() end
+
+--- @type EsvItem
+local serverItemTemplate = {
+    Invisible = false,
+    InteractionDisabled = false,
+    FreezeGravity = false,
+    CanBeMoved = true,
+    CanClimbOn = true,
+    CanBePickedUp = true,
+    CanShootThrough = true,
+    Sticky = false,
+    Frozen = false,
+    UseRemotely = false,
+    WalkOn = false,
+}
+
+--- @type EsvCharacter
+local serverCharacterTemplate = {
+    CannotDie = false,
+    Invulnerable = false,
+    Invisible = false,
+    CannotMove = false,
+    CannotRun = false,
+    CanShootThrough = true,
+    SpotSneakers = false,
+}
+
+local readOnlyFields = {
+    Level = true,
+}
+
+function EntityTab:RenderCharacterTab()
+    local tabItem = self.tabBar:AddTabItem("Character")
+
+    local alignedTable = StyleHelpers.AddAlignedTable(tabItem)
+
+    local leaderCombo = alignedTable:AddCombo("Follower Of")
+
+    local currentLeader = nil
+    local names = {}
+    local nameToUuid = {}
+    local function refreshParties()
+        local allPMs = GetAllPartyMembers()
+        
+        names = { GetLoca("<None>") }
+        nameToUuid = {}
+        local currentIndex = 0
+        for _,uuid in pairs(allPMs) do
+            if uuid == self.guid then goto continue end
+            local name = GetName(uuid) or ("Character " .. tostring(uuid))
+            local cnt = 1
+            while nameToUuid[name] do
+                name = name .. " (" .. tostring(cnt) .. ")"
+                cnt = cnt + 1
+            end
+            names[#names+1] = name
+            nameToUuid[name] = uuid
+            if currentLeader and uuid == currentLeader then
+                currentIndex = #names - 1
+            end
+            ::continue::
+        end
+
+        leaderCombo.Options = names
+        leaderCombo.SelectedIndex = currentIndex
+    end
+
+    leaderCombo.OnHoverEnter = refreshParties
+    leaderCombo.OnChange = function ()
+        local selectedName = leaderCombo.Options[leaderCombo.SelectedIndex + 1]
+        local selectedUuid = nameToUuid[selectedName] or nil
+        if not selectedUuid then
+            NetChannel.CallOsiris:SendToServer({ Function = "RemovePartyFollower", Args = { self.guid, currentLeader } })
+            currentLeader = nil
+        else
+            NetChannel.CallOsiris:SendToServer({ Function = "AddPartyFollower", Args = { self.guid, selectedUuid } })
+            currentLeader = selectedUuid
+        end
+    end
+
+    --- @type EsvCharacter
+    local serverCharacter = DeepCopy(serverCharacterTemplate)
+    
+    local function setServerCharacter()
+        NetChannel.SetServerEntity:SendToServer({ Guid = self.guid, Data = { ServerCharacter = serverCharacter } })
+    end
+
+    local function renderEditor()
+        for k, v in pairs(serverCharacter) do
+            if type(v) == "boolean" then
+                local checkbox = alignedTable:AddCheckbox(k, v)
+                checkbox.OnChange = function(sel)
+                    serverCharacter[k] = sel.Checked
+                    setServerCharacter()
+                end
+            elseif type(v) == "number" then
+                local slider, _ = alignedTable:AddSliderWithStep(k, v, 0, 100, 1, true)
+                slider.OnChange = function(sel)
+                    serverCharacter[k] = sel.Value[1]
+                    setServerCharacter()
+                end
+            elseif type(v) == "string" then
+                local inputText = alignedTable:AddInputText(k, v)
+                inputText.OnChange = function(sel)
+                    serverCharacter[k] = sel.Text
+                    setServerCharacter()
+                end
+            else
+                Warning("[EntityTab] Unknown server character attribute type for key: " .. tostring(k))
+            end
+        end
+    end
+
+    NetChannel.GetServerEntity:RequestToServer({ Guid = self.guid, Data = { ServerCharacter = serverCharacter } }, function (data)
+        serverCharacter = data.Data.ServerCharacter or serverCharacter
+        renderEditor()
+    end)
+end
+
+function EntityTab:RenderItemTab()
+    local tabItem = self.tabBar:AddTabItem("Item")
+
+    local alignedTable = StyleHelpers.AddAlignedTable(tabItem)
+
+    local serverItem = DeepCopy(serverItemTemplate)
+
+    local function setServerItem()
+        NetChannel.SetServerEntity:SendToServer({ Guid = self.guid, Data = { ServerItem = serverItem } })
+    end
+
+    local function renderEditor()
+        for k, v in pairs(serverItem) do
+            if type(v) == "boolean" then
+                local checkbox = alignedTable:AddCheckbox(k, v)
+                checkbox.OnChange = function(sel)
+                    serverItem[k] = sel.Checked
+                    setServerItem()
+                end
+            elseif type(v) == "number" then
+                local slider, _ = alignedTable:AddSliderWithStep(k, v, 0, 100, 1, true)
+                slider.OnChange = function(sel)
+                    serverItem[k] = sel.Value[1]
+                    setServerItem()
+                end
+            elseif type(v) == "string" then
+                local inputText = alignedTable:AddInputText(k, v)
+                inputText.OnChange = function(sel)
+                    serverItem[k] = sel.Text
+                    setServerItem()
+                end
+            else
+                Warning("[EntityTab] Unknown server item attribute type for key: " .. tostring(k))
+            end
+        end
+    end
+
+    NetChannel.GetServerEntity:RequestToServer({ Guid = self.guid, Data = { ServerItem = serverItem } }, function (data)
+        serverItem = data.Data.ServerItem or serverItem
+        renderEditor()
+    end)
+end
+

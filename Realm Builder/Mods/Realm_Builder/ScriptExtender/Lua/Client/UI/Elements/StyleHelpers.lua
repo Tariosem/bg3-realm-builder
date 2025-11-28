@@ -135,10 +135,7 @@ function StyleHelpers.AddSliderWithStep(parent, IDContext, defaultValue, min, ma
         slider = parent:AddSlider("", defaultValue or 0, min or 0, max or 100) --[[@as ExtuiSliderScalar]]
         increButton = AddSliderStepButton(parent, ">", step, nil, ">")
     end
-    local resetButtonReserved = parent:AddGroup("ResetButton_" .. IDContext)
-    resetButtonReserved.SameLine = true
-    local resetButton = resetButtonReserved:AddImageButton("##ResetButton_" .. IDContext, RB_ICONS.Arrow_CounterClockwise, IMAGESIZE.ROW) --[[@as ExtuiImageButton]]
-    resetButton.PositionOffset = { 0, 4 * SCALE_FACTOR }
+    local resetButton, resetGroup = StyleHelpers.AddResetButton(parent, true)
     decreButton.UserData.Slider = slider
     increButton.UserData.Slider = slider
     decreButton:SetStyle("ItemSpacing", 0, 0)
@@ -208,7 +205,7 @@ function StyleHelpers.AddSliderWithStep(parent, IDContext, defaultValue, min, ma
                     ele.Visible = v
                 end
                 if hideResetBtn then
-                    resetButtonReserved.Visible = false
+                    resetGroup.Visible = false
                 end
             elseif k == "SameLine" then
                 if v == true then
@@ -226,7 +223,7 @@ function StyleHelpers.AddSliderWithStep(parent, IDContext, defaultValue, min, ma
                 end
             elseif k == "HideResetButton" then
                 hideResetBtn = v
-                resetButtonReserved.Visible = not v
+                resetGroup.Visible = not v
             elseif k == "Value" then
                 local toFunc = isInteger and ToVec4Int or ToVec4
                 slider.Value = toFunc(v)
@@ -597,6 +594,21 @@ local function addLittleSpacer(parent, size)
     return dummy
 end
 
+function StyleHelpers.AddResetButton(parent, sameLine)
+    local group = parent:AddGroup("ResetButtonGroup_" .. Uuid_v4())
+    group.SameLine = sameLine
+    local button = group:AddImageButton("##ResetButton_" .. Uuid_v4(), RB_ICONS.Arrow_CounterClockwise, IMAGESIZE.FRAME) --[[@as ExtuiImageButton]]
+    --button.PositionOffset = { 0, 4 }
+    return button, group
+end
+
+function StyleHelpers.AddMiddleAlignedImageButton(parent, icon, sameLine)
+    local group = parent:AddGroup("MiddleAlignedImageButtonGroup_" .. Uuid_v4())
+    group.SameLine = sameLine
+    local button = group:AddImageButton("##MiddleAlignedImageButton_" .. Uuid_v4(), icon, IMAGESIZE.FRAME) --[[@as ExtuiImageButton]]
+    return button, group
+end
+
 ---@param parent ExtuiTreeParent
 ---@param size number?
 ---@return ExtuiTableCell
@@ -608,10 +620,8 @@ function AddIndent(parent, size)
     return rightCell
 end
 
----@param parent ExtuiTreeParent
----@return ExtuiTable
-function AddMiddleAlignTable(parent, label)
-    label = label or "MiddleAlignTable"
+function StyleHelpers.AddCenterAlignTable(parent, label)
+    label = label or "CenterAlignTable"
     local table = parent:AddTable(label .. "##" .. math.random(1, 10000), 3)
     table.ColumnDefs[1] = { WidthStretch = true }
     table.ColumnDefs[2] = { WidthFixed = true }
@@ -734,6 +744,15 @@ function StyleHelpers.AddAlignedTable(parent)
 
             return StyleHelpers.AddSliderWithStep(valueCell, "##" .. label .. "Slider", defaultValue,
                 min, max, step, isInteger), valueCell
+        end,
+        AddNearbyCombo = function (_, label)
+            local row = tab:AddRow() --[[@as ExtuiTableRow]]
+            local nameCell = row:AddCell()
+            nameCell:AddText(label)
+            addLittleSpacer(nameCell)
+            local valueCell = row:AddCell()
+
+            return NearbyCombo.new(valueCell)
         end
     }
 
@@ -1112,7 +1131,7 @@ function StyleHelpers.AddEnumRadioButtons(parent, options, initValue)
     for i, option in ipairs(options) do
         local enumName = option.Name
         local enumValue = option.Value
-        local radio = group:AddRadioButton(enumName)
+        local radio = group:AddRadioButton(enumName .. "##_Setter")
         radioButtons[enumName] = radio
         radio.Active = (initValue == enumValue)
         radio.UserData = {
@@ -1375,6 +1394,9 @@ function StyleHelpers.AddNumberSliders(parent, label, getter, setter, config)
         colorPicker.AlphaBar = #initValue == 4
         colorPicker.Color = {initValue[1], initValue[2], initValue[3], #initValue == 4 and initValue[4] or 1 }
 
+        colorPicker.OnRightClick = function ()
+            resetChange()
+        end
         colorPicker.OnChange = function()
             setter({ colorPicker.Color[1], colorPicker.Color[2], colorPicker.Color[3], #initValue == 4 and colorPicker.Color[4] or nil })
 

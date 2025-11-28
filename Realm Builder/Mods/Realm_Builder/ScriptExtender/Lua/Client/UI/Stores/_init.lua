@@ -5,6 +5,6 @@ RequireFiles("Client/UI/Stores/", {
     "NearbyMap",
     "StatsData",
     "ManagerBase",
-    "RootTemplateManagers/_init",
-    "MultiEffectManager",
+    "RootTemplateManager/_init",
+    "ResourceManager/_init",
 })

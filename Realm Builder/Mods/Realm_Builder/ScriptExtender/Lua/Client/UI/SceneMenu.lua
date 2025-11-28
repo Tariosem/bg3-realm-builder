@@ -263,8 +263,8 @@ function SceneMenu:SavePreset(name, overwrite, candiates)
 
         local pos, rot = nil, nil
         if self.isRelative then
-            pos = GetLocalRelativePosOffset(entInfo.Guid, anchor)
-            rot = GetLocalRelativeRotOffset(entInfo.Guid, anchor)
+            pos = SaveLocalRelativePosOffset(entInfo.Guid, anchor)
+            rot = SaveLocalRelativeRotOffset(entInfo.Guid, anchor)
         else
             pos = {CGetPosition(entInfo.Guid)}
             rot = {GetQuatRotation(entInfo.Guid)}
@@ -432,7 +432,6 @@ function SceneMenu:ChangePresentingPreset(name)
         sidebarBtn.Selected = true
     end
     self.presentingPreset = name
-    self.collapsingTable.Collapse()
 end
 
 function SceneMenu:ClearSidebarHighlights()

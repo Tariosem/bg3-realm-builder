@@ -418,6 +418,25 @@ function DeepCopy(o)
     return copy
 end
 
+function DeepCopyAllSerializable(o)
+    if type(o) ~= 'table' and type(o) ~= 'userdata' then
+        return o
+    end
+
+    local copy = {}
+    for key, value in pairs(o) do
+        if not (type(value) == "function" or type(value) == "thread") then
+            copy[key] = DeepCopyAllSerializable(value)
+        end
+    end
+
+    return copy
+end
+
+function IsSerializable(v)
+    return type(v) ~= "table" and type(v) ~= "userdata" and type(v) ~= "function" and type(v) ~= "thread"
+end
+
 function ToggleEntry(tbl, value)
     if type(tbl) ~= "table" then
         return false
@@ -563,6 +582,7 @@ function SortedPairs(tbl, func)
     end
 end
 
+--- return false to filter out
 --- @generic K, V
 --- @param tbl table<K, V>
 --- @param filterFunc fun(a:K, b:V):boolean

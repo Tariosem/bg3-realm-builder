@@ -1641,7 +1641,6 @@ function VisualTab:RenderLightEntity(node, component, compIndex)
                 { Name = "Inverse Square", Value = 1 },
                 { Name = "Smooth Step", Value = 2 },
                 { Name = "Smoother Step", Value = 3 },
-                { Name = "None", Value = 4 },
             },
             DisplayName = "Attenuation Function",
             Group = "Directional Light Settings",

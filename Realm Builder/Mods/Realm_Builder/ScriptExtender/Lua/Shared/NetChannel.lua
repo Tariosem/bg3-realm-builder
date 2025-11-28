@@ -10,6 +10,20 @@ NetChannel = NetChannel or {}
 --- @field Broadcast fun(channel:self , data:any)
 --- @field OnMessage fun(channel:self, data:LuaNetMessageEvent)
 
+
+--- @class CallOsirisChannel : NetChannel
+--- @field SendToServer fun(self, data: {Function: string, Args: any[]})
+--- @field RequestToServer fun(self, data: {Function: string, Args: any[]}, callback: fun(response: any))
+NetChannel.CallOsiris = Ext.Net.CreateChannel(ModuleUUID, "CallOsiris")
+
+--- @class SetServerEntityChannel : NetChannel
+--- @field SendToServer fun(self, data: {Guid: GUIDSTRING, Data:any})
+NetChannel.SetServerEntity = Ext.Net.CreateChannel(ModuleUUID, "SetServerEntity")
+
+--- @class GetServerEntityChannel : NetChannel
+--- @field RequestToServer fun(self, data: {Guid: GUIDSTRING, Data:any}, callback: fun(response: {Guid: GUIDSTRING, Data:any}))
+NetChannel.GetServerEntity = Ext.Net.CreateChannel(ModuleUUID, "GetServerEntity")
+
 --- @class DuplicateChannel : NetChannel
 --- @field RequestToServer fun(channel:self , data: {Guid: GUIDSTRING[]|GUIDSTRING}, callback: fun(response: {GuidToTemplayteId: table<GUIDSTRING, string>}))
 NetChannel.Duplicate = Ext.Net.CreateChannel(ModuleUUID, "Duplicate")

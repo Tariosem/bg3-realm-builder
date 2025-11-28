@@ -3,6 +3,9 @@ VisualHelpers = VisualHelpers or {}
 local visualRegistry = {}
 
 function VisualHelpers.RegisterVisual(scenery)
+    if not scenery or not scenery.Scenery or not scenery.Scenery.Uuid then
+        return
+    end
     visualRegistry[scenery.Scenery.Uuid] = scenery
 end
 
@@ -40,8 +43,7 @@ end
 --- @return number?
 --- @return number?
 function VisualHelpers.GetVisualPosition(handle)
-    local entity = handle
-    local visual = VisualHelpers.GetEntityVisual(entity)
+    local visual = VisualHelpers.GetEntityVisual(handle)
     if not visual or not visual.WorldTransform then
         return nil, nil, nil
     end
@@ -56,8 +58,7 @@ end
 --- @param pos any
 --- @return boolean
 function VisualHelpers.SetVisualPosition(handle, pos)
-    local entity = handle
-    local visual = VisualHelpers.GetEntityVisual(entity)
+    local visual = VisualHelpers.GetEntityVisual(handle)
     if not visual or not visual.WorldTransform then
         return false
     end

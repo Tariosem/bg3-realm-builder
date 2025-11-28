@@ -543,7 +543,7 @@ function TransformToolbar:RenderTopBar()
     panel.NoMove = true
     panel.NoTitleBar = true
 
-    local topAlignedTable = AddMiddleAlignTable(panel, "TopBar")
+    local topAlignedTable = StyleHelpers.AddCenterAlignTable(panel, "TopBar")
     topAlignedTable.ColumnDefs[3] = { WidthFixed = true }
 
     local row = topAlignedTable:AddRow()

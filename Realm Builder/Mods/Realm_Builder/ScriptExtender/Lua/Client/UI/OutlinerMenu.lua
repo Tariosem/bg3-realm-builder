@@ -150,8 +150,11 @@ function OutlinerMenu:RenderMenu()
     ApplyDangerSelectableStyle(self.bruteForceDeleteAllButton)
 end
 
-local function setupEyeHover(image, icon)
-    if icon == RB_ICONS.Eye then
+local eyeSlashUV = RB_ICON_UV01[RB_ICONS.Eye_Slash]
+local eyeUV = RB_ICON_UV01[RB_ICONS.Eye]
+
+local function setupEyeHover(image, hidden)
+    if not hidden then
         image.OnHoverEnter = function()
             image.Tint = {1,1,1,1}
         end
@@ -173,6 +176,7 @@ local function setupEyeHover(image, icon)
     image:SetColor("ButtonActive", ToVec4(0))
     ClearAllBorders(image)
 end
+
 
 function OutlinerMenu:RenderTreeList()
     local panel = self.panel
@@ -222,16 +226,12 @@ function OutlinerMenu:RenderTreeList()
         local eyeIcon = propData.Visible and RB_ICONS.Eye or RB_ICONS.Eye_Slash
         local eyeImage = fixedCell:AddImageButton("EyeButton##" .. key, eyeIcon, IMAGESIZE.ROW) --[[@as ExtuiImageButton]]
         self.eyeImageRefs[key] = fixedCell
-        setupEyeHover(eyeImage, eyeIcon)
+        setupEyeHover(eyeImage, not propData.Visible)
         local toggleVisible
         local function toggleEye()
-            fixedCell = self.eyeImageRefs[key]
-            if not fixedCell then return end
-            DestroyAllChildren(fixedCell)
-            local newEyeIcon = propData.Visible and RB_ICONS.Eye or RB_ICONS.Eye_Slash
-            eyeImage = fixedCell:AddImageButton("EyeButton##" .. key, newEyeIcon, IMAGESIZE.ROW) --[[@as ExtuiImageButton]]
-            setupEyeHover(eyeImage, newEyeIcon)
-            eyeImage.OnClick = toggleVisible
+            eyeImage.Image = propData.Visible and eyeUV or eyeSlashUV
+            eyeImage.Tint = propData.Visible and {0.9,0.9,0.9,1} or {0.5,0.5,0.5,1}
+            setupEyeHover(eyeImage, not propData.Visible)
         end
 
         function toggleVisible()
@@ -292,7 +292,7 @@ function OutlinerMenu:RenderTreeList()
         local eyeIcon = self.hiddenRoots[key] and RB_ICONS.Eye_Slash or RB_ICONS.Eye
         local eyeImage = fixedCell:AddImageButton("EyeButton##" .. key, eyeIcon, IMAGESIZE.ROW) --[[@as ExtuiImageButton]]
         self.eyeImageRefs[key] = fixedCell
-        setupEyeHover(eyeImage, eyeIcon)
+        setupEyeHover(eyeImage, self.hiddenRoots[key])
 
         local toggleHidden
         local updateEye
@@ -340,15 +340,9 @@ function OutlinerMenu:RenderTreeList()
             })            
         end
         function updateEye()
-            fixedCell = self.eyeImageRefs[key] --[[@as ExtuiTableCell]]
-            if not fixedCell then return end
-            DestroyAllChildren(fixedCell)
-            local newEyeIcon = self.hiddenRoots[key] and RB_ICONS.Eye_Slash or RB_ICONS.Eye
-            eyeImage = fixedCell:AddImageButton("EyeButton##" .. key, newEyeIcon, IMAGESIZE.ROW) --[[@as ExtuiImageButton]]
-            setupEyeHover(eyeImage, newEyeIcon)
-            eyeImage.OnClick = function ()
-                toggleHidden()
-            end
+            eyeImage.Image = self.hiddenRoots[key] and eyeSlashUV or eyeUV
+            eyeImage.Tint = self.hiddenRoots[key] and {0.5,0.5,0.5,1} or {0.9,0.9,0.9,1}
+            setupEyeHover(eyeImage, self.hiddenRoots[key])
         end
         eyeImage.OnClick = function ()
             toggleHidden()

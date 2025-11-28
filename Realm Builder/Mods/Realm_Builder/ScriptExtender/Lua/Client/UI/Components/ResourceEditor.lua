@@ -143,36 +143,52 @@ function ResourceEditor:RenderArrayEditor(parent, label, objGetter, objSetter)
     local tab = tree:AddTable(label .. "Table", 1)
     local row = tab:AddRow()
 
+    local initValue = objGetter()
+    local valueType = type(initValue[1])
+    local valueField = valueType == "string" and "Text" or "Checked"
+    local inputs = {}
+
+    row = tab:AddRow()
+    for i, value in ipairs(initValue) do
+        local cell = row:AddCell()
+        local input = nil
+        if type(value) == "string" then
+            input = cell:AddInputText("## string" .. label .. i .. "Setter", value)
+            input.AutoSelectAll = true
+            input.OnChange = function(text)
+                local arr = objGetter()
+                arr[i] = text.Text
+                objSetter(arr)
+            end
+            input.OnRightClick = function()
+                local arr = objGetter()
+                arr[i] = value
+                objSetter(arr)
+                input.Text = value
+            end
+        elseif type(value) == "boolean" then
+            input = cell:AddCheckbox("## boolean " .. label .. i .. "Setter", value)
+            input.OnChange = function(checkbox)
+                local arr = objGetter()
+                arr[i] = checkbox.Checked
+                objSetter(arr)
+            end
+            input.OnRightClick = function()
+                local arr = objGetter()
+                arr[i] = value
+                objSetter(arr)
+                input.Checked = value
+            end
+        end
+        table.insert(inputs, input)
+    end
+    
     --- @type function
     local refresh
     function refresh()
-        row:Destroy()
-        row = tab:AddRow()
-        for i, value in ipairs(objGetter()) do
-            local cell = row:AddCell()
-            if type(value) == "string" then
-                local input = cell:AddInputText("## string" .. label .. i .. "Setter", value)
-                input.AutoSelectAll = true
-                input.OnChange = function(text)
-                    local arr = objGetter()
-                    arr[i] = text.Text
-                    objSetter(arr)
-                end
-                input.OnRightClick = function()
-                    input.Text = value
-                end
-            elseif type(value) == "boolean" then
-                local input = cell:AddCheckbox("## boolean " .. label .. i .. "Setter", value)
-                input.OnChange = function(checkbox)
-                    local arr = objGetter()
-                    arr[i] = checkbox.Checked
-                    objSetter(arr)
-                end
-                input.OnRightClick = function()
-                    input.Checked = value
-                end
-            end
-
+        local newValue = objGetter()
+        for i, newV in ipairs(newValue) do
+            inputs[i][valueField] = newV
         end
     end
 

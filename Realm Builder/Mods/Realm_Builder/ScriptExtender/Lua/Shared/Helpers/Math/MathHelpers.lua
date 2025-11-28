@@ -158,10 +158,28 @@ function DirectionToQuat(direction, up, forwardAxis)
 end
 
 --- @param quat quat
---- @return Vec3 euler in radians
+--- @return Vec3 euler in degrees
 function QuatToEuler(quat)
-    local mat = Ext.Math.QuatToMat4(quat)
-    local euler = Ext.Math.ExtractEulerAngles(mat)
+    local globalAxes = {
+        X = GLOBAL_COORDINATE.X,
+        Y = GLOBAL_COORDINATE.Y,
+        Z = GLOBAL_COORDINATE.Z,
+    }
+    local euler = {0, 0, 0}
+    for i, axis in pairs({"X", "Y", "Z"}) do
+        local rotatedAxis = Ext.Math.QuatRotate(quat, globalAxes[axis])
+
+        local referenceAxis
+        if axis == "X" then
+            referenceAxis = GLOBAL_COORDINATE.Z
+        elseif axis == "Y" then
+            referenceAxis = GLOBAL_COORDINATE.X
+        else -- Z
+            referenceAxis = GLOBAL_COORDINATE.Y
+        end
+
+        euler[i] = Ext.Math.Angle(referenceAxis, rotatedAxis)
+    end
 
     return euler
 end
@@ -180,8 +198,8 @@ end
 
 --- @param childUuid string
 --- @param parentUuid string
---- @return number[]|nil relaticePosition
-function GetLocalRelativePosOffset(childUuid, parentUuid)
+--- @return number[]|nil relativePosition
+function SaveLocalRelativePosOffset(childUuid, parentUuid)
     local childPos = {CGetPosition(childUuid)}
     local parentPos = {CGetPosition(parentUuid)}
     local pqx, pqy, pqz, pqw = GetQuatRotation(parentUuid)
@@ -203,7 +221,7 @@ end
 --- @param childUuid string
 --- @param parentUuid string
 --- @return number[]|nil relativeRotation
-function GetLocalRelativeRotOffset(childUuid, parentUuid)
+function SaveLocalRelativeRotOffset(childUuid, parentUuid)
     local cqx, cqy, cqz, cqw = GetQuatRotation(childUuid)
     local pqx, pqy, pqz, pqw = GetQuatRotation(parentUuid)
 
@@ -217,6 +235,7 @@ function GetLocalRelativeRotOffset(childUuid, parentUuid)
 
     return relativeQuat
 end
+
 
 --- @param parentUuid string
 --- @param posOffset number[]
@@ -320,7 +339,7 @@ function RotateAroundPivot(pivot, targetTransform, axis, angleRad)
     return {
         Translate = {newPos[1], newPos[2], newPos[3]},
         RotationQuat = {newRotQuat[1], newRotQuat[2], newRotQuat[3], newRotQuat[4]},
-        Scale = targetTransform.Scale,
+        Scale = {targetTransform.Scale[1], targetTransform.Scale[2], targetTransform.Scale[3]},
     }
 end
 

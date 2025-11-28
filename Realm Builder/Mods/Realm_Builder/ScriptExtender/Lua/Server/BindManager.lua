@@ -92,8 +92,8 @@ function BindManager:Bind(child, parent, attributes)
 
     self.BindStores[child] = self.BindStores[child] or {}
 
-    self.BindStores[child].RelativePosition = GetLocalRelativePosOffset(child, parent)
-    self.BindStores[child].RelativeRotation = GetLocalRelativeRotOffset(child, parent)
+    self.BindStores[child].RelativePosition = SaveLocalRelativePosOffset(child, parent)
+    self.BindStores[child].RelativeRotation = SaveLocalRelativeRotOffset(child, parent)
     self.BindStores[child].KeepLookingAt = keepLookingAt and keepLookingAt or false
     self.BindStores[child].FollowParent = followParent
 
@@ -150,8 +150,8 @@ function BindManager:UpdateOffset(child)
     if not self.BindStores[child] then return end
     local parent = self.BindTree:GetParentKey(child)
     if not parent then return end
-    self.BindStores[child].RelativePosition = GetLocalRelativePosOffset(child, parent)
-    self.BindStores[child].RelativeRotation = GetLocalRelativeRotOffset(child, parent)
+    self.BindStores[child].RelativePosition = SaveLocalRelativePosOffset(child, parent)
+    self.BindStores[child].RelativeRotation = SaveLocalRelativeRotOffset(child, parent)
 end
 
 function BindManager:UpdateBind(child)

@@ -567,3 +567,64 @@ NetChannel.SetLighting:SetRequestHandler(function (data, userID)
 
     return true
 end)
+
+local function callOsirisFunction(data)
+    _D(data)
+    local func = data.Function
+    local args = data.Args or {}
+
+    if not Osi[func] then
+        Warning("Osiris function not found: " .. tostring(func))
+        return
+    end
+
+    return Osi[func](table.unpack(args))
+end
+
+NetChannel.CallOsiris:SetHandler(function(data, userID)
+    callOsirisFunction(data)
+end)
+
+NetChannel.CallOsiris:SetRequestHandler(function(data, userID)    
+    return callOsirisFunction(data)
+end)
+
+NetChannel.SetServerEntity:SetHandler(function(data, userID)
+    local entity = Ext.Entity.Get(data.Guid) --[[@as EntityHandle]]
+    if not entity then return end
+    for k, v in pairs(data.Data) do
+        if entity[k] then
+            for key, value in pairs(v) do
+                entity[k][key] = value
+            end
+        end
+    end
+end)
+
+NetChannel.GetServerEntity:SetRequestHandler(function(data, userID)
+    local entity = Ext.Entity.Get(data.Guid) --[[@as EntityHandle]]
+    if not entity then return {Guid = data.Guid, Data = {}} end
+
+    data.Config = data.Config or {}
+    local result = {}
+    for k, v in pairs(data.Data) do
+        if entity[k] then
+            result[k] = {}
+            if data.Config.GetAll then
+                for key, value in pairs(entity[k]) do
+                    if IsSerializable(value) then
+                        result[k][key] = value
+                        --elseif type(value) == "userdata" then
+                        --    result[k][key] = DeepCopyAllSerializable(LightUserdataToTable(value))
+                    end
+                end
+            else
+                for key, _ in pairs(v) do
+                    result[k][key] = DeepCopyAllSerializable(entity[k][key])
+                end
+            end
+        end
+    end
+
+    return {Guid = data.Guid, Data = result}
+end)
