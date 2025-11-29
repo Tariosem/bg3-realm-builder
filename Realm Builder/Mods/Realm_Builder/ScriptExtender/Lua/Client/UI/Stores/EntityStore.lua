@@ -490,9 +490,10 @@ function EntityStore:GetExportCopy(guids)
             data.Rotation = { CGetRotation(guid) }
             data.Scale = { CGetScale(guid) }
 
+            local hasIcon = template.TemplateType == "character" or template.TemplateType == "item"
             data.Scale = math.min(data.Scale[1], data.Scale[2], data.Scale[3])
             data.DisplayIcon = GetIcon(guid)
-            data.Icon = GetIconForTemplateId(data.TemplateId)
+            data.Icon = hasIcon and template.Icon or nil
             data.LevelName = entity.Level and entity.Level.LevelName or hostLevel
         
             local visualTab = VisualTab.FetchByGuid(guid)

@@ -6,11 +6,15 @@ local anubisValueTypes = {
 	["boolean"] = { id = "bool", type = "bool", },
 }
 
+--- @param paramName string
+--- @param value string|number|boolean
+--- @return LSXNode?
 function AnubisHelpers.BuildScriptParamNode(paramName, value)
 	local valueType = type(value)
 	local anubisValueType = anubisValueTypes[valueType]
 	if not anubisValueType then
-		error("Unsupported Anubis script parameter value type: " .. tostring(valueType))
+		Error("Unsupported Anubis script parameter value type: " .. tostring(valueType))
+		return nil
 	end
 
 	local paramNode = LSXNode.new("node", { id = "ScriptConfigParameter", })
@@ -35,6 +39,7 @@ end
 --- @param wanderMax number
 --- @param sleepMin number?
 --- @param sleepMax number?
+--- @return LSXNode, LSXNode
 function AnubisHelpers.BuildWanderParams(wanderMin, wanderMax, sleepMin, sleepMax, triggerName)
 
 	local scriptConfigParamsNode = LSXNode.new("node",

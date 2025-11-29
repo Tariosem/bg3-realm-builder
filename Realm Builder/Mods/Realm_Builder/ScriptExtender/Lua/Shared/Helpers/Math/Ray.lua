@@ -25,7 +25,7 @@ function Ray:__tostring()
 end
 
 --- @param other Ray
---- @param noLimit boolean? 
+--- @param noLimit boolean? -- If true, don't clamp t values to be >= 0
 --- @return Vec3 C1 -- Closest point on this ray
 --- @return Vec3 C2 -- Closest point on Other ray
 --- @return number Distance -- Distance between C1 and C2
@@ -316,7 +316,6 @@ function Ray:IntersectEntity(entity)
 end
 
 function Ray:Debug()
-
     NetChannel.Visualize:RequestToServer({
         Type = "Line",
         Position = self.Origin,

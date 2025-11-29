@@ -463,7 +463,7 @@ local GradientModes = {
 --- @param mode 'rgb'|'hsv'|'sine'|'perceptual'|'rainbow'
 --- @param options RadianceOpts?
 --- @return RadiantResult
-function Radiant(text, startColor, endColor, mode, options)
+function RadiantText(text, startColor, endColor, mode, options)
     if not text or text == "" then
         return {
             Segments = {},
@@ -578,7 +578,7 @@ function Radiant(text, startColor, endColor, mode, options)
                     lineOptions.Vertical = false
                     lineOptions.Cycles = options.LineCycles or 1
 
-                    local lineResult = Radiant(line, lineColor, lineColor, mode, lineOptions)
+                    local lineResult = RadiantText(line, lineColor, lineColor, mode, lineOptions)
                     for _, segment in ipairs(lineResult.Segments) do
                         table.insert(segments, segment)
                     end

@@ -25,13 +25,17 @@ Vec4 = {}
 --- @field y number
 Vec2 = {}
 
-AxisIndexMap = {X=1, Y=2, Z=3, W=4, x=1, y=2, z=3, w=4}
-IndexAxisMap = { [1]="X", [2]="Y", [3]="Z", [4]="W" }
+AxisIndexMap = { X = 1, Y = 2, Z = 3, W = 4, x = 1, y = 2, z = 3, w = 4 }
+IndexAxisMap = { [1] = "X", [2] = "Y", [3] = "Z", [4] = "W" }
 
 Vector.__index = function(t, k)
-    if AxisIndexMap[k] then return rawget(t, AxisIndexMap[k])
-    elseif rawget(t, k) then return rawget(t, k)
-    else return rawget(Vector, k) end
+    if AxisIndexMap[k] then
+        return rawget(t, AxisIndexMap[k])
+    elseif rawget(t, k) then
+        return rawget(t, k)
+    else
+        return rawget(Vector, k)
+    end
 end
 
 Vector.__newindex = function(t, k, v)
@@ -39,14 +43,21 @@ Vector.__newindex = function(t, k, v)
         rawset(t, AxisIndexMap[k], v)
     elseif type(k) == "number" and k >= 1 then
         rawset(t, k, v)
-    else Warning("Vec: Attempt to set unknown key: ", k) end
+    else
+        Warning("Vec: Attempt to set unknown key: ", k)
+    end
 end
 
 function Vector.__add(a, b) return Vector.new(Ext.Math.Add(a, b)) end
+
 function Vector.__sub(a, b) return Vector.new(Ext.Math.Sub(a, b)) end
+
 function Vector.__mul(a, b) return Vector.new(Ext.Math.Mul(a, b)) end
+
 function Vector.__div(a, b) return Vector.new(Ext.Math.Div(a, b)) end
-function Vector.__unm(a)    return Vector.new(Ext.Math.Mul(a, -1)) end
+
+function Vector.__unm(a) return Vector.new(Ext.Math.Mul(a, -1)) end
+
 function Vector.__eq(a, b)
     if #a ~= #b then return false end
     for i = 1, #a do
@@ -56,13 +67,19 @@ function Vector.__eq(a, b)
     end
     return true
 end
+
 function Vector.__tostring(a) return string.format("Vec(%s)", table.concat(a, ", ")) end
 
 function Vector:Length() return Ext.Math.Length(self) end
+
 function Vector:Normalize() return Vector.new(Ext.Math.Normalize(self)) end
+
 function Vector:Rotate(axis, angle) return Vector.new(Ext.Math.Rotate(self, axis, angle), #self) end
+
 function Vector:Dot(b) return Ext.Math.Dot(self, b) end
+
 function Vector:Cross(b) return Vector.new(Ext.Math.Cross(self, b)) end
+
 function Vector:Inverse() return Vector.new(Ext.Math.Inverse(self)) end
 
 function Vector:IsSanitized(limit)
@@ -78,7 +95,7 @@ end
 
 function Vector:Sanitize(defaultVec, limit)
     limit = limit or 1e5
-    defaultVec = Vector.new(defaultVec or {0, 0, 0}, #self)
+    defaultVec = Vector.new(defaultVec or { 0, 0, 0 }, #self)
     for i = 1, #self do
         local v = self[i]
         if type(v) ~= "number" or v ~= v or v == math.huge or v == -math.huge or math.abs(v) > limit then
@@ -89,9 +106,13 @@ function Vector:Sanitize(defaultVec, limit)
 end
 
 Vec2.__index = function(t, k)
-    if AxisIndexMap[k] then return rawget(t, AxisIndexMap[k])
-    elseif rawget(t, k) then return rawget(t, k)
-    else return rawget(Vec2, k) end
+    if AxisIndexMap[k] then
+        return rawget(t, AxisIndexMap[k])
+    elseif rawget(t, k) then
+        return rawget(t, k)
+    else
+        return rawget(Vec2, k)
+    end
 end
 
 Vec2.__newindex = function(t, k, v)
@@ -99,27 +120,31 @@ Vec2.__newindex = function(t, k, v)
         rawset(t, AxisIndexMap[k], v)
     elseif type(k) == "number" and k >= 1 and k <= 2 then
         rawset(t, k, v)
-    else Warning("Vec2: Attempt to set unknown key: ", k) end
+    else
+        Warning("Vec2: Attempt to set unknown key: ", k)
+    end
 end
 
-function Vec2.__add(a, b) return Vector.new({a[1] + b[1], a[2] + b[2]}, 2) end
-function Vec2.__sub(a, b) return Vector.new({a[1] - b[1], a[2] - b[2]}, 2) end
+function Vec2.__add(a, b) return Vector.new({ a[1] + b[1], a[2] + b[2] }, 2) end
+
+function Vec2.__sub(a, b) return Vector.new({ a[1] - b[1], a[2] - b[2] }, 2) end
+
 function Vec2.__mul(a, b)
     local newVec = {}
     if type(b) == "number" then
-        for _,number in ipairs(a) do
+        for _, number in ipairs(a) do
             table.insert(newVec, number * b)
         end
         return Vector.new(newVec)
     elseif type(b) == "table" and #b == 2 then
-        for i,number in ipairs(a) do
+        for i, number in ipairs(a) do
             table.insert(newVec, number * b[i])
         end
 
         return Vector.new(newVec)
     else
         Warning("Vec2: Invalid multiplication")
-        for _,_ in ipairs(a) do
+        for _, _ in ipairs(a) do
             table.insert(newVec, 0)
         end
 
@@ -129,12 +154,12 @@ end
 
 function Vec2.__div(a, b)
     if type(b) == "number" then
-        return Vec2.new({a[1] / b, a[2] / b})
+        return Vec2.new({ a[1] / b, a[2] / b })
     elseif type(b) == "table" and #b == 2 then
-        return Vec2.new({a[1] / b[1], a[2] / b[2]})
+        return Vec2.new({ a[1] / b[1], a[2] / b[2] })
     else
         Warning("Vec2: Invalid division")
-        return Vector.new({0, 0}, 2)
+        return Vector.new({ 0, 0 }, 2)
     end
 end
 
@@ -142,10 +167,9 @@ function Vec2.__unm(a)
     for i = 1, 2 do
         a[i] = -a[i]
     end
-
 end
-function Vec2.__tostring(a) return string.format("Vec2(%s)", table.concat(a, ", ")) end
 
+function Vec2.__tostring(a) return string.format("Vec2(%s)", table.concat(a, ", ")) end
 
 ---@param tbl number[]
 ---@param dim? number
@@ -168,7 +192,7 @@ end
 ---@param ... any
 ---@return Vec3
 function Vec3.new(...)
-    local args = {...}
+    local args = { ... }
 
     local tbl = (#args == 1 and type(args[1]) == "table") and args[1] or args
 
@@ -180,7 +204,7 @@ end
 ---@param ... any
 ---@return Vec4
 function Vec4.new(...)
-    local args = {...}
+    local args = { ... }
 
     local tbl = (#args == 1 and type(args[1]) == "table") and args[1] or args
 
@@ -190,7 +214,7 @@ function Vec4.new(...)
 end
 
 function Vec2.new(...)
-    local args = {...}
+    local args = { ... }
 
     local tbl = (#args == 1 and type(args[1]) == "table") and args[1] or args
 

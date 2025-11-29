@@ -19,12 +19,7 @@ local function createParameterAttrNodes(paramObj, overrideValue, parameterName)
             value = #overrideValue == 1 and overrideValue[1] or overrideValue
         end
 
-        local attr = LSXNode.new("attribute", {
-            id = k,
-            type = valueType,
-            value = value
-        })
-        attr:SetAttrOrder({ "id", "type", "value" })
+        local attr = lsattrNode(k, valueType, value)
 
         table.insert(attrs, attr)
     end

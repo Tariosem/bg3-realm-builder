@@ -202,9 +202,10 @@ function LSXHelpers.BuildTemplate(guid, entData, internalName, displayNameHandle
 
     if templateType == "character" then
         secondChidren:AppendChild(LSXNode.new("node", { id = "LocomotionParams" }))
-        
+
         if entData.OverrideVisualUuid then
-            gameObjectNode:InsertChild(LSXHelpers.AttrNode("CharacterVisualResourceID", "FixedString", entData.OverrideVisualUuid), 1)
+            gameObjectNode:InsertChild(
+            LSXHelpers.AttrNode("CharacterVisualResourceID", "FixedString", entData.OverrideVisualUuid), 1)
         end
 
         if not entData.WanderConfig then
@@ -216,7 +217,7 @@ function LSXHelpers.BuildTemplate(guid, entData, internalName, displayNameHandle
         local triggerName = internalName .. "_WanderTrigger"
         local anubisName = triggerName .. "_" .. wanderTriggerUuid
 
-        local triggerNode = LSXHelpers.BuildBoxTrigger(pos, rot, wanderParams.Extents or {10,5,10},
+        local triggerNode = LSXHelpers.BuildBoxTrigger(pos, rot, wanderParams.Extents or { 10, 5, 10 },
             curLevel, triggerName, wanderTriggerUuid)
 
         local anubisAttr, anubisParams = AnubisHelpers.BuildWanderParams(
@@ -233,7 +234,6 @@ function LSXHelpers.BuildTemplate(guid, entData, internalName, displayNameHandle
 
     return gameObjectNode, others
 end
-
 
 function LSXHelpers.BuildRootTemplate(srcUuid, uuid, internalName, override)
     srcUuid = TakeTailTemplate(srcUuid)
@@ -533,11 +533,10 @@ function LSXHelpers.BuildModMeta(uuid, modName, internalName, author, version, d
 
     local moduleInfoChildren = moduleIndoNode:AppendChild(LSXHelpers.ChildrenNode())
 
-    local publishVersionNode = moduleInfoChildren:AppendChild(LSXNode.new("node", { id = "PublishVersion" }))
-
-    local publishVersion64Attr = publishVersionNode:AppendChild(
-        lsattrNode("Version64", "int64", version64)
-    )
+    moduleInfoChildren:AppendChild(LSXNode.new("node", { id = "PublishVersion" }))
+        :AppendChild(
+            lsattrNode("Version64", "int64", version64)
+        )
 
     return root, conflictNode, dependenciesNode
 end
@@ -603,7 +602,7 @@ local function buildSplineNode(node)
         :AppendChild(LSXNode.new("node", { id = "Position" }))
         :AppendChildren({
             lsattrNode("Position", "fvec3", node.Translate),
-            lsattrNode("RotationQuat", "fvec4", node.RotationQuat or {0,0,0,1}),
+            lsattrNode("RotationQuat", "fvec4", node.RotationQuat or { 0, 0, 0, 1 }),
             lsattrNode("Scale", "float", node.Scale or 1.0),
         })
 
@@ -629,7 +628,7 @@ function LSXHelpers.BuildPatrolSpline(origin, nodes, levelName, name, uuid)
         lsattrNode("Name", "LSString", name),
         lsattrNode("TemplateName", "FixedString", "bd0fad2c-fb16-443a-89c7-b45b462782c8"), -- PatrolSpline template
         lsattrNode("Type", "FixedString", "Spline"),
-        lsattrNode("IsStraightPath", "bool", origin.IsStraightPath or false),    
+        lsattrNode("IsStraightPath", "bool", origin.IsStraightPath or false),
     }
 
     splineNode:AppendChildren(baseAttr)
@@ -639,7 +638,7 @@ function LSXHelpers.BuildPatrolSpline(origin, nodes, levelName, name, uuid)
     local transformNode = children:AppendChild(LSXNode.new("node", { id = "Transform" }))
     transformNode:AppendChildren({
         lsattrNode("Position", "fvec3", origin.Translate),
-        lsattrNode("RotationQuat", "fvec4", origin.RotationQuat or {0,0,0,1}),
+        lsattrNode("RotationQuat", "fvec4", origin.RotationQuat or { 0, 0, 0, 1 }),
         lsattrNode("Scale", "float", origin.Scale or 1.0),
     })
 
@@ -678,6 +677,12 @@ function LSXHelpers.BuildLightTemplate(srcUuid, uuid, internalName, modfiedParam
     return lightNode
 end
 
+--- @param uuid GUIDSTRING
+--- @param internalName string
+--- @param childUuids GUIDSTRING[]
+--- @param childTransforms Transform[]
+--- @param levelName string
+--- @return LSXNode
 function LSXHelpers.BuildPrefabTemplate(uuid, internalName, childUuids, childTransforms, levelName)
     local templateNode = LSXHelpers.BuildTemplatesRegionNode()
     local prefabNode = templateNode:AppendChild(LSXNode.new("node", { id = "GameObjects" }))
@@ -700,12 +705,14 @@ function LSXHelpers.BuildPrefabTemplate(uuid, internalName, childUuids, childTra
             :AppendChild(lsattrNode("Object", "FixedString", childUuid))
     end
 
-    local prefabChildrenTransformGroup = childrenNode:AppendChild(LSXNode.new("node", { id = "PrefabChildrenTransformGroup" }))
+    local prefabChildrenTransformGroup = childrenNode:AppendChild(LSXNode.new("node",
+        { id = "PrefabChildrenTransformGroup" }))
     local prefabChildrenTransforms = prefabChildrenTransformGroup:AppendChild(LSXHelpers.ChildrenNode())
     for _, transform in ipairs(childTransforms) do
-        local childTransformNode = prefabChildrenTransforms:AppendChild(LSXNode.new("node", { id = "PrefabChildrenTransforms" }))
+        local childTransformNode = prefabChildrenTransforms:AppendChild(LSXNode.new("node",
+            { id = "PrefabChildrenTransforms" }))
         childTransformNode:AppendChildren({
-            lsattrNode("Position", "fvec3", transform.Position),
+            lsattrNode("Position", "fvec3", transform.Translate),
             lsattrNode("RotationQuat", "fvec4", transform.RotationQuat),
             lsattrNode("Scale", "float", transform.Scale),
         })

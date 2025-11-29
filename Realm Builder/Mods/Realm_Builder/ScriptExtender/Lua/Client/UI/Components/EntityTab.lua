@@ -676,7 +676,7 @@ function EntityTab:RenderCharacterTab()
 
     local leaderCombo = alignedTable:AddCombo("Follower Of")
 
-    local currentLeader = nil
+    local currentLeader = self.__charcter_leader or nil
     local names = {}
     local nameToUuid = {}
     local function refreshParties()
@@ -716,6 +716,7 @@ function EntityTab:RenderCharacterTab()
             NetChannel.CallOsiris:SendToServer({ Function = "AddPartyFollower", Args = { self.guid, selectedUuid } })
             currentLeader = selectedUuid
         end
+        self.__charcter_leader = currentLeader
     end
 
     --- @type EsvCharacter
@@ -726,29 +727,7 @@ function EntityTab:RenderCharacterTab()
     end
 
     local function renderEditor()
-        for k, v in pairs(serverCharacter) do
-            if type(v) == "boolean" then
-                local checkbox = alignedTable:AddCheckbox(k, v)
-                checkbox.OnChange = function(sel)
-                    serverCharacter[k] = sel.Checked
-                    setServerCharacter()
-                end
-            elseif type(v) == "number" then
-                local slider, _ = alignedTable:AddSliderWithStep(k, v, 0, 100, 1, true)
-                slider.OnChange = function(sel)
-                    serverCharacter[k] = sel.Value[1]
-                    setServerCharacter()
-                end
-            elseif type(v) == "string" then
-                local inputText = alignedTable:AddInputText(k, v)
-                inputText.OnChange = function(sel)
-                    serverCharacter[k] = sel.Text
-                    setServerCharacter()
-                end
-            else
-                Warning("[EntityTab] Unknown server character attribute type for key: " .. tostring(k))
-            end
-        end
+        StyleHelpers.RenderGeneralTableEditor(tabItem, serverCharacter, setServerCharacter)
     end
 
     NetChannel.GetServerEntity:RequestToServer({ Guid = self.guid, Data = { ServerCharacter = serverCharacter } }, function (data)
@@ -760,8 +739,6 @@ end
 function EntityTab:RenderItemTab()
     local tabItem = self.tabBar:AddTabItem("Item")
 
-    local alignedTable = StyleHelpers.AddAlignedTable(tabItem)
-
     local serverItem = DeepCopy(serverItemTemplate)
 
     local function setServerItem()
@@ -769,29 +746,7 @@ function EntityTab:RenderItemTab()
     end
 
     local function renderEditor()
-        for k, v in pairs(serverItem) do
-            if type(v) == "boolean" then
-                local checkbox = alignedTable:AddCheckbox(k, v)
-                checkbox.OnChange = function(sel)
-                    serverItem[k] = sel.Checked
-                    setServerItem()
-                end
-            elseif type(v) == "number" then
-                local slider, _ = alignedTable:AddSliderWithStep(k, v, 0, 100, 1, true)
-                slider.OnChange = function(sel)
-                    serverItem[k] = sel.Value[1]
-                    setServerItem()
-                end
-            elseif type(v) == "string" then
-                local inputText = alignedTable:AddInputText(k, v)
-                inputText.OnChange = function(sel)
-                    serverItem[k] = sel.Text
-                    setServerItem()
-                end
-            else
-                Warning("[EntityTab] Unknown server item attribute type for key: " .. tostring(k))
-            end
-        end
+        StyleHelpers.RenderGeneralTableEditor(tabItem, serverItem, setServerItem)
     end
 
     NetChannel.GetServerEntity:RequestToServer({ Guid = self.guid, Data = { ServerItem = serverItem } }, function (data)

@@ -255,6 +255,8 @@ end
 
 --- @param key any
 --- @param value any
+--- @param parent? any
+--- @return any|nil
 function TreeTable:AddLeaf(key, value, parent)
     --Warning("Adding leaf " .. key .. " with value " .. tostring(value) .. " under parent " .. tostring(parent))
     if key == ROOT then

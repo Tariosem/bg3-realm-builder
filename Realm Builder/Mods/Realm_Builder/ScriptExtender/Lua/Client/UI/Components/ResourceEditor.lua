@@ -279,11 +279,10 @@ function ResourceEditor:RenderEditor(parent, label, objGetter, objSetter)
 
             local alignedTable = StyleHelpers.AddAlignedTable(parent)
             local input = alignedTable:AddInputText(field, initValue)
+            local isUuid = IsUuidIncludingNull(initValue)
             input.AutoSelectAll = true
             input.OnChange = function()
-                if IsUuidIncludingNull(initValue) and not IsUuidIncludingNull(input.Text) then
-                    return
-                end
+                if isUuid and not IsUuidIncludingNull(input.Text) then return end
 
                 setter(input.Text)
             end

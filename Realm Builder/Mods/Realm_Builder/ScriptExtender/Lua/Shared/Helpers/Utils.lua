@@ -86,8 +86,10 @@ function ParseVersionString(versionStr)
     return tonumber(major) or 0, tonumber(minor) or 0, tonumber(revision) or 0, tonumber(build) or 0
 end
 
+---@param desc string
+---@return string, integer
 function StripLSTags(desc)
-    if not desc or desc == "" then return desc end
+    if not desc or desc == "" then return desc, 0 end
     return desc:gsub("%b<>", ""):gsub("%s+", " "):gsub("^%s+", ""):gsub("%s+$", "")
 end
 
@@ -132,7 +134,6 @@ function IsArrayOf(tbl, valueType)
 end
 
 function IsValidName(name)
-    -- simple check: no special characters
     if name:match("[^%w_%s%-]") then
         return false
     end
@@ -185,6 +186,7 @@ function TableCover(dest, src)
         end
     end
 end
+
 function DeepTableCover(dest, src)
     for k, v in pairs(dest) do
         local sv = src[k]
@@ -502,10 +504,14 @@ function TakeTail(obj, count)
     return string.sub(obj, -count)
 end
 
+--- @param path string
+--- @return string
 function GetLastPath(path)
     return path:match("([^/]+)$") or path
 end
 
+--- @param obj string
+--- @return string, integer
 function ToLowerAlphaOnly(obj)
     return string.lower(obj):gsub("[^a-z]", "")
 end
@@ -702,4 +708,29 @@ function Debounce(delay, func)
             timerId = nil
         end)
     end
+end
+
+--- @param doSomething fun()
+--- @param check fun():boolean
+--- @param timeOutFrame integer?
+function WaitUntil(check, doSomething, timeOutFrame)
+    timeOutFrame = timeOutFrame or 300
+
+    local frameCount = 0
+    local timerId
+    timerId = Ext.Events.Tick:Subscribe(function()
+        frameCount = frameCount + 1
+        local ok, okToDo = pcall(check)
+        if not ok then
+            _P("WaitUntil: check function error: " .. tostring(okToDo))
+            Ext.Events.Tick:Unsubscribe(timerId)
+            return
+        end
+        if okToDo then
+            doSomething()
+            Ext.Events.Tick:Unsubscribe(timerId)
+        elseif frameCount >= timeOutFrame then
+            Ext.Events.Tick:Unsubscribe(timerId)
+        end
+    end)
 end

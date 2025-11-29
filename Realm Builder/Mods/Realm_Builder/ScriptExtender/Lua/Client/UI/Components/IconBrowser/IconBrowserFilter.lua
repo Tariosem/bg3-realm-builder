@@ -642,7 +642,7 @@ function IconBrowser:Search()
         MatchAllTags = self.matchAllTags
     })
 
-    --Debug("Search completed in " .. tostring(Ext.Timer.MonotonicTime() - now) .. " ms.")
+    Debug("Search completed in " .. tostring(Ext.Timer.MonotonicTime() - now) .. " ms.")
     --Debug("Found " .. CountMap(self.searchResult) .. " matching entries.")
     self:RenderIcons()
 end

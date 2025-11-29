@@ -283,6 +283,10 @@ function ManagerBase:Filter(Set)
         end
     end
 
+    for i, keyword in ipairs(Keywords) do
+        Keywords[i] = keyword:lower()
+    end
+
     for uuid, _ in pairs(candidates) do
         local entry = self.Data[uuid]
         if NoteText ~= "" then
@@ -292,9 +296,6 @@ function ManagerBase:Filter(Set)
         end
 
         if #Keywords > 0 then
-            for i, keyword in ipairs(Keywords) do
-                Keywords[i] = keyword:lower()
-            end
             local text = ""
             for _, field in ipairs(SearchField) do
                 local value = entry[field]

@@ -5,22 +5,24 @@ local function spawnHandler(data)
     local position = entInfo.Position
     local rotation = entInfo.Rotation
     if not position or #position ~= 3 then
-        position = {0,0,0}
+        position = { 0, 0, 0 }
     end
     if not rotation or #rotation ~= 4 then
-        rotation = {0,0,0,1}
+        rotation = { 0, 0, 0, 1 }
     end
     local rtype = data.Type
 
     if rtype == "Preview" then
-        local previewItem = OsirisHelpers.PreviewTemplate(template, position[1], position[2], position[3], rotation[1], rotation[2], rotation[3], rotation[4], entInfo and entInfo.VisualPreset)
-        return {Guid = previewItem, TemplateId = template}
+        local previewItem = OsirisHelpers.PreviewTemplate(template, position[1], position[2], position[3], rotation[1],
+            rotation[2], rotation[3], rotation[4], entInfo and entInfo.VisualPreset)
+        return { Guid = previewItem, TemplateId = template }
     end
 
-    local newGuid = EntityManager:CreateAt(spawnTemplate, position[1], position[2], position[3], rotation[1], rotation[2], rotation[3], rotation[4])
+    local newGuid = EntityManager:CreateAt(spawnTemplate, position[1], position[2], position[3], rotation[1], rotation
+    [2], rotation[3], rotation[4])
 
     if not newGuid then
-        return {Guid = nil, TemplateId = template}
+        return { Guid = nil, TemplateId = template }
     end
 
     EntityManager:SetEntity(newGuid, entInfo or {})
@@ -29,13 +31,13 @@ local function spawnHandler(data)
     entInfo.Guid = newGuid
     entInfo.TemplateId = template
 
-    if entInfo.Scale then 
-        NetChannel.SetVisualTransform:Broadcast({Guid = newGuid, Transforms = {[newGuid] = {Scale = entInfo.Scale}}})
+    if entInfo.Scale then
+        NetChannel.SetVisualTransform:Broadcast({ Guid = newGuid, Transforms = { [newGuid] = { Scale = entInfo.Scale } } })
     end
 
-    NetChannel.Entities.Added:Broadcast({Entities = {entInfo}})
+    NetChannel.Entities.Added:Broadcast({ Entities = { entInfo } })
 
-    return {Guid = newGuid }
+    return { Guid = newGuid }
 end
 
 NetChannel.Spawn:SetHandler(function(data, userID)
@@ -50,9 +52,9 @@ NetChannel.Duplicate:SetRequestHandler(function(data, user)
     local guids = NormalizeGuidList(data.Guid)
     local newGuids = {}
     local guidToTemplateId = {}
-    for _,guid in pairs(guids) do
+    for _, guid in pairs(guids) do
         local template = Osi.GetTemplate(guid) --[[@as string]]
-        local pos = {CGetPosition(guid)}
+        local pos = { CGetPosition(guid) }
         --- @diagnostic disable-next-line
         local newGuid = EntityManager:CreateAt(template, pos[1], pos[2], pos[3], CGetRotation(guid))
         if not newGuid then
@@ -65,15 +67,15 @@ NetChannel.Duplicate:SetRequestHandler(function(data, user)
         ::continue::
     end
 
-    NetChannel.Entities.Added:Broadcast({Entities = EntityManager:GetEntities(newGuids)})
+    NetChannel.Entities.Added:Broadcast({ Entities = EntityManager:GetEntities(newGuids) })
 
-    return {GuidToTemplateId = guidToTemplateId, NewGuids = newGuids}
+    return { GuidToTemplateId = guidToTemplateId, NewGuids = newGuids }
 end)
 
 local deleteHandler = function(data)
     local guids = NormalizeGuidList(data.Guid)
     local toCache = {}
-    for _,guid in pairs(guids) do
+    for _, guid in pairs(guids) do
         if EntityManager.SavedEntities[guid] then
             table.insert(toCache, guid)
         else
@@ -109,7 +111,7 @@ NetChannel.GetTemplate:SetRequestHandler(function(data, userID)
     local guid = NormalizeGuidList(data.Guid)
 
     local map = {}
-    for _,g in pairs(guid) do
+    for _, g in pairs(guid) do
         if EntityManager.SavedEntities[g] then
             map[g] = EntityManager.SavedEntities[g].TemplateId
         else
@@ -118,7 +120,7 @@ NetChannel.GetTemplate:SetRequestHandler(function(data, userID)
         end
     end
 
-    return {GuidToTemplateId = map}
+    return { GuidToTemplateId = map }
 end)
 
 NetChannel.SpawnPreview:SetRequestHandler(function(data, userID)
@@ -126,21 +128,21 @@ NetChannel.SpawnPreview:SetRequestHandler(function(data, userID)
     local position = data.Position
     local rotation = data.Rotation
     if not position or #position ~= 3 then
-        position = {0,0,0}
+        position = { 0, 0, 0 }
     end
     if not rotation or #rotation ~= 4 then
-        rotation = {0,0,0,1}
+        rotation = { 0, 0, 0, 1 }
     end
 
     local preview = Osi.CreateAt(template, position[1], position[2], position[3], 0, 0, "") --[[@as string]]
-    if not preview then return {Guid = nil, TemplateId = template} end
+    if not preview then return { Guid = nil, TemplateId = template } end
     RB_FlagHelpers.SetFlag(preview, "DeleteLater")
     OsirisHelpers.RotateTo(preview, rotation[1], rotation[2], rotation[3], rotation[4])
     OsirisHelpers.Propify(preview)
     Osi.ClearTag(preview, RB_PROP_TAG)
     Osi.SetCanInteract(preview, 0)
 
-    return {Guid = preview, TemplateId = template}
+    return { Guid = preview, TemplateId = template }
 end)
 
 NetChannel.ManageEntity:SetHandler(function(data, userID)
@@ -178,11 +180,12 @@ local function setTransform(data)
             OsirisHelpers.TeleportTo(guid, transform.Translate[1], transform.Translate[2], transform.Translate[3])
         end
         if transform.RotationQuat and #transform.RotationQuat == 4 then
-            OsirisHelpers.RotateTo(guid, transform.RotationQuat[1], transform.RotationQuat[2], transform.RotationQuat[3], transform.RotationQuat[4])
+            OsirisHelpers.RotateTo(guid, transform.RotationQuat[1], transform.RotationQuat[2], transform.RotationQuat[3],
+                transform.RotationQuat[4])
         end
         if transform.Scale and #transform.Scale == 3 then
             OsirisHelpers.ScaleTo(guid, transform.Scale[1], transform.Scale[2], transform.Scale[3])
-            NetChannel.SetVisualTransform:Broadcast({Guid = guid, Transforms = {[guid] = {Scale = transform.Scale}}})
+            NetChannel.SetVisualTransform:Broadcast({ Guid = guid, Transforms = { [guid] = { Scale = transform.Scale } } })
         end
 
         if BindManager then
@@ -190,7 +193,6 @@ local function setTransform(data)
         end
         ::continue::
     end
-
 end
 
 NetChannel.SetTransform:SetHandler(function(data, userID)
@@ -214,13 +216,11 @@ NetChannel.TeleportTo:SetHandler(function(data, userID)
     end
 end)
 
-NetChannel.Replicate:SetHandler(function (data, userID)
-
+NetChannel.Replicate:SetHandler(function(data, userID)
     for _, guid in ipairs(NormalizeGuidList(data.Guid)) do
         local entity = Ext.Entity.Get(guid) --[[@as EntityHandle]]
         entity:Replicate(data.Field)
     end
-    
 end)
 
 local spawnedVisualizations = {}
@@ -240,10 +240,9 @@ NetChannel.Visualize:SetRequestHandler(function(data, userID)
 
         -- prevent jump scare
         Osi.SetVisible(pointEntity, 0)
-        Timer:Ticks(10, function (timerID)
+        Timer:Ticks(10, function(timerID)
             Osi.SetVisible(pointEntity, 1)
         end)
-
     elseif data.Type == "Line" then
         local startPos = data.Position
         local endPos = data.EndPosition
@@ -255,7 +254,7 @@ NetChannel.Visualize:SetRequestHandler(function(data, userID)
         entityHandles = OsirisHelpers.DrawOrientedBox(data.Position, data.HalfSizes, data.Rotation, data.Width, userID)
     elseif data.Type == "Clear" then
         local existing = spawnedVisualizations[userID]
-        for _,e in pairs(existing) do
+        for _, e in pairs(existing) do
             Osi.RequestDelete(e)
         end
         spawnedVisualizations[userID] = {}
@@ -267,23 +266,26 @@ NetChannel.Visualize:SetRequestHandler(function(data, userID)
             OsirisHelpers.RotateTo(cursorEntity, table.unpack(data.Rotation))
         end
 
-        NetChannel.SetVisualTransform:Broadcast({Guid = cursorEntity, Transforms = {
-            [cursorEntity] = { Scale = {0, 0, 0} }
-        }})
+        NetChannel.SetVisualTransform:Broadcast({
+            Guid = cursorEntity,
+            Transforms = {
+                [cursorEntity] = { Scale = { 0, 0, 0 } }
+            }
+        })
     end
 
-    for _,e in pairs(entityHandles) do
+    for _, e in pairs(entityHandles) do
         RB_FlagHelpers.SetFlag(e, "IsGizmo")
     end
 
     if duration > 0 then
         Timer:After(duration, function()
-            for _,e in pairs(entityHandles) do
+            for _, e in pairs(entityHandles) do
                 Osi.RequestDelete(e)
             end
         end)
     else
-        for _,e in pairs(entityHandles) do
+        for _, e in pairs(entityHandles) do
             table.insert(spawnedVisualizations[userID], e)
         end
     end
@@ -298,7 +300,7 @@ NetChannel.SetAttributes:SetHandler(function(data, userID)
             EntityManager:SetEntity(guid, data.Attributes or {})
         end
     end
-    NetChannel.AttributeChanged:Broadcast({Guid = toSet, Attributes = data.Attributes or {}})
+    NetChannel.AttributeChanged:Broadcast({ Guid = toSet, Attributes = data.Attributes or {} })
 end)
 
 
@@ -352,28 +354,31 @@ NetChannel.ManageGizmo:SetRequestHandler(function(data, userID)
         return { Guid = nil }
     end
 
-    data.Position = data.Position or {0,0,0}
+    data.Position = data.Position or { 0, 0, 0 }
     if #data.Position ~= 3 then
-        data.Position = {0,0,0}
+        data.Position = { 0, 0, 0 }
     end
 
     local guid = Osi.CreateAt(GIZMO_ITEM[data.GizmoType], data.Position[1], data.Position[2], data.Position[3], 1, 0, "") --[[@as string]]
     Osi.SetVisible(guid, 0)
     RB_FlagHelpers.SetFlag(guid, "IsGizmo")
-    
-    Timer:Ticks(30, function (timerID)
-        NetChannel.SetVisualTransform:Broadcast({Guid = guid, Transforms = {
-            [guid] = { Scale = {0, 0, 0} }
-        }})
+
+    Timer:Ticks(30, function(timerID)
+        NetChannel.SetVisualTransform:Broadcast({
+            Guid = guid,
+            Transforms = {
+                [guid] = { Scale = { 0, 0, 0 } }
+            }
+        })
     end)
 
     gizmoUserStack[tostring(userID)] = gizmoUserStack[tostring(userID)] or {}
     table.insert(gizmoUserStack[tostring(userID)], guid)
 
-    return {Guid = guid}
+    return { Guid = guid }
 end)
 
-NetChannel.UpdateCamera:SetHandler(function (data, userID)
+NetChannel.UpdateCamera:SetHandler(function(data, userID)
     userID = CameraSymbol .. tostring(userID)
 
     if data.Deactive then
@@ -386,7 +391,7 @@ NetChannel.UpdateCamera:SetHandler(function (data, userID)
     SetCameraRotation(userID, data.CameraRotation)
 end)
 
-NetChannel.UpdateDummies:SetHandler(function (data, userID)
+NetChannel.UpdateDummies:SetHandler(function(data, userID)
     if data.Deactive then
         ClearDummyData()
         Debug("Clear server dummy data")
@@ -426,8 +431,7 @@ NetChannel.CreateStat:SetHandler(function(data, userID)
 end)
 
 
-NetChannel.StopStatus:SetHandler(function (data, userID)
-
+NetChannel.StopStatus:SetHandler(function(data, userID)
     if data.Type == "All" then
         EM:RemoveAllStatuses()
         return
@@ -439,39 +443,39 @@ NetChannel.StopStatus:SetHandler(function (data, userID)
 end)
 
 
-NetChannel.GetAtmosphere:SetRequestHandler(function (data, userID)
+NetChannel.GetAtmosphere:SetRequestHandler(function(data, userID)
     local trigger = FindCurrentAtmosphereTrigger(data.Position)
     if not trigger then
-        return {Guid = "", ResourceUUIDs = {}}
+        return { Guid = "", ResourceUUIDs = {} }
     end
     local atmosphereUuid = trigger.ServerAtmosphereTrigger.CurrentAtmosphereResourceID
     local allResources = LightCToArray(trigger.ServerAtmosphereTrigger.AtmosphereResourceIDs)
-    for i=#allResources,1,-1 do
+    for i = #allResources, 1, -1 do
         local resUUID = allResources[i]
         if not IsUuid(resUUID) then
             table.remove(allResources, i)
         end
     end
-    return {Guid = atmosphereUuid, ResourceUUIDs = allResources}
+    return { Guid = atmosphereUuid, ResourceUUIDs = allResources }
 end)
 
-NetChannel.GetLighting:SetRequestHandler(function (data, userID)
+NetChannel.GetLighting:SetRequestHandler(function(data, userID)
     local trigger = FindCurrentLightingTrigger(data.Position)
     if not trigger then
-        return {Guid = "", ResourceUUIDs = {}}
+        return { Guid = "", ResourceUUIDs = {} }
     end
     local lightingUuid = trigger.ServerLightingTrigger.CurrentLightingResourceID
     local allResources = LightCToArray(trigger.ServerLightingTrigger.LightingResourceIDs)
-    for i=#allResources,1,-1 do
+    for i = #allResources, 1, -1 do
         local resUUID = allResources[i]
         if not IsUuid(resUUID) then
             table.remove(allResources, i)
         end
     end
-    return {Guid = lightingUuid, ResourceUUIDs = allResources}
+    return { Guid = lightingUuid, ResourceUUIDs = allResources }
 end)
 
-NetChannel.SetAtmosphere:SetRequestHandler(function (data, userID)
+NetChannel.SetAtmosphere:SetRequestHandler(function(data, userID)
     local toSet = data.ResourceUUID
 
     if data.Atmosphere then
@@ -481,7 +485,7 @@ NetChannel.SetAtmosphere:SetRequestHandler(function (data, userID)
             return false
         end
 
-        for k,v in pairs(data.Atmosphere) do
+        for k, v in pairs(data.Atmosphere) do
             currentAtmRes.Atmosphere[k] = v
         end
     end
@@ -513,7 +517,7 @@ NetChannel.SetAtmosphere:SetRequestHandler(function (data, userID)
     return true
 end)
 
-NetChannel.SetLighting:SetRequestHandler(function (data, userID)
+NetChannel.SetLighting:SetRequestHandler(function(data, userID)
     local toSet = data.ResourceUUID
 
     if data.Lighting then
@@ -523,7 +527,7 @@ NetChannel.SetLighting:SetRequestHandler(function (data, userID)
             return false
         end
 
-        for k,v in pairs(data.Lighting) do
+        for k, v in pairs(data.Lighting) do
             currentLightRes.Lighting[k] = v
         end
 
@@ -538,7 +542,7 @@ NetChannel.SetLighting:SetRequestHandler(function (data, userID)
             end
         end
     end
-    
+
     if data.Reset then
         local triggers = Ext.Entity.GetAllEntitiesWithComponent("ServerLightingTrigger")
         if not triggers then
@@ -585,7 +589,7 @@ NetChannel.CallOsiris:SetHandler(function(data, userID)
     callOsirisFunction(data)
 end)
 
-NetChannel.CallOsiris:SetRequestHandler(function(data, userID)    
+NetChannel.CallOsiris:SetRequestHandler(function(data, userID)
     return callOsirisFunction(data)
 end)
 
@@ -603,7 +607,7 @@ end)
 
 NetChannel.GetServerEntity:SetRequestHandler(function(data, userID)
     local entity = Ext.Entity.Get(data.Guid) --[[@as EntityHandle]]
-    if not entity then return {Guid = data.Guid, Data = {}} end
+    if not entity then return { Guid = data.Guid, Data = {} } end
 
     data.Config = data.Config or {}
     local result = {}
@@ -626,5 +630,5 @@ NetChannel.GetServerEntity:SetRequestHandler(function(data, userID)
         end
     end
 
-    return {Guid = data.Guid, Data = result}
+    return { Guid = data.Guid, Data = result }
 end)

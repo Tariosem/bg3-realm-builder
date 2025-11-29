@@ -911,7 +911,6 @@ function StyleHelpers.AddTree(parent, label, open)
         AddChild = function(_, child)
             if child and child.UserData and child.UserData.Is_RB_UI_Tree then
                 table.insert(children, child)
-                child.Parent = closure
             end
         end,
         AddTreeIcon = function(_, iconName, iconSize)
@@ -952,18 +951,26 @@ function StyleHelpers.AddTree(parent, label, open)
         GetColor = function(_, colorName)
             return panelGroup:GetColor(colorName)
         end,
+        SetStyle = function(_, varName, ...)
+            panelGroup:SetStyle(varName, ...)
+        end,
+        SetColor = function(_, colorName, colorValue)
+            panelGroup:SetColor(colorName, colorValue)
+        end
     }
 
     selectable.UserData = closure.__UserData
 
     setmetatable(closure, {
         __index = function(_, k)
-            if k:sub(1, 3) == "Add" then
+            if k == "UserData" then
+                return rawget(closure, "__UserData")
+            elseif rawget(closure, k) ~= nil then
+                return rawget(closure, k)
+            elseif k:sub(1, 3) == "Add" then
                 return function(_, ...)
                     return panel[k](panel, ...)
                 end
-            elseif k == "UserData" then
-                return closure.__UserData
             elseif k == "OnExpand" or k == "OnCollapse" then
                 return rawget(closure, k)
             elseif k == "Tooltip" then
@@ -972,8 +979,6 @@ function StyleHelpers.AddTree(parent, label, open)
                 end
             elseif k == "Indent" then
                 return indent.Width
-            elseif rawget(closure, k) ~= nil then
-                return rawget(closure, k)
             end
             return selectable[k]
         end,
@@ -1209,7 +1214,7 @@ end
 ---@param settings RB_Mod_ExportSetting
 ---@return function -- refresh function
 function RenderExportSettingPanel(parent, settings)
-    local modNameText = parent:AddText("Mod Name:")
+    local modNameText = parent:AddText("Mod Name*")
     local modNameInput = parent:AddInputText("##MaterialPresetModName")
     local currentModInternalNameTooltip = modNameInput:Tooltip():AddText("Current Mod Internal Name:")
     modNameInput.Hint = "Enter Mod Name..."
@@ -1233,11 +1238,11 @@ function RenderExportSettingPanel(parent, settings)
     else
         ClearWarningBorder(modNameInput)
     end
-    local authorNameText = parent:AddText("Author Name:")
+    local authorNameText = parent:AddText("Author Name*")
     local authorNameInput = parent:AddInputText("##MaterialPresetAuthorName")
     authorNameInput:SetStyle("FrameBorderSize", 2)
     modNameInput:Tooltip():AddText("CAUTION:")
-    modNameInput:Tooltip():AddText("Special character are not allowed.")
+    modNameInput:Tooltip():AddText("Special character will be removed from mod internal name.")
     modNameInput:Tooltip():AddText("Space will be treated as underscore (_), but display name will remain unchanged.")
     modNameInput:Tooltip():AddText("My Mod and My_Mod are considered the same mod name.")
 
@@ -1270,7 +1275,7 @@ function RenderExportSettingPanel(parent, settings)
     descriptionInput.Multiline = true
     descriptionInput.Text = settings.Description or ""
 
-    local versionText = parent:AddText("Version:")
+    local versionText = parent:AddText("Version*")
     local versionInput = parent:AddInputInt("##MaterialPresetVersion")
     versionInput.Components = 4
     versionInput:SetStyle("FrameBorderSize", 2)
@@ -1423,4 +1428,61 @@ function StyleHelpers.AddNumberSliders(parent, label, getter, setter, config)
     
 
     return updateMethod
+end
+
+--- @param parent ExtuiTreeParent
+--- @param o table<string, any>
+--- @param onSet function
+--- @return function -- update function
+function StyleHelpers.RenderGeneralTableEditor(parent, o, onSet)
+    local alignedTable = StyleHelpers.AddAlignedTable(parent)
+    local updateFuncs = {}
+    for k, v in pairs(o) do
+        local updateFunc = nil
+        if type(v) == "boolean" then
+            local checkbox = alignedTable:AddCheckbox(k, v)
+            checkbox.OnChange = function(sel)
+                o[k] = sel.Checked
+                onSet()
+            end
+            updateFunc = function()
+                checkbox.Checked = o[k]
+            end
+        elseif type(v) == "number" then
+            local slider, _ = alignedTable:AddSliderWithStep(k, v, 0, 100, 1, true)
+            slider.OnChange = function(sel)
+                o[k] = sel.Value[1]
+                onSet()
+            end
+            updateFunc = function()
+                slider.Value = ToVec4(o[k])
+            end
+        elseif type(v) == "string" then
+            local inputText = alignedTable:AddInputText(k, v)
+            inputText.OnChange = function(sel)
+                o[k] = sel.Text
+                onSet()
+            end
+            updateFunc = function()
+                inputText.Text = o[k]
+            end
+        elseif IsArray(v) then
+            updateFunc = StyleHelpers.AddNumberSliders(parent, k, function() return o[k] end,
+                function(value)
+                    o[k] = value
+                    onSet()
+                end, { IsInt = true, Range = { Min = 0, Max = 100, Step = 1 }, ResetValue = v })
+        else
+            Warning("[EntityTab] Unknown server character attribute type for key: " .. tostring(k))
+        end
+        if updateFunc then
+            table.insert(updateFuncs, updateFunc)
+        end
+    end
+
+    return function()
+        for _, f in ipairs(updateFuncs) do
+            f()
+        end
+    end
 end

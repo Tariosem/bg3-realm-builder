@@ -58,6 +58,13 @@ function IconBrowser:__init(dataManager, DisplayName)
 end
 
 function IconBrowser:Render()
+    local screenWidth, screenHeight = GetScreenSize()
+    if self.lastPosition[1] + self.lastSize[1] > screenWidth then
+        self.lastPosition[1] = math.max(0, screenWidth - self.lastSize[1])
+    end
+    if self.lastPosition[2] + self.lastSize[2] > screenHeight then
+        self.lastPosition[2] = math.max(0, screenHeight - self.lastSize[2])
+    end
     self.panel = RegisterWindow("generic", self.displayName, "Browser", self, self.lastPosition, self.lastSize)
     self.panel.Closeable = true
 
@@ -100,13 +107,13 @@ function IconBrowser:SetupInputSubs()
         return pageKeyHandle(e)
     end)
 
-    local debounceSearch = Debounce(100, function()
+    local debounceSearch = --[[Debounce(100,]] function()
         if not self.isValid then return end
 
         if self.panel.Open == false then return end
 
         self:Search()
-    end)
+    end--)
     self.quickFavoriteKeySub = SubscribeKeyInput({ Key = "F" }, function(e)
         if not self.isValid then return UNSUBSCRIBE_SYMBOL end
 
@@ -189,6 +196,16 @@ function IconBrowser:RenderUiConfigMenu()
         return panelHeight - iconsHeight == 0 and 240 * SCALE_FACTOR or panelHeight - iconsHeight
     end
 
+    local function clampSize(width, height)
+        local lastPos = self.panel.LastPosition
+        local screenWidth, screenHeight = GetScreenSize()
+        local maxWidth = screenWidth - lastPos[1]
+        local maxHeight = screenHeight - lastPos[2]
+        width = math.min(width, maxWidth)
+        height = math.min(height, maxHeight)
+        return width, height
+    end
+
     self.saveToConfig.OnClick = function()
         self.lastPosition = self.panel.LastPosition
         self.lastSize = self.panel.LastSize
@@ -217,6 +234,7 @@ function IconBrowser:RenderUiConfigMenu()
         local browserWidth = ImagePerLine * ( self.iconWidth + self.cellsPadding[1] ) + 20 * SCALE_FACTOR
         self.browserWidth = browserWidth
 
+        self.browserWidth, self.browserHeight = clampSize(self.browserWidth, self.browserHeight)
         self.panel:SetSize({ browserWidth * 1.2, self.browserHeight * 1.2 })
 
         self.iconsContainer.Columns = ImagePerLine
@@ -234,6 +252,7 @@ function IconBrowser:RenderUiConfigMenu()
         else
             self.browserHeight = self.iconPC * (self.iconWidth + self.cellsPadding[2]) + 40 * SCALE_FACTOR + getEstimatedTopBarHeight()
         end
+        self.browserWidth, self.browserHeight = clampSize(self.browserWidth, self.browserHeight)
         self.panel:SetSize({ self.browserWidth * 1.2, self.browserHeight * 1.2 })
         self:SetPage(1)
     end
@@ -367,7 +386,8 @@ function IconBrowser:RenderSearchOptionsMenu()
         AutoSearch()
     end
     self.searchInput.OnChange = function()
-        AutoSearch()
+        self:Search()
+        --AutoSearch()
     end
     ---#endregion Search Options
 end
@@ -685,15 +705,9 @@ function IconBrowser:RenderPage()
     local toIndex = math.min(fromIndex + self.imagePerPage - 1, #self.uuidsSorted)
 
     if self.iconsContainer then
-        if self.StopRenderingThread then
-            self.StopRenderingThread()
-            self.StopRenderingThread = nil
-        end
-        for _, image in pairs(self.iconsImage) do
-            for _, popup in pairs(image.UserData and image.UserData.Popups or {}) do
-                popup:Destroy()
-            end
-            image:Destroy()
+        if self.__killRenderingThread then
+            self.__killRenderingThread()
+            self.__killRenderingThread = nil
         end
         DestroyAllChildren(self.iconsContainer)
         self.iconsContainer:Destroy()
@@ -705,6 +719,7 @@ function IconBrowser:RenderPage()
     self.iconsContainer = self.iconsContainer or self.iconsWindow:AddTable("IconsBrowserTable", self.iconPR)
 
     local lastYield = Ext.Timer.MicrosecTime()
+    local yieldThreshold = 0.5 -- in milliseconds
     local stopRendering = false
     local thread
     thread = coroutine.create(function()
@@ -722,7 +737,7 @@ function IconBrowser:RenderPage()
                 local iconImage = self:RenderIcon(entry, cell)
                 self:IconSetup(iconImage, entry)
                 self.iconsImage[uuid] = iconImage
-                if Ext.Timer.MicrosecTime() - lastYield > 0.5 then
+                if Ext.Timer.MicrosecTime() - lastYield > yieldThreshold then
                     Ext.OnNextTick(function()
                         local ok, err = coroutine.resume(thread)
                         if not ok then
@@ -739,7 +754,7 @@ function IconBrowser:RenderPage()
         end
         self.panel.Disabled = false
     end)
-    self.StopRenderingThread = function()
+    self.__killRenderingThread = function()
         stopRendering = true
     end
     local ok, err = coroutine.resume(thread)

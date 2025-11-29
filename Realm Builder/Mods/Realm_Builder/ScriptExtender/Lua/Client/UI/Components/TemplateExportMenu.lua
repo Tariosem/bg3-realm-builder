@@ -122,6 +122,7 @@ function TemplateExportMenu:RenderExportEntities(panel)
 
     local row = exportTable:AddRow()
 
+    --- @type table<string, { UserData: RB_UI_Tree }>
     local typeCells = {}
 
     local function renderTemplateTypes(templateType)
@@ -361,6 +362,8 @@ function TemplateExportMenu:RenderTemplateEntry(cell, entData)
                     local slider = attrValueCell:AddSlider("##" .. attrName .. entData.Guid)
                     slider.Components = #defaultValue
                     slider.Value = ToVec4(defaultValue)
+                    slider.Max = {10, 10, 10, 10}
+                    slider.Min = {0, 0, 0, 0}
                     slider.OnChange = function(sld)
                         local newValue = {}
                         local v = sld.Value
@@ -369,8 +372,7 @@ function TemplateExportMenu:RenderTemplateEntry(cell, entData)
                         end
                         cached[attrName] = newValue
                     end
-                    local resetBtn = attrValueCell:AddButton("Reset")
-                    resetBtn.SameLine = true
+                    local resetBtn = StyleHelpers.AddResetButton(attrValueCell, true)
                     resetBtn.OnClick = function()
                         slider.Value = ToVec4(defaultValue)
                         cached[attrName] = defaultValue

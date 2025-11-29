@@ -198,25 +198,25 @@ end
 --- @param mode "rgb"|"hsv"|"perceptual"|"sine"|"rainbow"
 --- @param options RadianceOpts?
 function RPrint(text, startColor, endColor, mode, options)
-    _P(RadiantToANSI(Radiant(text, startColor, endColor, mode, options)))
+    _P(RadiantToANSI(RadiantText(text, startColor, endColor, mode, options)))
 end
 
 --- @type table<RB_DEBUG_LEVELS, fun(text:string, opts:RadianceOpts?):RB_TextToken[]>
 DebugRadiant = {
     Error = function(text, opts)
-        return Radiant(text, "#FF4500", "#FFB3A7", "perceptual", opts).Segments
+        return RadiantText(text, "#FF4500", "#FFB3A7", "perceptual", opts).Segments
     end,
     Warning = function(text, opts)
-        return Radiant(text, "#FFD700", "#FFFFDC", "perceptual", opts).Segments
+        return RadiantText(text, "#FFD700", "#FFFFDC", "perceptual", opts).Segments
     end,
     Info = function(text, opts)
-        return Radiant(text, "#00BFFF", "#DCFFFF", "perceptual", opts).Segments
+        return RadiantText(text, "#00BFFF", "#DCFFFF", "perceptual", opts).Segments
     end,
     Debug = function(text, opts)
-        return Radiant(text, "#6254FD", "#D6B4FF", "perceptual", opts).Segments
+        return RadiantText(text, "#6254FD", "#D6B4FF", "perceptual", opts).Segments
     end,
     Trace = function(text, opts)
-        return Radiant(text, "#003300", "#007700", "perceptual", opts).Segments
+        return RadiantText(text, "#003300", "#007700", "perceptual", opts).Segments
     end,
 }
 

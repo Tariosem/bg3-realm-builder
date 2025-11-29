@@ -67,6 +67,21 @@ local function simpleUnique(t)
     return result
 end
 
+local commonOriention = {
+    World = true,
+    View = true,
+    Cursor = true,
+}
+
+local individualOriention = {
+    Local = true,
+    Parent = true,
+}
+
+local individualPivotMode = {
+    Individual = true,
+}
+
 local maxSize = 100
 
 --- @param selection RB_MovableProxy[]
@@ -314,13 +329,8 @@ function TransformEditor:MakePointVisualization(gizmo, pointTransform, index)
         for _,viz in pairs(response or {}) do
             table.insert(self.PointVisualizations, viz)
         end
-        Timer:EveryFrame(function (timerID)
-            if tryCnt > 300 or not self.IsDragging then
-                for _,viz in pairs(response or {}) do
-                    gizmo.Visualizer:HideGizmo(viz)
-                end
-                return UNSUBSCRIBE_SYMBOL
-            end
+
+        WaitUntil(function ()
             local allReady = true
             for _,viz in ipairs(response or {}) do
                 if not VisualHelpers.GetEntityVisual(viz) then
@@ -328,8 +338,8 @@ function TransformEditor:MakePointVisualization(gizmo, pointTransform, index)
                     break
                 end
             end
-            if not allReady then tryCnt = tryCnt + 1 return end
-
+            return allReady
+        end, function ()
             for _,viz in ipairs(response or {}) do
                 for _,axis in pairs({"X","Y","Z"}) do
                     if gizmo.SelectedAxis and gizmo.SelectedAxis[axis] then
@@ -339,8 +349,6 @@ function TransformEditor:MakePointVisualization(gizmo, pointTransform, index)
                     end
                 end
             end
-
-            return UNSUBSCRIBE_SYMBOL
         end)
     end)
 end
@@ -378,17 +386,17 @@ function TransformEditor:MakeAxisLineVisualization(gizmo, ray, color, index)
         Duration = -1,
     }, function (response)
         local viz = response[1]
-        local tryCnt = 0
-        Timer:EveryFrame(function (timerID)
-            if tryCnt > 300 or not self.IsDragging then Debug("TransformEditor: Line viz timeout") return UNSUBSCRIBE_SYMBOL end
-            if not VisualHelpers.GetEntityVisual(viz) then tryCnt = tryCnt + 1 return end
+        WaitUntil(function ()
+            return VisualHelpers.GetEntityVisual(viz) ~= nil
+        end, function ()
             gizmo.Visualizer:SetLineFxColor(viz, color)
             gizmo.Visualizer:SetLineLength(viz, 200)
-            return UNSUBSCRIBE_SYMBOL
-        end)
+        end, 300)
         table.insert(self.LineVisualizations, viz)
     end)
 end
+
+
 
 function TransformEditor:SetupGizmo()
     if not self.Gizmo then
@@ -442,7 +450,7 @@ function TransformEditor:SetupGizmo()
         end
 
         -- only calculate one visualization for space modes that use a common rotation
-        if self.Space ~= "Local" and self.Space ~= "Parent" then
+        if commonOriention[self.Space] then
             local pivotPos, pivotRot = gizmo:GetPickerTransform()
 
             local newPointTransform = {
@@ -594,9 +602,9 @@ function TransformEditor:SetupGizmo()
                 local S_local = R:Transpose() * S_world * R
                 
 
-                local sx = S_local[1 + (1 - 1) * 4]
-                local sy = S_local[2 + (2 - 1) * 4]
-                local sz = S_local[3 + (3 - 1) * 4]
+                local sx = S_local[1]
+                local sy = S_local[6]
+                local sz = S_local[11]
 
                 newScale = Vec3.new(
                     baseScale[1] * sx,
@@ -607,12 +615,12 @@ function TransformEditor:SetupGizmo()
                 newScale = Vec3.new(baseScale) * deltaWorld
             end
 
-            if self.PivotMode ~= "Individual" and self.Space ~= "Local" and self.Space ~= "Parent" then
+            if individualPivotMode[self.PivotMode] or individualOriention[self.Space] then
+                proxy:SetWorldScale(newScale)
+            else
                 local pivotPos, _ = gizmo:GetPickerTransform()
                 local newTransform = ScaleAroundPivot(pivotPos, startTransform, newScale)
                 proxy:SetTransform(newTransform)
-            else
-                proxy:SetWorldScale(newScale)
             end
         end
     end
@@ -634,7 +642,7 @@ function TransformEditor:SetupGizmo()
             deltaAxis = rot:Inverse():Rotate(deltaAxis)
         end
 
-        if self.PivotMode ~= "Individual" and self.Space ~= "Local" and self.Space ~= "Parent" then
+        if not (individualPivotMode[self.PivotMode] or individualOriention[self.Space]) then
             local pivotPos, _ = gizmo:GetPickerTransform()
             for _, proxy in pairs(self.Target or {}) do
                 local startTransform = proxy:GetSavedTransform()

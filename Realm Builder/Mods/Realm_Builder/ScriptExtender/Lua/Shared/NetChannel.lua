@@ -25,7 +25,7 @@ NetChannel.SetServerEntity = Ext.Net.CreateChannel(ModuleUUID, "SetServerEntity"
 NetChannel.GetServerEntity = Ext.Net.CreateChannel(ModuleUUID, "GetServerEntity")
 
 --- @class DuplicateChannel : NetChannel
---- @field RequestToServer fun(channel:self , data: {Guid: GUIDSTRING[]|GUIDSTRING}, callback: fun(response: {GuidToTemplayteId: table<GUIDSTRING, string>}))
+--- @field RequestToServer fun(channel:self , data: {Guid: GUIDSTRING[]|GUIDSTRING}, callback: fun(response: {GuidToTemplateId: table<GUIDSTRING, string>}))
 NetChannel.Duplicate = Ext.Net.CreateChannel(ModuleUUID, "Duplicate")
 
 --- @class DeleteChannel : NetChannel

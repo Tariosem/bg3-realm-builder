@@ -346,16 +346,17 @@ function RotateAroundPivot(pivot, targetTransform, axis, angleRad)
     }
 end
 
+--- @param pivot vec3
+--- @param targetTransform Transform
+--- @param scaleVec Vec3
+--- @return Transform newTransform
 function ScaleAroundPivot(pivot, targetTransform, scaleVec)
     local pivotPos = Vec3.new(pivot)
     local targetPos = Vec3.new(targetTransform.Translate)
+    local targetScale = Vec3.new(targetTransform.Scale)
 
     local toTarget = Ext.Math.Sub(targetPos, pivotPos)
-    local scaledOffset = {
-        toTarget[1] * scaleVec[1],
-        toTarget[2] * scaleVec[2],
-        toTarget[3] * scaleVec[3],
-    }
+    local scaledOffset = Ext.Math.Mul(Ext.Math.Div(toTarget, targetScale), scaleVec)
     local newPos = Ext.Math.Add(pivotPos, scaledOffset)
 
     return {
@@ -365,6 +366,9 @@ function ScaleAroundPivot(pivot, targetTransform, scaleVec)
     }
 end
 
+--- @param point Vec3
+--- @param boxMin Vec3
+--- @param boxMax Vec3
 function IsInBoundingBox(point, boxMin, boxMax)
     return point[1] >= boxMin[1] and point[1] <= boxMax[1] and
            point[2] >= boxMin[2] and point[2] <= boxMax[2] and

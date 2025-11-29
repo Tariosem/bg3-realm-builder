@@ -41,6 +41,11 @@ function Gizmo:__init(editor)
     self.SlowDown = false
 
     self.Step = 1.0
+
+    Ext.Events.ResetCompleted:Subscribe(function()
+        self:DeleteItem()
+        self:Disable()
+    end)
 end
 
 --- emit a zero-delta drag event
@@ -289,7 +294,6 @@ function Gizmo:CreateItem()
                 Visible = false,
             }
         })
-
         return
     elseif self.SavedGizmos[self.Mode] then
         -- make sure it's dead
@@ -421,7 +425,7 @@ function Gizmo:GetHit(ray)
     return hit, axis
 end
 
---- Ext.Math.Angle doesn't seem to return signed angles
+--- Ext.Math.Angle doesn't return signed angles
 local function CalcRotationChange(startDir, dir, axis, origin)
     local dot = startDir:Dot(dir)
     dot = Ext.Math.Clamp(dot, -1, 1)
@@ -635,7 +639,7 @@ function Gizmo:StepDelta(delta)
 end
 
 local lerpFactor = 0.1
-local handlers = {
+local slowDownhandlers = {
     Translate = function(o, delta)
         if o.SlowDown and not o._delta then
             o._delta = delta
@@ -697,7 +701,7 @@ local handlers = {
 }
 
 function Gizmo:LerpDelta(delta)
-    local handler = handlers[self.Mode]
+    local handler = slowDownhandlers[self.Mode]
     if handler then
         return handler(self, delta)
     end
@@ -862,7 +866,7 @@ function Gizmo:Disable()
 end
 
 function Gizmo:Enable()
-    if not self.Guid then
+    if not self.Guid or not EntityExists(self.Guid) then
         self:CreateItem()
     end
     self:SetupListeners()
