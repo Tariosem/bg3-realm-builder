@@ -38,21 +38,21 @@ ParametersSetProxy.__index = ParametersSetProxy
 setmetatable(ParametersSetProxy, {__index = MaterialProxy})
 
 
-PropTypeToFunc = {
+ParamTypeToFunc = {
     [1] = "SetScalar",
     [2] = "SetVector2",
     [3] = "SetVector3",
     [4] = "SetVector4",
 }
 
-PropTypeToField = {
+ParamTypeToField = {
     [1] = "ScalarParameters",
     [2] = "Vector2Parameters",
     [3] = "Vector3Parameters",
     [4] = "VectorParameters",
 }
 
-PropTypeToLSValueType = {
+ParamTypeToLSValueType = {
     [1] = "float",
     [2] = "fvec2",
     [3] = "fvec3",
@@ -153,7 +153,7 @@ function MaterialProxy:GetParamObject(paramName)
 
     local res = self:GetResource()
     local container = self.Preset and res.Presets or res
-    local list = container[PropTypeToField[typeRef]]
+    local list = container[ParamTypeToField[typeRef]]
     if not list then return nil end
 
     for _, param in pairs(list) do
@@ -412,7 +412,7 @@ function MaterialProxy:GetParameter(paramName)
     end
 
     local param = nil
-    param = res[PropTypeToField[typeRef]][indexRef]
+    param = res[ParamTypeToField[typeRef]][indexRef]
     if not param then
         return nil
     end
@@ -455,7 +455,7 @@ function MaterialPresetProxy:GetParameter(paramName)
     end
 
     local param = nil
-    param = res.Presets[PropTypeToField[typeRef]][indexRef]
+    param = res.Presets[ParamTypeToField[typeRef]][indexRef]
     if not param then
         return nil
     end
@@ -540,9 +540,9 @@ end
 function MaterialProxy:ApplyToMaterial(mat)
     for typeRef,props in pairs(self.Parameters) do
         for propertyName,value in pairs(props) do
-            if mat[PropTypeToFunc[typeRef]] then
+            if mat[ParamTypeToFunc[typeRef]] then
                 local val = #value == 1 and value[1] or value
-                mat[PropTypeToFunc[typeRef]](mat, propertyName, val)
+                mat[ParamTypeToFunc[typeRef]](mat, propertyName, val)
             end
         end
     end

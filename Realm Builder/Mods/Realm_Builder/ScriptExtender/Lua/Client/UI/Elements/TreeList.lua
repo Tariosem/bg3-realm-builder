@@ -290,27 +290,22 @@ end
 ---@param tbl ExtuiTable
 function TreeList:ApplyTreeTableStyle(tbl)
     tbl.RowBg = true
-    tbl.BordersH = true
 end
 
 function TreeList:RenderList()
     -- validate renderOrder
-    local ok, err = pcall(self.RenderOrder, "a", "b")
-    if not ok then
-        Error("RenderOrder function error: " .. tostring(err) .. ". Using default order.")
-        self.RenderOrder = function(aKey, bKey)
-            return tostring(aKey) < tostring(bKey)
+    
+    if self.renderThread then
+        if self.__killRenderThread then
+            self.__killRenderThread()
+            self.__killRenderThread = nil
         end
-    end
-    if type(err) ~= "boolean" then
-        Error("RenderOrder function must return boolean. Using default order.")
-        self.RenderOrder = function(aKey, bKey)
-            return tostring(aKey) < tostring(bKey)
-        end
+        self.renderThread = nil
     end
 
     --- @type ExtuiTable
     self.rootTable = self.rootTable or self.listWindow:AddTable(self.label .. "##Root", 1)
+    self.rootTable.OptimizedDraw = true
     self.rootTable.UserData = self.rootTable.UserData or {}
     if self.rootTable.UserData.Row then
         self.rootTable.UserData.Row:Destroy()
@@ -364,70 +359,114 @@ function TreeList:RenderList()
     end
     self.rootTable.Visible = true
 
-    while #stack > 0 do
-        local item = table.remove(stack)
-        local key, depth = item.key, item.depth
-        local node = self.tree:Find(key)
-        if node then
-            local cell = row:AddCell()
-            self:SetupHoveringDetection(cell, key)
-            local indentDepth = depthIndent(key)
-            local innerTab = cell:AddTable("IndentTable##" .. tostring(key), 3)
-            innerTab.SameLine = true
-            innerTab.PreciseWidths = true
-            innerTab.ColumnDefs[1] = { WidthFixed = true, Width = indentDepth }
-            innerTab.ColumnDefs[2] = { WidthStretch = true }
-            innerTab.ColumnDefs[3] = { WidthFixed = true }
-            local indentRow = innerTab:AddRow()
-            indentRow:AddCell() -- indent cell
-            local leftCell = indentRow:AddCell()
-            local fixedCell = indentRow:AddCell()
-            cell.UserData = {
-                SeletableCell = leftCell,
-                FixedCell = fixedCell
-            }
-            local ele
-            if self.tree:IsLeaf(key) then
-                ele = self:RenderLeaf(key, leftCell, fixedCell)
-                cell.Visible = false
-            else
-                local arrowReserved = leftCell:AddGroup("##ArrowReserved")
-                arrowReserved.IDContext = "TreeList" .. self.label .. "ArrowReserved" .. tostring(key)
-                local icon = self.collapsedTree[key] and RB_ICONS.Tree_Collapsed or RB_ICONS.Tree_Expanded
-                local arrowImage = arrowReserved:AddImageButton("##" .. key .. "ArrowBtn", icon, IMAGESIZE.ROW)
-                StyleHelpers.SetupImageButton(arrowImage)
-                ele = self:RenderTree(key, leftCell, fixedCell)
-                ele.SameLine = true
-                self.arrowRefs[key] = arrowReserved
-                cell.Visible = false
+    local thread = nil
+    local outerSuspended = false
+    local yieldThreshold = 0.5 -- milliseconds
+    local lastYield = Ext.Timer.MicrosecTime()
 
-                local children = collectChildren(key)
-                for i = #children, 1, -1 do
-                    table.insert(stack, { key = children[i], depth = depth + 1 })
+    local function yieldThread()
+        if Ext.Timer.MicrosecTime() - lastYield > yieldThreshold then
+            lastYield = Ext.Timer.MicrosecTime()
+            Ext.OnNextTick(function() 
+                if not thread then return end
+                if coroutine.status(thread) == "suspended" then
+                    local ok, err = coroutine.resume(thread)
+                    if not ok then
+                        Error("Error resuming TreeList render coroutine: " .. tostring(err))
+                    end
+                else
+                    Error("TreeList render coroutine is no longer suspended!")
                 end
+            end)
+            coroutine.yield()
+        end
+    end
+
+    local renderFunc = function()
+        Ext.Utils.ProfileBegin("TreeListRender")
+        while #stack > 0 do
+            if outerSuspended then return end
+            local item = table.remove(stack)
+            local key, depth = item.key, item.depth
+            local node = self.tree:Find(key)
+            if node then
+                local cell = row:AddCell()
+                self:SetupHoveringDetection(cell, key)
+                local indentDepth = depthIndent(key)
+                local innerTab = cell:AddTable("IndentTable##" .. tostring(key), 3)
+                innerTab.SameLine = true
+                innerTab.PreciseWidths = true
+                innerTab.ColumnDefs[1] = { WidthFixed = true, Width = indentDepth }
+                innerTab.ColumnDefs[2] = { WidthStretch = true }
+                innerTab.ColumnDefs[3] = { WidthFixed = true }
+                local indentRow = innerTab:AddRow()
+                indentRow:AddCell() -- indent cell
+                local leftCell = indentRow:AddCell()
+                local fixedCell = indentRow:AddCell()
+                cell.UserData = {
+                    SeletableCell = leftCell,
+                    FixedCell = fixedCell
+                }
+                local ele
+                if self.tree:IsLeaf(key) then
+                    ele = self:RenderLeaf(key, leftCell, fixedCell)
+                    cell.Visible = false
+                else
+                    local arrowReserved = leftCell:AddGroup("##ArrowReserved")
+                    arrowReserved.IDContext = "TreeList" .. self.label .. "ArrowReserved" .. tostring(key)
+                    local icon = self.collapsedTree[key] and RB_ICONS.Tree_Collapsed or RB_ICONS.Tree_Expanded
+                    local arrowImage = arrowReserved:AddImageButton("##" .. key .. "ArrowBtn", icon, IMAGESIZE.ROW)
+                    StyleHelpers.SetupImageButton(arrowImage)
+                    ele = self:RenderTree(key, leftCell, fixedCell)
+                    ele.SameLine = true
+                    self.arrowRefs[key] = arrowReserved
+                    cell.Visible = false
+
+                    local children = collectChildren(key)
+                    for i = #children, 1, -1 do
+                        table.insert(stack, { key = children[i], depth = depth + 1 })
+                    end
+                end
+
+                ele.AllowItemOverlap = true
+                self.itemRefs[key] = ele
+                self.nodeRefs[key] = cell
+                self.indexRefs[key] = itemCnt
+                self.indexRefsReverse[itemCnt] = key
+                itemCnt = itemCnt + 1
             end
-
-            ele.AllowItemOverlap = true
-            self.itemRefs[key] = ele
-            self.nodeRefs[key] = cell
-            self.indexRefs[key] = itemCnt
-            self.indexRefsReverse[itemCnt] = key
-            itemCnt = itemCnt + 1
+            yieldThread()
         end
-    end
 
-    for key,ele in pairs(self.itemRefs) do
-        if self.tree:IsLeaf(key) then
-            self:SetUpLeaf(ele, key)
-        else
-            self:SetUpTree(ele, key, self.tree:Find(key))
+        for key,ele in pairs(self.itemRefs) do
+            if self.tree:IsLeaf(key) then
+                self:SetUpLeaf(ele, key)
+            else
+                self:SetUpTree(ele, key, self.tree:Find(key))
+            end
+            yieldThread()
         end
-    end
-    for key,arrow in pairs(self.arrowRefs) do
-        self:SetupArrow(arrow, key)
+        for key,arrow in pairs(self.arrowRefs) do
+            self:SetupArrow(arrow, key)
+            yieldThread()
+        end
+
+        self:IterativeShow(TreeTable.GetRootKey())
+        self.renderThread = nil
+        self.__killRenderThread = nil
+        Ext.Utils.ProfileEnd("TreeListRender")
     end
 
-    self:IterativeShow(TreeTable.GetRootKey())
+    thread = coroutine.create(renderFunc)
+    self.renderThread = thread
+    self.__killRenderThread = function()
+        outerSuspended = true
+    end
+    
+    local ok, err = coroutine.resume(thread)
+    if not ok then
+        Error("Error starting TreeList render coroutine: " .. tostring(err))
+    end
 end
 
 function TreeList:ClearList()
@@ -584,7 +623,7 @@ function TreeList:SetupDragAndDrop(selectable, key)
         local row = previewTable:AddRow()
         local cell = row:AddCell()
         cell:AddImage(RB_ICONS.Collection, IMAGESIZE.ROW)
-        for ikey, iitem in SortedPairs(self.selectedItems, self.RenderOrder) do
+        for ikey, iitem in pairs(self.selectedItems--[[, self.RenderOrder]]) do
             --local cell = row:AddCell()
             --local fixedCell = row:AddCell()
             --if self.tree:IsLeaf(ikey) then

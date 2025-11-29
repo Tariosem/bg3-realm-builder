@@ -401,7 +401,7 @@ function VisualHelpers.ApplyVisualParams(guid, preset, retryCnt)
             i = tonumber(i) --[[@as number]]
             for paramName, value in pairs(params) do
                 local applyValue = #value == 1 and value[1] or value
-                mat[PropTypeToFunc[#value]](mat, paramName, applyValue)
+                mat[ParamTypeToFunc[#value]](mat, paramName, applyValue)
             end
         end
         ::continue::

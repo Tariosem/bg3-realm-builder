@@ -391,7 +391,7 @@ function EntityManager:ScanForEntities()
         if uuid and (RB_FlagHelpers.HasFlag(uuid, "IsSpawned") or CIsTaggedProp(uuid)) and not modVar.DeleteOnNextSession[uuid] and not self.SavedEntities[uuid] then
             self:AddEntity(uuid)
             table.insert(allToBroadcast, uuid)
-            NetChannel.Entities.Added:Broadcast({Entities = self:GetEntities({uuid})})
+            --NetChannel.Entities.Added:Broadcast({Entities = self:GetEntities({uuid})})
         end
     end
     NetChannel.Entities.Added:Broadcast({Entities = self:GetEntities(allToBroadcast)})

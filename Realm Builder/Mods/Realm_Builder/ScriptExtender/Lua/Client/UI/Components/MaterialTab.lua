@@ -174,11 +174,6 @@ function MaterialTab:Render(parent)
                     propNode.OnHoverEnter()
                 end
 
-                propNode.UserData = {
-                    MaterialProxy = self.Editor,
-                    ParameterName = propertyName
-                }
-
                 propNode.CanDrag = true
                 propNode.DragDropType = MATERIALPRESET_DRAGDROP_TYPE
 
@@ -221,6 +216,18 @@ function MaterialTab:Render(parent)
                 end
 
                 allParamNode[propertyName] = propNode
+
+                propNode.UserData = {
+                    MaterialProxy = self.Editor,
+                    ParameterName = propertyName,
+                    OnDestroy = function ()
+                        allParamNode[propertyName] = nil
+                        self.ParamNodeRefs[propertyName] = nil
+                        self.UpdateFuncs[propertyName] = nil
+                        self.ResetFuncs[propertyName] = nil
+                        self.ParamTableRefs[propertyName] = nil
+                    end
+                }
             end
         end
 
@@ -574,11 +581,9 @@ function MaterialMixerTab:RenderProperty(node, propertyName, propertyValue, prop
 
     local removeBtn = StyleHelpers.AddMiddleAlignedImageButton(node, RB_ICONS.X_Square, true) --[[@as ExtuiImageButton ]]
     removeBtn.OnClick = function (sel)
+        self.ParamNodeRefs[propertyName].UserData.OnDestroy()
         self.ParametersSetProxy:RemoveParameter(propertyName)
         propRow:Destroy()
-        self.ParamNodeRefs[propertyName] = nil
-        self.UpdateFuncs[propertyName] = nil
-        self.ResetFuncs[propertyName] = nil
         self:UpdateUIState()
     end
     return sliders, picker

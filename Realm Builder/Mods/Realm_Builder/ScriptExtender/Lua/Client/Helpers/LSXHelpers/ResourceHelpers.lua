@@ -148,7 +148,7 @@ local function createPresetParameterNodes(matRes, parameters)
     local paramNodes = {} --[[@as LSXNode[] ]]
     for i, params in pairs(parameters) do
         for paramName, value in pairs(params) do
-            local node = LSXNode.new("node", { id = PropTypeToField[i] })
+            local node = LSXNode.new("node", { id = ParamTypeToField[i] })
             local attrs = createPresetParamAttrNodes(paramName, value)
             if not attrs then
                 Warning("CustomMaterialProxy: Could not create LSX attribute nodes for parameter '" ..

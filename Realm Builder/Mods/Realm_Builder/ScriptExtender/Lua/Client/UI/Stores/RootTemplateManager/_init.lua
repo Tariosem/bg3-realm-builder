@@ -1,4 +1,4 @@
-RequireFiles("Client/UI/Stores/RootTemplateManagers/", {
+RequireFiles("Client/UI/Stores/RootTemplateManager/", {
     "SceneryManager",
     "CharacterManager",
     "ItemManager",

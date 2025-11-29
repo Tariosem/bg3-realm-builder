@@ -1086,7 +1086,18 @@ function MaterialPresetsMenu:__exportToMod(modPack, progressCallback, exportThre
     local existUuid = modPack.ModuleUUID --[[@type GUIDSTRING?]]
     local folderDefs = modPack.FolderDefinitions or {}
     local existingLoca = self.modLocalizations[modFolderName] or {}
-    local modFolderDisplayName = modFolderName .. " " .. BuildVersionString(version[1], version[2], version[3], version[4])
+
+    --- @param clockTime string
+    local function sanitizeClockTime(clockTime)
+        local y, m, d, h, min, s = clockTime:match("(%d+)-(%d+)-(%d+) (%d+):(%d+):(%d+)")
+        if not y or not m or not d or not h or not min or not s then
+            return ""
+        end
+        return string.format("%04d-%02d-%02d_%02d%02d%02d", tonumber(y), tonumber(m), tonumber(d),
+            tonumber(h), tonumber(min), tonumber(s))
+    end
+
+    local modFolderDisplayName = modFolderName .. "_" .. BuildVersionString(version[1], version[2], version[3], version[4]) .. "_" .. sanitizeClockTime(Ext.Timer.ClockTime())
 
     local presetCnt = CountMap(matPresets)
     local folderCnt = CountMap(folders)

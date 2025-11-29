@@ -225,10 +225,12 @@ function OutlinerMenu:RenderTreeList()
 
         local eyeIcon = propData.Visible and RB_ICONS.Eye or RB_ICONS.Eye_Slash
         local eyeImage = fixedCell:AddImageButton("EyeButton##" .. key, eyeIcon, IMAGESIZE.ROW) --[[@as ExtuiImageButton]]
-        self.eyeImageRefs[key] = fixedCell
+        self.eyeImageRefs[key] = eyeImage
         setupEyeHover(eyeImage, not propData.Visible)
         local toggleVisible
         local function toggleEye()
+            eyeImage = self.eyeImageRefs[key]
+            if not eyeImage then return end
             eyeImage.Image = propData.Visible and eyeUV or eyeSlashUV
             eyeImage.Tint = propData.Visible and {0.9,0.9,0.9,1} or {0.5,0.5,0.5,1}
             setupEyeHover(eyeImage, not propData.Visible)
@@ -277,7 +279,7 @@ function OutlinerMenu:RenderTreeList()
             })
         end
 
-        fixedCell.UserData = {
+        eyeImage.UserData = {
             UpdateEye = toggleEye
         }
         eyeImage.OnClick = toggleVisible
@@ -291,7 +293,7 @@ function OutlinerMenu:RenderTreeList()
         self:SetupTree(treeSelectable, key, node)
         local eyeIcon = self.hiddenRoots[key] and RB_ICONS.Eye_Slash or RB_ICONS.Eye
         local eyeImage = fixedCell:AddImageButton("EyeButton##" .. key, eyeIcon, IMAGESIZE.ROW) --[[@as ExtuiImageButton]]
-        self.eyeImageRefs[key] = fixedCell
+        self.eyeImageRefs[key] = eyeImage
         setupEyeHover(eyeImage, self.hiddenRoots[key])
 
         local toggleHidden
@@ -340,6 +342,8 @@ function OutlinerMenu:RenderTreeList()
             })            
         end
         function updateEye()
+            eyeImage = self.eyeImageRefs[key]
+            if not eyeImage then return end
             eyeImage.Image = self.hiddenRoots[key] and eyeSlashUV or eyeUV
             eyeImage.Tint = self.hiddenRoots[key] and {0.5,0.5,0.5,1} or {0.9,0.9,0.9,1}
             setupEyeHover(eyeImage, self.hiddenRoots[key])
@@ -347,7 +351,7 @@ function OutlinerMenu:RenderTreeList()
         eyeImage.OnClick = function ()
             toggleHidden()
         end
-        fixedCell.UserData = {
+        eyeImage.UserData = {
             UpdateEye = updateEye,
         }
         self.replaceFuncs[key] = function(newKey)
@@ -1067,6 +1071,8 @@ function OutlinerMenu:Collapse()
     if self.propTreeList then
         self.propTreeList:Collapsed()
     end
+    self.eyeImageRefs = {}
+    self.imageRefs = {}
 
     self.EntityContextMenu = nil
     self.CollectionContextMenu = nil

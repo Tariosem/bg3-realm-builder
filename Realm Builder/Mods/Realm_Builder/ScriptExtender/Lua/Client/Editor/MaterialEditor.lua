@@ -106,7 +106,7 @@ function MaterialEditor:SetParameter(paramName, value)
     local mat = self.Instance()
     if not mat then return false end
 
-    local funcName = PropTypeToFunc[#value]
+    local funcName = ParamTypeToFunc[#value]
     local applyValue = #value == 1 and value[1] or value
 
     mat[funcName](mat, paramName, applyValue)
@@ -127,7 +127,7 @@ function MaterialEditor:ResetParameter(paramName)
         return false
     end
 
-    local funcName = PropTypeToFunc[#value]
+    local funcName = ParamTypeToFunc[#value]
     local applyValue = #value == 1 and value[1] or value
 
     mat[funcName](mat, paramName, applyValue)
@@ -148,7 +148,7 @@ function MaterialEditor:ApplyParameters(parameters)
         for paramName, value in pairs(params) do
             if not self.ParamSetProxy:GetParameterType(paramName) then goto continue end
             local applyValue = #value == 1 and value[1] or value
-            mat[PropTypeToFunc[#value]](mat, paramName, applyValue)
+            mat[ParamTypeToFunc[#value]](mat, paramName, applyValue)
             self.Parameters[i][paramName] = value
             ::continue::
         end
@@ -182,7 +182,7 @@ function MaterialEditor:ResetAll()
 
     for ptype,params in pairs(self.ParamSetProxy.Parameters) do
         for paramName,value in pairs(params) do
-            local funcName = PropTypeToFunc[#value]
+            local funcName = ParamTypeToFunc[#value]
             local applyValue = #value == 1 and value[1] or value
 
             mat[funcName](mat, paramName, applyValue)

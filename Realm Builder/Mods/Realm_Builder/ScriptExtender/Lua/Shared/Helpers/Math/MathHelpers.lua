@@ -177,6 +177,9 @@ function QuatToEuler(quat)
         else -- Z
             referenceAxis = GLOBAL_COORDINATE.Y
         end
+        
+        referenceAxis = {referenceAxis[1], referenceAxis[2], referenceAxis[3]}
+        rotatedAxis = {rotatedAxis[1], rotatedAxis[2], rotatedAxis[3]}
 
         euler[i] = Ext.Math.Angle(referenceAxis, rotatedAxis)
     end

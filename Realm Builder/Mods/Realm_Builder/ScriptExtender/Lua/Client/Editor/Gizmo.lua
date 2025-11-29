@@ -770,9 +770,11 @@ end
 function Gizmo:Visualize(guid)
     guid = guid or self.Guid
     if not EntityExists(guid) then return end
-    local pos = self.PivotPosition
-    self.Visualizer:UpdateScale(pos)
-
+    local pos = {CGetPosition(guid)}
+    if #pos == 3 then
+        self.Visualizer:UpdateScale(pos)
+    end
+    
     local selectedAxis = DeepCopy(self.SelectedAxis)
     if CountMap(selectedAxis) > 2 and self.Mode == "Rotate" then
         --- treat as single-axis rotation on closest axis
