@@ -1,8 +1,8 @@
-local LSXNode = LSXNode
+local XMLNode = XMLNode
 LSXHelpers = LSXHelpers or {}
 
 --- Create a new LSX save root node
----@return LSXNode
+---@return XMLNode
 function LSXHelpers.new()
     local save = {
         version = {
@@ -14,9 +14,9 @@ function LSXHelpers.new()
         },
     }
 
-    local root = LSXNode.new("save")
+    local root = XMLNode.new("save")
     local versionNode = root:AppendChild(
-        LSXNode.new("version", {
+        XMLNode.new("version", {
             major = save.version.major,
             minor = save.version.minor,
             revision = save.version.revision,
@@ -42,7 +42,7 @@ local attrOrder = {
 ---@param attrType LSValueType
 ---@param value any
 ---@param version number? for translatedstring
----@return LSXNode
+---@return XMLNode
 function LSXHelpers.AttrNode(id, attrType, value, version)
     local valueKey = attrType == "TranslatedString" and "handle" or "value"
 
@@ -53,7 +53,7 @@ function LSXHelpers.AttrNode(id, attrType, value, version)
         end
     end
 
-    local attrNode = LSXNode.new("attribute", {
+    local attrNode = XMLNode.new("attribute", {
         id = id,
         type = attrType,
         [valueKey] = value,
@@ -73,26 +73,26 @@ function LSXHelpers.GetPathAfterData(path)
     return path:match("Data[\\/](.*)") or path
 end
 
---- @return LSXNode -- childrenNode
+--- @return XMLNode -- childrenNode
 function LSXHelpers.BuildTemplatesRegionNode()
-    return LSXHelpers.new():AppendChild(LSXNode.new("region", { id = "Templates" }))
-        :AppendChild(LSXNode.new("node", { id = "Templates" }))
+    return LSXHelpers.new():AppendChild(XMLNode.new("region", { id = "Templates" }))
+        :AppendChild(XMLNode.new("node", { id = "Templates" }))
         :AppendChild(LSXHelpers.ChildrenNode())
 end
 
 function LSXHelpers.BuildLayerListNode(levelName)
-    local layerNode = LSXNode.new("node", { id = "LayerList" })
+    local layerNode = XMLNode.new("node", { id = "LayerList" })
 
     layerNode:AppendChild(LSXHelpers.ChildrenNode())
-        :AppendChild(LSXNode.new("node", { id = "Layers" }))
+        :AppendChild(XMLNode.new("node", { id = "Layers" }))
         :AppendChild(LSXHelpers.ChildrenNode())
-        :AppendChild(LSXNode.new("node", { id = "Object", key = "MapKey" })):SetAttrOrder({ "id", "key" })
+        :AppendChild(XMLNode.new("node", { id = "Object", key = "MapKey" })):SetAttrOrder({ "id", "key" })
         :AppendChild(lsattrNode("MapKey", "FixedString", levelName))
 
     return layerNode
 end
 
---- @param node LSXNode
+--- @param node XMLNode
 function LSXHelpers.SetAttrNode(node, attrId, attrType, value)
     local attrNode = node:SearchChild(function(child)
         if child:GetName() ~= "attribute" then return false end
@@ -108,7 +108,7 @@ function LSXHelpers.SetAttrNode(node, attrId, attrType, value)
 end
 
 --- @param data EntityData
---- @return LSXNode[]
+--- @return XMLNode[]
 local function buildItemAttrs(data)
     local attrs = {
         lsattrNode("CanBeMoved", "bool", data.Movable and true or false),
@@ -127,7 +127,7 @@ local function buildCharacterAttrs(entity)
     return attrs
 end
 
---- @type table<string, fun(entity:EntityData):LSXNode[]>
+--- @type table<string, fun(entity:EntityData):XMLNode[]>
 local uinqueAttrs = {
     item = buildItemAttrs,
     character = buildCharacterAttrs,
@@ -145,7 +145,7 @@ local uinqueAttrs = {
 --- @param internalName string
 --- @param displayNameHandle string?
 --- @param entData EntityData
---- @return LSXNode?, {Uuid:string, TemplateType:string, LSXNode:LSXNode}[]?
+--- @return XMLNode?, {Uuid:string, TemplateType:string, XMLNode:XMLNode}[]?
 function LSXHelpers.BuildTemplate(guid, entData, internalName, displayNameHandle)
     local curLevel = entData.LevelName
     local pos = entData.Position or { CGetPosition(guid) }
@@ -159,7 +159,7 @@ function LSXHelpers.BuildTemplate(guid, entData, internalName, displayNameHandle
     if not templateType then return end
 
     local templateRegion = LSXHelpers.BuildTemplatesRegionNode()
-    local gameObjectNode = templateRegion:AppendChild(LSXNode.new("node", { id = "GameObjects" }))
+    local gameObjectNode = templateRegion:AppendChild(XMLNode.new("node", { id = "GameObjects" }))
 
     local basicAttrs = {
         lsattrNode("MapKey", "FixedString", guid),
@@ -179,7 +179,7 @@ function LSXHelpers.BuildTemplate(guid, entData, internalName, displayNameHandle
     end
 
     if uinqueAttrs[templateType] then
-        local customAttrs = uinqueAttrs[templateType](entData) --[[@as LSXNode[] ]]
+        local customAttrs = uinqueAttrs[templateType](entData) --[[@as XMLNode[] ]]
         for _, attrNode in ipairs(customAttrs) do
             table.insert(basicAttrs, attrNode)
         end
@@ -188,7 +188,7 @@ function LSXHelpers.BuildTemplate(guid, entData, internalName, displayNameHandle
     gameObjectNode:AppendChildren(basicAttrs)
 
     local secondChidren = gameObjectNode:AppendChild(LSXHelpers.ChildrenNode())
-    local transformNode = secondChidren:AppendChild(LSXNode.new("node", { id = "Transform" }))
+    local transformNode = secondChidren:AppendChild(XMLNode.new("node", { id = "Transform" }))
 
     local transformAttrs = {
         lsattrNode("Position", "fvec3", pos),
@@ -201,7 +201,7 @@ function LSXHelpers.BuildTemplate(guid, entData, internalName, displayNameHandle
     secondChidren:AppendChild(LSXHelpers.BuildLayerListNode(curLevel))
 
     if templateType == "character" then
-        secondChidren:AppendChild(LSXNode.new("node", { id = "LocomotionParams" }))
+        secondChidren:AppendChild(XMLNode.new("node", { id = "LocomotionParams" }))
 
         if entData.OverrideVisualUuid then
             gameObjectNode:InsertChild(
@@ -215,7 +215,7 @@ function LSXHelpers.BuildTemplate(guid, entData, internalName, displayNameHandle
         local wanderTriggerUuid = Uuid_v4()
         local wanderParams = entData.WanderConfig or {}
         local triggerName = internalName .. "_WanderTrigger"
-        local anubisName = triggerName .. "_" .. wanderTriggerUuid
+        local anubisName = triggerName .. "_" .. wanderTriggerUuid -- name_uuid
 
         local triggerNode = LSXHelpers.BuildBoxTrigger(pos, rot, wanderParams.Extents or { 10, 5, 10 },
             curLevel, triggerName, wanderTriggerUuid)
@@ -229,7 +229,7 @@ function LSXHelpers.BuildTemplate(guid, entData, internalName, displayNameHandle
 
         gameObjectNode:InsertChild(anubisAttr, 1)
         secondChidren:AppendChild(anubisParams)
-        table.insert(others, { Uuid = wanderTriggerUuid, TemplateType = "trigger", LSXNode = triggerNode })
+        table.insert(others, { Uuid = wanderTriggerUuid, TemplateType = "trigger", XMLNode = triggerNode })
     end
 
     return gameObjectNode, others
@@ -239,7 +239,7 @@ function LSXHelpers.BuildRootTemplate(srcUuid, uuid, internalName, override)
     srcUuid = TakeTailTemplate(srcUuid)
     override = override or {}
     local templateRegion = LSXHelpers.BuildTemplatesRegionNode()
-    local gameObjectNode = templateRegion:AppendChild(LSXNode.new("node", { id = "GameObjects" }))
+    local gameObjectNode = templateRegion:AppendChild(XMLNode.new("node", { id = "GameObjects" }))
 
     local parentType = Ext.Template.GetTemplate(srcUuid).TemplateType
 
@@ -260,14 +260,14 @@ function LSXHelpers.BuildRootTemplate(srcUuid, uuid, internalName, override)
 end
 
 function LSXHelpers.ChildrenNode()
-    return LSXNode.new("children")
+    return XMLNode.new("children")
 end
 
 ---@param names string[]
 ---@param version number|fun(name:string):number
 ---@return string, table<string, string[]>, table<string, string> -- content, string -> handle[], handle -> string
 function LSXHelpers.GenerateLocalization(names, version)
-    local root = LSXNode.new("contentList", {
+    local root = XMLNode.new("contentList", {
         ["xmlns:xsd"] = "http://www.w3.org/2001/XMLSchema",
         ["xmlns:xsi"] = "http://www.w3.org/2001/XMLSchema-instance",
     })
@@ -284,7 +284,7 @@ function LSXHelpers.GenerateLocalization(names, version)
 
         local handle = MakeTranslatedHandle()
 
-        local contentNode = LSXNode.new("content", {
+        local contentNode = XMLNode.new("content", {
             contentuid = handle,
             version = ver
         })
@@ -305,7 +305,7 @@ end
 --- @param versions table<TranslatedString, number>?
 --- @return string
 function LSXHelpers.BuildLocalization(handleToName, versions)
-    local root = LSXNode.new("contentList", {
+    local root = XMLNode.new("contentList", {
         ["xmlns:xsd"] = "http://www.w3.org/2001/XMLSchema",
         ["xmlns:xsi"] = "http://www.w3.org/2001/XMLSchema-instance",
     })
@@ -316,7 +316,7 @@ function LSXHelpers.BuildLocalization(handleToName, versions)
             ver = versions[handle]
         end
 
-        local contentNode = LSXNode.new("content", {
+        local contentNode = XMLNode.new("content", {
             contentuid = handle,
             version = ver
         })
@@ -384,52 +384,37 @@ function LSXHelpers.LSValueType(value)
     return LSValueType.LSString
 end
 
----@return LSXNode, LSXNode -- childrenNode, regionNode
+--- @param bankName string
+--- @return XMLNode, XMLNode -- childrenNode, regionNode
+function LSXHelpers.BuildBank(bankName)
+    local saveNode = LSXHelpers.new()
+
+    local regionNode = saveNode:AppendChild(XMLNode.new("region", { id = bankName }))
+    local templateNode = regionNode:AppendChild(XMLNode.new("node", { id = bankName }))
+
+    local childrenNode = templateNode:AppendChild(LSXHelpers.ChildrenNode())
+
+    return childrenNode, regionNode
+end
+
+---@return XMLNode, XMLNode -- childrenNode, regionNode
 function LSXHelpers.BuildMaterialPresetBank()
-    local saveNode = LSXHelpers.new()
-
-    local regionNode = saveNode:AppendChild(LSXNode.new("region", { id = "MaterialPresetBank" }))
-    local templateNode = regionNode:AppendChild(LSXNode.new("node", { id = "MaterialPresetBank" }))
-
-    local childrenNode = templateNode:AppendChild(LSXHelpers.ChildrenNode())
-
-    return childrenNode, regionNode
+    return LSXHelpers.BuildBank("MaterialPresetBank")
 end
 
---- @return LSXNode, LSXNode -- childrenNode, regionNode
+--- @return XMLNode, XMLNode -- childrenNode, regionNode
 function LSXHelpers.BuildMaterialBank()
-    local saveNode = LSXHelpers.new()
-
-    local regionNode = saveNode:AppendChild(LSXNode.new("region", { id = "MaterialBank" }))
-    local templateNode = regionNode:AppendChild(LSXNode.new("node", { id = "MaterialBank" }))
-
-    local childrenNode = templateNode:AppendChild(LSXHelpers.ChildrenNode())
-
-    return childrenNode, regionNode
+    return LSXHelpers.BuildBank("MaterialBank")
 end
 
---- @return LSXNode, LSXNode -- childrenNode, regionNode
+--- @return XMLNode, XMLNode -- childrenNode, regionNode
 function LSXHelpers.BuildCharacterVisualBank()
-    local saveNode = LSXHelpers.new()
-
-    local regionNode = saveNode:AppendChild(LSXNode.new("region", { id = "CharacterVisualBank" }))
-    local templateNode = regionNode:AppendChild(LSXNode.new("node", { id = "CharacterVisualBank" }))
-
-    local childrenNode = templateNode:AppendChild(LSXHelpers.ChildrenNode())
-
-    return childrenNode, regionNode
+    return LSXHelpers.BuildBank("CharacterVisualBank")
 end
 
---- @return LSXNode, LSXNode -- childrenNode, regionNode
+--- @return XMLNode, XMLNode -- childrenNode, regionNode
 function LSXHelpers.BuildVisualBank()
-    local saveNode = LSXHelpers.new()
-
-    local regionNode = saveNode:AppendChild(LSXNode.new("region", { id = "VisualBank" }))
-    local templateNode = regionNode:AppendChild(LSXNode.new("node", { id = "VisualBank" }))
-
-    local childrenNode = templateNode:AppendChild(LSXHelpers.ChildrenNode())
-
-    return childrenNode, regionNode
+    return LSXHelpers.BuildBank("VisualBank")
 end
 
 ---@param displayName string the handle of the translated string
@@ -438,13 +423,13 @@ end
 ---@param matPUuid GUIDSTRING
 ---@param uuid GUIDSTRING
 ---@param presetType "CharacterCreationEyeColors"|"CharacterCreationHairColors"|"CharacterCreationSkinColors"
----@return LSXNode
+---@return XMLNode
 function LSXHelpers.BuildCCColorNode(displayName, internalName, uiColor, matPUuid, uuid, presetType)
     if presetType:sub(-1) == "s" then
         presetType = presetType:sub(1, -2)
     end
 
-    local node = LSXNode.new("node", { id = presetType })
+    local node = XMLNode.new("node", { id = presetType })
 
     if #uiColor < 4 then
         uiColor = { uiColor[1] or 1, uiColor[2] or 1, uiColor[3] or 1, uiColor[4] or 1 }
@@ -466,13 +451,13 @@ function LSXHelpers.BuildCCColorNode(displayName, internalName, uiColor, matPUui
 end
 
 ---@param presetsType "CharacterCreationEyeColors"|"CharacterCreationHairColors"|"CharacterCreationSkinColors"
----@return LSXNode -- saveNode
+---@return XMLNode -- saveNode
 function LSXHelpers.BuildCCColorRegionNode(presetsType)
     local saveNode = LSXHelpers.new()
 
-    local regionNode = saveNode:AppendChild(LSXNode.new("region", { id = presetsType }))
+    local regionNode = saveNode:AppendChild(XMLNode.new("region", { id = presetsType }))
 
-    local rootNode = regionNode:AppendChild(LSXNode.new("node", { id = "root" }))
+    local rootNode = regionNode:AppendChild(XMLNode.new("node", { id = "root" }))
 
     local childrenNode = rootNode:AppendChild(LSXHelpers.ChildrenNode())
 
@@ -485,7 +470,7 @@ end
 ---@param author string
 ---@param version vec4
 ---@param description string
----@return LSXNode, LSXNode, LSXNode -- root, conflictNode, dependenciesNode
+---@return XMLNode, XMLNode, XMLNode -- root, conflictNode, dependenciesNode
 function LSXHelpers.BuildModMeta(uuid, modName, internalName, author, version, description)
     uuid = uuid or Uuid_v4()
     modName = modName or "Unnamed Mod"
@@ -498,17 +483,17 @@ function LSXHelpers.BuildModMeta(uuid, modName, internalName, author, version, d
     local root = LSXHelpers.new()
     root:GetChild(1):SetAttribute("lslib_meta", nil)
 
-    local configNode = root:AppendChild(LSXNode.new("region", { id = "Config" }))
+    local configNode = root:AppendChild(XMLNode.new("region", { id = "Config" }))
 
-    local rootNode = configNode:AppendChild(LSXNode.new("node", { id = "root" }))
+    local rootNode = configNode:AppendChild(XMLNode.new("node", { id = "root" }))
 
     local rootChildren = rootNode:AppendChild(LSXHelpers.ChildrenNode())
 
-    local conflictNode = rootChildren:AppendChild(LSXNode.new("node", { id = "Conflicts" }))
+    local conflictNode = rootChildren:AppendChild(XMLNode.new("node", { id = "Conflicts" }))
 
-    local dependenciesNode = rootChildren:AppendChild(LSXNode.new("node", { id = "Dependencies" }))
+    local dependenciesNode = rootChildren:AppendChild(XMLNode.new("node", { id = "Dependencies" }))
 
-    local moduleIndoNode = rootChildren:AppendChild(LSXNode.new("node", { id = "ModuleInfo" }))
+    local moduleIndoNode = rootChildren:AppendChild(XMLNode.new("node", { id = "ModuleInfo" }))
 
     local moduleInfoAttr = {
         lsattrNode("Author", "LSString", author),
@@ -533,7 +518,7 @@ function LSXHelpers.BuildModMeta(uuid, modName, internalName, author, version, d
 
     local moduleInfoChildren = moduleIndoNode:AppendChild(LSXHelpers.ChildrenNode())
 
-    moduleInfoChildren:AppendChild(LSXNode.new("node", { id = "PublishVersion" }))
+    moduleInfoChildren:AppendChild(XMLNode.new("node", { id = "PublishVersion" }))
         :AppendChild(
             lsattrNode("Version64", "int64", version64)
         )
@@ -545,10 +530,10 @@ end
 ---@param extents vec3
 ---@param levelName string
 ---@param name string
----@return LSXNode
+---@return XMLNode
 function LSXHelpers.BuildBoxTrigger(pos, rot, extents, levelName, name, uuid)
     local templateNode = LSXHelpers.BuildTemplatesRegionNode()
-    local triggerNode = templateNode:AppendChild(LSXNode.new("node", { id = "GameObjects" }))
+    local triggerNode = templateNode:AppendChild(XMLNode.new("node", { id = "GameObjects" }))
 
     local baseAttr = {
         lsattrNode("MapKey", "FixedString", uuid),
@@ -566,11 +551,11 @@ function LSXHelpers.BuildBoxTrigger(pos, rot, extents, levelName, name, uuid)
     triggerNode:AppendChildren(baseAttr)
     local children = triggerNode:AppendChild(LSXHelpers.ChildrenNode())
 
-    children:AppendChild(LSXNode.new("node", { id = "FadeChildren" }))
+    children:AppendChild(XMLNode.new("node", { id = "FadeChildren" }))
         :GetParent()
         :AppendChild(LSXHelpers.BuildLayerListNode(levelName))
         :GetParent()
-        :AppendChild(LSXNode.new("node", { id = "Transform" }))
+        :AppendChild(XMLNode.new("node", { id = "Transform" }))
         :AppendChildren({
             lsattrNode("Position", "fvec3", pos),
             lsattrNode("RotationQuat", "fvec4", rot),
@@ -589,7 +574,7 @@ end
 
 --- @param node Transform
 local function buildSplineNode(node)
-    local splineNode = LSXNode.new("node", { id = "Spline" })
+    local splineNode = XMLNode.new("node", { id = "Spline" })
 
     local attrs = {
         lsattrNode("FOV", "float", node.FOV or 60.0),
@@ -599,7 +584,7 @@ local function buildSplineNode(node)
     }
 
     splineNode:AppendChild(LSXHelpers.ChildrenNode())
-        :AppendChild(LSXNode.new("node", { id = "Position" }))
+        :AppendChild(XMLNode.new("node", { id = "Position" }))
         :AppendChildren({
             lsattrNode("Position", "fvec3", node.Translate),
             lsattrNode("RotationQuat", "fvec4", node.RotationQuat or { 0, 0, 0, 1 }),
@@ -616,10 +601,10 @@ end
 --- @param levelName string
 --- @param name string
 --- @param uuid GUIDSTRING
---- @return LSXNode
+--- @return XMLNode
 function LSXHelpers.BuildPatrolSpline(origin, nodes, levelName, name, uuid)
     local templateNode = LSXHelpers.BuildTemplatesRegionNode()
-    local splineNode = templateNode:AppendChild(LSXNode.new("node", { id = "GameObjects" }))
+    local splineNode = templateNode:AppendChild(XMLNode.new("node", { id = "GameObjects" }))
 
     local baseAttr = {
         lsattrNode("MapKey", "FixedString", uuid),
@@ -635,7 +620,7 @@ function LSXHelpers.BuildPatrolSpline(origin, nodes, levelName, name, uuid)
 
     local children = splineNode:AppendChild(LSXHelpers.ChildrenNode())
 
-    local transformNode = children:AppendChild(LSXNode.new("node", { id = "Transform" }))
+    local transformNode = children:AppendChild(XMLNode.new("node", { id = "Transform" }))
     transformNode:AppendChildren({
         lsattrNode("Position", "fvec3", origin.Translate),
         lsattrNode("RotationQuat", "fvec4", origin.RotationQuat or { 0, 0, 0, 1 }),
@@ -644,7 +629,7 @@ function LSXHelpers.BuildPatrolSpline(origin, nodes, levelName, name, uuid)
 
     local LayerList = children:AppendChild(LSXHelpers.BuildLayerListNode(levelName))
 
-    local splineNodesNode = children:AppendChild(LSXNode.new("node", { id = "Splines" }))
+    local splineNodesNode = children:AppendChild(XMLNode.new("node", { id = "Splines" }))
     local splineChildren = splineNodesNode:AppendChild(LSXHelpers.ChildrenNode())
     for _, node in ipairs(nodes) do
         splineChildren:AppendChild(buildSplineNode(node))
@@ -659,7 +644,7 @@ end
 --- @param modfiedParams LightTemplate
 function LSXHelpers.BuildLightTemplate(srcUuid, uuid, internalName, modfiedParams)
     local templateNode = LSXHelpers.BuildTemplatesRegionNode()
-    local lightNode = templateNode:AppendChild(LSXNode.new("node", { id = "GameObjects" }))
+    local lightNode = templateNode:AppendChild(XMLNode.new("node", { id = "GameObjects" }))
 
     local baseAttr = {
         lsattrNode("MapKey", "FixedString", uuid),
@@ -682,10 +667,10 @@ end
 --- @param childUuids GUIDSTRING[]
 --- @param childTransforms Transform[]
 --- @param levelName string
---- @return LSXNode
+--- @return XMLNode
 function LSXHelpers.BuildPrefabTemplate(uuid, internalName, childUuids, childTransforms, levelName)
     local templateNode = LSXHelpers.BuildTemplatesRegionNode()
-    local prefabNode = templateNode:AppendChild(LSXNode.new("node", { id = "GameObjects" }))
+    local prefabNode = templateNode:AppendChild(XMLNode.new("node", { id = "GameObjects" }))
 
     local baseAttr = {
         lsattrNode("MapKey", "FixedString", uuid),
@@ -698,18 +683,18 @@ function LSXHelpers.BuildPrefabTemplate(uuid, internalName, childUuids, childTra
 
     local childrenNode = prefabNode:AppendChild(LSXHelpers.ChildrenNode())
 
-    local prefabChildrenGroup = childrenNode:AppendChild(LSXNode.new("node", { id = "PrefabChildrenGroup" }))
+    local prefabChildrenGroup = childrenNode:AppendChild(XMLNode.new("node", { id = "PrefabChildrenGroup" }))
     local prefabChildren = prefabChildrenGroup:AppendChild(LSXHelpers.ChildrenNode())
     for _, childUuid in ipairs(childUuids) do
-        prefabChildren:AppendChild(LSXNode.new("node", { id = "PrefabChildren" }))
+        prefabChildren:AppendChild(XMLNode.new("node", { id = "PrefabChildren" }))
             :AppendChild(lsattrNode("Object", "FixedString", childUuid))
     end
 
-    local prefabChildrenTransformGroup = childrenNode:AppendChild(LSXNode.new("node",
+    local prefabChildrenTransformGroup = childrenNode:AppendChild(XMLNode.new("node",
         { id = "PrefabChildrenTransformGroup" }))
     local prefabChildrenTransforms = prefabChildrenTransformGroup:AppendChild(LSXHelpers.ChildrenNode())
     for _, transform in ipairs(childTransforms) do
-        local childTransformNode = prefabChildrenTransforms:AppendChild(LSXNode.new("node",
+        local childTransformNode = prefabChildrenTransforms:AppendChild(XMLNode.new("node",
             { id = "PrefabChildrenTransforms" }))
         childTransformNode:AppendChildren({
             lsattrNode("Position", "fvec3", transform.Translate),

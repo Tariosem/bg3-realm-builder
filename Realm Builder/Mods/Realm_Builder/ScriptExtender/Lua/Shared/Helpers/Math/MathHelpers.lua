@@ -21,15 +21,29 @@ function BuildModelMatrixFromTransform(transform)
     return BuildModelMatrix(transalte, rotation, scale)
 end
 
-LHCS = {
+local LHCS_AXES = {
     X = {1, 0, 0},
     Y = {0, 1, 0},
     Z = {0, 0, 1},
+    x = {1, 0, 0},
+    y = {0, 1, 0},
+    z = {0, 0, 1},
 }
 
-for k, v in pairs(LHCS) do
-    LHCS[k] = Vec3.new(v)
-end
+local LHCS = {}
+
+setmetatable(LHCS, {
+    __index = function(t, k)
+        if LHCS_AXES[k] then
+            return Vec3.new(LHCS_AXES[k])
+        else
+            return nil
+        end
+    end,
+    __newindex = function(t, k, v)
+        Error("Attempt to modify read-only table LHCS")
+    end
+})
 
 GLOBAL_COORDINATE = LHCS
 

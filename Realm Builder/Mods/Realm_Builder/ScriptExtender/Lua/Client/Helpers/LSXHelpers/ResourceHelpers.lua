@@ -36,9 +36,9 @@ end
 
 ---@param matRes ResourceMaterialResource|ResourcePresetData
 ---@param parameters table<number, table<string, number[]>>?
----@return LSXNode|nil
+---@return XMLNode|nil
 local function createParameterNodes(matRes, parameters)
-    local paramNodes = {} --[[@as LSXNode[] ]]
+    local paramNodes = {} --[[@as XMLNode[] ]]
     local paramList = {
         matRes.ScalarParameters,
         matRes.Vector2Parameters,
@@ -58,7 +58,7 @@ local function createParameterNodes(matRes, parameters)
 
     for i, params in pairs(paramList) do
         for _, param in pairs(params) do
-            local node = LSXNode.new("node", { id = indexToNodeName[i] })
+            local node = XMLNode.new("node", { id = indexToNodeName[i] })
             local paramName = param.ParameterName
             local value = nil
             if i < 5 and parameters and parameters[i] then
@@ -86,7 +86,7 @@ end
 ---@param srcMat GUIDSTRING
 ---@param uuid string
 ---@param customName string?
----@return LSXNode?
+---@return XMLNode?
 function ResourceHelpers.BuildMaterialResource(srcMat, uuid, params, customName)
     local matRes = Ext.Resource.Get(srcMat, "Material") --[[@as ResourceMaterialResource]]
     if not matRes then
@@ -95,7 +95,7 @@ function ResourceHelpers.BuildMaterialResource(srcMat, uuid, params, customName)
         return nil
     end
 
-    local resNode = LSXNode.new("node", { id = "Resource" })
+    local resNode = XMLNode.new("node", { id = "Resource" })
 
     local sourceFile = LSXHelpers.GetPathAfterData(matRes.SourceFile or "")
     local baseAttr = {
@@ -108,7 +108,7 @@ function ResourceHelpers.BuildMaterialResource(srcMat, uuid, params, customName)
     resNode:AppendChildren(baseAttr)
     resNode:SortChildren(function(a, b) return a:GetAttribute("id") < b:GetAttribute("id") end)
 
-    local secondChildrenWrapper = LSXNode.new("children")
+    local secondChildrenWrapper = XMLNode.new("children")
     resNode:AppendChild(secondChildrenWrapper)
     local paramNodes = createParameterNodes(matRes, params)
     if paramNodes then
@@ -140,10 +140,10 @@ local function createPresetParamAttrNodes(parameterName, value)
 end
 
 local function createPresetParameterNodes(matRes, parameters)
-    local paramNodes = {} --[[@as LSXNode[] ]]
+    local paramNodes = {} --[[@as XMLNode[] ]]
     for i, params in pairs(parameters) do
         for paramName, value in pairs(params) do
-            local node = LSXNode.new("node", { id = ParamTypeToField[i] })
+            local node = XMLNode.new("node", { id = ParamTypeToField[i] })
             local attrs = createPresetParamAttrNodes(paramName, value)
             if not attrs then
                 Warning("CustomMaterialProxy: Could not create LSX attribute nodes for parameter '" ..
@@ -162,9 +162,9 @@ end
 ---@param parameters table<1|2|3|4, table<string, number[]>>
 ---@param uuid GUIDSTRING
 ---@param internalName string
----@return LSXNode
+---@return XMLNode
 function ResourceHelpers.BuildMaterialPresetResourceNode(parameters, uuid, internalName)
-    local root = LSXNode.new("node", { id = "Resource" })
+    local root = XMLNode.new("node", { id = "Resource" })
 
     local baseAttr = {
         lsattrNode("ID", LSValueType.FixedString, uuid),
@@ -178,13 +178,13 @@ function ResourceHelpers.BuildMaterialPresetResourceNode(parameters, uuid, inter
 
     local childrenNode = root:AppendChild(LSXHelpers.ChildrenNode())
 
-    local presetsNode = childrenNode:AppendChild(LSXNode.new("node", { id = "Presets" }, {
+    local presetsNode = childrenNode:AppendChild(XMLNode.new("node", { id = "Presets" }, {
         lsattrNode("MaterialResource", LSValueType.FixedString, ""),
     }))
 
     local thirdChildrenWrapper = presetsNode:AppendChild(LSXHelpers.ChildrenNode())
 
-    local colorPresetNode = thirdChildrenWrapper:AppendChild(LSXNode.new("node", { id = "ColorPreset" }))
+    local colorPresetNode = thirdChildrenWrapper:AppendChild(XMLNode.new("node", { id = "ColorPreset" }))
 
     local colorPresetAttrNodes = {
         lsattrNode("ForcePresetValues", LSValueType.bool, false),
@@ -193,7 +193,7 @@ function ResourceHelpers.BuildMaterialPresetResourceNode(parameters, uuid, inter
     }
     colorPresetNode:AppendChildren(colorPresetAttrNodes)
 
-    local matePresetNode = LSXNode.new("node", { id = "MaterialPresets" })
+    local matePresetNode = XMLNode.new("node", { id = "MaterialPresets" })
     thirdChildrenWrapper:AppendChild(matePresetNode)
 
     local paramNodes = createPresetParameterNodes(nil, parameters)
@@ -209,9 +209,9 @@ end
 ---@param groupName any
 ---@param mapKey any
 ---@param materialPresetResource any
----@return LSXNode
+---@return XMLNode
 local function buildMPNode(force, groupName, mapKey, materialPresetResource)
-    local presetNode = LSXNode.new("node", { id = "Object", key = "MapKey" })
+    local presetNode = XMLNode.new("node", { id = "Object", key = "MapKey" })
     presetNode:AppendChild(LSXHelpers.AttrNode("ForcePresetValues", "bool", force))
     presetNode:AppendChild(LSXHelpers.AttrNode("GroupName", "FixedString", groupName))
     presetNode:AppendChild(LSXHelpers.AttrNode("MapKey", "FixedString", mapKey))
@@ -222,14 +222,14 @@ end
 --- @param matOv ResourcePresetData
 --- @param overrideMaterialPresets table<string, string> groupname -> materialpreset uuid
 --- @param modfiedParams RB_ParameterSet
---- @return LSXNode
+--- @return XMLNode
 local function buildMaterialOverrideNodes(matOv, overrideMaterialPresets, modfiedParams)
-    local materialOverridesNode = LSXNode.new("node", { id = "MaterialOverrides", })
+    local materialOverridesNode = XMLNode.new("node", { id = "MaterialOverrides", })
     materialOverridesNode:AppendChild(LSXHelpers.AttrNode("MaterialResource", "FixedString", matOv.MaterialResource))
     
     local matOverridesChildren = materialOverridesNode:AppendChild(LSXHelpers.ChildrenNode())
 
-    local matPresetsNode = matOverridesChildren:AppendChild(LSXNode.new("node", { id = "MaterialPresets", }))
+    local matPresetsNode = matOverridesChildren:AppendChild(XMLNode.new("node", { id = "MaterialPresets", }))
     for _, preset in pairs(matOv.MaterialPresets) do
         local overrideUuid = overrideMaterialPresets[preset.GroupName]
         overrideMaterialPresets[preset.GroupName] = nil
@@ -270,7 +270,7 @@ end
 
 --- @param mat ResourcePresetData
 local function buildMaterialNode(mat, mapKey)
-    local node = LSXNode.new("node", { id = "Materials", key = "MapKey" })
+    local node = XMLNode.new("node", { id = "Materials", key = "MapKey" })
     node:AppendChild(LSXHelpers.AttrNode("MapKey", "FixedString", mapKey))
     local children = node:AppendChild(LSXHelpers.ChildrenNode())
     local matOverrideNode = buildMaterialOverrideNodes(mat, {}, {})
@@ -289,7 +289,7 @@ function ResourceHelpers.BuildCharacterVisualResource(srcUuid, uuid, internalNam
     local srcSet = src.VisualSet
 
     overrideMaterialPresets = overrideMaterialPresets or {}
-    local resourceNode = LSXNode.new("node", { id = "Resource", })
+    local resourceNode = XMLNode.new("node", { id = "Resource", })
 
     local attributes = {
         LSXHelpers.AttrNode("BaseVisual", "FixedString", src.BaseVisual),
@@ -317,11 +317,11 @@ function ResourceHelpers.BuildCharacterVisualResource(srcUuid, uuid, internalNam
     end
 
     -- RealMaterialOverrides
-    local realMatOverridesNode = childrenNode:AppendChild(LSXNode.new("node", { id = "RealMaterialOverrides", }))
+    local realMatOverridesNode = childrenNode:AppendChild(XMLNode.new("node", { id = "RealMaterialOverrides", }))
     local realMatOverridesChildren = nil
     for mapKey, mapValue in pairs(srcSet.RealMaterialOverrides) do
         realMatOverridesChildren = realMatOverridesChildren or realMatOverridesNode:AppendChild(LSXHelpers.ChildrenNode())
-        local overrideNode = LSXNode.new("node", { id = "Object", key = "MapKey", })
+        local overrideNode = XMLNode.new("node", { id = "Object", key = "MapKey", })
         overrideNode:AppendChild(LSXHelpers.AttrNode("MapKey", "FixedString", mapKey))
         overrideNode:AppendChild(LSXHelpers.AttrNode("MapValue", "FixedString", mapValue))
         realMatOverridesChildren:AppendChild(overrideNode)
@@ -329,7 +329,7 @@ function ResourceHelpers.BuildCharacterVisualResource(srcUuid, uuid, internalNam
 
     -- Slots
     for _, slot in pairs(srcSet.Slots) do
-        local slotNode = childrenNode:AppendChild(LSXNode.new("node", { id = "Slots", }))
+        local slotNode = childrenNode:AppendChild(XMLNode.new("node", { id = "Slots", }))
         slotNode:AppendChild(lsattrNode("Bone", "FixedString", slot.Bone))
         slotNode:AppendChild(lsattrNode("Slot", "FixedString", slot.Slot))
         slotNode:AppendChild(lsattrNode("VisualResource", "FixedString", slot.VisualResource))
@@ -343,11 +343,11 @@ end
 ---@param uuid string
 ---@param internalName string
 ---@param overrideObjectMat table<string, string> materialID -> overrideMaterialID
----@return LSXNode
+---@return XMLNode
 function ResourceHelpers.BuildVisualResource(srcUuid, uuid, internalName, overrideObjectMat)
     local src = Ext.Resource.Get(srcUuid, "Visual") --[[@as ResourceVisualResource]]
 
-    local resourceNode = LSXNode.new("node", { id = "Resource", })
+    local resourceNode = XMLNode.new("node", { id = "Resource", })
 
     local attributes = {
         lsattrNode("ID", "FixedString", uuid),
@@ -384,13 +384,13 @@ function ResourceHelpers.BuildVisualResource(srcUuid, uuid, internalName, overri
 
     -- AnimationWaterfall
     for _, aw in pairs(src.AnimationWaterfall) do
-        local awNode = childrenNode:AppendChild(LSXNode.new("node", { id = "AnimationWaterfall", }))
+        local awNode = childrenNode:AppendChild(XMLNode.new("node", { id = "AnimationWaterfall", }))
         awNode:AppendChild(lsattrNode("Object", "FixedString", aw))
     end
 
     -- Objects
     for _, obj in pairs(src.Objects) do
-        local objNode = childrenNode:AppendChild(LSXNode.new("node", { id = "Objects", }))
+        local objNode = childrenNode:AppendChild(XMLNode.new("node", { id = "Objects", }))
         objNode:AppendChild(lsattrNode("ObjectID", "FixedString", obj.ObjectID))
         objNode:AppendChild(lsattrNode("LOD", "uint8", obj.LOD))
         local matId = overrideObjectMat[obj.MaterialID] or obj.MaterialID

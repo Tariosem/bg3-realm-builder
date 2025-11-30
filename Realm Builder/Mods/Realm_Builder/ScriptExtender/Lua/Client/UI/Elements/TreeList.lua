@@ -93,7 +93,7 @@ function TreeList:Render()
     self.listWindow.NoResize = false
 
     local _, screenHeight = GetScreenSize()
-    local sliderHeight = self.panel:AddSliderInt("##windowHeight", 800 * SCALE_FACTOR, screenHeight, 200)
+    local sliderHeight = SafeAddSliderInt(self.panel, "##windowHeight", 800 * SCALE_FACTOR, screenHeight, 200)
     sliderHeight:SetColor("Text", {0,0,0,0})
     sliderHeight.SameLine = true
     sliderHeight.Vertical = true
@@ -383,7 +383,6 @@ function TreeList:RenderList()
     end
 
     local renderFunc = function()
-        Ext.Utils.ProfileBegin("TreeListRender")
         while #stack > 0 do
             if outerSuspended then return end
             local item = table.remove(stack)
@@ -454,7 +453,6 @@ function TreeList:RenderList()
         self:IterativeShow(TreeTable.GetRootKey())
         self.renderThread = nil
         self.__killRenderThread = nil
-        Ext.Utils.ProfileEnd("TreeListRender")
     end
 
     thread = coroutine.create(renderFunc)

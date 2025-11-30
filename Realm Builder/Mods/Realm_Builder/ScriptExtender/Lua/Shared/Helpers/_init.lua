@@ -11,4 +11,4 @@ Ext.Require("Shared/Helpers/Timer.lua")
 
 Ext.Require("Shared/Helpers/EntityHelpers.lua")
 
-Ext.Require("Shared/Helpers/LSX.lua")
+Ext.Require("Shared/Helpers/XML.lua")

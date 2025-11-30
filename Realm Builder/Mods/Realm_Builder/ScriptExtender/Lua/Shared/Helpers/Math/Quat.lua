@@ -8,6 +8,8 @@
 --- @field Inverse fun(self: Quat): Quat
 --- @field Normalize fun(self: Quat): Quat
 --- @field Rotate fun(self: Quat, v: Vec3): Vec3
+--- @field Rotate fun(self: Quat, v: Vec4): Vec4
+--- @field ToEuler fun(self: Quat): Vec3
 --- @field Identity Quat
 Quat = Quat or {}
 

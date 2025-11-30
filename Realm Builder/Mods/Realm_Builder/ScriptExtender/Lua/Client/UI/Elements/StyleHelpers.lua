@@ -596,7 +596,7 @@ end
 
 function StyleHelpers.AddResetButton(parent, sameLine)
     local group = parent:AddGroup("ResetButtonGroup_" .. Uuid_v4())
-    group.SameLine = sameLine
+    group.SameLine = sameLine and true or false
     local button = group:AddImageButton("##ResetButton_" .. Uuid_v4(), RB_ICONS.Arrow_CounterClockwise, IMAGESIZE.FRAME) --[[@as ExtuiImageButton]]
     --button.PositionOffset = { 0, 4 }
     return button, group
@@ -604,7 +604,7 @@ end
 
 function StyleHelpers.AddMiddleAlignedImageButton(parent, icon, sameLine)
     local group = parent:AddGroup("MiddleAlignedImageButtonGroup_" .. Uuid_v4())
-    group.SameLine = sameLine
+    group.SameLine = sameLine and true or false
     local button = group:AddImageButton("##MiddleAlignedImageButton_" .. Uuid_v4(), icon, IMAGESIZE.FRAME) --[[@as ExtuiImageButton]]
     return button, group
 end

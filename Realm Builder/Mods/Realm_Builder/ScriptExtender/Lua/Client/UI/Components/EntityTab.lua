@@ -543,6 +543,10 @@ function EntityTab:Collapsed()
         self.displayNameInputKeySub = nil
     end
 
+    if self.tabBar then
+        self.tabBar = nil
+    end
+
     if not self.isWindow and self.panel then
         self.panel:Destroy()
         self.panel = nil
@@ -627,9 +631,7 @@ function EntityTab:Attach(parent)
 end
 
 function EntityTab:Add(guid, templateId, parent, opts, iconTintColor)
-    local initAttach = table.find(opts or {}, "IsAttach")
-
-    local EntityTab = EntityTab.new(guid, templateId, parent, initAttach)
+    local EntityTab = EntityTab.new(guid, templateId, parent, opts.IsAttach)
     EntityTab.IconTintColor = iconTintColor or {1,1,1,1}
     EntityTab:Render()
     return EntityTab
@@ -732,7 +734,7 @@ function EntityTab:RenderCharacterTab()
 
     NetChannel.GetServerEntity:RequestToServer({ Guid = self.guid, Data = { ServerCharacter = serverCharacter } }, function (data)
         serverCharacter = data.Data.ServerCharacter or serverCharacter
-        renderEditor()
+        pcall(renderEditor)
     end)
 end
 
@@ -751,7 +753,7 @@ function EntityTab:RenderItemTab()
 
     NetChannel.GetServerEntity:RequestToServer({ Guid = self.guid, Data = { ServerItem = serverItem } }, function (data)
         serverItem = data.Data.ServerItem or serverItem
-        renderEditor()
+        pcall(renderEditor)
     end)
 end
 

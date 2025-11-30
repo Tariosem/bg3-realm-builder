@@ -177,7 +177,7 @@ function IconBrowser:RenderTagsFilter()
             goto continue
         end
         if self.dataManager.tagIcons[parent] then
-            local tempimage = parentUiElement:AddImage(self.dataManager.tagIcons[parent], ToVec2(38 * SCALE_FACTOR))
+            local tempimage = parentUiElement:AddImage(self.dataManager.tagIcons[parent], IMAGESIZE.FRAME)
             table.insert(self.tagsFilterElements, tempimage)
         end
         local allCnt = collectionCnt[parent] or 0
@@ -341,8 +341,7 @@ function IconBrowser:RenderTagsFilter()
         local tagIcon = nil
         if hasIcon then
             --- @type ExtuiImageButton
-            tagIcon = tagArea:AddImageButton(currentTag .. "IconButton", self.dataManager.tagIcons[currentTag],
-                ToVec2(38 * SCALE_FACTOR))
+            tagIcon = tagArea:AddImageButton(currentTag .. "IconButton", self.dataManager.tagIcons[currentTag], IMAGESIZE.FRAME)
             table.insert(self.tagsFilterElements, tagIcon)
         end
 
@@ -354,7 +353,7 @@ function IconBrowser:RenderTagsFilter()
 
         selection.OnDragStart = function(sel)
             if hasIcon then
-                sel.DragPreview:AddImage(self.dataManager.tagIcons[currentTag], ToVec2(38 * SCALE_FACTOR))
+                sel.DragPreview:AddImage(self.dataManager.tagIcons[currentTag], IMAGESIZE.FRAME)
             end
             sel.DragPreview:AddText(currentTag .. " (" .. currentCnt .. ")").SameLine = hasIcon
         end
@@ -642,7 +641,7 @@ function IconBrowser:Search()
         MatchAllTags = self.matchAllTags
     })
 
-    Debug("Search completed in " .. tostring(Ext.Timer.MonotonicTime() - now) .. " ms.")
+    --Debug("Search completed in " .. tostring(Ext.Timer.MonotonicTime() - now) .. " ms.")
     --Debug("Found " .. CountMap(self.searchResult) .. " matching entries.")
     self:RenderIcons()
 end

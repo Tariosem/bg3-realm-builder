@@ -8,7 +8,7 @@ local anubisValueTypes = {
 
 --- @param paramName string
 --- @param value string|number|boolean
---- @return LSXNode?
+--- @return XMLNode?
 function AnubisHelpers.BuildScriptParamNode(paramName, value)
 	local valueType = type(value)
 	local anubisValueType = anubisValueTypes[valueType]
@@ -17,18 +17,18 @@ function AnubisHelpers.BuildScriptParamNode(paramName, value)
 		return nil
 	end
 
-	local paramNode = LSXNode.new("node", { id = "ScriptConfigParameter", })
+	local paramNode = XMLNode.new("node", { id = "ScriptConfigParameter", })
 	local attrNode = paramNode:AppendChild(LSXHelpers.AttrNode("Name", "LSString", paramName))
 
 	-- why is this so deeply nested???
 	paramNode:AppendChild(LSXHelpers.ChildrenNode())
-		:AppendChild(LSXNode.new("node", { id = "Value", }))
+		:AppendChild(XMLNode.new("node", { id = "Value", }))
 		:AppendChild(LSXHelpers.ChildrenNode())
-		:AppendChild(LSXNode.new("node", { id = "Scalar", }))
+		:AppendChild(XMLNode.new("node", { id = "Scalar", }))
 		:AppendChild(LSXHelpers.ChildrenNode())
-		:AppendChild(LSXNode.new("node", { id = "Scalar", }))
+		:AppendChild(XMLNode.new("node", { id = "Scalar", }))
 		:AppendChild(LSXHelpers.ChildrenNode())
-		:AppendChild(LSXNode.new("node", { id = anubisValueType.id, }))
+		:AppendChild(XMLNode.new("node", { id = anubisValueType.id, }))
 		:AppendChild(LSXHelpers.AttrNode(anubisValueType.id, anubisValueType.type, value))
 
 	return paramNode
@@ -39,10 +39,10 @@ end
 --- @param wanderMax number
 --- @param sleepMin number?
 --- @param sleepMax number?
---- @return LSXNode, LSXNode
+--- @return XMLNode, XMLNode
 function AnubisHelpers.BuildWanderParams(wanderMin, wanderMax, sleepMin, sleepMax, triggerName)
 
-	local scriptConfigParamsNode = LSXNode.new("node",
+	local scriptConfigParamsNode = XMLNode.new("node",
 		{ id = "ScriptConfigGlobalParameters", })
 
 	local allParamsChildren = scriptConfigParamsNode:AppendChild(LSXHelpers.ChildrenNode())

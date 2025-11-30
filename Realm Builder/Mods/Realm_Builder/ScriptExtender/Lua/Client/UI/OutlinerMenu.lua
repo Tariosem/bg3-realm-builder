@@ -42,16 +42,7 @@ function OutlinerMenu:__init(parent)
 end
 
 function OutlinerMenu:NewEntityAdded(guids)
-    local list = NormalizeGuidList(guids)
 
-    for _, guid in ipairs(list) do
-        local ent = EntityStore:GetStoredData(guid)
-        if ent and not self.entityTabs[guid] then
-            local opts = {}
-            table.insert(opts, "IsAttach")
-            self.entityTabs[guid] = self:CreateEntityTab(ent, opts)    
-        end
-    end
     self:UpdateList()
 end
 
@@ -211,7 +202,7 @@ function OutlinerMenu:RenderTreeList()
         local displayName = propData and propData.DisplayName or key
 
         local icon = GetIcon(propData.Guid)
-        local image = node:AddImageButton(propData.Guid, icon, {36, 36}) --[[@as ExtuiImageButton]]
+        local image = node:AddImageButton(propData.Guid, icon, IMAGESIZE.ROW) --[[@as ExtuiImageButton]]
         local selectable = node:AddSelectable(displayName .. "##" .. key) --[[@as ExtuiSelectable]]
         self:SetupLeaf(selectable, key, node)
         selectable.SameLine = true
@@ -490,6 +481,7 @@ function OutlinerMenu:GroupLogic(from, target)
     else
         
     end
+
 
     self.propTreeList:ClearSelection()
     self.selectedGuids = {}
@@ -959,7 +951,8 @@ function OutlinerMenu:SetupCollectionSelectablePopup(openKey)
     end
 
     local focusFunc = function()
-        local focus = self.hoveringKey ~= nil
+        local hovering = self.propTreeList.hoveringKey
+        return hovering ~= nil
     end
 
     contextMenu:AddContext(context, focusFunc)
@@ -976,7 +969,7 @@ function OutlinerMenu:CreateEntityTab(ent, opts)
 
     local entityTab = nil
 
-    if table.find(opts, "Add") then
+    if opts and opts.Add then
         entityTab = EntityTab:Add(ent.Guid, ent.TemplateId, self.mainArea, opts, ent.IconTintColor)
     else
         entityTab = EntityTab.new(ent.Guid, ent.TemplateId, self.mainArea, opts)
@@ -1009,7 +1002,17 @@ function OutlinerMenu:CreateEntityTab(ent, opts)
 end
 
 function OutlinerMenu:FocusTab(guid, doDetach)
-    local entityTab = self.entityTabs[guid]
+    --- @type EntityTab?
+    local entityTab = self.entityTabs[guid] 
+    if not entityTab then
+        entityTab = self:CreateEntityTab(EntityStore:GetStoredData(guid), { Add = true, IsAttach = not doDetach })
+        self.entityTabs[guid] = entityTab
+    end
+    if not (entityTab and entityTab.isValid) then
+        return
+    end
+
+     -- if the tab is already focused and it's not visible, we clear the focus
     if guid == self.focus and entityTab.isVisible == false then
         self.focus = nil
     end

@@ -1,7 +1,7 @@
---- @class Vec
+--- @generic K:Vec3|Vec4|Vec2
+--- @class Vec: number[]
 --- @field Length fun(self: Vec): number
 --- @field Normalize fun(self: Vec): Vec
---- @field Rotate fun(self: Vec, axis: string, angle: number): Vec
 --- @field Dot fun(self: Vec, b: Vec): number
 --- @field Cross fun(self: Vec, b: Vec): Vec
 --- @field Sanitize fun(self: Vec, defaultVec: Vec?):Vec
@@ -11,6 +11,12 @@ Vector = {}
 --- @field x number
 --- @field y number
 --- @field z number
+--- @field Dot fun(self: Vec3, b: Vec3): number
+--- @field Cross fun(self: Vec3, b: Vec3): Vec3
+--- @field Inverse fun(self: Vec3): Vec3
+--- @field Normalize fun(self: Vec3): Vec3
+--- @field Sanitize fun(self: Vec3, defaultVec: Vec3?):Vec3
+--- @field new fun(...:any):Vec3
 Vec3 = {}
 
 --- @class Vec4: Vec
@@ -18,11 +24,18 @@ Vec3 = {}
 --- @field y number
 --- @field z number
 --- @field w number
+--- @field Inverse fun(self: Vec4): Vec4
+--- @field Normalize fun(self: Vec4): Vec4
+--- @field Dot fun(self: Vec4, b: Vec4): number
+--- @field Cross fun(self: Vec4, b: Vec4): Vec4
+--- @field Sanitize fun(self: Vec4, defaultVec: Vec4?):Vec4
+--- @field new fun(...:any):Vec4
 Vec4 = {}
 
 --- @class Vec2: Vec
 --- @field x number
 --- @field y number
+--- @field new fun(...:any):Vec2
 Vec2 = {}
 
 AxisIndexMap = { X = 1, Y = 2, Z = 3, W = 4, x = 1, y = 2, z = 3, w = 4 }
@@ -73,8 +86,6 @@ function Vector.__tostring(a) return string.format("Vec(%s)", table.concat(a, ",
 function Vector:Length() return Ext.Math.Length(self) end
 
 function Vector:Normalize() return Vector.new(Ext.Math.Normalize(self)) end
-
-function Vector:Rotate(axis, angle) return Vector.new(Ext.Math.Rotate(self, axis, angle), #self) end
 
 function Vector:Dot(b) return Ext.Math.Dot(self, b) end
 

@@ -82,7 +82,7 @@ local function validateStringifyOptions(opts)
     return validOpts
 end
 
---- @class LSXStringifyOptions
+--- @class XMLStringifyOptions
 --- @field Beautify boolean whether auto sort children by name
 --- NOTE: this may break lsx structure (e.g. make <version> the last child, actually uglify XD) (default: false)
 --- @field Indent number number of spaces to use for indentation (default: 4)
@@ -92,43 +92,43 @@ end
 --- @field AutoFindRoot boolean -- whether to automatically find the root node by traversing parent references (default: false)
 --- @field AvoidRecursion boolean (default: true)
 
---- @class LSXNode
+--- @class XMLNode
 --- @field private __name string
 --- @field private __attributes table<string, any>
---- @field private __children LSXNode[]
---- @field private __parent LSXNode|nil
+--- @field private __children XMLNode[]
+--- @field private __parent XMLNode|nil
 --- @field private __comments string[]
 --- @field private __innerText string|nil
 --- @field private __attrOrder string[]|nil
---- @field private __stringify fun(self: LSXNode, stringifyOpts: LSXStringifyOptions): string
---- @field Stringify fun(self: LSXNode, stringifyOpts?: LSXStringifyOptions): string
---- @field Unserialize fun(xmlString: string): LSXNode?
---- @field SetInnerText fun(self: LSXNode, text: string): LSXNode -- returns self
---- @field GetInnerText fun(self: LSXNode): string|nil
---- @field GetName fun(self: LSXNode): string
---- @field SetName fun(self: LSXNode, name: string): LSXNode -- returns self
---- @field SetAttribute fun(self: LSXNode, key: string, value: any): LSXNode -- returns self
---- @field GetAttribute fun(self: LSXNode, key: string): any 
---- @field SetAttrOrder fun(self: LSXNode, attrOrder: string[]): LSXNode -- returns self
---- @field AppendChild fun(self: LSXNode, child: LSXNode|table?):LSXNode -- returns child
---- @field AppendChildren fun(self: LSXNode, children: LSXNode[]|table[]):LSXNode -- returns self
---- @field InsertChild fun(self: LSXNode, child: LSXNode, index: number): LSXNode -- returns child
---- @field GetChild fun(self: LSXNode, index: number): LSXNode?
---- @field GetParent fun(self: LSXNode): LSXNode?
---- @field SearchChild fun(self: LSXNode, predicate: fun(child: LSXNode):boolean): LSXNode?
---- @field MatchChild fun(self: LSXNode, name:string, attrs?:table<string, any>): LSXNode?
---- @field GetChildren fun(self: LSXNode): LSXNode[]
---- @field CountChildren fun(self: LSXNode): number
---- @field SortChildren fun(self: LSXNode, comparator: fun(a: LSXNode, b: LSXNode):boolean)
---- @field RemoveChild fun(self: LSXNode, index: number): LSXNode? -- returns removed child
---- @field RemoveChildren fun(self: LSXNode, predicate: fun(child: LSXNode):boolean): LSXNode[] -- returns removed children
---- @field Clear fun(self: LSXNode)
---- @field ClearChildren fun(self: LSXNode)
---- @field AddComment fun(self: LSXNode, comment: string): LSXNode return self
---- @field ClearComments fun(self: LSXNode)
---- @field new fun(key: string, value: table<string, any>?, children: LSXNode[]?, comments: string[]|string?): LSXNode
-LSXNode = {}
-LSXNode.__index = LSXNode
+--- @field private __stringify fun(self: XMLNode, stringifyOpts: XMLStringifyOptions): string
+--- @field Stringify fun(self: XMLNode, stringifyOpts?: XMLStringifyOptions): string
+--- @field Unserialize fun(xmlString: string): XMLNode|nil, string|nil -- returns XMLNode or nil and error message
+--- @field SetInnerText fun(self: XMLNode, text: string): XMLNode -- returns self
+--- @field GetInnerText fun(self: XMLNode): string|nil
+--- @field GetName fun(self: XMLNode): string
+--- @field SetName fun(self: XMLNode, name: string): XMLNode -- returns self
+--- @field SetAttribute fun(self: XMLNode, key: string, value: any): XMLNode -- returns self
+--- @field GetAttribute fun(self: XMLNode, key: string): any 
+--- @field SetAttrOrder fun(self: XMLNode, attrOrder: string[]): XMLNode -- returns self
+--- @field AppendChild fun(self: XMLNode, child: XMLNode|table?):XMLNode -- returns child
+--- @field AppendChildren fun(self: XMLNode, children: XMLNode[]|table[]):XMLNode -- returns self
+--- @field InsertChild fun(self: XMLNode, child: XMLNode, index: number): XMLNode -- returns child
+--- @field GetChild fun(self: XMLNode, index: number): XMLNode?
+--- @field GetParent fun(self: XMLNode): XMLNode?
+--- @field SearchChild fun(self: XMLNode, predicate: fun(child: XMLNode):boolean): XMLNode?
+--- @field MatchChild fun(self: XMLNode, name:string, attrs?:table<string, any>): XMLNode?
+--- @field GetChildren fun(self: XMLNode): XMLNode[]
+--- @field CountChildren fun(self: XMLNode): number
+--- @field SortChildren fun(self: XMLNode, comparator: fun(a: XMLNode, b: XMLNode):boolean)
+--- @field RemoveChild fun(self: XMLNode, index: number): XMLNode? -- returns removed child
+--- @field RemoveChildren fun(self: XMLNode, predicate: fun(child: XMLNode):boolean): XMLNode[] -- returns removed children
+--- @field Clear fun(self: XMLNode)
+--- @field ClearChildren fun(self: XMLNode)
+--- @field AddComment fun(self: XMLNode, comment: string): XMLNode return self
+--- @field ClearComments fun(self: XMLNode)
+--- @field new fun(name: string, attributes: table<string, any>?, children: XMLNode[]?, comments: string[]|string?): XMLNode
+XMLNode = {}
+XMLNode.__index = XMLNode
 
 local function validateInit(name, attrs, children, comments)
     if not name then
@@ -144,8 +144,8 @@ local function validateInit(name, attrs, children, comments)
     end
     for i=#children,1,-1 do
         local child = children[i]
-        if not getmetatable(child) or getmetatable(child) ~= LSXNode then
-            Error("LSXTableNode: Invalid child node, must be LSXNode, skipping")
+        if not getmetatable(child) or getmetatable(child) ~= XMLNode then
+            Error("LSXTableNode: Invalid child node, must be XMLNode, skipping")
             table.remove(children, i)
         end
     end
@@ -162,10 +162,10 @@ end
 
 ---@param name string
 ---@param attrs table<string, any>
----@param children LSXNode[]
+---@param children XMLNode[]
 ---@param comments string[]
----@return LSXNode
-function LSXNode.new(name, attrs, children, comments)
+---@return XMLNode
+function XMLNode.new(name, attrs, children, comments)
     name, attrs, children, comments = validateInit(name, attrs, children, comments)
 
     local obj = {}
@@ -177,11 +177,11 @@ function LSXNode.new(name, attrs, children, comments)
     obj.__comments = comments
     obj.__innerText = nil
 
-    return setmetatable(obj, LSXNode)
+    return setmetatable(obj, XMLNode)
 end
 
 
-function LSXNode:Stringify(opts)
+function XMLNode:Stringify(opts)
     opts = validateStringifyOptions(opts or {})
 
     if not opts.AutoFindRoot then
@@ -192,7 +192,7 @@ function LSXNode:Stringify(opts)
     local cur = self
     while cur do
         if seen[cur] then
-            Error("LSXNode:Stringify: Recursive parent reference detected, aborting AutoFindRoot")
+            Error("XMLNode:Stringify: Recursive parent reference detected, aborting AutoFindRoot")
             return self:__stringify(opts)
         end
         seen[cur] = true
@@ -203,21 +203,21 @@ function LSXNode:Stringify(opts)
         cur = cur.__parent
     end
 
-    Warning("LSXNode:Stringify: AutoFindRoot failed, falling back to self")
+    Warning("XMLNode:Stringify: AutoFindRoot failed, falling back to self") -- should not reach here
     return self:__stringify(opts)
 end
 
-LSXNode.__tostring = LSXNode.Stringify
+XMLNode.__tostring = XMLNode.Stringify
 
-function LSXNode:__stringify(stringifyOpts)
+function XMLNode:__stringify(stringifyOpts)
     local indentStep = stringifyOpts.Indent
     local lines = {}
 
-    if stringifyOpts.IncludeHeader then
+    if stringifyOpts.IncludeHeader then -- currently simple fixed header
         table.insert(lines, '<?xml version="1.0" encoding="utf-8"?>')
     end
 
-    -- iterative DFS using stack. Each frame: { node = <LSXNode>, state = 'enter'|'exit', depth = number }
+    -- iterative DFS using stack. Each frame: { node = <XMLNode>, state = 0[enter]/1[exit], depth = <number> }
     -- avoid recursion by defaults
     local function buildAttrStr(node)
         local attrs = {}
@@ -259,14 +259,14 @@ function LSXNode:__stringify(stringifyOpts)
     end
 
     local seen = {}
-    local stack = { { node = self, state = 'enter', depth = 0 } }
+    local stack = { { node = self, state = 0, depth = 0 } }
     while #stack > 0 do
         local frame = table.remove(stack) -- pop
         local node = frame.node
         local curDepth = frame.depth
         local pad = string.rep(' ', curDepth * indentStep)
 
-        if frame.state == 'enter' then
+        if frame.state == 0 then -- 'enter'
             if seen[node] and stringifyOpts.AvoidRecursion then
                 table.insert(lines, pad .. string.format('<!-- Info: Recursive reference to "%s" skipped -->', tostring(node.__name or 'Node')))
                 goto continue
@@ -291,10 +291,10 @@ function LSXNode:__stringify(stringifyOpts)
             if #children > 0 then
                 table.insert(lines, pad .. string.format('<%s%s>', node.__name or 'Node', attrStr))
                 -- push exit frame
-                table.insert(stack, { node = node, state = 'exit', depth = curDepth })
+                table.insert(stack, { node = node, state = 1, depth = curDepth })
                 -- push children in reverse so they are processed in order
                 for i = #children, 1, -1 do
-                    table.insert(stack, { node = children[i], state = 'enter', depth = curDepth + 1 })
+                    table.insert(stack, { node = children[i], state = 0, depth = curDepth + 1 })
                 end
             elseif node.__innerText and type(node.__innerText) == "string" and node.__innerText ~= "" then
                 local innerText = escapeXML(node.__innerText)
@@ -329,7 +329,7 @@ local function parseAttributes(attrStr)
     return attrs, order
 end
 
-function LSXNode.Unserialize(xmlString)
+function XMLNode.Unserialize(xmlString)
     xmlString = xmlString:gsub("<%?xml.-%?>", "") -- remove XML declaration
     xmlString = xmlString:gsub("\r", "") -- normalize newlines
 
@@ -384,9 +384,11 @@ function LSXNode.Unserialize(xmlString)
             local node = table.remove(stack)
             if not node then
                 Error("Unexpected closing tag </" .. (name or "?") .. ">")
+                return nil, "Unexpected closing tag"
             end
             if node.__name ~= name then
                 Error(string.format("Mismatched tag: <%s> ... </%s>", node.__name, name))
+                return nil, "Mismatched tag"
             end
 
             if #stack == 0 then
@@ -400,7 +402,7 @@ function LSXNode.Unserialize(xmlString)
             -- self-closing
             inside = inside:sub(1, -2):match("^%s*(.-)%s*$")
             local name, attrStr = inside:match("^(%S+)%s*(.*)$")
-            local node = LSXNode.new(name)
+            local node = XMLNode.new(name)
             node.__attributes, node.__attrOrder = parseAttributes(attrStr)
 
             if #stack == 0 then
@@ -413,7 +415,7 @@ function LSXNode.Unserialize(xmlString)
         else
             -- opening tags
             local name, attrStr = tag:match("^(%S+)%s*(.*)$")
-            local node = LSXNode.new(name)
+            local node = XMLNode.new(name)
             node.__attributes, node.__attrOrder = parseAttributes(attrStr)
             table.insert(stack, node)
         end
@@ -424,7 +426,7 @@ function LSXNode.Unserialize(xmlString)
     return root
 end
 
-function LSXNode:SetInnerText(text)
+function XMLNode:SetInnerText(text)
     if type(text) ~= "string" then
         Error("LSXTableNode:SetInnerText: Expected string, got " .. type(text))
         return self
@@ -439,11 +441,11 @@ function LSXNode:SetInnerText(text)
     return self
 end
 
-function LSXNode:GetInnerText()
+function XMLNode:GetInnerText()
     return self.__innerText
 end
 
-function LSXNode:SetName(name)
+function XMLNode:SetName(name)
     if type(name) ~= "string" then
         Error("LSXTableNode:SetName: Expected string, got " .. type(name))
         return self
@@ -453,11 +455,11 @@ function LSXNode:SetName(name)
     return self
 end
 
-function LSXNode:GetName()
+function XMLNode:GetName()
     return self.__name
 end
 
-function LSXNode:SetAttribute(key, value)
+function XMLNode:SetAttribute(key, value)
     if type(key) ~= "string" then
         Error("LSXTableNode:SetAttribute: Expected string key, got " .. type(key))
         return self
@@ -468,7 +470,7 @@ function LSXNode:SetAttribute(key, value)
     return self
 end
 
-function LSXNode:GetAttribute(key)
+function XMLNode:GetAttribute(key)
     if type(key) ~= "string" then
         Error("LSXTableNode:GetAttribute: Expected string key, got " .. type(key))
         return nil
@@ -476,7 +478,7 @@ function LSXNode:GetAttribute(key)
     return (self.__attributes or {})[key]
 end
 
-function LSXNode:SetAttrOrder(attrOrder)
+function XMLNode:SetAttrOrder(attrOrder)
     if type(attrOrder) ~= "table" then
         Error("LSXTableNode:SetAttrOrder: Expected table, got " .. type(attrOrder))
         return self
@@ -486,12 +488,12 @@ function LSXNode:SetAttrOrder(attrOrder)
     return self
 end
 
-function LSXNode:AppendChild(child)
+function XMLNode:AppendChild(child)
     if not self.__children then
         self.__children = {}
     end
-    if not getmetatable(child) or getmetatable(child) ~= LSXNode then
-        Error("LSXTableNode:AppendChild: Invalid child node, must be LSXNode")
+    if not getmetatable(child) or getmetatable(child) ~= XMLNode then
+        Error("LSXTableNode:AppendChild: Invalid child node, must be XMLNode")
         return self
     end
 
@@ -505,12 +507,12 @@ function LSXNode:AppendChild(child)
     return child
 end
 
-function LSXNode:AppendChildren(children)
+function XMLNode:AppendChildren(children)
     if not self.__children then
         self.__children = {}
     end
     for _, child in ipairs(children or {}) do
-        if not getmetatable(child) or getmetatable(child) ~= LSXNode then
+        if not getmetatable(child) or getmetatable(child) ~= XMLNode then
             Error("LSXTableNode:AppendChildren: Invalid child node, skipping")
             goto continue
         end
@@ -527,12 +529,12 @@ function LSXNode:AppendChildren(children)
     return self
 end
 
-function LSXNode:InsertChild(child, index)
+function XMLNode:InsertChild(child, index)
     if not self.__children then
         self.__children = {}
     end
-    if not getmetatable(child) or getmetatable(child) ~= LSXNode then
-        Error("LSXTableNode:InsertChild: Invalid child node, must be LSXNode")
+    if not getmetatable(child) or getmetatable(child) ~= XMLNode then
+        Error("LSXTableNode:InsertChild: Invalid child node, must be XMLNode")
         return self
     end
 
@@ -548,12 +550,12 @@ end
 
 
 --- @param index number
---- @return LSXNode?
-function LSXNode:GetChild(index)
+--- @return XMLNode?
+function XMLNode:GetChild(index)
     return (self.__children or {})[index]
 end
 
-function LSXNode:SearchChild(predicate)
+function XMLNode:SearchChild(predicate)
     if not self.__children then
         return nil
     end
@@ -565,7 +567,7 @@ function LSXNode:SearchChild(predicate)
     return nil
 end
 
-function LSXNode:MatchChild(name, attrs)
+function XMLNode:MatchChild(name, attrs)
     if not self.__children then
         return nil
     end
@@ -588,19 +590,19 @@ function LSXNode:MatchChild(name, attrs)
     return nil
 end
 
-function LSXNode:GetChildren()
+function XMLNode:GetChildren()
     return self.__children or {}
 end
 
-function LSXNode:GetParent()
+function XMLNode:GetParent()
     return self.__parent
 end
 
-function LSXNode:CountChildren()
+function XMLNode:CountChildren()
     return #(self.__children or {})
 end
 
-function LSXNode:ClearChildren()
+function XMLNode:ClearChildren()
     for _, child in ipairs(self.__children or {}) do
         child.__parent = nil
     end
@@ -608,14 +610,14 @@ function LSXNode:ClearChildren()
     self.__children = {}
 end
 
-function LSXNode:Clear()
+function XMLNode:Clear()
     self:ClearChildren()
     self.__attributes = {}
     self.__innerText = nil
     self.__comments = {}
 end
 
-function LSXNode:RemoveChild(index)
+function XMLNode:RemoveChild(index)
     if not self.__children then
         return
     end
@@ -628,7 +630,7 @@ function LSXNode:RemoveChild(index)
     return child
 end
 
-function LSXNode:RemoveChildren(predicate)
+function XMLNode:RemoveChildren(predicate)
     if not self.__children then
         return {}
     end
@@ -643,15 +645,15 @@ function LSXNode:RemoveChildren(predicate)
     return removed
 end
 
---- @param comparator fun(a: LSXNode, b: LSXNode):boolean
-function LSXNode:SortChildren(comparator)
+--- @param comparator fun(a: XMLNode, b: XMLNode):boolean
+function XMLNode:SortChildren(comparator)
     if not self.__children then
         return
     end
     table.sort(self.__children, comparator)
 end
 
-function LSXNode:AddComment(comment)
+function XMLNode:AddComment(comment)
     if not self.__comments then
         self.__comments = {}
     end
@@ -660,6 +662,6 @@ function LSXNode:AddComment(comment)
     return self
 end
 
-function LSXNode:ClearComments()
+function XMLNode:ClearComments()
     self.__comments = {}
 end

@@ -173,11 +173,6 @@ function VisualTab:__init(guid, displayName, parent, templateName)
     end
 end
 
-function VisualTab:GetVisualTemplate()
-
-
-end
-
 function VisualTab:SetupTemplate()
     local stored = EntityStore:GetStoredData(self.guid)
     self.templateId = self.templateId or (stored and stored.TemplateId) or nil

@@ -93,8 +93,12 @@ end
 
 ---@param parent ExtuiTreeParent
 ---@param ccaModPack CCMod_Pack?
-function MaterialPresetsMenu:SetupWorkspace(parent, ccaModPack, notRenderImport)
+---@param notRenderImport boolean?
+---@param onExportComplete function?
+function MaterialPresetsMenu:SetupWorkspace(parent, ccaModPack, notRenderImport, onExportComplete)
     local infoTab = AddCollapsingTable(parent, nil, nil, { SideBarWidth = 400 * SCALE_FACTOR })
+
+    onExportComplete = onExportComplete or function() end
 
     local infoLeft = infoTab.SideBar
     local infoRight = infoTab.MainArea
@@ -210,6 +214,7 @@ function MaterialPresetsMenu:SetupWorkspace(parent, ccaModPack, notRenderImport)
 
                 if progress >= 100 then
                     refreshImport()
+                    onExportComplete()
                     parent.Disabled = false -- re-enable UI after export
                 end
             elseif progress < 0 then
@@ -235,6 +240,8 @@ function MaterialPresetsMenu:SetupWorkspace(parent, ccaModPack, notRenderImport)
 
         self:SaveModCache(exportSettings)
         self:SaveModCacheRef()
+        refreshImport()
+        onExportComplete()
     end
 
     local exportTooltip = exportBtn:Tooltip()
@@ -640,7 +647,7 @@ function MaterialPresetsMenu:RenderImportSection(parent, exportSettings, onImpor
             newWindow.OnClose = function()
                 DeleteWindow(newWindow)
             end
-            self:SetupWorkspace(newWindow, ccaModPack, true)
+            self:SetupWorkspace(newWindow, ccaModPack, true, refreshCached)
         end)
 
         return versionPopup
@@ -1214,7 +1221,7 @@ function MaterialPresetsMenu:__exportToMod(modPack, progressCallback, exportThre
         CharacterCreationSkinColors = "_SkinColor_",
     }
 
-    --- @type table<string, LSXNode>
+    --- @type table<string, XMLNode>
     local banks = {}
     local matPresetDefs = {}
 
@@ -1251,7 +1258,7 @@ function MaterialPresetsMenu:__exportToMod(modPack, progressCallback, exportThre
     end
 
     --- build Character Creation Presets definition
-    --- @type table<string, LSXNode>
+    --- @type table<string, XMLNode>
     local ccaDefNode = {
         CharacterCreationEyeColors = {},
         CharacterCreationHairColors = {},

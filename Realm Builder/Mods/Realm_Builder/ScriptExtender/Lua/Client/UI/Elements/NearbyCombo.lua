@@ -165,6 +165,7 @@ function NearbyCombo:SetupComboEvents()
     end
 end
 
+--- @param parent ExtuiTreeParent
 function NearbyCombo:RenderSelectionTable(parent)
     if not self.Options then
         self:UpdateOptions()
@@ -202,18 +203,26 @@ function NearbyCombo:RenderSelectionTable(parent)
         end
     end
 
-    searchInput.OnChange = Debounce(300, function (input)
-        hide(input.Value)
-    end)
+    searchInput.OnChange = function (input)
+        hide(input.Text)
+    end
 
     local configPopup = parent:AddPopup(parent.IDContext .. "ConfigPopup")
     local configButton = right:AddImageButton("", RB_ICONS.Gear, IMAGESIZE.ROW)
     configButton:SetColor("Button", {0,0,0,0})
     local sortButton = right:AddSelectable("Sort by DisplayName")
+    local refreshBtn = StyleHelpers.AddResetButton(right, true)
+    refreshBtn.OnClick = function (btn)
+        UpdateNearbyMap({CGetPosition(CGetHostCharacter())}, self.Radius)
+        self:UpdateOptions()
+        self:RenderIcons()
+    end
 
+    sortButton.AllowItemOverlap = true
     sortButton.IDContext = parent.IDContext .. "SortButton"
     sortButton.AutoClosePopups = false
     sortButton.DontClosePopups = true
+
 
     sortButton.OnRightClick = function (sel)
         self.Ascending = not self.Ascending

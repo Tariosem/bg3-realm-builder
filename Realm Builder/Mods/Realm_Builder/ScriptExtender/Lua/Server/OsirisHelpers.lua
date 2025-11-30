@@ -97,6 +97,7 @@ end
 --- @return GUIDSTRING[] spawned
 function OsirisHelpers.DrawOrientedBox(center, halfSizes, rotation, LineThickness, user)
     local spawned = {}
+    --- @type Vec3[]
     local localCorners = {
         { -halfSizes[1], -halfSizes[2], -halfSizes[3] },
         {  halfSizes[1], -halfSizes[2], -halfSizes[3] },
@@ -139,8 +140,7 @@ function OsirisHelpers.TeleportTo(uuid, x, y, z)
 
     local rx, ry, rz = Osi.GetRotation(uuid)
     if not rx or not ry or not rz then
-        Warning("Called TeleportTo on item with invalid rotation: " .. tostring(uuid))
-        return false
+        rx, ry, rz = 0, 0, 0
     end
     
     Osi.ToTransform(uuid, x, y, z, rx, ry, rz)

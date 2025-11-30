@@ -3,7 +3,7 @@
 --- @field Normal Vec3|nil
 --- @field Distance number
 --- @field Target any|nil
---- @field IsCloserThan fun(self, other: Hit): boolean
+--- @field IsCloserThan fun(self, other: Hit?): boolean
 --- @field new fun(position?: Vec3, normal?: Vec3, distance?: number, target?: any): Hit
 Hit = _Class("Hit")
 

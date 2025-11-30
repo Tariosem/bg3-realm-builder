@@ -670,12 +670,9 @@ function SceneMenu:RenderPresetInfo(name)
     local inputCell = lowRow:AddCell()
     local modInfoCell = lowRow:AddCell()
 
-    local descInputContent = GetLoca("Enter a description here...")
-    if presetData.Description ~= nil and presetData.Description ~= "" then
-        descInputContent = presetData.Description
-    end
-    local presetDescInput = inputCell:AddInputText("")
-    presetDescInput.Hint = descInputContent
+    local descInputContent = presetData.Description
+    local presetDescInput = inputCell:AddInputText("", descInputContent)
+    presetDescInput.Hint = GetLoca("Enter a description here...")
     local confirmInputBtn = inputCell:AddButton("<")
     confirmInputBtn.IDContext = "ConfirmPresetDesc"
     ApplyInfoButtonStyle(confirmInputBtn)

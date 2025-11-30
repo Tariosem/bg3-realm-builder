@@ -638,7 +638,7 @@ function TemplateExportMenu:__export(exportSettings, progressCallback)
 
         for _, other in ipairs(others or {}) do
             local otherPath = RealmPath.GetTemplatePath(modInternalName, levelName, other.Uuid, other.TemplateType)
-            saveFile(otherPath, other.LSXNode:Stringify({ AutoFindRoot = true }))
+            saveFile(otherPath, other.XMLNode:Stringify({ AutoFindRoot = true }))
         end
 
         advance("Exporting template " .. entData.DisplayName .. "...")

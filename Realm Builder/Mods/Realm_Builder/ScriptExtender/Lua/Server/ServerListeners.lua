@@ -35,6 +35,12 @@ local function spawnHandler(data)
         NetChannel.SetVisualTransform:Broadcast({ Guid = newGuid, Transforms = { [newGuid] = { Scale = entInfo.Scale } } })
     end
 
+    if entInfo.VisualPreset then
+        Timer:Ticks(30, function()
+            NetChannel.ApplyVisualPreset:Broadcast({ Guid= newGuid, TemplateName = TrimTail(template, 37), VisualPreset = entInfo.VisualPreset })
+        end)
+    end
+
     NetChannel.Entities.Added:Broadcast({ Entities = { entInfo } })
 
     return { Guid = newGuid }

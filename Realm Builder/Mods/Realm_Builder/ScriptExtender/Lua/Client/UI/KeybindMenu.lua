@@ -243,11 +243,11 @@ function KeybindMenu:RenderEvent(row, moduleName, eventName, module, registry)
         end)
     end
 
-    local resetButton = AddSelectableButton(resetCell, "Reset", function()
+    StyleHelpers.AddResetButton(resetCell, false).OnClick = function()
         local defaultKeybind = initKeybind or {}
         module:Rebind(eventName, defaultKeybind.Key, defaultKeybind.Modifiers)
         keyButton.Label = getPresentation(module:GetKeyByEvent(eventName))
-    end)
+    end
 end
 
 function KeybindMenu:Collapsed()
