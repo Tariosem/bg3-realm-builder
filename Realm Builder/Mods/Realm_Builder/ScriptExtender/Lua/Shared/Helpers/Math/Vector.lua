@@ -1,4 +1,3 @@
---- @generic K:Vec3|Vec4|Vec2
 --- @class Vec: number[]
 --- @field Length fun(self: Vec): number
 --- @field Normalize fun(self: Vec): Vec

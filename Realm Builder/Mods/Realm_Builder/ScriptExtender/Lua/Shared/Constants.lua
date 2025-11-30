@@ -36,7 +36,7 @@ end
 
 INVISIBLE_HELPER_SCENERY = "3d4e8434-f972-4080-8602-66b12e2949f2"
 INVISIBLE_HELPER_PREVIEW = "9e28abea-a971-4aae-ab97-c161ed663c99"
-INVISIBLE_HELPER_DECAL = "7cc1fdbe-a0c1-4003-acec-07f26b5efe4b"
+INVISIBLE_HELPER_VISUAL = "7cc1fdbe-a0c1-4003-acec-07f26b5efe4b"
 
 --- @enum RB_ICONS
 RB_ICONS = {}
@@ -169,7 +169,7 @@ RARITY_COLORS = {
     StoryItem = HexToRGBA("AA944300"),
 }
 
-DAMAGE_TYPES_COLOR = {
+DAMAGE_TYPE_COLORS = {
     Acid = HexToRGBA("FFD0F954"),
     Cold = HexToRGBA("FF62D0FF"),
     Fire = HexToRGBA("FFFF5C00"),
@@ -192,10 +192,10 @@ BORDER_COLOR = HexToRGBA("FFFFA43C")
 
 SUBTITLE_COLOR = HexToRGBA("B7939393")
 
-for damageType,color in pairs(DAMAGE_TYPES_COLOR) do
-    DAMAGE_TYPES_COLOR[damageType:lower()] = color
+for damageType,color in pairs(DAMAGE_TYPE_COLORS) do
+    DAMAGE_TYPE_COLORS[damageType:lower()] = color
 end
 
 EPSILON = 0.00001
 
-MOD_DIRECTORY = "Mods/Realm_Builder_a83e5a7e-8d8e-a333-8f62-ff3dd8671e80/"
+MOD_DIRECTORY = "Mods/Realm_Builder/"

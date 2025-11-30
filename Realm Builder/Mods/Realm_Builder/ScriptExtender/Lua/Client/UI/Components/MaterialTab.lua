@@ -79,7 +79,9 @@ function MaterialTab:Render(parent)
         [1] = "Scalar Parameters",
         [2] = "Vector2 Parameters",
         [3] = "Vector3 Parameters",
-        [4] = "Vector4 Parameters"
+        [4] = "Vector4 Parameters",
+        [5] = "Texture2D Parameters",
+        [6] = "Virtual Texture Parameters",
     }
 
     self.cachedExpandedState = self.cachedExpandedState or {}
@@ -91,7 +93,7 @@ function MaterialTab:Render(parent)
     local searchBar = parentNode:AddInputText("####" .. self.MaterialName .. "Global")
     searchBar.IDContext = "MaterialParamSearchBox" .. self.MaterialName .. "Global" .. tostring(math.random())
     searchBar.Hint = "Search parameters..."
-    searchBar.OnChange = Debounce(50 ,function(sel)
+    searchBar.OnChange = function(sel)
         if sel.Text == "" then
             for _, node in pairs(self.ParamTableRefs) do
                 node.Visible = true
@@ -107,7 +109,8 @@ function MaterialTab:Render(parent)
                 cell.Visible = false
             end
         end
-    end)
+    end
+
     for paramType,propNames in ipairs(params) do
         local propType = indexToDisplay[paramType]
         if #propNames < 1 then goto continue end
@@ -128,7 +131,7 @@ function MaterialTab:Render(parent)
         typeNode.DragDropType = MATERIALPRESET_DRAGDROP_TYPE
         typeNode.CanDrag = true
         typeNode.OnDragStart = function (sel)
-            sel.DragPreview:AddText(propType .. "##" .. self.MaterialName)
+            sel.DragPreview:AddText(propType)
             local allParamNames = self:GetAllParameterNames()[paramType]
             local udParams = {}
             for i=1, paramType do
@@ -181,29 +184,23 @@ function MaterialTab:Render(parent)
                 row:AddCell() -- Spacer
                 local paramgroup = row:AddCell()
                 paramgroup.SameLine = true
-                local sliders, colorPicker
 
                 propNode.OnHoverEnter = function ()
-                    local paramValue = self:GetParameter(propertyName)
-                    sliders, colorPicker = self:RenderProperty(paramgroup, propertyName, paramValue, rowCell)
+                    local paramValue, ptype = self:GetParameter(propertyName)
+                    if type(paramValue) == "string" then
+                        self:RenderTextProperty(paramgroup, propertyName, paramValue, ptype, rowCell)
+                    else
+                        self:RenderProperty(paramgroup, propertyName, paramValue, rowCell)
+                    end
                     propNode.OnHoverEnter = function()
                         propNode.Highlight = self:HasChanged(propertyName) and true or false
-                        typeNode.Highlight = self:HasChangeInType(paramType)
-                    end
-                end
-
-                propNode.OnClick = function(sel)
-                    sel.Selected = false
-                    if colorPicker and sliders then
-                        for _, slider in pairs(sliders) do
-                            slider.Visible = not slider.Visible
-                        end
+                        typeNode.Framed = self:HasChangeInType(paramType)
                     end
                 end
 
                 propNode.OnRightClick = function(sel)
-                    sel.Selected = false
                     sel.Highlight = false
+                    sel.Selected = false
                     self.Editor:ResetParameter(propertyName)
                     self.UpdateFuncs[propertyName]()
                 end
@@ -218,9 +215,18 @@ function MaterialTab:Render(parent)
                 propNode.OnDragStart = function (sel)
                     propNode.DragPreview:AddText(propertyName)
 
-                    local value = self:GetParameter(propertyName) --[[@as number[] ]]
+                    local value, ptype = self:GetParameter(propertyName) --[[@as number[] ]]
                     if not value then return end
+                    propNode.UserData.ParameterName = propertyName
                     propNode.UserData.ParameterValue = value
+                    propNode.UserData.ParameterType = ptype
+                    if type(value) == "string" then
+                        local displayName = indexToDisplay[paramType] or "Unknown"
+                        propNode.DragPreview:AddText(displayName .. " : " .. value)
+                        return
+                    end
+
+                    
                     if #value >= 3 then
                         local colorRect = propNode.DragPreview:AddColorEdit("##" .. self.MaterialName .. propertyName)
                         colorRect.Color = {value[1], value[2], value[3], value[4] or 1}
@@ -235,6 +241,7 @@ function MaterialTab:Render(parent)
                 propNode.OnDragDrop = function (sel, drop)
                     if drop.UserData and drop.UserData.ParameterValue then
                         local newValue = drop.UserData.ParameterValue --[[@as number[] ]]
+                        local vType = drop.UserData.ParameterType --[[@as RB_ParamType ]]
                         local currentValue = self:GetParameter(propertyName)
                         if newValue and currentValue then
                             if not #newValue == #currentValue then
@@ -244,7 +251,7 @@ function MaterialTab:Render(parent)
                             return -- Invalid parameters
                         end
 
-                        self:SetParameter(propertyName, newValue)
+                        self:SetParameter(propertyName, newValue, vType)
 
                         local updateFunc = self.UpdateFuncs[propertyName]
                         if updateFunc then
@@ -343,6 +350,13 @@ function MaterialTab:RenderProperty(node, propertyName, propertyValue)
 
             self.ParamNodeRefs[propertyName].Highlight = self:HasChanged(propertyName) and true or false
         end
+        colorPicker.OnRightClick = function (sel)
+            for i=1, #propertyValue do
+                if sliders[i] then
+                    sliders[i].Visible = not sliders[i].Visible
+                end
+            end
+        end
     end
 
     local range = { min = -100, max = 100, step = 0.1 }
@@ -427,6 +441,60 @@ function MaterialTab:RenderProperty(node, propertyName, propertyValue)
     return sliders, colorPicker
 end
 
+function MaterialTab:RenderTextProperty(node, propertyName, propertyValue, propertyType)    
+    local textBox = node:AddInputText("##" .. self.MaterialName .. propertyName)
+    textBox.Text = propertyValue
+    textBox.ItemWidth = 600 * SCALE_FACTOR
+
+    if Ext.Utils.Version() < 30 then
+        textBox.ReadOnly = true
+        textBox.Text = propertyValue
+        textBox.OnHoverEnter = function()
+            textBox:Tooltip():AddText("Editing string parameters is only supported in BG3SE v30 or higher.")
+            textBox.OnHoverEnter = nil
+        end
+        return
+    end
+
+    local resetButton = StyleHelpers.AddResetButton(node, true)
+    resetButton.OnClick = function (sel)
+        self:ResetValue(propertyName)
+        local newValue = self:GetParameter(propertyName)
+        if newValue then
+            textBox.Text = newValue
+        end
+
+        self.ParamNodeRefs[propertyName].Highlight = self:HasChanged(propertyName) and true or false
+    end
+    textBox.OnChange = function (sel)
+        local newValue = sel.Text
+        if IsUuidIncludingNull(newValue) == false then return end
+        
+        self:SetParameter(propertyName, newValue, propertyType)
+
+        self.ParamNodeRefs[propertyName].Highlight = self:HasChanged(propertyName) and true or false
+    end
+
+    self.UpdateFuncs[propertyName] = function (newValue)
+        if newValue then
+            textBox.Text = newValue
+        end
+
+        self.ParamNodeRefs[propertyName].Highlight = self:HasChanged(propertyName) and true or false
+    end
+    self.ResetFuncs[propertyName] = function ()
+        self:ResetValue(propertyName)
+        local newValue = self:GetParameter(propertyName)
+        if newValue then
+            textBox.Text = newValue
+        end
+
+        self.ParamNodeRefs[propertyName].Highlight = self:HasChanged(propertyName) and true or false
+    end
+
+    return textBox
+end
+
 function MaterialTab:ResetAll()
     self.Editor.PresetProxy = nil
     self.Editor.Parameters = {
@@ -455,7 +523,7 @@ function MaterialTab:UpdateUIState()
     end
 
     for paramType, typeNode in pairs(self.ParamTypeNodeRefs) do
-        typeNode.Highlight = self:HasChangeInType(paramType)
+        typeNode.Framed = self:HasChangeInType(paramType)
     end
 end
 
@@ -502,8 +570,8 @@ function MaterialTab:GetParameter(name)
     return self.Editor:GetParameter(name)
 end
 
-function MaterialTab:SetParameter(name, value)
-    self.Editor:SetParameter(name, value)
+function MaterialTab:SetParameter(name, value, ptype)
+    self.Editor:SetParameter(name, value, ptype)
     self:UpdateUIState()
 end
 
@@ -523,6 +591,8 @@ function MaterialTab:GetAllParameterNames()
         [2] = self.Editor.ParamSetProxy:GetAllVector2ParameterNames(),
         [3] = self.Editor.ParamSetProxy:GetAllVector3ParameterNames(),
         [4] = self.Editor.ParamSetProxy:GetAllVector4ParameterNames(),
+        [5] = self.Editor.ParamSetProxy:GetAllTexture2DParameterNames(),
+        [6] = self.Editor.ParamSetProxy:GetAllVirtualTextureParameterNames(),
     }
 end
 
@@ -572,6 +642,10 @@ function MaterialMixerTab:__init(parameters)
 
     self.MaterialName = "MaterialMixerEditor"
     self.ParentNodeName = "Material Mixer"
+
+
+    RainbowDumpTable(parameters)
+
     self.ParametersSetProxy = ParametersSetProxy.BuildFromFormatParameters(parameters)
 
     self.ResetFuncs = {}
@@ -619,7 +693,7 @@ function MaterialMixerTab:Render(parent)
 end
 
 function MaterialMixerTab:RenderProperty(node, propertyName, propertyValue, propRow)
-    local sliders, picker = MaterialTab.RenderProperty(self, node, propertyName, propertyValue, propRow)
+    MaterialTab.RenderProperty(self, node, propertyName, propertyValue, propRow)
 
     local removeBtn = StyleHelpers.AddMiddleAlignedImageButton(node, RB_ICONS.X_Square, true) --[[@as ExtuiImageButton ]]
     removeBtn.OnClick = function (sel)
@@ -628,7 +702,18 @@ function MaterialMixerTab:RenderProperty(node, propertyName, propertyValue, prop
         propRow:Destroy()
         self:UpdateUIState()
     end
-    return sliders, picker
+end
+
+function MaterialMixerTab:RenderTextProperty(node, propertyName, propertyValue, propertyType, propRow)    
+    MaterialTab.RenderTextProperty(self, node, propertyName, propertyValue, propertyType)
+
+    local removeBtn = StyleHelpers.AddMiddleAlignedImageButton(node, RB_ICONS.X_Square, true) --[[@as ExtuiImageButton ]]
+    removeBtn.OnClick = function (sel)
+        self.ParamNodeRefs[propertyName].UserData.OnDestroy()
+        self.ParametersSetProxy:RemoveParameter(propertyName)
+        propRow:Destroy()
+        self:UpdateUIState()
+    end
 end
 
 function MaterialMixerTab:GetAllParameterNames()
@@ -637,6 +722,8 @@ function MaterialMixerTab:GetAllParameterNames()
         [2] = self.ParametersSetProxy:GetAllVector2ParameterNames(),
         [3] = self.ParametersSetProxy:GetAllVector3ParameterNames(),
         [4] = self.ParametersSetProxy:GetAllVector4ParameterNames(),
+        [5] = self.ParametersSetProxy:GetAllTexture2DParameterNames(),
+        [6] = self.ParametersSetProxy:GetAllVirtualTextureParameterNames(),
     }
 end
 

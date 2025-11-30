@@ -289,6 +289,37 @@ function SetDebugLevel(level)
     end
 end
 
+function RainbowDumpTable(o, from, to)
+    local colors = {91, 92, 93, 94, 95, 96}
+    if from and to then
+        colors = {}
+        for i=from,to do
+            table.insert(colors, i)
+        end
+    end
+    local randomized = {}
+    for _, color in ipairs(colors) do
+        table.insert(randomized, math.random(#randomized + 1), color)
+    end
+    local resetCode = "\x1b[0m"
+    local stringified = Ext.DumpExport(o)
+    local result = {}
+    local splited = {}
+    for line in stringified:gmatch("([^\n]*)\n?") do
+        table.insert(splited, line)
+    end
+    local indentParttern = "^%s*"
+    for _, line in ipairs(splited) do
+        local indent = line:match(indentParttern) or ""
+        local indentLevel = #indent
+        local colorCodeIndex = (indentLevel % 6) + 1
+        local colorCode = randomized[colorCodeIndex]
+        local colorCodeStr = string.format("\x1b[%dm", colorCode)
+        table.insert(result, colorCodeStr .. line .. resetCode)
+    end
+    _P(table.concat(result, "\n"))
+end
+
 local debuglevelCommandDes =
 [[
     Sets the Realm Builder debug level.

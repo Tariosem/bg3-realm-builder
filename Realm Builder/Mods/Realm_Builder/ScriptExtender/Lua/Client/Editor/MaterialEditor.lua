@@ -34,6 +34,8 @@ function MaterialEditor:__init(originMaterial, matSrc, paramsSrc)
         [2] = {}, -- Vector2Parameters
         [3] = {}, -- Vector3Parameters
         [4] = {}, -- VectorParameters
+        [5] = {}, -- Texture2DParameters
+        [6] = {}, -- VirtualTextureParameters
     }
 end
 
@@ -41,16 +43,15 @@ end
 function MaterialEditor:SetDefaultParameters(params)
     for ptype,paramsTable in pairs(params) do
         for paramName,value in pairs(paramsTable) do
-            self.ParamSetProxy:SetDefaultParameter(paramName, value)            
+            self.ParamSetProxy:SetDefaultParameter(paramName, value, ptype)     
         end
     end
 
     return true
 end
 
---- this function return copy of parameter value
 ---@param paramName string
----@return number[]?
+---@return number[]?, RB_ParamType?
 function MaterialEditor:GetParameter(paramName)
     local ptype = self.ParamSetProxy:GetParameterType(paramName)
     if not ptype then
@@ -68,12 +69,9 @@ function MaterialEditor:GetParameter(paramName)
             return nil
         end
         value = proxyParam
-        if type(value) ~= "table" then
-            value = { value }
-        end
     end
 
-    return DeepCopy(value)
+    return value, ptype
 end
 
 function MaterialEditor:HasChanged(paramName)
@@ -101,16 +99,23 @@ function MaterialEditor:HasChangeInType(paramType)
     return false
 end
 
-function MaterialEditor:SetParameter(paramName, value)
+function MaterialEditor:SetParameter(paramName, value, ptype)
     local mat = self.Instance()
     if not mat then return false end
 
-    local funcName = ParamTypeToFunc[#value]
+    if type(value) == "string" and not ptype then
+        Warning("MaterialEditor: When setting string parameter '" .. tostring(paramName) .. "', ptype must be provided.")
+        return false
+    else
+        ptype = #value
+    end
+
+    local funcName = ParamTypeToFunc[ptype]
     local applyValue = #value == 1 and value[1] or value
 
     mat[funcName](mat, paramName, applyValue)
 
-    self.Parameters[#value][paramName] = value
+    self.Parameters[ptype][paramName] = value
 
     return true
 end
@@ -119,24 +124,24 @@ function MaterialEditor:ResetParameter(paramName)
     local mat = self.Instance()
     if not mat then return false end
 
-    local value = self.ParamSetProxy:GetParameter(paramName)
+    local value, ptype = self.ParamSetProxy:GetParameter(paramName)
 
     if not value then
         Warning("MaterialEditor: Could not find parameter '" .. tostring(paramName) .. "' in material proxy for material '" .. tostring(self.Material) .. "'. Cannot reset.")
         return false
     end
 
-    local funcName = ParamTypeToFunc[#value]
+    local funcName = ParamTypeToFunc[ptype]
     local applyValue = #value == 1 and value[1] or value
 
     mat[funcName](mat, paramName, applyValue)
 
-    self.Parameters[#value][paramName] = nil
+    self.Parameters[ptype][paramName] = nil
 
     return true
 end
 
----@param parameters table<number, table<string, number[]>>
+---@param parameters RB_ParameterSet
 ---@return boolean
 function MaterialEditor:ApplyParameters(parameters)
     local mat = self.Instance()
@@ -147,7 +152,15 @@ function MaterialEditor:ApplyParameters(parameters)
         for paramName, value in pairs(params) do
             if not self.ParamSetProxy:GetParameterType(paramName) then goto continue end
             local applyValue = #value == 1 and value[1] or value
-            mat[ParamTypeToFunc[#value]](mat, paramName, applyValue)
+
+            if type(applyValue) == "string" then
+                
+            elseif #value ~= i then
+                Warning("MaterialEditor: Parameter '" .. tostring(paramName) .. "' value length does not match parameter type. Skipping.")
+                goto continue
+            end
+
+            mat[ParamTypeToFunc[i]](mat, paramName, applyValue)
             self.Parameters[i][paramName] = value
             ::continue::
         end
@@ -169,6 +182,8 @@ function MaterialEditor:ClearParameters()
         [2] = {}, -- Vector2Parameters
         [3] = {}, -- Vector3Parameters
         [4] = {}, -- VectorParameters
+        [5] = {}, -- Texture2DParameters
+        [6] = {}, -- VirtualTextureParameters
     }
 end
 
@@ -181,7 +196,7 @@ function MaterialEditor:ResetAll()
 
     for ptype,params in pairs(self.ParamSetProxy.Parameters) do
         for paramName,value in pairs(params) do
-            local funcName = ParamTypeToFunc[#value]
+            local funcName = ParamTypeToFunc[ptype]
             local applyValue = #value == 1 and value[1] or value
 
             mat[funcName](mat, paramName, applyValue)

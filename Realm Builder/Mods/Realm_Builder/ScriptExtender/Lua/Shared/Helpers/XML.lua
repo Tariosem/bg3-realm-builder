@@ -42,6 +42,7 @@ local function serializeNonStringAttributes(value)
     return escapeXML(tostring(value))
 end
 
+--- @type XMLStringifyOptions
 local defaultStringifyOptions = {
     Beautify = false,
     Indent = 4,
@@ -432,12 +433,7 @@ function XMLNode:SetInnerText(text)
         return self
     end
     self.__innerText = text
-
-    if next(self.__children or {}) ~= nil then
-        self:ClearChildren()
-        Info("LSXTableNode:SetInnerText: Cleared children as inner text is set")
-    end
-
+    
     return self
 end
 

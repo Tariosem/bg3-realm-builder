@@ -1367,7 +1367,7 @@ function VisualTab:RenderEffectComponentSliders(panel, getComp, key, componentNa
     local initValue = self.resetParams[key] and self.resetParams[key][componentName] or getMethod()
     self.resetParams[key] = self.resetParams[key] or {}
     self.resetParams[key][componentName] = initValue
-    if type(initValue) ~= "table" then
+    if type(initValue) == "number" then
         initValue = { initValue }
     end
     local isInt = valueInfo.IsInt or false

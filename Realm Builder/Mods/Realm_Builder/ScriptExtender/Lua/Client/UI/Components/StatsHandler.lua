@@ -277,7 +277,7 @@ StatsBoostHandlers = {
 
     Resistance = function(boost)
         local damageType = boost.args[1] or "Unknown"
-        local damageTypeColor = DAMAGE_TYPES_COLOR[damageType] or nil
+        local damageTypeColor = DAMAGE_TYPE_COLORS[damageType] or nil
         local resistanceType = boost.args[2] or "Resistant"
         local function render(parent, iconSize)
             local bulletText = parent:AddBulletText(string.format("%s to ", resistanceType))
@@ -298,7 +298,7 @@ StatsBoostHandlers = {
     WeaponDamage = function(boost)
         local damage = boost.args[1] or "1"
         local damageType = boost.args[2] or "Physical"
-        local damageTypeColor = DAMAGE_TYPES_COLOR[damageType] or nil
+        local damageTypeColor = DAMAGE_TYPE_COLORS[damageType] or nil
         local function render(parent, iconSize)
             local bulletText = parent:AddBulletText("")
             local damageText = parent:AddText(string.format("+%s %s damage", damage, damageType))
@@ -555,7 +555,7 @@ StatsParameterHandler = {
 
 
         local damageNumberToken = parseNumberText(damage)
-        local damageColor = DAMAGE_TYPES_COLOR[damageType] or DAMAGE_TYPES_COLOR["Slashing"]
+        local damageColor = DAMAGE_TYPE_COLORS[damageType] or DAMAGE_TYPE_COLORS["Slashing"]
         damageNumberToken.Color = damageColor
 
         if damageType == "MainMeleeWeaponDamageType" then
@@ -569,7 +569,7 @@ StatsParameterHandler = {
 
         if not damageType then
             damageType = param.args[1] or ""
-            damageColor = DAMAGE_TYPES_COLOR[damageType] or nil
+            damageColor = DAMAGE_TYPE_COLORS[damageType] or nil
             tokens = {
                 { Text = string.format("%s damage", damageType), Color = damageColor }
             }
@@ -591,7 +591,7 @@ StatsParameterHandler = {
     RegainHitPoints = function(param)
         local amount = param.args[1] or ""
         local numberToken = parseNumberText(amount)
-        numberToken.Color = DAMAGE_TYPES_COLOR["HitPoint"]
+        numberToken.Color = DAMAGE_TYPE_COLORS["HitPoint"]
         numberToken.Text = numberToken.Text .. " hit points"
         return {
             numberToken,
@@ -601,7 +601,7 @@ StatsParameterHandler = {
     GainTemporaryHitPoints = function(param)
         local amount = param.args[1] or ""
         local numberToken = parseNumberText(amount)
-        numberToken.Color = DAMAGE_TYPES_COLOR["HitPoint"]
+        numberToken.Color = DAMAGE_TYPE_COLORS["HitPoint"]
         numberToken.Text = numberToken.Text .. " temporary hit points"
         return {
             numberToken,
@@ -611,7 +611,7 @@ StatsParameterHandler = {
     TemporaryHP = function(param)
         local amount = param.args[1] or ""
         local numberToken = parseNumberText(amount)
-        numberToken.Color = DAMAGE_TYPES_COLOR["HitPoint"]
+        numberToken.Color = DAMAGE_TYPE_COLORS["HitPoint"]
         return {
             { Text = "Gain " },
             numberToken,
@@ -817,7 +817,7 @@ StatsConditionHandlers = {
     end,
     IsResistantToDamageType = function(args)
         local damageType = args[1] or "Unknown"
-        local damageTypeColor = DAMAGE_TYPES_COLOR[damageType] or nil
+        local damageTypeColor = DAMAGE_TYPE_COLORS[damageType] or nil
         local tokens = {
             { Text = "Resistant to ", Color = damageTypeColor },
             { Text = string.format("%s damage", damageType), Color = damageTypeColor }
@@ -826,7 +826,7 @@ StatsConditionHandlers = {
     end,
     IsImmuneToDamageType = function(args)
         local damageType = args[1] or "Unknown"
-        local damageTypeColor = DAMAGE_TYPES_COLOR[damageType] or nil
+        local damageTypeColor = DAMAGE_TYPE_COLORS[damageType] or nil
         local tokens = {
             { Text = "Immune to ", Color = damageTypeColor },
             { Text = string.format("%s damage", damageType), Color = damageTypeColor }

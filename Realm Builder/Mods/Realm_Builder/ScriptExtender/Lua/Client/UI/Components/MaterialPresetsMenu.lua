@@ -110,7 +110,7 @@ function MaterialPresetsMenu:SetupWorkspace(parent, ccaModPack, notRenderImport,
     local presetTabCell = infoRight
 
     --- @type CCMod_Pack
-    local exportSettings = ccaModPack or {
+    local modPack = ccaModPack or {
         ModName = "",
         Author = "",
         Description = "",
@@ -122,18 +122,18 @@ function MaterialPresetsMenu:SetupWorkspace(parent, ccaModPack, notRenderImport,
 
     local presetHeaders = {}
     local function checkIfExportable()
-        if not exportSettings.ModName or exportSettings.ModName == "" then return false, "no mod name" end
-        if not exportSettings.Author or exportSettings.Author == "" then return false, "no author" end
-        if CountMap(exportSettings.Folders) == 0 then return false, "no folders defined" end
+        if not modPack.ModName or modPack.ModName == "" then return false, "no mod name" end
+        if not modPack.Author or modPack.Author == "" then return false, "no author" end
+        if CountMap(modPack.Folders) == 0 then return false, "no folders defined" end
 
-        for _, version in pairs(exportSettings.Version) do
+        for _, version in pairs(modPack.Version) do
             if not tonumber(version) or version < 0 then
                 return false, "invalid version number"
             end
         end
 
-        for folderName, _ in pairs(exportSettings.Folders) do
-            if not exportSettings.FolderDefinitions[folderName].ExportType then
+        for folderName, _ in pairs(modPack.Folders) do
+            if not modPack.FolderDefinitions[folderName].ExportType then
                 if presetHeaders[folderName] then
                     local header = presetHeaders[folderName]
                     GuiAnim.Vibrate(header)
@@ -148,11 +148,11 @@ function MaterialPresetsMenu:SetupWorkspace(parent, ccaModPack, notRenderImport,
             end
         end
 
-        for i = #(exportSettings.MaterialPresets), 1, -1 do
-            local preset = exportSettings.MaterialPresets[i]
+        for i = #(modPack.MaterialPresets), 1, -1 do
+            local preset = modPack.MaterialPresets[i]
 
             if preset.Deleted then
-                table.remove(exportSettings.MaterialPresets, i)
+                table.remove(modPack.MaterialPresets, i)
             end
         end
 
@@ -161,12 +161,12 @@ function MaterialPresetsMenu:SetupWorkspace(parent, ccaModPack, notRenderImport,
 
     local function rerenderFolders() end
 
-    local refreshExport = RenderExportSettingPanel(exportCell, exportSettings)
+    local refreshExport = RenderExportSettingPanel(exportCell, modPack)
 
     local refreshImport = function() end
     if not notRenderImport then
         local importWindow = exportCell:AddChildWindow("ImportCCAWindow")
-        refreshImport = self:RenderImportSection(importWindow, exportSettings, function()
+        refreshImport = self:RenderImportSection(importWindow, modPack, function()
             Debug("MaterialPresetsMenu: Refreshing export settings after CCA import.")
             refreshExport()
             rerenderFolders()
@@ -204,7 +204,7 @@ function MaterialPresetsMenu:SetupWorkspace(parent, ccaModPack, notRenderImport,
         progressBar.Value = 0
         StyleHelpers.SetNormalProgressBarStyle(progressBar)
         parent.Disabled = true -- disable UI during export, avoid unexpected interactions
-        self:ExportToMod(exportSettings, function(progress, message)
+        self:ExportToMod(modPack, function(progress, message)
             exportTT.Label = "Exporting Material Presets... " ..
                 tostring(progress) .. "% " .. (message and (" - " .. message) or "")
 
@@ -238,7 +238,7 @@ function MaterialPresetsMenu:SetupWorkspace(parent, ccaModPack, notRenderImport,
             return
         end
 
-        self:SaveModCache(exportSettings)
+        self:SaveModCache(modPack)
         self:SaveModCacheRef()
         refreshImport()
         onExportComplete()
@@ -248,7 +248,7 @@ function MaterialPresetsMenu:SetupWorkspace(parent, ccaModPack, notRenderImport,
     exportTooltip:SetStyle("FrameBorderSize", 2)
     exportTooltip:SetStyle("WindowBorderSize", 2)
     exportTT = exportBtn:Tooltip():AddText(
-    "Click: Export material presets to Realm_Builder/CC_Mods/\nRight Click: Save to CCA Cache for Importing Later")
+        "Click: Export material presets to Realm_Builder/CC_Mods/\nRight Click: Save to CCA Cache for Importing Later")
 
     exportBtn.OnHoverEnter = function()
         local exportable, reason = checkIfExportable()
@@ -270,10 +270,10 @@ function MaterialPresetsMenu:SetupWorkspace(parent, ccaModPack, notRenderImport,
     presetTab.BordersInner = true
     presetTab.RowBg = true
 
-    rerenderFolders = self:RenderFolderPanel(presetTab, presetHeaders, exportSettings)
+    rerenderFolders = self:RenderFolderPanel(presetTab, presetHeaders, modPack)
     rerenderFolders()
 
-    return exportSettings
+    return modPack
 end
 
 local function makeFolderDisplay(open, folderName, preseType)
@@ -325,9 +325,9 @@ function MaterialPresetsMenu:RenderFolderPanel(presetTab, presetHeaders, exportS
             local folderRow
             folderRow = self:RenderFolderRow(presetTab, folderName, openedFolders, presetHeaders, exportSettings,
                 refreshFolderList, function()
-                presetRows[folderName]:Destroy()
-                presetRows[folderName] = nil
-            end)
+                    presetRows[folderName]:Destroy()
+                    presetRows[folderName] = nil
+                end)
             presetRows[folderName] = folderRow
         end
 
@@ -578,7 +578,7 @@ function MaterialPresetsMenu:RenderImportSection(parent, exportSettings, onImpor
             local cell = row:AddCell()
 
             local versionSel = cell:AddSelectable("Version " ..
-            version .. "##ImportCCAModVersion_" .. modName .. "_" .. version)
+                version .. "##ImportCCAModVersion_" .. modName .. "_" .. version)
 
             local versionPopup = nil
             versionSel.OnClick = function()
@@ -607,8 +607,8 @@ function MaterialPresetsMenu:RenderImportSection(parent, exportSettings, onImpor
         local importBtnCell = selectRow:AddCell()
         local importBtn = AddSelectableButton(importBtnCell,
             "Import##ImportCCAModVersionBtn_" .. modName .. "_" .. version, function()
-            import(modName, version)
-        end)
+                import(modName, version)
+            end)
         importBtn:Tooltip():SetStyle("WindowBorderSize", 2)
         importBtn:Tooltip():SetColor("Border", HexToRGBA("FFFF0000"))
         importBtn:Tooltip():AddText("CAUTION:"):SetColor("Text", HexToRGBA("FFFF0000"))
@@ -618,37 +618,38 @@ function MaterialPresetsMenu:RenderImportSection(parent, exportSettings, onImpor
         local deleteBtnCell = selectRow:AddCell()
         local deleteBtn = AddSelectableButton(deleteBtnCell,
             "Delete##DeleteCCAModVersionBtn_" .. modName .. "_" .. version, function()
-            if not self.cachedMods[modName] then return end
-            self.cachedMods[modName].Versions[version] = nil
-            self.cachedMods[modName].Cache[version] = nil
-            self:SaveModCacheRef()
-            refreshCached()
-        end)
+                if not self.cachedMods[modName] then return end
+                self.cachedMods[modName].Versions[version] = nil
+                self.cachedMods[modName].Cache[version] = nil
+                self:SaveModCacheRef()
+                refreshCached()
+            end)
         ApplyDangerSelectableStyle(deleteBtn)
 
         local openInAnotherEditorBtnCell = selectRow:AddCell()
         local openInAnotherEditorBtn = AddSelectableButton(openInAnotherEditorBtnCell,
             "Open in Another Editor##OpenInCCACCMVersionBtn_" .. modName .. "_" .. version, function()
-            local ccaModPack = self:ImportFromFile(modName, version)
-            if not ccaModPack then
-                self.cachedMods[modName].Cache[version] = nil
-                self:SaveModCacheRef()
-                refreshCached()
-                Warning("Failed to import CC mod pack for mod " .. modName .. " version " .. version)
-                return
-            end
-            ccaModPack = DeepCopy(ccaModPack)
-            local versionStr = ccaModPack and
-            BuildVersionString(ccaModPack.Version[1], ccaModPack.Version[2], ccaModPack.Version[3], ccaModPack.Version
-            [4]) or version
-            local newWindow = RegisterWindow("generic", ccaModPack.ModName .. " - " .. versionStr,
-                "Character Creation Material Editor", nil, nil, { 1200 * SCALE_FACTOR, 900 * SCALE_FACTOR })
-            newWindow.Closeable = true
-            newWindow.OnClose = function()
-                DeleteWindow(newWindow)
-            end
-            self:SetupWorkspace(newWindow, ccaModPack, true, refreshCached)
-        end)
+                local ccaModPack = self:ImportFromFile(modName, version)
+                if not ccaModPack then
+                    self.cachedMods[modName].Cache[version] = nil
+                    self:SaveModCacheRef()
+                    refreshCached()
+                    Warning("Failed to import CC mod pack for mod " .. modName .. " version " .. version)
+                    return
+                end
+                ccaModPack = DeepCopy(ccaModPack)
+                local versionStr = ccaModPack and
+                    BuildVersionString(ccaModPack.Version[1], ccaModPack.Version[2], ccaModPack.Version[3],
+                        ccaModPack.Version
+                        [4]) or version
+                local newWindow = RegisterWindow("generic", ccaModPack.ModName .. " - " .. versionStr,
+                    "Character Creation Material Editor", nil, nil, { 1200 * SCALE_FACTOR, 900 * SCALE_FACTOR })
+                newWindow.Closeable = true
+                newWindow.OnClose = function()
+                    DeleteWindow(newWindow)
+                end
+                self:SetupWorkspace(newWindow, ccaModPack, true, refreshCached)
+            end)
 
         return versionPopup
     end
@@ -676,7 +677,7 @@ function MaterialPresetsMenu:RenderImportSection(parent, exportSettings, onImpor
         for _, modName in ipairs(sortedModNames) do
             local versions = cache[modName].Versions
             local modNameSel = parent:AddSelectable((openedTrees[modName] and "[-]" or "[+]") ..
-            modName .. "##ImportCCAMod_" .. modName) --[[@as ExtuiSelectable]]
+                modName .. "##ImportCCAMod_" .. modName) --[[@as ExtuiSelectable]]
             local group = AddIndent(parent:AddGroup("ImportCCAModGroup_" .. modName))
             group.Visible = openedTrees[modName] or false
 
@@ -1080,7 +1081,7 @@ function MaterialPresetsMenu:__exportToMod(modPack, progressCallback, exportThre
     local lastYieldTime = startTime
     progressCallback = progressCallback or function(progress, message)
         Debug("MaterialPresetsMenu: ExportToMod Progress: " ..
-        tostring(progress) .. "% " .. (message and (" - " .. message) or ""))
+            tostring(progress) .. "% " .. (message and (" - " .. message) or ""))
     end
 
     local displayModName = modPack.ModName or "Unnamed Mod"
@@ -1104,7 +1105,9 @@ function MaterialPresetsMenu:__exportToMod(modPack, progressCallback, exportThre
             tonumber(h), tonumber(min), tonumber(s))
     end
 
-    local modFolderDisplayName = modFolderName .. "_" .. BuildVersionString(version[1], version[2], version[3], version[4]) .. "_" .. sanitizeClockTime(Ext.Timer.ClockTime())
+    local modFolderDisplayName = modFolderName ..
+    "_" ..
+    BuildVersionString(version[1], version[2], version[3], version[4]) .. "_" .. sanitizeClockTime(Ext.Timer.ClockTime())
 
     local presetCnt = CountMap(matPresets)
     local folderCnt = CountMap(folders)
@@ -1250,7 +1253,8 @@ function MaterialPresetsMenu:__exportToMod(modPack, progressCallback, exportThre
         local def = folderDefs[folderName]
         if bank:CountChildren() > 0 then
             local presetType = def.ExportType
-            local matPresetFile = RealmPath.GetCCAMaterialPresetsFile(presetType, modFolderDisplayName, modFolderName, folderName) --[[@as string]]
+            local matPresetFile = RealmPath.GetCCAMaterialPresetsFile(presetType, modFolderDisplayName, modFolderName,
+                folderName) --[[@as string]]
 
             saveFile(matPresetFile, bank:Stringify({ Indent = 4, AutoFindRoot = true }))
         end
@@ -1344,7 +1348,7 @@ function MaterialPresetsMenu:__exportToMod(modPack, progressCallback, exportThre
     advance("Saved CCA mod cache file.")
 
     suc = self:SaveModCacheRef()
-    if not suc then 
+    if not suc then
         throwError("ExportToMod: Failed to save CCA mod cache reference file.")
         return
     end
@@ -1614,7 +1618,8 @@ function MaterialPresetsMenu:RenderCCPresetList(presetName, parent)
                             Ext.Debug.DumpStack()
                         end
                     else
-                        Warning("MaterialPresetsMenu: RenderCCPresetList: render coroutine not in suspended state after yield, cannot resume.")
+                        Warning(
+                        "MaterialPresetsMenu: RenderCCPresetList: render coroutine not in suspended state after yield, cannot resume.")
                     end
                 end)
                 coroutine.yield()

@@ -35,7 +35,7 @@ local function createParameterAttrNodes(paramObj, overrideValue, parameterName)
 end
 
 ---@param matRes ResourceMaterialResource|ResourcePresetData
----@param parameters table<number, table<string, number[]>>?
+---@param parameters RB_ParameterSet
 ---@return XMLNode|nil
 local function createParameterNodes(matRes, parameters)
     local paramNodes = {} --[[@as XMLNode[] ]]
@@ -61,8 +61,9 @@ local function createParameterNodes(matRes, parameters)
             local node = XMLNode.new("node", { id = indexToNodeName[i] })
             local paramName = param.ParameterName
             local value = nil
-            if i < 5 and parameters and parameters[i] then
-                value = parameters[i][paramName] or param.Value
+            local valueField = i > 4 and "ID" or "Value"
+            if parameters and parameters[i] then
+                value = parameters[i][paramName] or param[valueField]
                 if type(value) == "number" then
                     value = { value }
                 end
@@ -128,13 +129,22 @@ local function createPresetParamAttrNodes(parameterName, value)
         return nil
     end
 
+    local valueField = "Value"
+    local stringValue = type(value) == "string" and value or nil
+    if stringValue then
+        valueField = "ID"
+    end
+
     attrs = {
-        lsattrNode("Color", LSValueType.bool, false),
         lsattrNode("Custom", LSValueType.bool, false),
         lsattrNode("Enabled", LSValueType.bool, true),
-        lsattrNode("Value", valueType, saveValue),
+        lsattrNode(valueField, valueType, saveValue),
         lsattrNode("Parameter", LSValueType.FixedString, parameterName),
     }
+
+    if not stringValue then
+        table.insert(attrs, 1, lsattrNode("Color", LSValueType.bool, false))
+    end
 
     return attrs
 end
@@ -159,7 +169,7 @@ local function createPresetParameterNodes(matRes, parameters)
     return paramNodes
 end
 
----@param parameters table<1|2|3|4, table<string, number[]>>
+---@param parameters RB_ParameterSet
 ---@param uuid GUIDSTRING
 ---@param internalName string
 ---@return XMLNode
@@ -284,7 +294,8 @@ end
 --- @param internalName string
 --- @param overrideMaterialPresets table<string, string>? Material preset overrides, map of GroupName to MaterialPresetResource UUID
 --- @param modfiedParams RB_ParameterSet? Additional modified parameters to set on the resource
-function ResourceHelpers.BuildCharacterVisualResource(srcUuid, uuid, internalName, overrideMaterialPresets, modfiedParams)
+--- @param overrideVisuals table<string, string>? Map of Slot to VisualResource UUID overrides
+function ResourceHelpers.BuildCharacterVisualResource(srcUuid, uuid, internalName, overrideMaterialPresets, modfiedParams, overrideVisuals)
     local src = Ext.Resource.Get(srcUuid, "CharacterVisual") --[[@as ResourceCharacterVisualResource]]
     local srcSet = src.VisualSet
 
@@ -330,9 +341,10 @@ function ResourceHelpers.BuildCharacterVisualResource(srcUuid, uuid, internalNam
     -- Slots
     for _, slot in pairs(srcSet.Slots) do
         local slotNode = childrenNode:AppendChild(XMLNode.new("node", { id = "Slots", }))
+        local visualId = overrideVisuals and overrideVisuals[slot.Slot] or slot.VisualResource
         slotNode:AppendChild(lsattrNode("Bone", "FixedString", slot.Bone))
         slotNode:AppendChild(lsattrNode("Slot", "FixedString", slot.Slot))
-        slotNode:AppendChild(lsattrNode("VisualResource", "FixedString", slot.VisualResource))
+        slotNode:AppendChild(lsattrNode("VisualResource", "FixedString", visualId))
     end
 
     return resourceNode

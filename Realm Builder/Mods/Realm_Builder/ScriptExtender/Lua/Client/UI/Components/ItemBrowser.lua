@@ -360,7 +360,7 @@ function ItemBrowser:RenderAttrPopup(iconImage, cell, entry, getPopupFunc)
         if entry.Damage then
             addAttrTitle("Damage : ")
             local damageText = attributePopup:AddText(entry.Damage)
-            local damageColor = DAMAGE_TYPES_COLOR[entry.DamageType] or DAMAGE_TYPES_COLOR["Slashing"]
+            local damageColor = DAMAGE_TYPE_COLORS[entry.DamageType] or DAMAGE_TYPE_COLORS["Slashing"]
             damageText:SetColor("Text", damageColor)
             local damageTypeText = attributePopup:AddText(" (" .. (entry.DamageType or "Physical") .. ")")
             damageTypeText:SetColor("Text", damageColor)

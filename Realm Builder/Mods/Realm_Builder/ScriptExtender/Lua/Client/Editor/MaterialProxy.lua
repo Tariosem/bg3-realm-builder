@@ -1,7 +1,22 @@
 local materialProxies = {}
 
 --- @alias ParamterName string
---- @alias RB_ParamType integer -- 1=Scalar, 2=Vector2, 3=Vector3, 4=Vector4
+--- @enum RB_ParamType
+RB_ParamType = {
+    Scalar = 1,
+    Vector2 = 2,
+    Vector3 = 3,
+    Vector4 = 4,
+    Texture2D = 5,
+    VirtualTexture = 6,
+    [1] = "Scalar",
+    [2] = "Vector2",
+    [3] = "Vector3",
+    [4] = "Vector4",
+    [5] = "Texture2D",
+    [6] = "VirtualTexture",
+}
+
 --- @alias RB_ParameterSet table< RB_ParamType, table<ParamterName, number[]> > 
 
 --- @class MaterialProxy
@@ -43,6 +58,8 @@ ParamTypeToFunc = {
     [2] = "SetVector2",
     [3] = "SetVector3",
     [4] = "SetVector4",
+    [5] = "SetTexture2D",
+    [6] = "SetVirtualTexture",
 }
 
 ParamTypeToField = {
@@ -50,6 +67,8 @@ ParamTypeToField = {
     [2] = "Vector2Parameters",
     [3] = "Vector3Parameters",
     [4] = "VectorParameters",
+    [5] = "Texture2DParameters",
+    [6] = "VirtualTextureParameters",
 }
 
 ParamTypeToLSValueType = {
@@ -92,15 +111,20 @@ function MaterialProxy.__buildParameterTables(self, paramsList, name, fieldName,
     self.IndexRefs = {}
     self.BaseValues = {}
     self.Parameters = {}
-    for i = 1, 4 do
+    for i = 1, #paramsList do
         self.Parameters[i] = {}
         self.BaseValues[i] = {}
         self.IndexRefs[i] = {}
     end
 
-    for typeRef, paramList in pairs(paramsList) do
+    for typeRef, paramList in ipairs(paramsList) do
+        if typeRef > 4 then valueField = "ID" end
         for i, param in pairs(paramList or {}) do
             local paramName = param[fieldName]
+            if paramName == "" then
+                --Warning(string.format("Invalid parameter name in '%s' at index %d. Skipping.", name, i))
+                goto continue
+            end
             local value = param[valueField]
             if type(value) == "number" then
                 value = {value}
@@ -118,6 +142,7 @@ function MaterialProxy.__buildParameterTables(self, paramsList, name, fieldName,
             self.BaseValues[typeRef][paramName] = value
             ::continue::
         end
+        
     end
 end
 
@@ -136,7 +161,9 @@ function MaterialProxy:__init(materialName)
         res.ScalarParameters,
         res.Vector2Parameters,
         res.Vector3Parameters,
-        res.VectorParameters
+        res.VectorParameters,
+        res.Texture2DParameters,
+        res.VirtualTextureParameters,
     }, materialName, "ParameterName", "Value")
 end
 
@@ -204,7 +231,9 @@ function MaterialPresetProxy:__init(materialPresetName, res)
         res.Presets.ScalarParameters,
         res.Presets.Vector2Parameters,
         res.Presets.Vector3Parameters,
-        res.Presets.VectorParameters
+        res.Presets.VectorParameters,
+        res.Presets.Texture2DParameters,
+        res.Presets.VirtualTextureParameters,
     }, materialPresetName, "Parameter", "Value")
 end
 
@@ -233,9 +262,11 @@ function ParametersSetProxy.BuildFromFormatParameters(params)
         [2] = {}, -- Vector2Parameters
         [3] = {}, -- Vector3Parameters
         [4] = {}, -- VectorParameters
+        [5] = {}, -- Texture2DParameters
+        [6] = {}, -- VirtualTextureParameters
     }
 
-    for i=1,4 do
+    for i=1, #paramSetProxy.Parameters do
         paramSetProxy.Parameters[i] = {}
         paramSetProxy.BaseValues[i] = {}
         paramSetProxy.IndexRefs[i] = {}
@@ -244,10 +275,6 @@ function ParametersSetProxy.BuildFromFormatParameters(params)
     for itype, paramList in pairs(params) do
         for parameterName, value in pairs(paramList) do
             value = type(value) == "number" and {value} or value --[[@as number[] ]]
-            
-            if paramSetProxy.Parameters[itype][parameterName] then
-                Warning("ParameterSetProxy: Duplicate material parameter name '" .. parameterName .. "' in parameter set. Overwriting previous value.")
-            end
 
             paramSetProxy.TypeRefs[parameterName] = itype
             paramSetProxy.Parameters[itype][parameterName] = value
@@ -256,7 +283,6 @@ function ParametersSetProxy.BuildFromFormatParameters(params)
     end
 
     return paramSetProxy
-
 end
 
 function ParametersSetProxy.BuildFromMaterialPresetParamSet(paramSet)
@@ -266,7 +292,9 @@ function ParametersSetProxy.BuildFromMaterialPresetParamSet(paramSet)
         paramSet.ScalarParameters,
         paramSet.Vector2Parameters,
         paramSet.Vector3Parameters,
-        paramSet.VectorParameters
+        paramSet.VectorParameters,
+        paramSet.Texture2DParameters,
+        paramSet.VirtualTextureParameters,
     }, "ParameterSet", "Parameter", "Value")
 
     return paramSetProxy
@@ -278,7 +306,9 @@ function ParametersSetProxy:__init(paramSet)
         paramSet.ScalarParameters,
         paramSet.Vector2Parameters,
         paramSet.Vector3Parameters,
-        paramSet.VectorParameters
+        paramSet.VectorParameters,
+        paramSet.Texture2DParameters,
+        paramSet.VirtualTextureParameters,
     }, "ParameterSet", "ParameterName", "Value")
 
     return self
@@ -296,12 +326,17 @@ function ParametersSetProxy:GetParameter(paramName)
         return nil
     end
 
-    return param
+    return param, typeRef
 end
 
-function ParametersSetProxy:SetParameter(paramName, value)
-    local typeRef = #value
-    if not typeRef or typeRef < 1 or typeRef > 4 then
+function ParametersSetProxy:SetParameter(paramName, value, typeRef)
+    if type(value) == "string" and not typeRef then
+        Warning("ParametersSetProxy: When setting string parameter '" .. tostring(paramName) .. "', typeRef must be provided.")
+        return false
+    else
+        typeRef = #value
+    end
+    if not typeRef or typeRef < 1 or typeRef > 6 then
         return false
     end
 
@@ -324,17 +359,21 @@ end
 
 --- @param paramSet MaterialParametersSet
 function ParametersSetProxy:Update(paramSet)
+    local valueField = "Value"
     for typeRef, paramList in pairs({
         paramSet.ScalarParameters,
         paramSet.Vector2Parameters,
         paramSet.Vector3Parameters,
-        paramSet.VectorParameters
+        paramSet.VectorParameters,
+        paramSet.Texture2DParameters,
+        paramSet.VirtualTextureParameters,
     }) do
+        if typeRef > 4 then valueField = "ID" end
         for _, param in FilteredPairs(paramList or {}, function(_, a)
             return not self.TypeRefs[a.ParameterName] -- only new parameters
         end) do
             local paramName = param.ParameterName
-            local value = param.Value
+            local value = param[valueField]
             if type(value) == "number" then
                 value = {value}
             else
@@ -345,12 +384,16 @@ function ParametersSetProxy:Update(paramSet)
             self.Parameters[typeRef][paramName] = value
         end
     end
-
 end
 
-function ParametersSetProxy:SetDefaultParameter(paramName, value)
-    local typeRef = #value
-    if not typeRef or typeRef < 1 or typeRef > 4 then
+function ParametersSetProxy:SetDefaultParameter(paramName, value, typeRef)
+    if type(value) == "string" and not typeRef then
+        Warning("ParametersSetProxy: When setting string parameter '" .. tostring(paramName) .. "', typeRef must be provided.")
+        return false
+    else
+        typeRef = #value
+    end
+    if not typeRef or typeRef < 1 or typeRef > 6 then
         return false
     end
 
@@ -387,7 +430,7 @@ end
 function ParametersSetProxy:Merge(paramSet)
     for paramType, params in pairs(paramSet) do
         for paramName, value in pairs(params) do
-            self:SetParameter(paramName, value)
+            self:SetParameter(paramName, value, paramType)
         end
     end
 end
@@ -534,6 +577,24 @@ function MaterialProxy:GetAllVector4ParameterNames()
     end
     table.sort(vec4s)
     return vec4s
+end
+
+function MaterialProxy:GetAllTexture2DParameterNames()
+    local textures = {}
+    for propertyName,_ in pairs(self.Parameters[5]) do
+        table.insert(textures, propertyName)
+    end
+    table.sort(textures)
+    return textures
+end
+
+function MaterialProxy:GetAllVirtualTextureParameterNames()
+    local vtextures = {}
+    for propertyName,_ in pairs(self.Parameters[6]) do
+        table.insert(vtextures, propertyName)
+    end
+    table.sort(vtextures)
+    return vtextures
 end
 
 --- @param mat Material
