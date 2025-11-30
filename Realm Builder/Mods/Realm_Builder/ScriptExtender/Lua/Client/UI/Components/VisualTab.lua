@@ -273,6 +273,9 @@ function VisualTab:RenderMaterialContextPopup()
     self.materialContextPopup = popup
     self.SelectedMaterial = ""
     local contextMenu = StyleHelpers.AddContextMenu(popup, "Material")
+    local exportNotif = Notification.new(GetLoca("Material Exported"))
+    exportNotif.Pivot = {0,0}
+    exportNotif.ClickToDismiss = true
 
     contextMenu:AddItem("Copy To Other Materials", function (sel)
         local keyName = self.SelectedMaterial
@@ -317,8 +320,14 @@ function VisualTab:RenderMaterialContextPopup()
             local suc = Ext.IO.SaveFile(finalPath, save:Stringify())
             if not suc then
                 Error("Failed to export material to " .. finalPath)
+                exportNotif:Show(GetLoca("Failed to export material."), function (panel)
+                    panel:AddText("Failed to export material to " .. finalPath)
+                end)
             else
                 Info("Exported material to " .. finalPath)
+                exportNotif:Show(GetLoca("Material exported successfully."), function (panel)
+                    panel:AddText("Exported material to " .. finalPath)
+                end)
             end
         end
     end)
@@ -336,8 +345,14 @@ function VisualTab:RenderMaterialContextPopup()
         local suc = Ext.IO.SaveFile(finalPath, save:Stringify({ AutoFindRoot = true }))
         if not suc then
             Error("Failed to export material preset to " .. finalPath)
+            exportNotif:Show(GetLoca("Failed to export material preset."), function (panel)
+                panel:AddText("Failed to export material preset to " .. finalPath)
+            end)
         else
             Info("Exported material preset to " .. finalPath)
+            exportNotif:Show(GetLoca("Material preset exported successfully."), function (panel)
+                panel:AddText("Exported material preset to " .. finalPath)
+            end)
         end
     end)
 end
@@ -909,6 +924,7 @@ function VisualTab:RenderAttachmentEditors()
 
         local attachNode = StyleHelpers.AddTree(self.attachmentsHeader, displayName .. "##" .. tostring(attIndex), false)
         attachNode:AddTreeIcon(RB_ICONS.Box, IMAGESIZE.ROW).Tint = HexToRGBA("FFB98634")
+        
         local gr2Text = attachNode:AddHint("Model: " .. gr2FileName)
         gr2Text:SetColor("Text", HexToRGBA("FF6D6D6D"))
         gr2Text.SameLine = true
@@ -948,6 +964,7 @@ function VisualTab:RenderAttachmentEditors()
             end
 
             local keyName = gr2FileName .. "::" .. modelName .. "::" .. tostring(attIndex) .. "::" .. tostring(descIndex)
+            self:RenderTransformSliders(objNode, descIndex, attIndex, keyName)
 
             local materialTab = self.Materials[keyName] or MaterialTab.new(objNode, matName, getliveMat, getliveParams) --[[@as MaterialTab]]
             materialTab.Parent = objNode
@@ -971,7 +988,7 @@ function VisualTab:RenderAttachmentEditors()
                     self.SelectedMaterial = keyName
                     self.materialContextPopup:Open()
                 end
-                self:RenderTransformSliders(materialTab.Panel, descIndex, attIndex, keyName)
+                
                 objNode.OnExpand = function()
                 end
             end
@@ -1060,6 +1077,7 @@ function VisualTab:RenderObjectEditor()
         --- @return MaterialParametersSet|nil
 
         local keyName = meshName .. "::" .. tostring(descIndex)
+        self:RenderTransformSliders(materialNode, descIndex, nil, keyName)
         local materialEditor = self.Materials[keyName] or
             MaterialTab.new(materialNode, material.MaterialName, getliveMat, getliveParams) --[[@as MaterialTab]]
         materialEditor.IsObject = true
@@ -1082,7 +1100,7 @@ function VisualTab:RenderObjectEditor()
                 self.materialContextPopup:Open()
             end
 
-            self:RenderTransformSliders(materialNode, descIndex, nil, keyName)
+            
             materialNode.OnExpand = function() end
         end
 
@@ -2381,7 +2399,7 @@ function VisualTab:CheckVisual()
     return true
 end
 
---- merge all modified material params from all materials in this tab
+--- merge modified material params from materials into one set
 --- @return RB_ParameterSet?
 function VisualTab:ExportModifiedMaterialParams()
     local exportedParams = {} --[[@as RB_ParameterSet ]]

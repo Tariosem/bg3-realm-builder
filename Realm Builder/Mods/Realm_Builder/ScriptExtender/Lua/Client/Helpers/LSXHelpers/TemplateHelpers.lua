@@ -73,13 +73,6 @@ function LSXHelpers.GetPathAfterData(path)
     return path:match("Data[\\/](.*)") or path
 end
 
---- @return XMLNode -- childrenNode
-function LSXHelpers.BuildTemplatesRegionNode()
-    return LSXHelpers.new():AppendChild(XMLNode.new("region", { id = "Templates" }))
-        :AppendChild(XMLNode.new("node", { id = "Templates" }))
-        :AppendChild(LSXHelpers.ChildrenNode())
-end
-
 function LSXHelpers.BuildLayerListNode(levelName)
     local layerNode = XMLNode.new("node", { id = "LayerList" })
 
@@ -158,7 +151,7 @@ function LSXHelpers.BuildTemplate(guid, entData, internalName, displayNameHandle
 
     if not templateType then return end
 
-    local templateRegion = LSXHelpers.BuildTemplatesRegionNode()
+    local templateRegion = LSXHelpers.BuildTemplates()
     local gameObjectNode = templateRegion:AppendChild(XMLNode.new("node", { id = "GameObjects" }))
 
     local basicAttrs = {
@@ -238,7 +231,7 @@ end
 function LSXHelpers.BuildRootTemplate(srcUuid, uuid, internalName, override)
     srcUuid = TakeTailTemplate(srcUuid)
     override = override or {}
-    local templateRegion = LSXHelpers.BuildTemplatesRegionNode()
+    local templateRegion = LSXHelpers.BuildTemplates()
     local gameObjectNode = templateRegion:AppendChild(XMLNode.new("node", { id = "GameObjects" }))
 
     local parentType = Ext.Template.GetTemplate(srcUuid).TemplateType
@@ -386,7 +379,7 @@ end
 
 --- @param bankName string
 --- @return XMLNode, XMLNode -- childrenNode, regionNode
-function LSXHelpers.BuildBank(bankName)
+function LSXHelpers.BuildRegion(bankName)
     local saveNode = LSXHelpers.new()
 
     local regionNode = saveNode:AppendChild(XMLNode.new("region", { id = bankName }))
@@ -397,24 +390,29 @@ function LSXHelpers.BuildBank(bankName)
     return childrenNode, regionNode
 end
 
+--- @return XMLNode, XMLNode -- childrenNode, regionNode
+function LSXHelpers.BuildTemplates()
+    return LSXHelpers.BuildRegion("Templates")
+end
+
 ---@return XMLNode, XMLNode -- childrenNode, regionNode
 function LSXHelpers.BuildMaterialPresetBank()
-    return LSXHelpers.BuildBank("MaterialPresetBank")
+    return LSXHelpers.BuildRegion("MaterialPresetBank")
 end
 
 --- @return XMLNode, XMLNode -- childrenNode, regionNode
 function LSXHelpers.BuildMaterialBank()
-    return LSXHelpers.BuildBank("MaterialBank")
+    return LSXHelpers.BuildRegion("MaterialBank")
 end
 
 --- @return XMLNode, XMLNode -- childrenNode, regionNode
 function LSXHelpers.BuildCharacterVisualBank()
-    return LSXHelpers.BuildBank("CharacterVisualBank")
+    return LSXHelpers.BuildRegion("CharacterVisualBank")
 end
 
 --- @return XMLNode, XMLNode -- childrenNode, regionNode
 function LSXHelpers.BuildVisualBank()
-    return LSXHelpers.BuildBank("VisualBank")
+    return LSXHelpers.BuildRegion("VisualBank")
 end
 
 ---@param displayName string the handle of the translated string
@@ -532,7 +530,7 @@ end
 ---@param name string
 ---@return XMLNode
 function LSXHelpers.BuildBoxTrigger(pos, rot, extents, levelName, name, uuid)
-    local templateNode = LSXHelpers.BuildTemplatesRegionNode()
+    local templateNode = LSXHelpers.BuildTemplates()
     local triggerNode = templateNode:AppendChild(XMLNode.new("node", { id = "GameObjects" }))
 
     local baseAttr = {
@@ -603,7 +601,7 @@ end
 --- @param uuid GUIDSTRING
 --- @return XMLNode
 function LSXHelpers.BuildPatrolSpline(origin, nodes, levelName, name, uuid)
-    local templateNode = LSXHelpers.BuildTemplatesRegionNode()
+    local templateNode = LSXHelpers.BuildTemplates()
     local splineNode = templateNode:AppendChild(XMLNode.new("node", { id = "GameObjects" }))
 
     local baseAttr = {
@@ -643,7 +641,7 @@ end
 --- @param internalName string
 --- @param modfiedParams LightTemplate
 function LSXHelpers.BuildLightTemplate(srcUuid, uuid, internalName, modfiedParams)
-    local templateNode = LSXHelpers.BuildTemplatesRegionNode()
+    local templateNode = LSXHelpers.BuildTemplates()
     local lightNode = templateNode:AppendChild(XMLNode.new("node", { id = "GameObjects" }))
 
     local baseAttr = {
@@ -669,7 +667,7 @@ end
 --- @param levelName string
 --- @return XMLNode
 function LSXHelpers.BuildPrefabTemplate(uuid, internalName, childUuids, childTransforms, levelName)
-    local templateNode = LSXHelpers.BuildTemplatesRegionNode()
+    local templateNode = LSXHelpers.BuildTemplates()
     local prefabNode = templateNode:AppendChild(XMLNode.new("node", { id = "GameObjects" }))
 
     local baseAttr = {

@@ -48,8 +48,7 @@ function MaterialEditor:SetDefaultParameters(params)
     return true
 end
 
---- this function return a value for a given parameter name
---- it first checks the local changes, then preset, then original material proxy
+--- this function return copy of parameter value
 ---@param paramName string
 ---@return number[]?
 function MaterialEditor:GetParameter(paramName)
@@ -74,7 +73,7 @@ function MaterialEditor:GetParameter(paramName)
         end
     end
 
-    return value
+    return DeepCopy(value)
 end
 
 function MaterialEditor:HasChanged(paramName)

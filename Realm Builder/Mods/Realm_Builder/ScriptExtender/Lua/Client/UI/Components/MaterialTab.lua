@@ -61,12 +61,9 @@ function MaterialTab:Render(parent)
         if drop.UserData and drop.UserData.Parameters then
             local params = drop.UserData.Parameters
 
-            self:ApplyParameters(params)
             drop.UserData.SuccessApply = true
+            self:ApplyParameters(params)
             self:UpdateUIState()
-            if drop.UserData.PresetProxy then
-                self:SetPreset(drop.UserData.PresetProxy)
-            end
         end
         if drop.UserData and drop.UserData.ParameterName then
             local paramName = drop.UserData.ParameterName --[[@as string ]]
@@ -126,6 +123,47 @@ function MaterialTab:Render(parent)
 
         typeNode.OnCollapse = function ()
             self.cachedExpandedState[paramType] = false
+        end
+
+        typeNode.DragDropType = MATERIALPRESET_DRAGDROP_TYPE
+        typeNode.CanDrag = true
+        typeNode.OnDragStart = function (sel)
+            sel.DragPreview:AddText(propType .. "##" .. self.MaterialName)
+            local allParamNames = self:GetAllParameterNames()[paramType]
+            local udParams = {}
+            for i=1, paramType do
+                udParams[i] = {}
+            end
+            for _, paramName in pairs(allParamNames) do
+                local value = self:GetParameter(paramName) --[[@as number[] ]]
+                if value then
+                    udParams[paramType][paramName] = value
+                end
+            end
+            sel.UserData.ParameterName = nil
+            sel.UserData.ParameterValue = nil
+            sel.UserData.Parameters = udParams
+        end
+
+        typeNode.OnDragDrop = function (sel, drop)
+            if drop.UserData and drop.UserData.Parameters then
+                local udParams = DeepCopy(drop.UserData.Parameters)
+
+                for i=1, 6 do
+                    if i ~= paramType then
+                        udParams[i] = {}
+                    end
+                end
+
+                drop.UserData.SuccessApply = true
+                self:ApplyParameters(udParams)
+            end
+            if drop.UserData and drop.UserData.ParameterName then
+                local paramName = drop.UserData.ParameterName --[[@as string ]]
+                local newValue = drop.UserData.ParameterValue --[[@as number[] ]]
+
+                self:SetParameter(paramName, newValue)
+            end
         end
 
         local function renderParamTable()
@@ -218,7 +256,6 @@ function MaterialTab:Render(parent)
                 allParamNode[propertyName] = propNode
 
                 propNode.UserData = {
-                    MaterialProxy = self.Editor,
                     ParameterName = propertyName,
                     OnDestroy = function ()
                         allParamNode[propertyName] = nil
@@ -231,7 +268,7 @@ function MaterialTab:Render(parent)
             end
         end
 
-        typeNode.OnExpand = function (isOpen)
+        typeNode.OnExpand = function ()
             renderParamTable()
             renderParamTable = function() end
             for _,node in pairs(allParamNode) do
@@ -239,6 +276,11 @@ function MaterialTab:Render(parent)
             end
             self.cachedExpandedState[paramType] = true
         end
+
+        if self.cachedExpandedState[paramType] == true then
+            typeNode:OnExpand()
+        end
+
         ::continue::
     end
     
@@ -444,7 +486,7 @@ function MaterialTab:BuildMaterialPresetResourceNode(uuid, internalName)
 end
 
 function MaterialTab:ExportChanges()
-    return self.Editor.Parameters
+    return DeepCopy(self.Editor.Parameters)
 end
 
 function MaterialTab:ImportChanges(params)
