@@ -14,6 +14,7 @@ function TemplateExportMenu.new(entDatas)
     local o = {}
 
     o.ExportDatas = entDatas
+    o.isValid = true
 
     setmetatable(o, TemplateExportMenu)
 
@@ -25,6 +26,7 @@ function TemplateExportMenu:Render()
     panel.Closeable = true
 
     panel.OnClose = function()
+        self.isValid = false
         DeleteWindow(panel)
     end
 
@@ -123,6 +125,44 @@ function TemplateExportMenu:RenderExportEntities(panel)
     end
     table.sort(allTemplateTypes)
 
+    panel:AddDummy(150,1)
+    local visualizeAllBtn = panel:AddButton("Visualize All Export Entries") --[[@as ExtuiButton ]]
+    visualizeAllBtn.SameLine = true
+    visualizeAllBtn.Size = {-150, 0}
+
+    visualizeAllBtn.OnClick = function()
+        local thread = nil
+        local function spawnFunc()
+            for guid, entry in pairs(self.ExportDatas) do
+                self:VisualizeExportEntry(guid, -1)
+                local templateObj = Ext.Template.GetTemplate(TakeTailTemplate(entry.TemplateId))
+                if templateObj.TemplateType == "scenery" then
+                    Timer:Ticks(30, function (timerID)
+                        if not thread then return end
+                        local ok, msg = coroutine.resume(thread)
+                        if not ok then
+                            Error("Failed to visualize all export entries: " .. tostring(msg))
+                        end
+                    end)
+                    coroutine.yield()
+                end
+            end
+            Timer:After(5000, function (timerID)
+                self:ClearVisualizations()
+            end)
+            if not self.isValid then return end
+            SetImguiDisabled(visualizeAllBtn, false)
+        end
+
+        thread = coroutine.create(spawnFunc)
+        SetImguiDisabled(visualizeAllBtn, true)
+        local suc, msg = coroutine.resume(thread)
+        if not suc then
+            SetImguiDisabled(visualizeAllBtn, false)
+            Error("Failed to visualize all export entries: " .. tostring(msg))
+        end
+    end
+
     local exportTable = panel:AddTable("Entities to Export", 1)
 
     local row = exportTable:AddRow()
@@ -209,6 +249,22 @@ function TemplateExportMenu:RenderTemplateEntry(cell, entData)
         ExcludeFromExport = true,
         DisplayIcon = true,
     }
+
+    local sceneryAttrs = {
+        AllowCameraMovement = true,
+        WalkOn = true,
+        WalkThrough = true,
+        CanClimbOn = true,
+        CanShootThrough = true,
+        CanSeeThrough = true,
+        IsBlocker = true,
+    }
+
+    if entData.TemplateType == "scenery" then
+        for k, _ in pairs(sceneryAttrs) do
+            entData[k] = entData[k] or false
+        end
+    end
 
     local attrOrder = {
         "TemplateType",
@@ -396,8 +452,52 @@ function TemplateExportMenu:RenderTemplateEntry(cell, entData)
         renderAttr()
         header.OnExpand = function() end
     end
+    header.OnRightClick = function()
+        self:VisualizeExportEntry(entData.Guid)
+    end
 
     return header
+end
+
+function TemplateExportMenu:VisualizeExportEntry(uuid, duration)
+    local entry = self.ExportDatas[uuid]
+    if not entry then
+        Warning("[TemplateExportMenu] Failed to find export entry for UUID: " .. tostring(uuid))
+        return
+    end
+
+    local vec3Scale = {1, 1, 1}
+    if type(entry.Scale) == "table" then
+        vec3Scale = entry.Scale
+    else
+        vec3Scale = {entry.Scale, entry.Scale, entry.Scale}
+    end
+    
+    NetChannel.Spawn:RequestToServer({
+        TemplateId = entry.TemplateId,
+        EntInfo = {
+            Position = entry.Position,
+            Rotation = entry.Rotation,
+            Scale = vec3Scale
+        },
+        Duration = duration,
+        Type = 'Preview'
+    }, function (response)
+        if not response.Guid then
+            Warning("[TemplateExportMenu] Failed to spawn preview entity for template ID: " .. tostring(entry.TemplateId))
+            return
+        end
+        if duration < 0 then
+            self.visualizations = self.visualizations or {}
+            table.insert(self.visualizations, response.Guid)
+        end
+    end)
+end
+
+function TemplateExportMenu:ClearVisualizations()
+    NetChannel.Delete:SendToServer({
+        Guid = self.visualizations
+    })
 end
 
 function TemplateExportMenu:ExportToMod(exportSettings, progressCallback)
@@ -433,8 +533,13 @@ function TemplateExportMenu:__export(exportSettings, progressCallback)
     local customVisualCnt = 0
     local toExport = {} --[[@type table<string, EntityData> ]]
     local toBuildCustomVisuals = {} --[[@type table<string, EntityData> ]]
+
+    local function isValidTemplateId(templateId)
+        return templateId and templateId ~= "" and Ext.Template.GetTemplate(TakeTailTemplate(templateId)) ~= nil
+    end
+
     for guid, entData in pairs(exportSettings.Entities) do
-        if not entData.ExcludeFromExport then
+        if not entData.ExcludeFromExport and isValidTemplateId(entData.TemplateId) then
             toExport[guid] = entData
             if entData.UseCustomVisualParameters then
                 customVisualCnt = customVisualCnt + 1
@@ -442,6 +547,7 @@ function TemplateExportMenu:__export(exportSettings, progressCallback)
             end
         end
     end
+
     local exportCnt = CountMap(toExport)
 
     local actCnt =
@@ -464,14 +570,16 @@ function TemplateExportMenu:__export(exportSettings, progressCallback)
         Error(debug.traceback(message))
         progressCallback(-1, message)
         local time = GetFormatTime()
-        Ext.IO.SaveFile(RealmPath.GetMapModLogPath(time),
+        suc = Ext.IO.SaveFile(RealmPath.GetMapModLogPath(time),
             Ext.Json.Stringify({
-                Time = time,
+                Time = Ext.Timer.ClockTime(),
                 Message = message,
                 ModPack = exportSettings,
-                Stack = debug.traceback(),
+                Stack = debug.traceback()
             }, { Beautify = true, StringifyInternalTypes = true }))
-        
+        if not suc then
+            Warning("Failed to save export error log file at " .. RealmPath.GetMapModLogPath(time))
+        end
     end
 
     local function yield()
@@ -563,7 +671,8 @@ function TemplateExportMenu:__export(exportSettings, progressCallback)
     local templateNameCnt = {}
 
     for guid, entData in pairs(toExport) do
-        local baseName = TrimTail(entData.TemplateId, 37)
+        local templateObj = Ext.Template.GetTemplate(TakeTailTemplate(entData.TemplateId))
+        local baseName = templateObj.Name or "Template"
         templateNameCnt[baseName] = (templateNameCnt[baseName] or 0) + 1
         intenalNameMap[guid] = modInternalName .. "_" .. baseName .. "_" .. PadNumber(templateNameCnt[baseName], 3) 
     end
@@ -673,7 +782,7 @@ function TemplateExportMenu:__export(exportSettings, progressCallback)
             saveFile(otherPath, other.XMLNode:Stringify({ AutoFindRoot = true }))
         end
 
-        advance("Exporting template " .. entData.DisplayName .. "...")
+        advance("Exporting template " .. entData.TemplateType .. " - " .. (entData.DisplayName or entData.TemplateId) .. "...")
     end
 
     if progressCallback then

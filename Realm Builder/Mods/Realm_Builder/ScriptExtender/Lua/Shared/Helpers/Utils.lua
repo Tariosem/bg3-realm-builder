@@ -730,7 +730,7 @@ function WaitUntil(check, doSomething, timeOutFrame)
         frameCount = frameCount + 1
         local ok, okToDo = pcall(check)
         if not ok then
-            _P("WaitUntil: check function error: " .. tostring(okToDo))
+            Debug("WaitUntil: check function error: " .. tostring(okToDo))
             Ext.Events.Tick:Unsubscribe(timerId)
             return
         end

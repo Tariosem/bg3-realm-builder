@@ -38,6 +38,16 @@ function VisualHelpers.GetEntityVisual(handle)
     return entity.Visual.Visual
 end
 
+--- @param handle EntityHandle|GUIDSTRING
+--- @param set RB_ParameterSet
+function VisualHelpers.ApplyParamSet(handle, set)
+    if not handle or not set then
+        return
+    end
+
+    -- todo?
+end
+
 --- @param handle any
 --- @return number?
 --- @return number?
@@ -142,7 +152,7 @@ function VisualHelpers.SetVisualRotation(handle, rot)
     return true
 end
 
---- @param handle EntityHandle
+--- @param handle EntityHandle|GUIDSTRING
 function VisualHelpers.SetVisualScale(handle, scale)
     local entity = handle
     local visual = VisualHelpers.GetEntityVisual(entity)

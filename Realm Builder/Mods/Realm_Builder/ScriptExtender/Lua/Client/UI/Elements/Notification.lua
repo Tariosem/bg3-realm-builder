@@ -126,15 +126,17 @@ function Notification:BuildContent()
 
     local titleText = self.titleText
     titleText.OnHoverEnter = function()
-        titleText:SetColor("Text", HexToRGBA("FF515151"))
+        local color = titleText:GetColor("Text") or {1,1,1,1}
+        titleText:SetColor("Text", {color[1], color[2], color[3], color[4] - 0.4})
     end
     titleText.OnHoverLeave = function()
-        titleText:SetColor("Text", HexToRGBA("FFFFFFFF"))
+        local color = titleText:GetColor("Text") or {1,1,1,1}
+        titleText:SetColor("Text", {color[1], color[2], color[3], color[4] + 0.4})
     end
     titleText.OnClick = function()
         self:Dismiss()
     end
-    titleText:SetColor("Text", HexToRGBA("FFFFFFFF"))
+    titleText:SetColor("Text", {1,1,1,1})
     self.MessageRenderFunc(panel)
     
     if self.ClickToDismiss then

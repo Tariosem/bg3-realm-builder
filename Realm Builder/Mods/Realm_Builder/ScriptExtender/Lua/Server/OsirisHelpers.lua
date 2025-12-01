@@ -8,7 +8,7 @@
 --- @field RotateTo fun(guid:GUIDSTRING, rx:number, ry:number, rz:number, w:number):boolean
 --- @field ScaleTo fun(guid:GUIDSTRING, sx:number, sy:number, sz:number):boolean
 --- @field ToTransform fun(guid:GUIDSTRING, transform:Transform):boolean
---- @field PreviewTemplate fun(templateId:string, x:number, y:number, z:number, p:number, yaw:number, r:number, w:number, visualPreset:string)
+--- @field PreviewTemplate fun(templateId:string, x:number, y:number, z:number, p:number, yaw:number, r:number, w:number, visualPreset:string):string?
 OsirisHelpers = OsirisHelpers or {}
 
 function OsirisHelpers.Propify(guids)
@@ -215,7 +215,7 @@ function OsirisHelpers.ToTransform(guid, transform)
     
 end
 
-function OsirisHelpers.PreviewTemplate(templateId, x, y, z, p, yaw, r, w, visualPreset)
+function OsirisHelpers.PreviewTemplate(templateId, x, y, z, p, yaw, r, w, visualPreset, duration)
     if not x or not y or not z then
         x, y, z = GetHostPosition()
     end
@@ -228,26 +228,39 @@ function OsirisHelpers.PreviewTemplate(templateId, x, y, z, p, yaw, r, w, visual
         templateName = templateId
     end
 
-    local preview = Osi.CreateAt(templateId, x, y, z, 1, 0, "") --[[@as string]]
+    local spawnTemplate = templateId --[[@as string?]]
+    local templateObj = Ext.Template.GetTemplate(TakeTailTemplate(templateId))
+    local tempoFlag = 0
+    spawnTemplate, tempoFlag = EntityManager.TemplateTrick(templateObj, templateId)
+    if not spawnTemplate then
+        Error("Failed to create preview for template: " .. tostring(templateId))
+        return
+    end
+
+    local preview = Osi.CreateAt(spawnTemplate, x, y, z, tempoFlag, 0, "") --[[@as string]]
     if not preview then
         Error("Failed to create preview for template: " .. tostring(templateId))
         return
     end
 
     OsirisHelpers.RotateTo(preview, p, yaw, r, w)
-
     OsirisHelpers.Propify(preview)
     Osi.SetCanInteract(preview, 0)
     Osi.ClearTag(preview, RB_PROP_TAG)
     RB_FlagHelpers.SetFlag(preview, "DeleteLater")
     
-    Timer:After(500, function ()
-        NetChannel.ApplyVisualPreset:Broadcast({ Guid=preview, TemplateName=templateName, VisualPreset=visualPreset })
-    end)
+    if visualPreset then
+        Timer:After(500, function ()
+            NetChannel.ApplyVisualPreset:Broadcast({ Guid=preview, TemplateName=templateName, VisualPreset=visualPreset })
+        end)
+    end
     
-    Timer:After(5000, function ()
-        Osi.RequestDelete(preview)
-        Osi.RequestDeleteTemporary(preview)
-    end)
+    if duration > 0 then
+        Timer:After(duration, function ()
+            Osi.RequestDelete(preview)
+            Osi.RequestDeleteTemporary(preview)
+        end)
+    end
+    return preview
 end
 

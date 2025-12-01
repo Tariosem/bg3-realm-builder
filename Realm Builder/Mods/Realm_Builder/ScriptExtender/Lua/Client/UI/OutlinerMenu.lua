@@ -1003,7 +1003,8 @@ function OutlinerMenu:SetupCollectionSelectablePopup(openKey)
     end
 
     local focusFunc = function()
-        
+        local hovering = self.propTreeList.hoveringKey
+        return hovering and not tree:IsLeaf(hovering)
     end
 
     contextMenu:AddContext(context, focusFunc)

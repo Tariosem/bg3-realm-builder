@@ -173,7 +173,7 @@ local readOnlyTemplateProperty = {
     field_108 = true,
 }
 
-local function copyTemplateProperties(fromTemplate, toTemplate)
+local function CopyTemplateProperties(fromTemplate, toTemplate)
     for k,v in pairs(fromTemplate) do
         if not readOnlyTemplateProperty[k] then 
             toTemplate[k] = v
@@ -190,6 +190,43 @@ local debugText =
     Spawned As : %s
     ===========================
 ]]
+
+---@param templateObj GameObjectTemplate
+---@param templateId string
+---@return string?, integer
+function EntityManager.TemplateTrick(templateObj, templateId)
+    local spawnTemplate = templateId
+    local tempoFlag = 0
+    if not templateObj then
+        local visualRes = Ext.Resource.Get(templateId, "Visual") --[[@as ResourceVisualResource]]
+        if visualRes then
+            templateObj = Ext.Template.GetTemplate(INVISIBLE_HELPER_PREVIEW) --[[@as ItemTemplate]]
+            templateObj.VisualTemplate = templateId
+            for i, boundData in pairs(templateObj.AIBounds or {}) do
+                templateObj.AIBounds[i].Max = visualRes.BoundsMax
+                templateObj.AIBounds[i].Min = visualRes.BoundsMin
+            end
+            spawnTemplate = templateObj.Name .. "-" .. templateObj.Id
+        else
+            Error("Invalid TemplateId: " .. tostring(templateId))
+            return nil, 0
+        end
+    else
+        tempoFlag = templateObj.TemplateType == "character" and 1 or 0
+        if templateObj.TemplateType == "scenery" or templateObj.TemplateType == "TileConstruction" then
+            local sceneryTemplate = templateObj --[[@as SceneryTemplate|ConstructionTemplate]]  
+            local helperATemplate = Ext.Template.GetTemplate(INVISIBLE_HELPER_SCENERY) --[[@as ItemTemplate]]
+
+            CopyTemplateProperties(sceneryTemplate, helperATemplate)
+            spawnTemplate = helperATemplate.Name .. "-" .. helperATemplate.Id
+        elseif templateObj.TemplateType ~= "item" and templateObj.TemplateType ~= "character" then
+            Debug(" Sorry , but we can't spawn root template of type: " .. tostring(templateObj.TemplateType))
+            return nil, 0
+        end
+    end
+
+    return spawnTemplate, tempoFlag
+end
 
 function EntityManager:CreateAt(templateId, x, y, z, rx, ry, rz, w)
     --Trace("CreateProp called with TemplateId: " .. tostring(TemplateId))
@@ -210,35 +247,12 @@ function EntityManager:CreateAt(templateId, x, y, z, rx, ry, rz, w)
         end
     end
 
-    local spawnTemplate = templateId
+    local spawnTemplate = templateId --[[@as string?]]
     local templateObj = Ext.Template.GetTemplate(TakeTailTemplate(templateId))
-    local tempoFlag = 0
-    if not templateObj then
-        local visualRes = Ext.Resource.Get(templateId, "Visual") --[[@as ResourceVisualResource]]
-        if visualRes then
-            templateObj = Ext.Template.GetTemplate(INVISIBLE_HELPER_PREVIEW) --[[@as ItemTemplate]]
-            templateObj.VisualTemplate = templateId
-            for i, boundData in pairs(templateObj.AIBounds or {}) do
-                templateObj.AIBounds[i].Max = visualRes.BoundsMax
-                templateObj.AIBounds[i].Min = visualRes.BoundsMin
-            end
-            spawnTemplate = templateObj.Name .. "-" .. templateObj.Id
-        else
-            Error("Invalid TemplateId: " .. tostring(templateId))
-            return nil
-        end
-    else
-        tempoFlag = templateObj.TemplateType == "character" and 1 or 0
-        if templateObj.TemplateType == "scenery" or templateObj.TemplateType == "TileConstruction" then
-            local sceneryTemplate = templateObj --[[@as SceneryTemplate|ConstructionTemplate]]  
-            local helperATemplate = Ext.Template.GetTemplate(INVISIBLE_HELPER_SCENERY) --[[@as ItemTemplate]]
-
-            copyTemplateProperties(sceneryTemplate, helperATemplate)
-            spawnTemplate = helperATemplate.Name .. "-" .. helperATemplate.Id
-        elseif templateObj.TemplateType ~= "item" and templateObj.TemplateType ~= "character" then
-            Debug(" Sorry , but we can't spawn root template of type: " .. tostring(templateObj.TemplateType))
-            return nil
-        end
+    local tempoFlag = 0 --[[@as integer]]
+    spawnTemplate, tempoFlag = self.TemplateTrick(templateObj, templateId)
+    if not spawnTemplate then
+        return nil
     end
 
     local newProp = Osi.CreateAt(spawnTemplate, x, y, z, tempoFlag, 0, "") --[[@as string]]
@@ -368,9 +382,12 @@ function EntityManager:LoadFromModVar()
         modVar.DeleteOnNextSession[guid] = nil
     end
 
-    local gizmos = GetAllGizmos()
-    for _,gizmo in pairs(gizmos) do
-        Osi.RequestDelete(gizmo)
+    local allFlagged = Ext.Vars.GetEntitiesWithVariable(RB_Flags_Field)
+    for _,uuid in pairs(allFlagged) do
+        if RB_FlagHelpers.HasFlag(uuid, "IsGizmo") or RB_FlagHelpers.HasFlag(uuid, "DeleteLater") then
+            Osi.RequestDeleteTemporary(uuid)
+            Osi.RequestDelete(uuid)
+        end
     end
 
     for guid, _ in pairs(modVar.SavedEntities) do

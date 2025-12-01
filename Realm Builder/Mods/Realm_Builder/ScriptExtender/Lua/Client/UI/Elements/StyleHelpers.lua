@@ -569,10 +569,14 @@ local function addLittleSpacer(parent, size)
     return dummy
 end
 
-function StyleHelpers.AddResetButton(parent, sameLine)
+
+function StyleHelpers.AddResetButton(parent, sameLine) 
     local group = parent:AddGroup("ResetButtonGroup_" .. Uuid_v4())
     group.SameLine = sameLine and true or false
-    local button = group:AddImageButton("##ResetButton_" .. Uuid_v4(), RB_ICONS.Arrow_CounterClockwise, IMAGESIZE.FRAME) --[[@as ExtuiImageButton]]
+
+    local button = nil
+    button = group:AddImageButton("##ResetButton_" .. Uuid_v4(), RB_ICONS.Arrow_CounterClockwise, IMAGESIZE.FRAME) --[[@as ExtuiImageButton]]
+
     --button.PositionOffset = { 0, 4 }
     return button, group
 end

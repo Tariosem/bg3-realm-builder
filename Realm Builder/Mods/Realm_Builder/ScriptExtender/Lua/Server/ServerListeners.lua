@@ -14,7 +14,14 @@ local function spawnHandler(data)
 
     if rtype == "Preview" then
         local previewItem = OsirisHelpers.PreviewTemplate(template, position[1], position[2], position[3], rotation[1],
-            rotation[2], rotation[3], rotation[4], entInfo and entInfo.VisualPreset)
+            rotation[2], rotation[3], rotation[4], entInfo and entInfo.VisualPreset, data.Duration or 5000)
+        if not previewItem then
+            return { Guid = nil, TemplateId = template }
+        end
+
+        if entInfo.Scale then
+            NetChannel.SetVisualTransform:Broadcast({ Guid = previewItem, Transforms = { [previewItem] = { Scale = entInfo.Scale } } })
+        end
         return { Guid = previewItem, TemplateId = template }
     end
 

@@ -40,9 +40,11 @@ function ClientSubscribe(channel, callback)
     return { Unsubscribe = unsub, ID = sub } 
 end
 
-GLOBAL_DEBUG_WINDOW = Ext.IMGUI.NewWindow("Realm_Builder_DebugWindow")
-GLOBAL_DEBUG_WINDOW.Closeable = true
-GLOBAL_DEBUG_WINDOW.Open = false
+if Ext.Utils.GetGameState() ~= "Menu" then
+    GLOBAL_DEBUG_WINDOW = Ext.IMGUI.NewWindow("Realm_Builder_DebugWindow")
+    GLOBAL_DEBUG_WINDOW.Closeable = true
+    GLOBAL_DEBUG_WINDOW.Open = false
+end
 
 RequireFiles("Client/", {
     "ClientListeners",
@@ -153,8 +155,6 @@ if false and GLOBAL_DEBUG_WINDOW then
         _D(hit)
     end
 end
-
-
 
 RB_CharacterManager = CharacterManager.new()
 RB_ItemManager = ItemManager.new()
