@@ -111,11 +111,11 @@ end
 function TextureResourceManager:PopulateAllTextureResources()
     local textureResources = Ext.Resource.GetAll("Texture")
     local now = Ext.Timer.MonotonicTime()
-    RPrintPurple("TextureResourceManager: Populating texture resources... (Found " .. #textureResources .. " resources)")
+    RBPrintPurple("TextureResourceManager: Populating texture resources... (Found " .. #textureResources .. " resources)")
     for _, res in pairs(textureResources) do
         self:PopulateTextureResource(res)
     end
-    RPrintPurple("TextureResourceManager: Populated " .. #textureResources .. " texture resources in " .. string.format("%.2f", Ext.Timer.MonotonicTime() - now) .. " ms.")
+    RBPrintPurple("TextureResourceManager: Populated " .. #textureResources .. " texture resources in " .. string.format("%.2f", Ext.Timer.MonotonicTime() - now) .. " ms.")
 end
 
 TextureResourceManager:PopulateAllTextureResources()

@@ -373,28 +373,6 @@ function WrapTextTokens(tokens, wrapPos)
     return wrapped
 end
 
-
----@param parent ExtuiTreeParent
----@param prefix string?
----@param text string
----@param readOnly boolean?
----@return ExtuiInputText
-function AddPrefixInput(parent, prefix, text, readOnly)
-    if prefix and prefix ~= "" then parent:AddText(prefix) end
-    local input = parent:AddInputText("", text or "")
-    input.SameLine = true
-    input.ReadOnly = readOnly == true
-    input.AutoSelectAll = readOnly == true
-    return input
-end
-
-function AddReadOnlyInput(parent, label, text)
-    local input = parent:AddInputText(label, text or "")
-    input.ReadOnly = true
-    input.AutoSelectAll = true
-    return input
-end
-
 ---@param parent ExtuiTreeParent
 ---@param label string?
 ---@return ExtuiTable
@@ -433,16 +411,13 @@ function AddMenuButton(menu, text, onClick, isWindow)
     return button
 end
 
-function AddRightAlignCell(parent)
+---@param parent ExtuiTreeParent
+---@return ExtuiTableCell, ExtuiTableCell, ExtuiTable -- RightCell, LeftCell, Table
+function StyleHelpers.AddRightAlignCell(parent)
     local tab, leftCell, rightCell = AddTwoColTable(parent)
     tab.ColumnDefs[1] = { WidthStretch = true }
     tab.ColumnDefs[2] = { WidthFixed = true }
     return rightCell, leftCell, tab
-end
-
-function SafeDestroy(extui)
-    if extui then extui:Destroy() end
-    return nil
 end
 
 function GetCombo(Combo)
@@ -612,7 +587,7 @@ end
 ---@param parent ExtuiTreeParent
 ---@param size number?
 ---@return ExtuiTableCell
-function AddIndent(parent, size)
+function StyleHelpers.AddIndent(parent, size)
     local table, leftCell, rightCell = AddTwoColTable(parent)
     table.ColumnDefs[1] = { Width = size or (10 * SCALE_FACTOR), WidthFixed = true }
     table.ColumnDefs[2] = { WidthStretch = true }
@@ -626,22 +601,6 @@ function StyleHelpers.AddCenterAlignTable(parent, label)
     table.ColumnDefs[1] = { WidthStretch = true }
     table.ColumnDefs[2] = { WidthFixed = true }
     table.ColumnDefs[3] = { WidthStretch = true }
-    return table
-end
-
-function AddLeftAlignTable(parent, label)
-    label = label or "LeftAlignTable"
-    local table = parent:AddTable(label .. "##" .. math.random(1, 10000), 2)
-    table.ColumnDefs[1] = { WidthFixed = true }
-    table.ColumnDefs[2] = { WidthStretch = true }
-    return table
-end
-
-function AddRightAlighTable(parent, label)
-    label = label or "RightAlignTable"
-    local table = parent:AddTable(label .. "##" .. math.random(1, 10000), 2)
-    table.ColumnDefs[1] = { WidthStretch = true }
-    table.ColumnDefs[2] = { WidthFixed = true }
     return table
 end
 

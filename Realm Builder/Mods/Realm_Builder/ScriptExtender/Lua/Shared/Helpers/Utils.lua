@@ -742,3 +742,13 @@ function WaitUntil(check, doSomething, timeOutFrame)
         end
     end)
 end
+
+function GetFormatTime()
+    local clockTime = Ext.Timer.ClockTime()
+    local y, m, d, h, min, s = clockTime:match("(%d+)-(%d+)-(%d+) (%d+):(%d+):(%d+)")
+    if not y or not m or not d or not h or not min or not s then
+        return ""
+    end
+    return string.format("%04d-%02d-%02d_%02d%02d%02d", tonumber(y), tonumber(m), tonumber(d),
+            tonumber(h), tonumber(min), tonumber(s))
+end

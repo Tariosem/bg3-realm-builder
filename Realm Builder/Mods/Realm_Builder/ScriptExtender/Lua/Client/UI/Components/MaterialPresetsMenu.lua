@@ -409,7 +409,7 @@ function MaterialPresetsMenu:RenderFolderRow(presetTab, folderName, openedFolder
     folderHeader.SameLine = true
 
     local folderManagePopup = folderCell:AddPopup("MaterialPresetFolderManagePopup_" .. folderName)
-    local folderTable = AddIndent(folderCell):AddTable("FolderTable_" .. folderName, 3)
+    local folderTable = StyleHelpers.AddIndent(folderCell):AddTable("FolderTable_" .. folderName, 3)
     folderTable.Visible = openedFolders[folderName] or false
     folderTable.UserData = {}
     folderTable.UserData.Header = folderHeader
@@ -678,7 +678,7 @@ function MaterialPresetsMenu:RenderImportSection(parent, exportSettings, onImpor
             local versions = cache[modName].Versions
             local modNameSel = parent:AddSelectable((openedTrees[modName] and "[-]" or "[+]") ..
                 modName .. "##ImportCCAMod_" .. modName) --[[@as ExtuiSelectable]]
-            local group = AddIndent(parent:AddGroup("ImportCCAModGroup_" .. modName))
+            local group = StyleHelpers.AddIndent(parent:AddGroup("ImportCCAModGroup_" .. modName))
             group.Visible = openedTrees[modName] or false
 
             modNameSel.OnClick = function()
@@ -1067,8 +1067,17 @@ function MaterialPresetsMenu:ExportToMod(modPack, progressCallback)
 
     local ok, err = coroutine.resume(thread)
     if not ok then
+        Error(debug.traceback(thread, ""))
         progressCallback(-1, "Error: " .. tostring(err))
-        Error("Error starting export coroutine: " .. tostring(err))
+        local time = GetFormatTime()
+        local errorLog = {
+            Time = Ext.Timer.ClockTime(),
+            Error = tostring(err),
+            Stack = debug.traceback(),
+            ModPack = modPack,
+        }
+        Ext.IO.SaveFile(RealmPath.GetCCModLogPath(time),
+            Ext.Json.Stringify(errorLog, { Beautify = true, StringifyInternalTypes = true }))
     end
 end
 
@@ -1095,19 +1104,9 @@ function MaterialPresetsMenu:__exportToMod(modPack, progressCallback, exportThre
     local folderDefs = modPack.FolderDefinitions or {}
     local existingLoca = self.modLocalizations[modFolderName] or {}
 
-    --- @param clockTime string
-    local function sanitizeClockTime(clockTime)
-        local y, m, d, h, min, s = clockTime:match("(%d+)-(%d+)-(%d+) (%d+):(%d+):(%d+)")
-        if not y or not m or not d or not h or not min or not s then
-            return ""
-        end
-        return string.format("%04d-%02d-%02d_%02d%02d%02d", tonumber(y), tonumber(m), tonumber(d),
-            tonumber(h), tonumber(min), tonumber(s))
-    end
-
     local modFolderDisplayName = modFolderName ..
     "_" ..
-    BuildVersionString(version[1], version[2], version[3], version[4]) .. "_" .. sanitizeClockTime(Ext.Timer.ClockTime())
+    BuildVersionString(version[1], version[2], version[3], version[4]) .. "_" .. GetFormatTime()
 
     local presetCnt = CountMap(matPresets)
     local folderCnt = CountMap(folders)
@@ -1133,12 +1132,16 @@ function MaterialPresetsMenu:__exportToMod(modPack, progressCallback, exportThre
 
     local function throwError(message)
         progress = -1
-        Error("MaterialPresetsMenu: ExportToMod Error: " .. message)
+        Error(debug.traceback(message))
         progressCallback(progress, message)
-        local running = coroutine.running()
-        if running and running == exportThread then
-            coroutine.yield()
-        end
+        local time = GetFormatTime()
+        Ext.IO.SaveFile(RealmPath.GetCCModLogPath(time),
+            Ext.Json.Stringify({
+                Time = Ext.Timer.ClockTime(),
+                Error = tostring(message),
+                Stack = debug.traceback(),
+                ModPack = modPack,
+            }, { Beautify = true, StringifyInternalTypes = true }))
     end
 
     local function yieldyield()
@@ -1150,7 +1153,6 @@ function MaterialPresetsMenu:__exportToMod(modPack, progressCallback, exportThre
                 local sucr, err = coroutine.resume(thread)
                 if not sucr then
                     throwError("ExportToMod: Error resuming coroutine: " .. tostring(err))
-                    Ext.Debug.DumpStack()
                 end
             else
                 Warning("MaterialPresetsMenu: ExportToMod coroutine not in suspended state after yield, cannot resume.")
@@ -1169,7 +1171,7 @@ function MaterialPresetsMenu:__exportToMod(modPack, progressCallback, exportThre
 
     local function saveFile(path, string)
         suc = Ext.IO.SaveFile(path, string)
-        if not suc then throwError("ExportToMod: Failed to save file at " .. path) end
+        if not suc then throwError("ExportToMod: Failed to save file at " .. path) return end
         yieldyield()
     end
 
@@ -1235,7 +1237,7 @@ function MaterialPresetsMenu:__exportToMod(modPack, progressCallback, exportThre
         for presetGuid, _ in pairs(folderObj) do
             local preset = matPresets[presetGuid]
             local presetType = folderDefs[folderName] and folderDefs[folderName].ExportType
-            if not presetType then throwError("ExportToMod: No preset type defined for folder '" .. folderName .. "'") end
+            if not presetType then throwError("ExportToMod: No preset type defined for folder '" .. folderName .. "'") return end
             matPresetDefs[presetGuid] = presetType
 
             local internalName = modFolderName .. cheapName[presetType] .. internalNames[preset]

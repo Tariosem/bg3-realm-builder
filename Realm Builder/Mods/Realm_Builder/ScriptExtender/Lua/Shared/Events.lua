@@ -62,6 +62,7 @@ end
 
 local clientCommands = {}
 local serverCommands = {}
+local commonCommands = {}
 
 local CommandChannel = Ext.Net.CreateChannel(ModuleUUID, "SyncCommands") --[[@as NetChannel]]
 
@@ -71,6 +72,13 @@ CommandChannel:SetHandler(function(data, user)
         clientCommands = commands
     else
         serverCommands = commands
+    end
+    for cmd,_ in pairs(commands) do
+        if clientCommands[cmd] and serverCommands[cmd] then
+            commonCommands[cmd] = clientCommands[cmd]
+            clientCommands[cmd] = nil
+            serverCommands[cmd] = nil
+        end
     end
 end)
 
@@ -104,17 +112,24 @@ Ext.Events.SessionLoaded:Subscribe(function (e)
     end
 end)
 
-Ext.RegisterConsoleCommand("rb_help", function(args)
-    if args and (clientCommands[args] or serverCommands[args]) then
-        local cmdData = clientCommands[args] or serverCommands[args]
+Ext.RegisterConsoleCommand("rb_help", function(cmd, args)
+    if args and (clientCommands[args] or serverCommands[args] or commonCommands[args]) then
+        local cmdData = clientCommands[args] or serverCommands[args] or commonCommands[args]
         print(string.format("Command: %s", args))
         print(string.format("Description: %s", cmdData.description or "No description provided."))
         return
     end
 
-    print("Realm Builder Console Commands:\n")
-    print("------- Server Context -------")
+    print("Realm Builder Console Commands:")
+
+    print("\n------- Common Commands -------")
     local index = 1
+    for command, cmdData in pairs(commonCommands) do
+        print(string.format("%d. %s", index, command))
+        index = index + 1
+    end
+    print("\n------- Server Context -------")
+    index = 1
     for command, cmdData in pairs(serverCommands) do
         print(string.format("%d. %s", index, command))
         index = index + 1

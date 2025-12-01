@@ -69,7 +69,7 @@ end
 
 RegisterConsoleCommand("rb_dump_modvar", function ()
     local modVar = getModVar()
-    _D(modVar)
+    RainbowDumpTable(modVar)
 end, "Dump the EntityManager mod variable to console.")
 
 --[[

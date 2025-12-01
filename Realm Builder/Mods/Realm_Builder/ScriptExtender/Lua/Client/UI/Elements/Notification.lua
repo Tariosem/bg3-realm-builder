@@ -27,7 +27,7 @@
 --- @field Title string
 --- @field MessageRenderFunc fun(panel: ExtuiWindow) A function that takes the panel and adds content to it
 --- @field new fun(name:string):Notification
---- @field Show fun(self: Notification, title: string, messageRenderFunc: fun(panel: ExtuiWindow)):Notification
+--- @field Show fun(self: Notification, title: string, messageRenderFunc:fun(panel: ExtuiWindow)|string):Notification
 --- @field Dismiss fun(self: Notification)
 --- @field Close fun(self: Notification)
 --- @field StartAnimation fun(self: Notification, dir: "FadeIn"|"FadeOut", direction: "Horizontal"|"Vertical")
@@ -124,6 +124,17 @@ function Notification:BuildContent()
     self.titleText = panel:AddSeparatorText(self.Title)
     self.titleText:SetStyle("SeparatorTextAlign", 0.5)
 
+    local titleText = self.titleText
+    titleText.OnHoverEnter = function()
+        titleText:SetColor("Text", HexToRGBA("FF515151"))
+    end
+    titleText.OnHoverLeave = function()
+        titleText:SetColor("Text", HexToRGBA("FFFFFFFF"))
+    end
+    titleText.OnClick = function()
+        self:Dismiss()
+    end
+    titleText:SetColor("Text", HexToRGBA("FFFFFFFF"))
     self.MessageRenderFunc(panel)
     
     if self.ClickToDismiss then
@@ -463,11 +474,16 @@ function Notification:SetupFlick()
 end
 
 ---@param title string
----@param messageRenderFunc fun(panel: ExtuiWindow)
+---@param messageRenderFunc fun(panel: ExtuiWindow)|string
 ---@return Notification
 function Notification:Show(title, messageRenderFunc)
     self.Title = title or self.Title or "Notification"
-    self.MessageRenderFunc = messageRenderFunc or function(panel) panel:AddText("No Content") end
+    if type(messageRenderFunc) == "function" then
+        self.MessageRenderFunc = messageRenderFunc or function(panel) panel:AddText("No Content") end
+    elseif type(messageRenderFunc) == "string" then
+        local msg = messageRenderFunc
+        self.MessageRenderFunc = function(panel) panel:AddText(msg).TextWrapPos = 800 * SCALE_FACTOR end
+    end
     self:BuildContent()
     return self
 end
@@ -475,7 +491,7 @@ end
 --- @param level RB_DEBUG_LEVELS
 --- @param message string
 function ErrorNotify(level, message)
-    if not DebugRadiant[level] then return end
+    if not DebugGradient[level] then return end
     local notification = Notification.new("RB_Notification_" .. tostring(math.random(1,1000000)))
     notification.Pivot = {0.9, 0.8}
     notification.AnimDirection = "Vertical"
@@ -486,7 +502,7 @@ function ErrorNotify(level, message)
         panel:SetColor("Border", HexToRGBA(DEBUG_COLOR[level]))
         notification.titleText:SetColor("Text", HexToRGBA(DEBUG_COLOR[level]))
         notification.titleText:SetColor("Separator", AdjustColor(HexToRGBA(DEBUG_COLOR[level]), -0.2, -0.3))
-        local tokens = DebugRadiant[level](message)
+        local tokens = DebugGradient[level](message)
         tokens = WrapTextTokens(tokens)
         for _, token in ipairs(tokens) do
             token.Style = {

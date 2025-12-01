@@ -1,6 +1,6 @@
 --- @class RB_ItemManager:ManagerBase
 --- @field new fun():RB_ItemManager
---- @field CheckHostValidEquipmentVisual fun(self: RB_ItemManager, guid:string)
+--- @field CheckHostValidEquipmentVisual fun(self: RB_ItemManager, guid:string):boolean
 ItemManager = _Class("ItemManager", ManagerBase)
 
 function ItemManager:__init()
@@ -31,7 +31,7 @@ function ItemManager:GetEquipmentsForRace(raceUuid)
 end
 
 function ItemManager:CheckHostValidEquipmentVisual(guid)
-    if self.lastPartyMember == guid and self.lastDynamicTag then return end
+    if self.lastPartyMember == guid and self.lastDynamicTag then return false end
 
     if self.lastDynamicTag then
         self.tagMap[self.lastDynamicTag] = nil
@@ -40,12 +40,13 @@ function ItemManager:CheckHostValidEquipmentVisual(guid)
     end
 
     local entity = guid and UuidToHandle(guid) or _C()
-    if not entity then return end
-    if not entity.IsCharacter and not IsPartyMember(guid) then return end
+    self.lastPartyMember = guid
+    if not entity then return false end
+    if not IsPartyMember(entity) then return false end
 
     local raceUuid = entity.GameObjectVisual.RootTemplateId
     local cTemplate = Ext.Template.GetRootTemplate(raceUuid)
-    if not cTemplate then return end
+    if not cTemplate then return false end
     local equipmentRace = cTemplate.EquipmentRace
     local displayName = entity.DisplayName.Name:Get() or "Host"
     local dynamicTag = GetLoca("Valid Visuals for ") .. displayName
@@ -57,7 +58,7 @@ function ItemManager:CheckHostValidEquipmentVisual(guid)
     local data = self:GetEquipmentsForRace(equipmentRace)
     if not data then
         Info("No valid equipment visual for host")
-        return
+        return false
     end
     local cnt = 0
     for uuid, _ in pairs(data) do
@@ -67,6 +68,8 @@ function ItemManager:CheckHostValidEquipmentVisual(guid)
         self.tagMap[tag][uuid] = true
         cnt = cnt + 1
     end
+
+    return true
 end
 
 function ItemManager:HardCodeHierachy()

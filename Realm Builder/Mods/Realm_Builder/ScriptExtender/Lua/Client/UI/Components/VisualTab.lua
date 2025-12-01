@@ -526,7 +526,7 @@ function VisualTab:RenderPresetsCell(parent)
 end
 
 function VisualTab:RenderUtilsCell(parent)
-    local detachCell = AddRightAlignCell(parent)
+    local detachCell = StyleHelpers.AddRightAlignCell(parent)
     local loadCell = parent
 
     local detachButton = detachCell:AddButton(GetLoca("Detach"))

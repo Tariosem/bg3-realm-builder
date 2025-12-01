@@ -139,7 +139,7 @@ end
 function TreeList:RenderTopBar()
     self.OtherPanel = self.panel:AddTree("Others")
     self:RenderCustomTopBar(self.OtherPanel)
-    local rightA, leftA, topbar = AddRightAlignCell(self.panel)
+    local rightA, leftA, topbar = StyleHelpers.AddRightAlignCell(self.panel)
 
     self.topBar = topbar
     local searchInput = leftA:AddInputText("") --[[@as ExtuiInputText]]
@@ -295,12 +295,9 @@ end
 function TreeList:RenderList()
     -- validate renderOrder
     
-    if self.renderThread then
-        if self.__killRenderThread then
-            self.__killRenderThread()
-            self.__killRenderThread = nil
-        end
-        self.renderThread = nil
+    if self.__killRenderThread then
+        self.__killRenderThread()
+        self.__killRenderThread = nil
     end
 
     --- @type ExtuiTable
@@ -451,12 +448,10 @@ function TreeList:RenderList()
         end
 
         self:IterativeShow(TreeTable.GetRootKey())
-        self.renderThread = nil
         self.__killRenderThread = nil
     end
 
     thread = coroutine.create(renderFunc)
-    self.renderThread = thread
     self.__killRenderThread = function()
         outerSuspended = true
     end

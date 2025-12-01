@@ -198,7 +198,7 @@ function LSXHelpers.BuildTemplate(guid, entData, internalName, displayNameHandle
 
         if entData.OverrideVisualUuid then
             gameObjectNode:InsertChild(
-            LSXHelpers.AttrNode("CharacterVisualResourceID", "FixedString", entData.OverrideVisualUuid), 1)
+                LSXHelpers.AttrNode("CharacterVisualResourceID", "FixedString", entData.OverrideVisualUuid), 1)
         end
 
         if not entData.WanderConfig then
@@ -697,7 +697,7 @@ function LSXHelpers.BuildPrefabTemplate(uuid, internalName, childUuids, childTra
         childTransformNode:AppendChildren({
             lsattrNode("Position", "fvec3", transform.Translate),
             lsattrNode("RotationQuat", "fvec4", transform.RotationQuat),
-            lsattrNode("Scale", "float", transform.Scale),
+            lsattrNode("Scale", "float", math.min(transform.Scale[1], transform.Scale[2], transform.Scale[3])),
         })
     end
 

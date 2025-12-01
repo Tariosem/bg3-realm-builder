@@ -2,7 +2,7 @@
 --- @field Keybinds table<KeybindingIdentifier, {Module:string, Name:string}>
 --- @field Reverse table<string, table<string, Keybinding>> module -> eventName -> Keybinding
 --- @field Listeners table<string, any> module -> Subscription
---- @field Events table<string, table<KeybindRegistry>> module -> eventName -> KeybindRegistry
+--- @field Events table<string, table<string, KeybindRegistry>> module -> eventName -> KeybindRegistry
 --- @field Modules table<string, KeybindModule>
 --- @field Disabled boolean
 KeybindManager = {
@@ -142,13 +142,13 @@ function KeybindManager:Unbind(module, eventName)
     end
 end
 
---- @return {Identifier:string, Module:string, EventName:string}[]
+--- @return table<string, {Identifier:string, EventName:string}[]>
 function KeybindManager:GetAllBindings()
     local bindings = {}
     for identifier, binding in pairs(self.Keybinds) do
-        table.insert(bindings, {
+        bindings[binding.Module] = bindings[binding.Module] or {}
+        table.insert(bindings[binding.Module], {
             Identifier = identifier,
-            Module = binding.Module,
             EventName = binding.Name
         })
     end
@@ -163,7 +163,7 @@ end
 
 --- @class KeybindRegistry
 --- @field Callback fun(e:SimplifiedInputEvent)
---- @field Conditions table<fun(e:SimplifiedInputEvent):boolean>
+--- @field Conditions (fun(e:SimplifiedInputEvent):boolean)[]
 --- @field Modifiers SDLKeyModifier|nil
 --- @field AddCondition fun(self:KeybindRegistry, condition:fun(e:SimplifiedInputEvent):boolean)
 --- @field SetCallback fun(self:KeybindRegistry, callback:fun(e:SimplifiedInputEvent))
@@ -269,8 +269,8 @@ function KeybindManager:AddCondition(module, eventName, condition)
 end
 
 function KeybindManager:AddModuleCondition(module, condition)
-    self:CreateModule(module)
-    table.insert(self.Modules[module].Conditions, condition)
+    local mod = self:CreateModule(module)
+    table.insert(mod.Conditions, condition)
 end
 
 function KeybindManager:TriggerEvent(module, eventName, e)
@@ -334,8 +334,27 @@ function KeybindManager:LoadFromFile()
         self:Load(data)
     end
 end
-
-KeybindModule = _Class("KeybindModule")
+--- @class KeybindModule
+--- @field Name string
+--- @field Conditions (fun(e:SimplifiedInputEvent):boolean)[]
+--- @field Enable fun(self:KeybindModule)
+--- @field Disable fun(self:KeybindModule)
+--- @field RegisterEvent fun(self:KeybindModule, eventName:string, callback:fun(e:SimplifiedInputEvent)?, desc:string?):KeybindRegistry
+--- @field Unregister fun(self:KeybindModule, eventName:string)
+--- @field Bind fun(self:KeybindModule, eventName:string, key:SDLScanCode, modifiers:SDLKeyModifier?)
+--- @field Unbind fun(self:KeybindModule, eventName:string)
+--- @field Rebind fun(self:KeybindModule, eventName:string, newKey:SimplifiedInputCode, newModifiers:SDLKeyModifier[]?)
+--- @field RebindByInput fun(self:KeybindModule, eventName:string, callback:fun(e:Keybinding, conflictModule:string?, conflictEvent:string?)?)
+--- @field GetEvents fun(self:KeybindModule):table<string, KeybindRegistry>
+--- @field GetEvent fun(self:KeybindModule, eventName:string):KeybindRegistry|nil
+--- @field GetKeyByEvent fun(self:KeybindModule, eventName:string):Keybinding
+--- @field GetEventByKey fun(self:KeybindModule, key:SDLScanCode, modfiers:SDLKeyModifier[]):KeybindRegistry|nil
+--- @field On fun(self:KeybindModule, eventName:string, callback:fun(e:SimplifiedInputEvent))
+--- @field AddCondition fun(self:KeybindModule, eventName:string, condition:fun(e:SimplifiedInputEvent):boolean)
+--- @field AddModuleCondition fun(self:KeybindModule, condition:fun(e:SimplifiedInputEvent):boolean)
+--- @field TriggerEvent fun(self:KeybindModule, eventName:string, e:SimplifiedInputEvent)
+--- @field new fun(name:string):KeybindModule
+local KeybindModule = _Class("KeybindModule")
 
 function KeybindModule:__init(name)
     self.Name = name
@@ -357,27 +376,6 @@ function KeybindModule:__init(name)
     })
 end
 
---- @class KeybindModule
---- @field Name string
---- @field Conditions table<fun(e:SimplifiedInputEvent):boolean>
---- @field Enable fun(self:KeybindModule)
---- @field Disable fun(self:KeybindModule)
---- @field RegisterEvent fun(self:KeybindModule, eventName:string, callback:fun(e:SimplifiedInputEvent)?, desc:string?):KeybindRegistry
---- @field Unregister fun(self:KeybindModule, eventName:string)
---- @field Bind fun(self:KeybindModule, eventName:string, key:SDLScanCode, modifiers:SDLKeyModifier?)
---- @field Unbind fun(self:KeybindModule, eventName:string)
---- @field Rebind fun(self:KeybindModule, eventName:string, newKey:SimplifiedInputCode, newModifiers:SDLKeyModifier[]?)
---- @field RebindByInput fun(self:KeybindModule, eventName:string, callback:fun(e:Keybinding, conflictModule:string?, conflictEvent:string?)?)
---- @field GetEvents fun(self:KeybindModule):table<string, KeybindRegistry>
---- @field GetEvent fun(self:KeybindModule, eventName:string):KeybindRegistry|nil
---- @field GetKeyByEvent fun(self:KeybindModule, eventName:string):Keybinding
---- @field GetEventByKey fun(self:KeybindModule, key:SDLScanCode, modfiers:SDLKeyModifier[]):KeybindRegistry|nil
---- @field On fun(self:KeybindModule, eventName:string, callback:fun(e:SimplifiedInputEvent))
---- @field AddCondition fun(self:KeybindModule, eventName:string, condition:fun(e:SimplifiedInputEvent):boolean)
---- @field AddModuleCondition fun(self:KeybindModule, condition:fun(e:SimplifiedInputEvent):boolean)
---- @field TriggerEvent fun(self:KeybindModule, eventName:string, e:SimplifiedInputEvent)
---- @field new fun(name:string):KeybindModule
-
 --- @param moduleName string
 --- @return KeybindModule
 function KeybindManager:CreateModule(moduleName)
@@ -387,10 +385,10 @@ function KeybindManager:CreateModule(moduleName)
 
     local module = KeybindModule.new(moduleName)
 
-    self.Modules[module.Name] = module
-    self.Reverse[module.Name] = {}
-    self.Events[module.Name] = {}
-    self:Enable(module.Name)
+    self.Modules[moduleName] = module
+    self.Reverse[moduleName] = {}
+    self.Events[moduleName] = {}
+    self:Enable(moduleName)
     return module
 end
 
@@ -408,21 +406,41 @@ RegisterConsoleCommand("rb_dump_keybinds", function()
     local count = #bindings
     local longest = -1 -- for formatting
     local toPrint = {}
-    for _, binding in ipairs(bindings) do
-        if not toPrint[binding.Module] then
-            toPrint[binding.Module] = {}
-        end
-        toPrint[binding.Module][binding.EventName] = binding.Identifier
-        if #binding.EventName > longest then
-            longest = #binding.EventName
+    for moduleName, moduleBindings in pairs(bindings) do
+        toPrint[moduleName] = {}
+        for _, bindingInfo in pairs(moduleBindings) do
+            local eventName = bindingInfo.EventName
+            local identifier = bindingInfo.Identifier
+            toPrint[moduleName][eventName] = identifier
+            count = count + 1
+            if #eventName > longest then
+                longest = #eventName
+            end
         end
     end
+    local lastHue = 0
+    local bigStep = true
+    local function runHue()
+        lastHue = (lastHue + (bigStep and 137 or 53)) % 360
+        bigStep = not bigStep
+        local r, g, b = HSLToRGB(lastHue / 360, 1, 0.5)
+        return { r, g, b }
+    end
+
+    local separator = string.rep("=", longest + 7)
     for module, events in pairs(toPrint) do
-        print("\nModule: " .. module)
+        local strings = {}
+        table.insert(strings, separator)
+        table.insert(strings, "Module: " .. module)
         for eventName, identifier in SortedPairs(events) do
             local padding = string.rep(" ", longest - #eventName)
-            print("  " .. eventName .. padding .. " : " .. identifier)
+            table.insert(strings, "  " .. eventName .. padding .. " : " .. identifier)
         end
+        table.insert(strings, separator)
+        local finalStr = "\n" .. table.concat(strings, "\n") .. "\n"
+        local fromColor = runHue()
+        local toColor = runHue()
+        GradientPrint(finalStr, fromColor, toColor, "hsv")
     end
     print("Total keybindings: " .. tostring(count))
 end, "Dumps all current keybindings to the console.")

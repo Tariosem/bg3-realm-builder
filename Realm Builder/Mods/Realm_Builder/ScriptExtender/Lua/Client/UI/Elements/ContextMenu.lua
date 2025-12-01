@@ -8,6 +8,7 @@
 --- @field DontClosePopups boolean?
 
 --- @class RB_ContextMenu : ExtuiTable
+--- @field hotKeySubs table<string, RBSubscription>
 --- @field AddItem fun(self: RB_ContextMenu, label: string, onClick: fun(selectable: ExtuiSelectable), hint:string?, image?:string): ExtuiSelectable
 --- @field AddSeparator fun(self: RB_ContextMenu)
 --- @field AddItemPacked fun(self: RB_ContextMenu, item: RB_ContextItem): ExtuiSelectable
@@ -96,13 +97,29 @@ function ContextMenuClass:AddContext(context, isFocus)
                 end)
                 if not ok then return UNSUBSCRIBE_SYMBOL end
                 if not focus then return end
-                if not e.Pressed then return end
+                if e.Event ~= "KeyDown" then return end
+                if e.Repeat then return end
 
                 item.OnClick(selectable)
             end, item.HotKey)
         end
         ::continue::
     end
+end
+
+function ContextMenuClass:Destroy()
+    for _, sub in pairs(self.hotKeySubs) do
+        sub:Unsubcribe()
+    end
+    self.hotKeySubs = {}
+    self.group:Destroy()
+end
+
+function ContextMenuClass:UnsubAllHotkeys()
+    for _, sub in pairs(self.hotKeySubs) do
+        sub:Unsubcribe()
+    end
+    self.hotKeySubs = {}
 end
 
 ---@param parent ExtuiTreeParent

@@ -484,9 +484,10 @@ function IconBrowser:RenderBrowserBase()
     browserCombo.SameLine = true
     browserCombo.OnChange = function (sel, guid, displayName)
         self.selectedGuid = guid
-        self:AddTagsFilter()
         if self.dataManager.CheckHostValidEquipmentVisual then
-            self.dataManager:CheckHostValidEquipmentVisual(guid)
+            if self.dataManager:CheckHostValidEquipmentVisual(guid) then
+                self:AddTagsFilter()
+            end
         end
     end
     

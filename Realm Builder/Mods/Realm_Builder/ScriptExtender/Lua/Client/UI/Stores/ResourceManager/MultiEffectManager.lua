@@ -176,5 +176,6 @@ function MultiEffectManager:PopulateAllEffects()
     end
 
     self.populated = true
+    ClearEffectToInfo()
     return CountMap(self.Data)
 end

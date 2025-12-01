@@ -436,8 +436,15 @@ function IsItem(guid)
     return entity.IsItem ~= nil and true or false
 end
 
+--- @param uuid EntityHandle|GUIDSTRING
+--- @return boolean
 function IsPartyMember(uuid)
-    local entity = UuidToHandle(uuid)
+    local entity = nil
+    if type(uuid) == "string" then
+        entity = UuidToHandle(uuid)
+    else
+        entity = uuid        
+    end
     if not entity then
         return false
     end

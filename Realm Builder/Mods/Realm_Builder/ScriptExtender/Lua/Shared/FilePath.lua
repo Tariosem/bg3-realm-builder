@@ -10,21 +10,25 @@ local keybindPath = "Realm_Builder/Keybind.json"
 local browserSettingPath = "Realm_Builder/Browsers/%s.json"
 local generatedPrefabPath = "Realm_Builder/Prefabs/"
 
-local ccaPath = "Realm_Builder/CC_Mods/"
-local ccaModCachePath = "Realm_Builder/CC_Mod_Cache/"
-local ccaModCacheRefPath = ccaModCachePath .. "CCAModCache_References.json"
+local logPath = "Realm_Builder/Logs/"
+local mapModLogPath = logPath .. "Map_Mods_Export_Log_%s.json"
+local ccaModLogPath = logPath .. "CC_Mods_Export_Log_%s.json"
 
-local ccaModMetaFile = ccaPath .. "%s/Mods/%s/meta.lsx"
+local ccPath = "Realm_Builder/CC_Mods/"
+local ccModCachePath = "Realm_Builder/CC_Mod_Cache/"
+local ccModCacheRefPath = ccModCachePath .. "CCAModCache_References.json"
 
-local ccaLocalizationFile = ccaPath .. "%s/Localization/%s/%s.xml"
+local ccaModMetaFile = ccPath .. "%s/Mods/%s/meta.lsx"
 
-local ccaPresetsPath = ccaPath .. "%s/Public/%s/CharacterCreationPresets/"
+local ccaLocalizationFile = ccPath .. "%s/Localization/%s/%s.xml"
+
+local ccaPresetsPath = ccPath .. "%s/Public/%s/CharacterCreationPresets/"
 
 local ccaEyeColorFile = ccaPresetsPath .. "CharacterCreationEyeColors.lsx"
 local ccaHairColorFile = ccaPresetsPath .. "CharacterCreationHairColors.lsx"
 local ccaSkinColorFile = ccaPresetsPath .. "CharacterCreationSkinColors.lsx"
 
-local matPresetsPath = ccaPath .. "%s/Public/%s/Content/Assets/Characters/Character Editor Presets/"
+local matPresetsPath = ccPath .. "%s/Public/%s/Content/Assets/Characters/Character Editor Presets/"
 local ccaEyeColorPath = matPresetsPath .. "Eye Presets/[PAK]_%s/"
 local ccaHairColorPath = matPresetsPath .. "Hair Color Presets/[PAK]_%s/"
 local ccaSkinColorPath = matPresetsPath .. "Skin Presets/[PAK]_%s/"
@@ -103,11 +107,11 @@ function RealmPath.GetCCAModCachePath(modName, version)
 
     local fileName = string.format("%s_%s_Cache.json", modName, versionStr)
 
-    return string.format(ccaModCachePath .. fileName)
+    return string.format(ccModCachePath .. fileName)
 end
 
 function RealmPath.GetCCAModCacheRefPath()
-    return ccaModCacheRefPath
+    return ccModCacheRefPath
 end
 
 function RealmPath.GetCCAMaterialPresetsFile(presetType, modName, modFolderName, customName)
@@ -202,4 +206,12 @@ end
 
 function RealmPath.GetBrowserSettingPath(browserName)
     return string.format(browserSettingPath, browserName)
+end
+
+function RealmPath.GetMapModLogPath(timeStamp)
+    return string.format(mapModLogPath, timeStamp)
+end
+
+function RealmPath.GetCCModLogPath(timeStamp)
+    return string.format(ccaModLogPath, timeStamp)
 end

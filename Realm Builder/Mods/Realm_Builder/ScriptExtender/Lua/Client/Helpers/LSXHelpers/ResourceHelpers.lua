@@ -295,8 +295,14 @@ end
 --- @param overrideMaterialPresets table<string, string>? Material preset overrides, map of GroupName to MaterialPresetResource UUID
 --- @param modfiedParams RB_ParameterSet? Additional modified parameters to set on the resource
 --- @param overrideVisuals table<string, string>? Map of Slot to VisualResource UUID overrides
+--- @return XMLNode?
 function ResourceHelpers.BuildCharacterVisualResource(srcUuid, uuid, internalName, overrideMaterialPresets, modfiedParams, overrideVisuals)
     local src = Ext.Resource.Get(srcUuid, "CharacterVisual") --[[@as ResourceCharacterVisualResource]]
+    if not src then
+        Error("Could not find source CharacterVisual resource with UUID '" .. tostring(srcUuid) .. "'.")
+        return nil
+    end
+
     local srcSet = src.VisualSet
 
     overrideMaterialPresets = overrideMaterialPresets or {}

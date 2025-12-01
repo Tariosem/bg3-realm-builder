@@ -10,6 +10,7 @@ local allNearbyComboRefs = {}
 --- @field ExcludeCamera boolean
 --- @field cellRefs table<number, ExtuiTableCell>
 --- @field Ascending boolean
+--- @field HideImage boolean
 --- @field Radius number
 --- @field ExcludeEntries table<GUIDSTRING, boolean>
 --- @field SameLine boolean
@@ -32,6 +33,12 @@ NearbyCombo.__newindex = function (t, k, v)
         t.combo.SelectedIndex = v
     elseif k == "Width" then
         t.combo.Width = v
+    elseif k == "HideImage" then
+        if t.combo and t.combo.UserData and t.combo.UserData.ImageReservedSpace then
+            local reserved = t.combo.UserData.ImageReservedSpace
+            reserved.Visible = not v
+            DestroyAllChildren(reserved)
+        end
     else
         rawset(t, k, v)
     end
@@ -69,7 +76,11 @@ end
 
 function NearbyCombo:Render()
     local parent = self.parent
+    local reservedForImage = parent:AddGroup("NearbyCombo##") -- For layout purposes
+    reservedForImage:AddImage("Item_Unknown", IMAGESIZE.FRAME)
     self.combo = parent:AddCombo("")
+    self.combo.UserData = self.combo.UserData or {}
+    self.combo.UserData.ImageReservedSpace = reservedForImage
     self.combo.IDContext = "NearbyCombo" .. Uuid_v4()
 
     self.combo.Options = {}
@@ -96,6 +107,9 @@ function NearbyCombo:SetSelected(guid)
     if not name then return end
     self.Selected = guid
     SetCombo(self.combo, name, nil, true)
+    if self.combo then
+        self:UpdateImage()
+    end
 end
 
 function NearbyCombo:UpdateOptions()
@@ -148,6 +162,7 @@ function NearbyCombo:SetupComboEvents()
             self:OnChange(guid, name)
         end
         self.Selected = guid
+        self:UpdateImage()
     end
 
     self.combo.OnClick = function (cmb)
@@ -258,6 +273,15 @@ function NearbyCombo:RenderSelectionTable(parent)
     iconTable.BordersInnerH = true
 end
 
+function NearbyCombo:UpdateImage()
+    if not self.Selected or not self.combo or not self.combo.UserData then return end
+    local reserved = self.combo.UserData.ImageReservedSpace
+    if reserved then
+        DestroyAllChildren(reserved)
+        reserved:AddImage(GetIcon(self.Selected), IMAGESIZE.FRAME)
+    end
+end
+
 function NearbyCombo:RenderIcons()
     if not self.IconContainer then return end
 
@@ -289,22 +313,29 @@ function NearbyCombo:RenderIcons()
             imageBtn.Tint = EntityStore[entry.Guid].IconTintColor
         end
 
-        imageBtn:Tooltip():AddText(displayName)
-        imageBtn.OnClick = function (btn)
-            if self.combo then
-                SetCombo(self.combo, entry.DisplayName, nil, true)
-            end
-            if self.OnChange then
-                self:OnChange(entry.Guid, entry.DisplayName)
-            end
-        end
-        imageBtn.OnRightClick = imageBtn.OnClick
-
         imageBtn.OnHoverEnter = function (btn)
             self.HoveringKey = entry.Guid
-        end
-        imageBtn.OnHoverLeave = function (btn)
-            self.HoveringKey = nil
+            imageBtn:Tooltip():AddText(displayName)
+            imageBtn.OnClick = function ()
+                if self.combo then
+                    SetCombo(self.combo, entry.DisplayName, nil, true)
+                    self.Selected = entry.Guid
+                    self:UpdateImage()
+                end
+                if self.OnChange then
+                    self:OnChange(entry.Guid, entry.DisplayName)
+                end
+            end
+            imageBtn.OnRightClick = imageBtn.OnClick
+
+            
+            imageBtn.OnHoverLeave = function (btn)
+                self.HoveringKey = nil
+            end
+
+            imageBtn.OnHoverEnter = function ()
+                self.HoveringKey = entry.Guid
+            end
         end
     end
 end

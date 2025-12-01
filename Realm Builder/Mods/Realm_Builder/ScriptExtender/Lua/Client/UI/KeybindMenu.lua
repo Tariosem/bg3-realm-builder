@@ -207,7 +207,7 @@ function KeybindMenu:RenderEvent(row, moduleName, eventName, module, registry)
     eventCell:AddText(eventName)--:SetColor("Text", HexToRGBA("#FFFFFF"))
 
     if registry.Description then
-        local desc = AddIndent(eventCell):AddText(registry.Description)
+        local desc = StyleHelpers.AddIndent(eventCell):AddText(registry.Description)
         desc.TextWrapPos = 900
 
         desc:SetColor("Text", HexToRGBA("#CCCCCC"))

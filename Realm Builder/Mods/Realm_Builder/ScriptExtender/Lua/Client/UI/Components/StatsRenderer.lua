@@ -140,7 +140,7 @@ local function RenderStatsObjectTitle(statsObj, parent, statType, isTooltip)
 
     local image = iconCell:AddImage(icon, ToVec2(64 * SCALE_FACTOR))
 
-    local rightContent = AddIndent(parent, 2 * SCALE_FACTOR)
+    local rightContent = StyleHelpers.AddIndent(parent, 2 * SCALE_FACTOR)
     descRender(rightContent)
     parent:SetStyle("WindowBorderSize", 2)
     parent:SetColor("Border", BORDER_COLOR)

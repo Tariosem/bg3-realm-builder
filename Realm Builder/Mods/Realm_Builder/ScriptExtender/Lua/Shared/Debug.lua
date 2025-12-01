@@ -40,7 +40,7 @@ DEBUG_COLOR = {
     Trace = "#00FFC3",
 }
 
-local function rgbToANSI(rgb)
+function RgbToANSI(rgb)
     local r = math.floor(rgb[1] * 255 + 0.5)
     local g = math.floor(rgb[2] * 255 + 0.5)
     local b = math.floor(rgb[3] * 255 + 0.5)
@@ -52,23 +52,23 @@ local function rgbToANSI(rgb)
     return string.format("\x1b[38;2;%d;%d;%dm", r, g, b)
 end
 
---- @param radiantResult RadiantResult
+--- @param gradientResult GradientResult
 --- @return string ANSI colored text
-function RadiantToANSI(radiantResult)
-    if not radiantResult or not radiantResult.Segments then
+function GradientToANSI(gradientResult)
+    if not gradientResult or not gradientResult.Segments then
         return ""
     end
 
     local result = {}
     local resetCode = "\x1b[0m"
 
-    for _, segment in ipairs(radiantResult.Segments) do
+    for _, segment in ipairs(gradientResult.Segments) do
         if segment.Text == "" then
             -- Skip empty segments
-        elseif segment.Text:match("^%s+$") and radiantResult.Options.SkipWhitespace then
+        elseif segment.Text:match("^%s+$") and gradientResult.Options.SkipWhitespace then
             table.insert(result, segment.Text)
         else
-            local ansi = rgbToANSI(segment.Color)
+            local ansi = RgbToANSI(segment.Color)
             table.insert(result, ansi .. segment.Text .. resetCode)
         end
     end
@@ -99,17 +99,17 @@ local function RB_Print(prefix, level, message)
     end
 
     if lvl == RB_DEBUG_LEVELS.Critical then
-        RPrintCritical(logMessage)
+        RBPrintCritical(logMessage)
     elseif lvl == RB_DEBUG_LEVELS.Error then
-        RPrintRed(logMessage)
+        RBPrintRed(logMessage)
     elseif lvl == RB_DEBUG_LEVELS.Warning then
-        RPrintYellow(logMessage)
+        RBPrintYellow(logMessage)
     elseif lvl == RB_DEBUG_LEVELS.Info then
-        RPrintCyan(logMessage)
+        RBPrintCyan(logMessage)
     elseif lvl == RB_DEBUG_LEVELS.Debug then
-        RPrintPurple(logMessage)
+        RBPrintPurple(logMessage)
     elseif lvl == RB_DEBUG_LEVELS.Trace then
-        RPrintMartix(logMessage)
+        RBPrintMartix(logMessage)
     end
 end
 
@@ -196,52 +196,52 @@ end
 --- @param startColor string|table
 --- @param endColor string|table?
 --- @param mode "rgb"|"hsv"|"perceptual"|"sine"|"rainbow"
---- @param options RadianceOpts?
-function RPrint(text, startColor, endColor, mode, options)
-    _P(RadiantToANSI(RadiantText(text, startColor, endColor, mode, options)))
+--- @param options GradientOpts?
+function GradientPrint(text, startColor, endColor, mode, options)
+    _P(GradientToANSI(GradientText(text, startColor, endColor, mode, options)))
 end
 
---- @type table<RB_DEBUG_LEVELS, fun(text:string, opts:RadianceOpts?):RB_TextToken[]>
-DebugRadiant = {
+--- @type table<RB_DEBUG_LEVELS, fun(text:string, opts:GradientOpts?):RB_TextToken[]>
+DebugGradient = {
     Error = function(text, opts)
-        return RadiantText(text, "#FF4500", "#FFB3A7", "perceptual", opts).Segments
+        return GradientText(text, "#FF4500", "#FFB3A7", "perceptual", opts).Segments
     end,
     Warning = function(text, opts)
-        return RadiantText(text, "#FFD700", "#FFFFDC", "perceptual", opts).Segments
+        return GradientText(text, "#FFD700", "#FFFFDC", "perceptual", opts).Segments
     end,
     Info = function(text, opts)
-        return RadiantText(text, "#00BFFF", "#DCFFFF", "perceptual", opts).Segments
+        return GradientText(text, "#00BFFF", "#DCFFFF", "perceptual", opts).Segments
     end,
     Debug = function(text, opts)
-        return RadiantText(text, "#6254FD", "#D6B4FF", "perceptual", opts).Segments
+        return GradientText(text, "#6254FD", "#D6B4FF", "perceptual", opts).Segments
     end,
     Trace = function(text, opts)
-        return RadiantText(text, "#003300", "#007700", "perceptual", opts).Segments
+        return GradientText(text, "#003300", "#007700", "perceptual", opts).Segments
     end,
 }
 
-function RPrintPurple(text, opts)
-    RPrint(text, "#6254FD", "#D6B4FF", "perceptual", opts)
+function RBPrintPurple(text, opts)
+    GradientPrint(text, "#6254FD", "#D6B4FF", "perceptual", opts)
 end
 
-function RPrintYellow(text, opts)
-    RPrint(text, "#FFD700", "#FFFFDC", "perceptual", opts)
+function RBPrintYellow(text, opts)
+    GradientPrint(text, "#FFD700", "#FFFFDC", "perceptual", opts)
 end
 
-function RPrintCyan(text, opts)
-    RPrint(text, "#00FFFF", "#DCFFFF", "perceptual", opts)
+function RBPrintCyan(text, opts)
+    GradientPrint(text, "#00FFFF", "#DCFFFF", "perceptual", opts)
 end
 
-function RPrintRed(text, opts)
-    RPrint(text, "#FF4500", "#FFB3A7", "perceptual", opts)
+function RBPrintRed(text, opts)
+    GradientPrint(text, "#FF4500", "#FFB3A7", "perceptual", opts)
 end
 
-function RPrintCritical(text, opts)
-    RPrint(text, "#FF0000", "#FF7F7F", "perceptual", opts)
+function RBPrintCritical(text, opts)
+    GradientPrint(text, "#FF0000", "#FF7F7F", "perceptual", opts)
 end
 
-function RPrintMartix(text, opts)
-    RPrint(text, "#003300", "#007700", "perceptual", opts)
+function RBPrintMartix(text, opts)
+    GradientPrint(text, "#003300", "#007700", "perceptual", opts)
 end
 
 function PrintDivider(text)

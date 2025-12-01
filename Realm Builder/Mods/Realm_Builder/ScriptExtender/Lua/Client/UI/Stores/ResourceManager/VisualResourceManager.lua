@@ -22,10 +22,10 @@ end
 function VisualResourceManager:PopulateAllVisualResources()
     local visualResources = Ext.Resource.GetAll("Visual")
     local now = Ext.Timer.MonotonicTime()
-    RPrintPurple("VisualResourceManager: Populating visual resources... (Found " .. #visualResources .. " resources)")
+    RBPrintPurple("VisualResourceManager: Populating visual resources... (Found " .. #visualResources .. " resources)")
     for _, res in pairs(visualResources) do
         self:AddResource(res)
     end
     local elapsed = Ext.Timer.MonotonicTime() - now
-    RPrintPurple("VisualResourceManager: Populated " .. #visualResources .. " visual resources in " .. string.format("%.2f", elapsed) .. " ms.")
+    RBPrintPurple("VisualResourceManager: Populated " .. #visualResources .. " visual resources in " .. string.format("%.2f", elapsed) .. " ms.")
 end

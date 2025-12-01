@@ -255,7 +255,7 @@ local function Realm_Builder_Population()
     local effectCnt = RB_MultiEffectManager:PopulateAllEffects()
     local effectsFinished = Ext.Timer:MonotonicTime()
     if sumCnt >= 0 then
-        RPrintPurple("[Realm Builder] Populating " .. sumCnt .. " root templates took " .. (itemsFinished - now) .. " ms:")
+        RBPrintPurple("[Realm Builder] Populating " .. sumCnt .. " root templates took " .. (itemsFinished - now) .. " ms:")
         local longest = -1
         local toPrint = {}
         for k,v in SortedPairs(cnts) do
@@ -263,9 +263,9 @@ local function Realm_Builder_Population()
             table.insert(toPrint, {k, v})
         end
         for _,pair in pairs(toPrint) do
-            RPrintPurple("    " .. PadSuffix(pair[1] .. ":", longest + 2) .. " " .. pair[2])
+            RBPrintPurple("    " .. PadSuffix(pair[1] .. ":", longest + 2) .. " " .. pair[2])
         end
-        RPrintPurple("[Realm Builder] Populating Effects took " .. (effectsFinished - itemsFinished) .. " ms for " .. effectCnt .. " effects")
+        RBPrintPurple("[Realm Builder] Populating Effects took " .. (effectsFinished - itemsFinished) .. " ms for " .. effectCnt .. " effects")
     end
 end
 

@@ -48,7 +48,6 @@ function IconBrowser:CheckIfAnySearchCriteria()
     return hasIncludeConditions or hasExcludeConditions
 end
 
--- Abomination
 function IconBrowser:AddTagsFilter()
     if self.tagsFilterMenu then
         self:RenderTagsFilter()
@@ -60,6 +59,7 @@ function IconBrowser:AddTagsFilter()
     end
 end
 
+-- Abomination
 function IconBrowser:RenderTagsFilter()
     local allGroups, allTags, groupMap, tagsMap = self.dataManager:CountGroupsAndTags(self.selectedGuid)
     local tagTree = self.dataManager.tagTree
@@ -134,9 +134,9 @@ function IconBrowser:RenderTagsFilter()
     end
     if not topTable.UserData then
         --- @diagnostic disable-next-line
-        local undoAllIncBtn = leftCe:AddSelectable(GetLoca("Uninclude All"))
+        local undoAllIncBtn = leftCe:AddSelectable(GetLoca("Uninclude All") .. "##UndoAllIncludeButton")
         --- @diagnostic disable-next-line
-        local undoAllExcBtn = rightCe:AddSelectable(GetLoca("Unexclude All"))
+        local undoAllExcBtn = rightCe:AddSelectable(GetLoca("Unexclude All") .. "##UndoAllExcludeButton")
         undoAllIncBtn.DontClosePopups = true
         undoAllIncBtn:SetStyle("SelectableTextAlign", 0.5)
         undoAllExcBtn:SetStyle("SelectableTextAlign", 0.5)

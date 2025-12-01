@@ -760,12 +760,6 @@ function TransformToolbar:CreateBindPopup(guid)
 
     ---@param panel ExtuiWindow
     local function render(panel)
-        local dismissBtn = panel:AddButton("X")
-        dismissBtn.OnClick = function()
-            notif:Dismiss()
-        end
-        dismissBtn.SameLine = true
-
         local tab = panel:AddTable("BindPopup", 2)
         tab.ColumnDefs[1] = { WidthFixed = true }
         tab.ColumnDefs[2] = { WidthStretch = true }
@@ -781,6 +775,7 @@ function TransformToolbar:CreateBindPopup(guid)
 
         local right = row1:AddCell()
         local nearByCombo = NearbyCombo.new(right)
+        nearByCombo.HideImage = true
         local excludeEntites = {
             [guid] = true,
         }
@@ -992,18 +987,6 @@ function TransformToolbar:CreateNearbyPopup()
             selected = selectedGuid
             contextPopup:Open()
         end
-
-        local titleText = nearbyNotif.titleText
-        nearbyNotif.titleText.OnHoverEnter = function()
-            titleText:SetColor("Text", HexToRGBA("FF515151"))
-        end
-        nearbyNotif.titleText.OnHoverLeave = function()
-            titleText:SetColor("Text", HexToRGBA("FFFFFFFF"))
-        end
-        nearbyNotif.titleText.OnClick = function()
-            nearbyNotif:Dismiss()
-        end
-        nearbyNotif.titleText:SetColor("Text", HexToRGBA("FFFFFFFF"))
     end
 
     nearbyNotif:Show(nearbyNotif.name, render)

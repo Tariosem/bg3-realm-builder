@@ -84,6 +84,10 @@ function RGBToHSL(r, g, b)
     return h, s, l
 end
 
+--- @param h number
+--- @param s number
+--- @param l number
+--- @return number, number, number 0 - 1
 function HSLToRGB(h, s, l)
     local function hue2rgb(p, q, t)
         if t < 0 then t = t + 1 end
@@ -105,7 +109,11 @@ function HSLToRGB(h, s, l)
         return r, g, b
     end
 end
-
+ 
+--- @param h number
+--- @param s number
+--- @param v number
+--- @return number, number, number
 function HSVtoRGB(h, s, v)
     local r, g, b
     local i = math.floor(h * 6)
@@ -442,7 +450,7 @@ local GradientModes = {
     end
 }
 
---- @class RadianceOpts
+--- @class GradientOpts
 --- @field Reverse boolean
 --- @field Cycles number
 --- @field CycleMode 'forward'|'pingpong'|'reverse'
@@ -452,18 +460,18 @@ local GradientModes = {
 --- @field LineGradient boolean
 --- @field LineCycles number
 
---- @class RadiantResult
+--- @class GradientResult
 --- @field Segments RB_TextToken
 --- @field RawText string
---- @field Options RadianceOpts
+--- @field Options GradientOpts
 
 --- @param text string
 --- @param startColor string|table
 --- @param endColor string|table?
 --- @param mode 'rgb'|'hsv'|'sine'|'perceptual'|'rainbow'
---- @param options RadianceOpts?
---- @return RadiantResult
-function RadiantText(text, startColor, endColor, mode, options)
+--- @param options GradientOpts?
+--- @return GradientResult
+function GradientText(text, startColor, endColor, mode, options)
     if not text or text == "" then
         return {
             Segments = {},
@@ -578,7 +586,7 @@ function RadiantText(text, startColor, endColor, mode, options)
                     lineOptions.Vertical = false
                     lineOptions.Cycles = options.LineCycles or 1
 
-                    local lineResult = RadiantText(line, lineColor, lineColor, mode, lineOptions)
+                    local lineResult = GradientText(line, lineColor, lineColor, mode, lineOptions)
                     for _, segment in ipairs(lineResult.Segments) do
                         table.insert(segments, segment)
                     end

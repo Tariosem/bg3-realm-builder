@@ -3,6 +3,12 @@
 TemplateExportMenu = {}
 TemplateExportMenu.__index = TemplateExportMenu
 
+--- @class RB_MapMod_Pack   
+--- @field Author string
+--- @field ModName string
+--- @field Description string
+--- @field Version number[]
+
 --- @param entDatas table<string, EntityData>
 function TemplateExportMenu.new(entDatas)
     local o = {}
@@ -27,6 +33,7 @@ function TemplateExportMenu:Render()
         ModName = "",
         Description = "",
         Version = { 1, 0, 0, 0 },
+        Entities = self.ExportDatas,
     }
 
     local topBar = panel:AddTable("Top Bar", 2)
@@ -88,9 +95,7 @@ function TemplateExportMenu:Render()
                 progressBar.Value = 0
                 progressBar.Overlay = message
                 panel.Disabled = false
-
                 StyleHelpers.SetWarningProgressBarStyle(progressBar)
-
                 return
             end
             progressBar.Value = progress / 100
@@ -402,11 +407,25 @@ function TemplateExportMenu:ExportToMod(exportSettings, progressCallback)
 
     local suc, msg = coroutine.resume(co)
     if not suc then
-        Error("Export failed: " .. tostring(msg))
+        msg = tostring(msg)
+        progressCallback(-1, msg)
+        local traceStack = debug.traceback(co, msg)
+        Error(traceStack)
+        progressCallback(-1, tostring(msg))
+        local time = GetFormatTime()
+        local errorLog = {
+            Time = Ext.Timer.ClockTime(),
+            Error = msg,
+            Stack = debug.traceback(co, ""),
+            ModPack = exportSettings,
+        }
+        Ext.IO.SaveFile(RealmPath.GetMapModLogPath(time),
+            Ext.Json.Stringify(errorLog, { Beautify = true, StringifyInternalTypes = true }))
+        
     end
 end
 
----@param exportSettings any
+---@param exportSettings table<string, any>
 ---@param progressCallback fun(progress:number, message:string)
 function TemplateExportMenu:__export(exportSettings, progressCallback)
     local thread = coroutine.running()
@@ -414,7 +433,7 @@ function TemplateExportMenu:__export(exportSettings, progressCallback)
     local customVisualCnt = 0
     local toExport = {} --[[@type table<string, EntityData> ]]
     local toBuildCustomVisuals = {} --[[@type table<string, EntityData> ]]
-    for guid, entData in pairs(self.ExportDatas) do
+    for guid, entData in pairs(exportSettings.Entities) do
         if not entData.ExcludeFromExport then
             toExport[guid] = entData
             if entData.UseCustomVisualParameters then
@@ -437,21 +456,26 @@ function TemplateExportMenu:__export(exportSettings, progressCallback)
 
     local progressStep = 100 / actCnt
     local currentProgress = 0
-    local lastYieldTime = Ext.Timer.MonotonicTime()
-    local yieldInterval = 5 -- ms
+    local lastYieldTime = Ext.Timer.MicrosecTime()
+    local yieldInterval = 1 -- ms
     local suc = true
 
     local function throwError(message)
-        Ext.OnNextTick(function ()
-    
-            progressCallback(-1, message)
-        end)
-        Error(message)
+        Error(debug.traceback(message))
+        progressCallback(-1, message)
+        local time = GetFormatTime()
+        Ext.IO.SaveFile(RealmPath.GetMapModLogPath(time),
+            Ext.Json.Stringify({
+                Time = time,
+                Message = message,
+                ModPack = exportSettings,
+                Stack = debug.traceback(),
+            }, { Beautify = true, StringifyInternalTypes = true }))
         
     end
 
     local function yield()
-        if Ext.Timer.MonotonicTime() - lastYieldTime < yieldInterval then return end
+        if Ext.Timer.MicrosecTime() - lastYieldTime < yieldInterval then return end
         Ext.OnNextTick(function()
             local msg
             suc, msg = coroutine.resume(thread)
@@ -555,6 +579,10 @@ function TemplateExportMenu:__export(exportSettings, progressCallback)
             local presetBank = LSXHelpers.BuildMaterialPresetBank()
             local presetNode = ResourceHelpers.BuildMaterialPresetResourceNode(entData.OverrideVisualParameters,
                 presetUuid, presetInternalName)
+            if not presetNode then
+                throwError("Failed to build character preset resource for entity " .. entData.DisplayName)
+                return
+            end
             presetBank:AppendChild(presetNode)
             local presetPath = RealmPath.GetCharacterPresetPath(modInternalName, presetUuid)
             saveFile(presetPath, presetNode:Stringify({ AutoFindRoot = true }))
@@ -565,6 +593,10 @@ function TemplateExportMenu:__export(exportSettings, progressCallback)
             local visualNode = ResourceHelpers.BuildCharacterVisualResource(entData.OriginalVisualUuid,
                 overrideVisualID, visualInternalName, { [""] = presetUuid })
             bank:AppendChild(visualNode)
+            if not visualNode then
+                throwError("Failed to build character visual resource for entity " .. entData.DisplayName)
+                return
+            end
             local visualPath = RealmPath.GetCharacterVisualPath(modInternalName, overrideVisualID)
             saveFile(visualPath, bank:Stringify({ AutoFindRoot = true }))
 
@@ -645,7 +677,7 @@ function TemplateExportMenu:__export(exportSettings, progressCallback)
     end
 
     if progressCallback then
-        progressCallback(100, "Export complete.")
+        progressCallback(100, "Export complete!")
     end
 
     Debug("Template export completed in " .. tostring(Ext.Timer.MonotonicTime() - startTime) .. " ms.")

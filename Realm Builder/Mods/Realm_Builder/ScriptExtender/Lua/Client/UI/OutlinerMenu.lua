@@ -499,6 +499,7 @@ function OutlinerMenu:DecideSelectedKeys()
     return selected
 end
 
+--- @return RB_ContextItem[]
 function OutlinerMenu:CommonContext()
     if self.commonContextItems then
         return self.commonContextItems
@@ -529,7 +530,6 @@ function OutlinerMenu:CommonContext()
         end
         self.propTreeList:ClearSelection()
         self:UpdateList()
-
         self.propTreeList:SetupRenameInput(name, name)
     end
 
@@ -827,29 +827,11 @@ function OutlinerMenu:SetupSelectablePopup()
         table.insert(context, 1, item)
     end
 
-    for _, item in ipairs(context) do
-        if item.Separator then
-            contextMenu:AddSeparator()
-            goto continue
-        end
-
-        local selectable = contextMenu:AddItem(item.Label, item.OnClick, item.Hint, item.Icon)
-        if item.Danger then
-            ApplyDangerSelectableStyle(selectable)
-        end
-
-        if item.HotKey then
-            self.hotKeySubs[item.Label] = SubscribeKeyAndMouse(function (e)
-                local hovering = self.propTreeList.hoveringKey
-                local focus = hovering ~= nil
-                if not focus then return end
-                if not e.Pressed then return end
-
-                item.OnClick(selectable)
-            end, item.HotKey)
-        end
-        ::continue::
+    local isFocus = function ()
+        return self.propTreeList and (self.propTreeList.hoveringKey ~= nil and true or false) or false
     end
+
+    contextMenu:AddContext(context, isFocus)
 end
 
 function OutlinerMenu:SetupCollectionSelectablePopup(openKey)
@@ -908,8 +890,9 @@ function OutlinerMenu:SetupCollectionSelectablePopup(openKey)
         TemplateExportMenu.new(copy)
     end
 
+    local prefabNotif = Notification.new("Prefab Saved!")
+    prefabNotif.ClickToDismiss = true
     local function saveAsPrefab()
-        if not RB_GLOBALS.PrefabMenu then return end
         if not self.selectedTree or #self.selectedTree == 0 then return end
 
         local treeKey = self.selectedTree[1]
@@ -927,7 +910,7 @@ function OutlinerMenu:SetupCollectionSelectablePopup(openKey)
         }
         for guid,_ in pairs(childs) do
             local storedData = EntityStore:GetStoredData(guid)
-            if not storedData or not Ext.Template.Get(TakeTailTemplate(storedData.TemplateId)) then
+            if not storedData or not Ext.Template.GetTemplate(TakeTailTemplate(storedData.TemplateId)) then
                 --Warning("Invalid TemplateId for guid: " .. guid .. ", skipping...")
                 goto continue
             else
@@ -943,6 +926,13 @@ function OutlinerMenu:SetupCollectionSelectablePopup(openKey)
             })
             ::continue::
         end
+
+        if #childArr == 0 then
+            Warning("No valid children found in collection: " .. treeKey .. ", aborting prefab save.")
+            prefabNotif:Show("Nothing to save!", "No valid children found in collection: " .. treeKey .. ", aborting prefab save.", RB_ICONS.Warning)
+            return
+        end
+
         pivtoTransform.Translate = pivtoTransform.Translate / #childArr
         for i, guid in ipairs(childArr) do
             local childPos, childRot, childScale = childWorldTransforms[i].Translate, childWorldTransforms[i].RotationQuat, childWorldTransforms[i].Scale
@@ -957,10 +947,12 @@ function OutlinerMenu:SetupCollectionSelectablePopup(openKey)
 
         local filePath = RealmPath.GetPrefabPath(internalName, generated)
         
-        local ok, err = Ext.IO.SaveFile(filePath, xmlNode:Stringify())
+        local ok, err = Ext.IO.SaveFile(filePath, xmlNode:Stringify({ AutoFindRoot = true }))
         if not ok then
             Error("Failed to save prefab file: " .. err)
             return
+        else
+            prefabNotif:Show("Prefab Saved!", "Prefab '" .. internalName .. "' has been saved at " .. filePath)
         end
     end
     --- @type RB_ContextItem[]
@@ -1006,12 +998,12 @@ function OutlinerMenu:SetupCollectionSelectablePopup(openKey)
 
     local commonContext = self:CommonContext()
     for _, item in ipairs(commonContext) do
+        item.HotKey = nil -- hotkey has been registered in entity context menu
         table.insert(context, 1, item)
     end
 
     local focusFunc = function()
-        local hovering = self.propTreeList.hoveringKey
-        return hovering ~= nil
+        
     end
 
     contextMenu:AddContext(context, focusFunc)

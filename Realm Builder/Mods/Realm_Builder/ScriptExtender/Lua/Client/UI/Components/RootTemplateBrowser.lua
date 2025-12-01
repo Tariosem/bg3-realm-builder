@@ -54,7 +54,7 @@ function RootTemplateBrowser:RenderIcon(entry, cell)
 
     iconImage.OnClick = function()
         if not popup then
-            popup = cell:AddPopup(GetLoca("Root Template Details"))
+            popup = cell:AddPopup("Root Template Details")
             popup.IDContext = entry.Uuid .. "Popup" .. Uuid_v4()
             local attrs = {
                 Uuid = entry.Uuid,

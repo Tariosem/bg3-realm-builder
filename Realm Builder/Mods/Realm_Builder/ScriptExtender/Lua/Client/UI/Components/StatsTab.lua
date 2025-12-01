@@ -1,5 +1,10 @@
+--- @class StatsTab : CustomEffectTab
 StatsTab = _Class("StatsTab", CustomEffectTab)
+
+--- @class SpellTab : StatsTab
 SpellTab = _Class("SpellTab", StatsTab)
+
+--- @class StatusTab : StatsTab
 StatusTab = _Class("StatusTab", StatsTab)
 
 --- @class StatsTab : CustomEffectTab

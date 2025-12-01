@@ -82,30 +82,12 @@ function EffectTab:Render()
 end
 
 function EffectTab:RenderProfile()
-    local leftAlighTable = self.IdsContainer:AddTable("", 2)
-    leftAlighTable.ColumnDefs[1] = { WidthStretch = false, WidthFixed = true }
-    leftAlighTable.ColumnDefs[2] = { WidthStretch = true }
-    
-    -- Display Name
-    local row1 = leftAlighTable:AddRow()
-    row1:AddCell():AddText(GetLoca("Display Name: "))
-    self.displayNameInput = AddPrefixInput(row1:AddCell(), nil, self.displayName, true)
-
-    -- Icon
-    local row2 = leftAlighTable:AddRow()
-    row2:AddCell():AddText(GetLoca("Icon: "))
-    self.iconNameInput = AddPrefixInput(row2:AddCell(), nil, self.icon, true)
-
-    -- Template Name
-    local templateName = RB_MultiEffectManager.Data[self.guid] and RB_MultiEffectManager.Data[self.guid].TemplateName or "Unknown"
-    local row3 = leftAlighTable:AddRow()
-    row3:AddCell():AddText(GetLoca("Effect Name: "))
-    self.templateNameText = AddPrefixInput(row3:AddCell(), nil, templateName, true)
-
-    -- Uuid
-    local row4 = leftAlighTable:AddRow()
-    row4:AddCell():AddText(GetLoca("Uuid: "))
-    self.uuidText = AddPrefixInput(row4:AddCell(), nil, self.guid, true)
+    StyleHelpers.AddReadOnlyAttrTable(self.IdsContainer, {
+        [GetLoca("DisplayName")] = self.displayName,
+        [GetLoca("Icon")] = self.icon,
+        [GetLoca("Uuid")] = self.guid,
+        [GetLoca("Effect Name")] = RB_MultiEffectManager.Data[self.guid] and RB_MultiEffectManager.Data[self.guid].TemplateName or "Unknown",
+    })
 end
 
 function EffectTab:RenderEffectsTab()

@@ -6,7 +6,7 @@ local passiveEffectTypes = {}
 
 local EffectToInfo = {}
 local EffectToAnimation = {}
-local StatsNameToUuid = {}
+local StaticDataNameToUuid = {}
 
 local function InitEffectStats()
     if StatsObjectInit then return end
@@ -70,9 +70,7 @@ local function InitEffectStats()
             local stat = Ext.Stats.Get(entry)
             for effectType,_ in pairs(effectTypes or {}) do
                 processStat(stat, effectType, statType)
-                
             end
-            StatsNameToUuid[stat.Name] = { Uuid = entry, Type = statType }
         end
     end
 
@@ -80,7 +78,7 @@ local function InitEffectStats()
     local function processStaticData(resType)
         for _, entry in pairs(Ext.StaticData.GetAll(resType)) do
             local res = Ext.StaticData.Get(entry, resType)
-            StatsNameToUuid[res.Name] = { Uuid = entry, Type = resType }
+            StaticDataNameToUuid[res.Name] = { Uuid = entry, Type = resType }
         end
     end
 
@@ -94,7 +92,7 @@ local function InitEffectStats()
 end
 
 function GetEffectInfo(effectUuid)
-    if not StatsObjectInit then
+    if not next(EffectToInfo) then
         InitEffectStats()
     end
 
@@ -121,25 +119,22 @@ function GetEffectInfo(effectUuid)
 end
 
 local unknownNames = {}
-function GetResourceByName(name)
-
+function GetStaticDataByName(name)
     if not StatsObjectInit then
         InitEffectStats()
     end
+
     if not name or name == "" then
         return nil
     end
-    if name:match("^['\"].*['\"]$") then
-        name = name:sub(2, -2)
-    end
 
-    if not StatsNameToUuid[name] and not unknownNames[name] then
+    if not StaticDataNameToUuid[name] and not unknownNames[name] then
         unknownNames[name] = true
         Debug("Unknown resource name:", name)
         return nil
     end
 
-    local savedEntry = StatsNameToUuid[name]
+    local savedEntry = StaticDataNameToUuid[name]
     if not savedEntry then
         unknownNames[name] = true
         Debug("Unknown resource name:", name)
@@ -168,17 +163,18 @@ function GetEffectAnimation(any)
     return nil
 end
 
-function ReInitStats()
+local function ClearStatData()
+    StatsObjectInit = false
+    EffectToInfo = {}
+    EffectToAnimation = {}
+    StaticDataNameToUuid = {}
+end
+
+local function ReInitStats()
     ClearStatData()
     InitEffectStats()
 end
 
-function ClearStatData()
-    StatsObjectInit = false
-    EffectToInfo = {}
-    EffectToAnimation = {}
-    StatsNameToUuid = {}
-end
 
 function ClearEffectToInfo()
     EffectToInfo = {}
