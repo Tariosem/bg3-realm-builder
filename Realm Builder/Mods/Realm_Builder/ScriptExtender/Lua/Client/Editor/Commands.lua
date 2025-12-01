@@ -248,13 +248,17 @@ function Commands.SpawnCommand(template, entInfo)
     local spawnedGuid = nil
 
     local templateObj = Ext.Template.GetTemplate(TakeTailTemplate(template))
-    if not templateObj then
+    local isVisual = Ext.Resource.Get(template, "Visual")
+    if not templateObj and not isVisual then
         Warning("[SpawnCommand] Template not found: " .. tostring(template))
         return
     end
-    if templateObj.TemplateType == "prefab" then
+    if templateObj and templateObj.TemplateType == "prefab" then
         spawnPrefab(templateObj, entInfo)
         return
+    end
+    if isVisual then
+        packedData.EntInfo.DisplayName = GetLastPath(isVisual.SourceFile)
     end
 
     NetChannel.Spawn:RequestToServer(packedData, function(response)
@@ -289,7 +293,8 @@ function Commands.DuplicateCommand(targets, path)
         local stored = EntityStore:GetStoredData(guid)
         if stored then
             templateMap[guid] = stored.TemplateId
-            if stored.IsScenery then
+            local templateObj = Ext.Template.GetTemplate(TakeTailTemplate(stored.TemplateId))
+            if not templateObj or (templateObj.TemplateType ~= "item" and templateObj.TemplateType ~= "character") then
                 nonItemNonCharacter[guid] = true
             end
             originStats[guid] = DeepCopy(stored)
@@ -448,7 +453,7 @@ function Commands.SpawnPreset(data)
         end)
 
         local templateObj = Ext.Template.GetTemplate(TakeTailTemplate(entData.TemplateId))
-        if templateObj.TemplateType ~= "item" and templateObj.TemplateType ~= "character" then
+        if not templateObj or (templateObj.TemplateType ~= "item" and templateObj.TemplateType ~= "character") then
             -- Wait to make template overwirte work properly
             Timer:Ticks(30, function (timerID)
                 if not thread then

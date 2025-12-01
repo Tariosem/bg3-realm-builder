@@ -573,13 +573,22 @@ NetChannel.SetLighting:SetRequestHandler(function(data, userID)
         return true
     end
 
-
-
     return true
 end)
 
+NetChannel.SetResource:SetHandler(function(data, userID)
+    local res = Ext.Resource.Get(data.ResourceUUID, data.ResourceType)
+    if not res then
+        Warning("Resource not found: " .. tostring(data.ResourceUUID) .. " of type " .. tostring(data.ResourceType))
+        return
+    end
+
+    for k, v in pairs(data.Data) do
+        res[k] = v
+    end
+end)
+
 local function callOsirisFunction(data)
-    _D(data)
     local func = data.Function
     local args = data.Args or {}
 

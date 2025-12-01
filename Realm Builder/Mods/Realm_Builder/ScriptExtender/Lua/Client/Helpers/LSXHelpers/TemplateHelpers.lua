@@ -664,7 +664,7 @@ end
 --- @param internalName string
 --- @param childUuids GUIDSTRING[]
 --- @param childTransforms Transform[]
---- @param levelName string
+--- @param levelName string?
 --- @return XMLNode
 function LSXHelpers.BuildPrefabTemplate(uuid, internalName, childUuids, childTransforms, levelName)
     local templateNode = LSXHelpers.BuildTemplates()
@@ -673,7 +673,7 @@ function LSXHelpers.BuildPrefabTemplate(uuid, internalName, childUuids, childTra
     local baseAttr = {
         lsattrNode("MapKey", "FixedString", uuid),
         lsattrNode("Name", "LSString", internalName),
-        lsattrNode("LevelName", "FixedString", levelName),
+        lsattrNode("LevelName", "FixedString", levelName or ""),
         lsattrNode("Type", "FixedString", "prefab"),
     }
 

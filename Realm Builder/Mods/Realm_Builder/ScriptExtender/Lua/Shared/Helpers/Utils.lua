@@ -678,6 +678,14 @@ function Levenshtein(s, t, thereshold)
     return prevRow[n]
 end
 
+function GetPathBeforeData(fullPath)
+    local dataIndex = string.find(fullPath, "Data\\")
+    if dataIndex then
+        return string.sub(fullPath, 1, dataIndex - 1)
+    end
+    return ""
+end
+
 function IsCamera(object)
     if not object or type(object) ~= "string" then return false end
     return object == CameraSymbol or string.sub(object, 1, #CameraSymbol) == CameraSymbol

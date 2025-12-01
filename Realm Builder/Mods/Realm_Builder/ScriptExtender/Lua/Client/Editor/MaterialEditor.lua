@@ -51,7 +51,7 @@ function MaterialEditor:SetDefaultParameters(params)
 end
 
 ---@param paramName string
----@return number[]?, RB_ParamType?
+---@return number[]|string?, RB_ParamType?
 function MaterialEditor:GetParameter(paramName)
     local ptype = self.ParamSetProxy:GetParameterType(paramName)
     if not ptype then
@@ -103,15 +103,21 @@ function MaterialEditor:SetParameter(paramName, value, ptype)
     local mat = self.Instance()
     if not mat then return false end
 
-    if type(value) == "string" and not ptype then
-        Warning("MaterialEditor: When setting string parameter '" .. tostring(paramName) .. "', ptype must be provided.")
+    ptype = ptype or self.ParamSetProxy:GetParameterType(paramName)
+    if not ptype then
+        Warning("MaterialEditor: Could not find parameter '" .. tostring(paramName) .. "' in material proxy for material '" .. tostring(self.Material) .. "'. Cannot set.")
         return false
-    else
-        ptype = #value
+    end
+    if not ParamTypeToFunc[ptype] then
+        Warning("MaterialEditor: Invalid parameter type '" .. tostring(ptype) .. "' for parameter '" .. tostring(paramName) .. "'.")
+        return false
     end
 
     local funcName = ParamTypeToFunc[ptype]
     local applyValue = #value == 1 and value[1] or value
+
+    --Debug("MaterialEditor: Setting parameter", paramName, "of type", ptype, "to value", applyValue)
+    --Debug("Using function", funcName)
 
     mat[funcName](mat, paramName, applyValue)
 

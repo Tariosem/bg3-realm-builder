@@ -8,6 +8,7 @@ local presetPath = "Realm_Builder/Scenes/"
 local localGenPath = "Realm_Builder/Localization/"
 local keybindPath = "Realm_Builder/Keybind.json"
 local browserSettingPath = "Realm_Builder/Browsers/%s.json"
+local generatedPrefabPath = "Realm_Builder/Prefabs/"
 
 local ccaPath = "Realm_Builder/CC_Mods/"
 local ccaModCachePath = "Realm_Builder/CC_Mod_Cache/"
@@ -83,6 +84,11 @@ end
 
 function RealmPath.GetCCAModMetaPath(modName, modFolderName)
     return string.format(ccaModMetaFile, modName, modFolderName)
+end
+
+function RealmPath.GetPrefabPath(internalName, uuid)
+    local fileName = string.format("%s_%s.lsx", internalName, uuid)
+    return generatedPrefabPath .. fileName
 end
 
 ---@param modName string

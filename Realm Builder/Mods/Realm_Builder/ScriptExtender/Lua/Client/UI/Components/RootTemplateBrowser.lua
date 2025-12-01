@@ -12,6 +12,7 @@ function RootTemplateBrowser:SubclassInit()
     self.browserWidth = self.iconPR * self.iconWidth + 20
     self.browserHeight = self.iconPC * (36 * SCALE_FACTOR + self.cellsPadding[2]) + 240 * SCALE_FACTOR
     self.lastSize = { self.browserWidth * 1.5, self.browserHeight * 1.5 }
+    self.disableIcon = true
 
     self.iconButtonBgColor = HexToRGBA("FF615238")
 end

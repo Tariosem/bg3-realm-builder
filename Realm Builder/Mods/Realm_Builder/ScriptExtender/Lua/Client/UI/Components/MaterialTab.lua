@@ -3,7 +3,7 @@
 --- @field Editor MaterialEditor
 --- @field Panel ExtuiTreeParent
 --- @field ResetFuncs table<string, fun()>
---- @field UpdateFuncs table<string, fun(newValue: number[]?)>
+--- @field UpdateFuncs table<string, fun(newValue: number[]|string?)>
 --- @field ParamNodeRefs table<string, ExtuiSelectable>
 --- @field MaterialName string
 --- @field new fun(parent: ExtuiTreeParent, materialName: string, materialFunc:fun():Material , paramsSrc: fun():MaterialParametersSet):MaterialTab
@@ -441,26 +441,65 @@ function MaterialTab:RenderProperty(node, propertyName, propertyValue)
     return sliders, colorPicker
 end
 
-function MaterialTab:RenderTextProperty(node, propertyName, propertyValue, propertyType)    
+--- @param node ExtuiTreeParent
+function MaterialTab:RenderTextProperty(node, propertyName, propertyValue, propertyType)
+    if propertyType ~= RB_ParamType.Texture2D and propertyType ~= RB_ParamType.VirtualTexture then
+        Warning("MaterialTab:RenderTextProperty called for unsupported property type '" .. tostring(propertyType) .. "' for property '" .. tostring(propertyName) .. "'.")
+        return
+    end
     local textBox = node:AddInputText("##" .. self.MaterialName .. propertyName)
     textBox.Text = propertyValue
     textBox.ItemWidth = 600 * SCALE_FACTOR
+    textBox.AutoSelectAll = true
 
-    if Ext.Utils.Version() < 30 then
-        textBox.ReadOnly = true
-        textBox.Text = propertyValue
-        textBox.OnHoverEnter = function()
-            textBox:Tooltip():AddText("Editing string parameters is only supported in BG3SE v30 or higher.")
-            textBox.OnHoverEnter = nil
+    textBox.OnRightClick = function ()
+        local optionToId = {}
+        local res = Ext.Resource.Get(propertyValue, "Texture") --[[@as ResourceTextureResource]]
+        if not res then textBox.OnRightClick = nil return end
+        local editSourceFilePopup = node:AddPopup("EditStringParameterPopup##" .. self.MaterialName .. propertyName)
+        local alignedTable = StyleHelpers.AddAlignedTable(editSourceFilePopup, 2)
+        local searchInput = alignedTable:AddInputText("Search Texture", LSXHelpers.GetPathAfterData(res.SourceFile) or "")
+        searchInput.ItemWidth = 1000 * SCALE_FACTOR
+        local allCombo = alignedTable:AddCombo("Change Texture")
+        allCombo.HeightLarge = true
+        searchInput.OnChange = function ()
+            local allRes = TextureResourceManager:GetAllTextureResourceUnderPath(searchInput.Text)
+            local options = {}
+            optionToId = {}
+            local seenSourceFiles = {}
+            table.sort(allRes, function (a,b) return a.Path < b.Path end)
+            for _,textureRes in pairs(allRes) do
+                local cnt = 1
+                local displayFileName = textureRes.SourceFile
+                while seenSourceFiles[textureRes.SourceFile] do
+                    cnt = cnt + 1
+                    displayFileName = textureRes.SourceFile .. " (" .. tostring(cnt) .. ")"
+                end
+                table.insert(options, displayFileName)
+                seenSourceFiles[displayFileName] = true
+                optionToId[#options] = textureRes.ResourceUUID
+            end
+            allCombo.Options = options
         end
-        return
+
+        allCombo.OnChange = function ()
+            local selected = optionToId[allCombo.SelectedIndex + 1]
+            if not selected then return end
+            self:SetParameter(propertyName, selected, propertyType)
+            textBox.Text = selected
+        end
+
+        textBox.OnRightClick = function ()
+            editSourceFilePopup:Open()
+        end
+        editSourceFilePopup:Open()
     end
 
     local resetButton = StyleHelpers.AddResetButton(node, true)
     resetButton.OnClick = function (sel)
         self:ResetValue(propertyName)
         local newValue = self:GetParameter(propertyName)
-        if newValue then
+        if newValue and type(newValue) == "string" then
             textBox.Text = newValue
         end
 
@@ -476,7 +515,7 @@ function MaterialTab:RenderTextProperty(node, propertyName, propertyValue, prope
     end
 
     self.UpdateFuncs[propertyName] = function (newValue)
-        if newValue then
+        if newValue and type(newValue) == "string" then
             textBox.Text = newValue
         end
 
@@ -485,7 +524,7 @@ function MaterialTab:RenderTextProperty(node, propertyName, propertyValue, prope
     self.ResetFuncs[propertyName] = function ()
         self:ResetValue(propertyName)
         local newValue = self:GetParameter(propertyName)
-        if newValue then
+        if newValue and type(newValue) == "string" then
             textBox.Text = newValue
         end
 
@@ -510,6 +549,10 @@ end
 
 function MaterialTab:ResetValue(name)
     self.Editor:ResetParameter(name)
+    if self.UpdateFuncs[name] then
+        local newValue = self:GetParameter(name)
+        self.UpdateFuncs[name](newValue)
+    end
 end
 
 function MaterialTab:UpdateUIState()
@@ -572,12 +615,17 @@ end
 
 function MaterialTab:SetParameter(name, value, ptype)
     self.Editor:SetParameter(name, value, ptype)
-    self:UpdateUIState()
+    if self.UpdateFuncs[name] then
+        self.UpdateFuncs[name](value)
+    end
 end
 
 function MaterialTab:ResetParameter(name)
     self.Editor:ResetParameter(name)
-    self:UpdateUIState()
+    if self.UpdateFuncs[name] then
+        local newValue = self:GetParameter(name)
+        self.UpdateFuncs[name](newValue)
+    end
 end
 
 function MaterialTab:ApplyParameters(params)

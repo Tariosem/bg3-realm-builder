@@ -309,10 +309,11 @@ function RainbowDumpTable(o, from, to)
         table.insert(splited, line)
     end
     local indentParttern = "^%s*"
+    local allColorsCount = #randomized
     for _, line in ipairs(splited) do
         local indent = line:match(indentParttern) or ""
         local indentLevel = #indent
-        local colorCodeIndex = (indentLevel % 6) + 1
+        local colorCodeIndex = (indentLevel % allColorsCount) + 1
         local colorCode = randomized[colorCodeIndex]
         local colorCodeStr = string.format("\x1b[%dm", colorCode)
         table.insert(result, colorCodeStr .. line .. resetCode)

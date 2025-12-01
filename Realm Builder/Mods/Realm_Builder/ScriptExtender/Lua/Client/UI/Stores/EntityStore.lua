@@ -477,6 +477,7 @@ function EntityStore:GetExportCopy(guids)
             if not entity then goto continue end
             local data = DeepCopy(self:GetStoredData(guid)) --[[@as EntityData]]
             local template = Ext.Template.GetTemplate(TakeTailTemplate(data.TemplateId))
+            if not template then goto continue end
             data.TemplateType = template.TemplateType
 
             if data.TemplateType == "TileConstruction" then 

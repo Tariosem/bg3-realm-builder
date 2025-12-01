@@ -115,6 +115,107 @@ function Vector:Sanitize(defaultVec, limit)
     return self
 end
 
+function Vector.Add(a, b)
+    local newVec = {}
+    if type(a) == "table" and type(b) == "table" then
+        for i = 1, math.max(#a, #b) do
+            newVec[i] = (a[i] or 0) + (b[i] or 0)
+        end
+    elseif type(a) == "table" and type(b) == "number" then
+        for i = 1, #a do
+            newVec[i] = a[i] + b
+        end
+    elseif type(a) == "number" and type(b) == "table" then
+        for i = 1, #b do
+            newVec[i] = a + b[i]
+        end
+    elseif type(a) == "number" and type(b) == "number" then
+        newVec[1] = a + b
+    else
+        Warning("Vector.Add: Invalid arguments")
+        return Vector.new({ 0, 0, 0 })
+    end
+    return Vector.new(newVec)
+end
+
+
+function Vector.Sub(a, b)
+    local newVec = {}
+    if type(a) == "table" and type(b) == "table" then
+        for i = 1, math.max(#a, #b) do
+            newVec[i] = (a[i] or 0) - (b[i] or 0)
+        end
+    elseif type(a) == "table" and type(b) == "number" then
+        for i = 1, #a do
+            newVec[i] = a[i] - b
+        end
+    elseif type(a) == "number" and type(b) == "table" then
+        for i = 1, #b do
+            newVec[i] = a - b[i]
+        end
+    elseif type(a) == "number" and type(b) == "number" then
+        newVec[1] = a - b
+    else
+        Warning("Vector.Sub: Invalid arguments")
+        return Vector.new({ 0, 0, 0 })
+    end
+    return Vector.new(newVec)
+end
+
+function Vector.Mul(a, b)
+    local newVec = {}
+    if type(a) == "table" and type(b) == "table" then
+        for i = 1, math.max(#a, #b) do
+            newVec[i] = (a[i] or 0) * (b[i] or 0)
+        end
+    elseif type(a) == "table" and type(b) == "number" then
+        for i = 1, #a do
+            newVec[i] = a[i] * b
+        end
+    elseif type(a) == "number" and type(b) == "table" then
+        for i = 1, #b do
+            newVec[i] = a * b[i]
+        end
+    elseif type(a) == "number" and type(b) == "number" then
+        newVec[1] = a * b
+    else
+        Warning("Vector.Mul: Invalid arguments")
+        return Vector.new({ 0, 0, 0 })
+    end
+    return Vector.new(newVec)
+end
+
+function Vector.Div(a, b)
+    local newVec = {}
+    if type(a) == "table" and type(b) == "table" then
+        for i = 1, math.max(#a, #b) do
+            newVec[i] = (a[i] or 0) / (b[i] or 1)
+        end
+    elseif type(a) == "table" and type(b) == "number" then
+        for i = 1, #a do
+            newVec[i] = a[i] / b
+        end
+    elseif type(a) == "number" and type(b) == "table" then
+        for i = 1, #b do
+            newVec[i] = a / b[i]
+        end
+    elseif type(a) == "number" and type(b) == "number" then
+        newVec[1] = a / b
+    else
+        Warning("Vector.Div: Invalid arguments")
+        return Vector.new({ 0, 0, 0 })
+    end
+    return Vector.new(newVec)
+end
+
+function Vector.Unm(a)
+    local newVec = {}
+    for i = 1, #a do
+        newVec[i] = -a[i]
+    end
+    return Vector.new(newVec)
+end
+
 Vec2.__index = function(t, k)
     if AxisIndexMap[k] then
         return rawget(t, AxisIndexMap[k])
@@ -135,49 +236,15 @@ Vec2.__newindex = function(t, k, v)
     end
 end
 
-function Vec2.__add(a, b) return Vector.new({ a[1] + b[1], a[2] + b[2] }, 2) end
+function Vec2.__add(a, b) return Vector.Add(a, b) end
 
-function Vec2.__sub(a, b) return Vector.new({ a[1] - b[1], a[2] - b[2] }, 2) end
+function Vec2.__sub(a, b) return Vector.Sub(a, b) end
 
-function Vec2.__mul(a, b)
-    local newVec = {}
-    if type(b) == "number" then
-        for _, number in ipairs(a) do
-            table.insert(newVec, number * b)
-        end
-        return Vector.new(newVec)
-    elseif type(b) == "table" and #b == 2 then
-        for i, number in ipairs(a) do
-            table.insert(newVec, number * b[i])
-        end
+function Vec2.__mul(a, b) return Vector.Mul(a, b) end
 
-        return Vector.new(newVec)
-    else
-        Warning("Vec2: Invalid multiplication")
-        for _, _ in ipairs(a) do
-            table.insert(newVec, 0)
-        end
+function Vec2.__div(a, b) return Vector.Div(a, b) end
 
-        return Vector.new(newVec)
-    end
-end
-
-function Vec2.__div(a, b)
-    if type(b) == "number" then
-        return Vec2.new({ a[1] / b, a[2] / b })
-    elseif type(b) == "table" and #b == 2 then
-        return Vec2.new({ a[1] / b[1], a[2] / b[2] })
-    else
-        Warning("Vec2: Invalid division")
-        return Vector.new({ 0, 0 }, 2)
-    end
-end
-
-function Vec2.__unm(a)
-    for i = 1, 2 do
-        a[i] = -a[i]
-    end
-end
+function Vec2.__unm(a) return Vector.Unm(a) end
 
 function Vec2.__tostring(a) return string.format("Vec2(%s)", table.concat(a, ", ")) end
 

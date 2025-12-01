@@ -159,7 +159,9 @@ end
 RB_CharacterManager = CharacterManager.new()
 RB_ItemManager = ItemManager.new()
 RB_MultiEffectManager = MultiEffectManager.new()
+RB_VisualManager = VisualResourceManager.new()
 RB_SceneryManager = SceneryManager.new()
+RB_TileConstructionManager = TileConstructionManager.new()
 RB_PrefabManager = PrefabManager.new()
 
 --- @param uuid GUIDSTRING
@@ -223,7 +225,7 @@ local function PopulateAllTemplates()
             sceneryCnt = sceneryCnt + 1
         elseif object.TemplateType == "TileConstruction" then
             object = object --[[@as ConstructionTemplate]]
-            RB_SceneryManager:PopulateConstruction(object)
+            RB_TileConstructionManager:PopulateConstruction(object)
             constructionsCnt = constructionsCnt + 1
         elseif object.TemplateType == "prefab" then
             RB_PrefabManager:PopulatePrefab(object)
@@ -235,6 +237,7 @@ local function PopulateAllTemplates()
     RB_ItemManager.populated = true
     RB_SceneryManager.populated = true
     RB_PrefabManager.populated = true
+    RB_TileConstructionManager.populated = true
     RB_ItemManager.modCache = {}
     return {
         Items = itemCnt,

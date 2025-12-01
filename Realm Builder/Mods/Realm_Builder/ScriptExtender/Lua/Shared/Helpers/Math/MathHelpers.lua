@@ -45,6 +45,7 @@ setmetatable(LHCS, {
     end
 })
 
+--- @type {X: Vec3, Y: Vec3, Z: Vec3}
 GLOBAL_COORDINATE = LHCS
 
 --- make orthonormal basis from a normal vector
@@ -253,6 +254,29 @@ function SaveLocalRelativeRotOffset(childUuid, parentUuid)
     return relativeQuat
 end
 
+function SaveLocalRelativeTransform(pivotTransform, worldPos, worldQuat, worldScale)
+    if not pivotTransform or not worldPos or not worldQuat then return end
+    local px, py, pz = pivotTransform.Translate[1], pivotTransform.Translate[2], pivotTransform.Translate[3]
+    local pqx, pqy, pqz, pqw = pivotTransform.RotationQuat[1], pivotTransform.RotationQuat[2], pivotTransform.RotationQuat[3], pivotTransform.RotationQuat[4]
+
+    if not px or not py or not pz or not pqx or not pqy or not pqz or not pqw then
+        --Error("Failed to get pivot position or rotation")
+        return nil, nil
+    end
+
+    local delta = Ext.Math.Sub(worldPos, {px, py, pz})
+    local parentRotInv = Ext.Math.QuatInverse({pqx, pqy, pqz, pqw})
+    local localOffset = Ext.Math.QuatRotate(parentRotInv, delta)
+
+    local relativeQuat = Ext.Math.QuatMul(parentRotInv, worldQuat)
+    relativeQuat = Ext.Math.QuatNormalize(relativeQuat)
+
+    return {
+        Translate = {localOffset[1], localOffset[2], localOffset[3]},
+        RotationQuat = {relativeQuat[1], relativeQuat[2], relativeQuat[3], relativeQuat[4]},
+        Scale = worldScale or {1, 1, 1}
+    }
+end
 
 --- @param parentUuid string
 --- @param posOffset number[]

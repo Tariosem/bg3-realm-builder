@@ -121,6 +121,9 @@ local templateTypeToIcon = {
 function GetIconForTemplateId(uuid)
     uuid = TakeTailTemplate(uuid)
     local template = Ext.Template.GetTemplate(uuid)
+    if not template then
+        return "Item_Unknown"
+    end
     if template.TemplateType == "item" then
         local icon = template.Icon
         return icon

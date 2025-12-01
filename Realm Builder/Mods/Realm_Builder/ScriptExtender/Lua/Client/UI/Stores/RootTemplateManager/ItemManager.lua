@@ -207,7 +207,7 @@ function ItemManager:HardCodeHierachy()
     self.tagIcons["Potion"] = "Item_CONS_Potion_Healing_A"
     self.tagIcons["Scroll"] = "Item_LOOT_SCROLL_Counterspell"
 
-    tree:Reparent("ArmorType", "Armor")
+    tree:Reparent("ArmorType", "Equipment")
 end
 
 --- @class RB_Item

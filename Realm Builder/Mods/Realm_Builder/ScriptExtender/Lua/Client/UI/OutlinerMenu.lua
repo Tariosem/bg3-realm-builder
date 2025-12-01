@@ -908,6 +908,61 @@ function OutlinerMenu:SetupCollectionSelectablePopup(openKey)
         TemplateExportMenu.new(copy)
     end
 
+    local function saveAsPrefab()
+        if not RB_GLOBALS.PrefabMenu then return end
+        if not self.selectedTree or #self.selectedTree == 0 then return end
+
+        local treeKey = self.selectedTree[1]
+        local childs = {}
+        local childArr = {}
+        local childTemplateArr = {}
+        local childWorldTransforms = {}
+        local childRelativeTransforms = {}
+        local node = tree:Find(treeKey)
+        collectChildGuids(node, childs)
+        local pivtoTransform = {
+            Translate = Vec3.new(0,0,0),
+            RotationQuat = Quat.Identity(),
+            Scale = {1,1,1},
+        }
+        for guid,_ in pairs(childs) do
+            local storedData = EntityStore:GetStoredData(guid)
+            if not storedData or not Ext.Template.Get(TakeTailTemplate(storedData.TemplateId)) then
+                --Warning("Invalid TemplateId for guid: " .. guid .. ", skipping...")
+                goto continue
+            else
+                table.insert(childArr, guid)
+                table.insert(childTemplateArr, storedData.TemplateId)
+            end
+            local pos = Vec3.new(CGetPosition(guid))
+            pivtoTransform.Translate = pivtoTransform.Translate + pos
+            table.insert(childWorldTransforms, {
+                Translate = pos,
+                RotationQuat = {CGetRotation(guid)},
+                Scale = {CGetScale(guid)},
+            })
+            ::continue::
+        end
+        pivtoTransform.Translate = pivtoTransform.Translate / #childArr
+        for i, guid in ipairs(childArr) do
+            local childPos, childRot, childScale = childWorldTransforms[i].Translate, childWorldTransforms[i].RotationQuat, childWorldTransforms[i].Scale
+            local relativeTransform = SaveLocalRelativeTransform(pivtoTransform, childPos, childRot, childScale)
+            childRelativeTransforms[i] = relativeTransform
+        end
+
+        local generated = Uuid_v4()
+        local internalName = ValidateFolderName(treeKey)
+
+        local xmlNode = LSXHelpers.BuildPrefabTemplate(generated, internalName, childTemplateArr, childRelativeTransforms)
+
+        local filePath = RealmPath.GetPrefabPath(internalName, generated)
+        
+        local ok, err = Ext.IO.SaveFile(filePath, xmlNode:Stringify())
+        if not ok then
+            Error("Failed to save prefab file: " .. err)
+            return
+        end
+    end
     --- @type RB_ContextItem[]
     local context = {
         {
@@ -937,6 +992,10 @@ function OutlinerMenu:SetupCollectionSelectablePopup(openKey)
 
                 RB_GLOBALS.SceneMenu:SavePreset(treeKey, false, childArr)
             end,
+        },
+        {
+            Label = GetLoca("Save as Prefab"),
+            OnClick = saveAsPrefab,
         },
         {
             Label = GetLoca("Export Collection"),

@@ -276,11 +276,12 @@ function SceneMenu:SavePreset(name, overwrite, candiates)
 
         local template = TakeTailTemplate(entInfo.TemplateId)
         local templateObj = Ext.Template.GetTemplate(template)
-        if not templateObj then
+        local isVisual = not templateObj and Ext.Resource.Get(entInfo.TemplateId, "Visual")
+        if not templateObj and not isVisual then
             Warning("PresetMenu:SavePreset: Template data not found for " .. tostring(entInfo.TemplateId))
             goto continue
         end
-        if templateObj.TemplateType == "Item" then
+        if templateObj and templateObj.TemplateType == "Item" then
             local statObj = Ext.Stats.GetStatsLoadedBefore(templateObj.Stats) --[[@as StatsObject]] 
             if not statObj then
                 statObj = Ext.Stats.Get(templateObj.Stats) 

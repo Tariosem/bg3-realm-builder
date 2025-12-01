@@ -210,18 +210,35 @@ function EntityManager:CreateAt(templateId, x, y, z, rx, ry, rz, w)
         end
     end
 
-    local templateObj = Ext.Template.GetTemplate(TakeTailTemplate(templateId))
-    local tempoFlag = templateObj.TemplateType == "character" and 1 or 0
     local spawnTemplate = templateId
-    if templateObj.TemplateType == "scenery" or templateObj.TemplateType == "TileConstruction" then
-        local sceneryTemplate = templateObj --[[@as SceneryTemplate|ConstructionTemplate]]  
-        local helperATemplate = Ext.Template.GetTemplate(INVISIBLE_HELPER_SCENERY) --[[@as ItemTemplate]]
+    local templateObj = Ext.Template.GetTemplate(TakeTailTemplate(templateId))
+    local tempoFlag = 0
+    if not templateObj then
+        local visualRes = Ext.Resource.Get(templateId, "Visual") --[[@as ResourceVisualResource]]
+        if visualRes then
+            templateObj = Ext.Template.GetTemplate(INVISIBLE_HELPER_PREVIEW) --[[@as ItemTemplate]]
+            templateObj.VisualTemplate = templateId
+            for i, boundData in pairs(templateObj.AIBounds or {}) do
+                templateObj.AIBounds[i].Max = visualRes.BoundsMax
+                templateObj.AIBounds[i].Min = visualRes.BoundsMin
+            end
+            spawnTemplate = templateObj.Name .. "-" .. templateObj.Id
+        else
+            Error("Invalid TemplateId: " .. tostring(templateId))
+            return nil
+        end
+    else
+        tempoFlag = templateObj.TemplateType == "character" and 1 or 0
+        if templateObj.TemplateType == "scenery" or templateObj.TemplateType == "TileConstruction" then
+            local sceneryTemplate = templateObj --[[@as SceneryTemplate|ConstructionTemplate]]  
+            local helperATemplate = Ext.Template.GetTemplate(INVISIBLE_HELPER_SCENERY) --[[@as ItemTemplate]]
 
-        copyTemplateProperties(sceneryTemplate, helperATemplate)
-        spawnTemplate = helperATemplate.Name .. "-" .. helperATemplate.Id
-    elseif templateObj.TemplateType ~= "item" and templateObj.TemplateType ~= "character" then
-        Debug(" Sorry , but we can't spawn root template of type: " .. tostring(templateObj.TemplateType))
-        return nil
+            copyTemplateProperties(sceneryTemplate, helperATemplate)
+            spawnTemplate = helperATemplate.Name .. "-" .. helperATemplate.Id
+        elseif templateObj.TemplateType ~= "item" and templateObj.TemplateType ~= "character" then
+            Debug(" Sorry , but we can't spawn root template of type: " .. tostring(templateObj.TemplateType))
+            return nil
+        end
     end
 
     local newProp = Osi.CreateAt(spawnTemplate, x, y, z, tempoFlag, 0, "") --[[@as string]]

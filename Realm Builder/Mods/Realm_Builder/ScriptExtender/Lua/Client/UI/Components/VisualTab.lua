@@ -229,7 +229,6 @@ function VisualTab:Render(retryCnt)
     local entity = self:GetEntity(self.guid)
 
     if entity == nil or not entity.Visual or not entity.Visual.Visual or (not entity.Visual.Visual.ObjectDescs and not entity.Effect) then
-        Error("VisualTab: Entity is invalid or does not have visual data.")
         local tryToRerender = function()
             self:Refresh()
         end
@@ -281,8 +280,15 @@ function VisualTab:RenderMaterialContextPopup()
         local keyName = self.SelectedMaterial
         local matTab = self.Materials[keyName]
         if not matTab then return end
+        -- only copy number/vector parameters
+        local param1234 = {
+            [1] = matTab.Editor.Parameters[1],
+            [2] = matTab.Editor.Parameters[2],
+            [3] = matTab.Editor.Parameters[3],
+            [4] = matTab.Editor.Parameters[4],
+        }
         for _, otherMatTab in pairs(self.Materials) do
-            otherMatTab.Editor:ApplyParameters(matTab.Editor.Parameters)
+            otherMatTab.Editor:ApplyParameters(param1234)
             otherMatTab:UpdateUIState()
         end
     end)

@@ -20,23 +20,7 @@
 						<node id="Bounds">
 							<children>
 								<node id="Bound">
-									<attribute id="Type" type="uint8" value="0" />
-									<attribute id="Shape" type="uint8" value="1" />
-									<attribute id="Min" type="fvec3" value="-0.25 -0.5 -0.25" />
-									<attribute id="Max" type="fvec3" value="0.25 0.5 0.25" />
-									<attribute id="Radius" type="float" value="0.0004330125" />
-									<attribute id="Height" type="float" value="0.002" />
-								</node>
-								<node id="Bound">
 									<attribute id="Type" type="uint8" value="1" />
-									<attribute id="Shape" type="uint8" value="1" />
-									<attribute id="Min" type="fvec3" value="-0.5 -0.5 -0.5" />
-									<attribute id="Max" type="fvec3" value="0.5 0.5 0.5" />
-									<attribute id="Radius" type="float" value="0.000866025" />
-									<attribute id="Height" type="float" value="0.002" />
-								</node>
-								<node id="Bound">
-									<attribute id="Type" type="uint8" value="2" />
 									<attribute id="Shape" type="uint8" value="1" />
 									<attribute id="Min" type="fvec3" value="-0.5 -0.5 -0.5" />
 									<attribute id="Max" type="fvec3" value="0.5 0.5 0.5" />

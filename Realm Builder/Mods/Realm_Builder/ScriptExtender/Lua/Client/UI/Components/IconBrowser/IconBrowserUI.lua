@@ -402,7 +402,7 @@ function IconBrowser:RenderMiscMenu()
 
     self.nameAscendSelect = self.miscPopup:AddItem(GetLoca("Name Ascend"))
     self.combineSearchSelect = self.miscPopup:AddItem(GetLoca("Match Any Tags"))
-    self.tooltipName = self.miscPopup:AddItem(GetLoca("Tooltip Name: DisplayName"))
+    self.tooltipName = self.miscPopup:AddItem(GetLoca("Tooltip Name") .. ": " .. self.iconTooltipName)
     local iconToNameButton = self.miscPopup:AddItem(GetLoca("Icon to Name"))
 
     self.nameAscendSelect.Label = self.nameAscend and GetLoca("Name Ascend") or
@@ -425,8 +425,12 @@ function IconBrowser:RenderMiscMenu()
     end
 
     self.tooltipName.OnClick = function()
+        local changed = self.iconTooltipName
         self:TooltipChangeLogic()
-        self:RenderIcons()
+        if changed ~= self.iconTooltipName then
+            self.tooltipName.Label = GetLoca("Tooltip Name") .. ": " .. self.iconTooltipName
+            self:RenderIcons()
+        end
     end
 
     local function updateIconToNameText()
@@ -442,6 +446,10 @@ function IconBrowser:RenderMiscMenu()
 
     iconToNameButton.Label = updateIconToNameText()
     iconToNameButton.OnClick = function()
+        if self.disableIcon then
+            SetImguiDisabled(iconToNameButton, true)
+            return
+        end
         self.iconToName = not self.iconToName
         iconToNameButton.Label = updateIconToNameText()
         if self.iconToName then 
@@ -452,6 +460,9 @@ function IconBrowser:RenderMiscMenu()
         end
 
         self:RenderPage()
+    end
+    if self.disableIcon then
+        SetImguiDisabled(iconToNameButton, true)
     end
 end
 

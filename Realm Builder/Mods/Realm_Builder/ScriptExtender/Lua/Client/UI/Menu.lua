@@ -64,9 +64,11 @@ function RealmBuilderMainMenu:RenderBrowserMenu()
     local allAvailableBrowsers = {
         {Key = "item", Label = "Item"},
         {Key = "effect", Label = "Effect"},
+        {Key = "visual", Label = "Visual"},
         {Key = "character", Label = "Character"},
         {Key = "scenery", Label = "Scenery"},
         {Key = "prefab", Label = "Prefab"},
+        {Key = "construction", Label = "Tile Construction"},
     }
     table.sort(allAvailableBrowsers, function(a,b) return a.Label < b.Label end)
 
@@ -150,10 +152,24 @@ function RealmBuilderMainMenu:Render()
     end)
 
     Timer:Ticks(9, function()
+        self.browsers.construction = RootTemplateBrowser.new(RB_TileConstructionManager, "Tile Construction - Browser")
+        self.browsers.construction:CreateCachedSort("TemplateName")
+    end)
+
+    Timer:Ticks(10, function()
+        self.browsers.visual = RootTemplateBrowser.new(RB_VisualManager, "Visual - Browser")
+        self.browsers.visual.iconTooltipName = "SourceFile"
+        self.browsers.visual.TooltipChangeLogic = function()
+        
+        end
+        self.browsers.visual:CreateCachedSort("SourceFile")
+    end)
+
+    Timer:Ticks(10, function()
         self:RenderBrowserMenu()
     end)
 
-    Timer:Ticks(9, function()
+    Timer:Ticks(10, function()
         local tab = self.tabBar:AddTabItem("Materials")
         local childWin = tab:AddChildWindow("Material Presets Workshop")
         local window = RegisterWindow("generic", "Material Presets Workshop", "Material Presets Workshop", MaterialPresetsMenu)
