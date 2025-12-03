@@ -1485,3 +1485,62 @@ function StyleHelpers.RenderGeneralTableEditor(parent, o, onSet)
         end
     end
 end
+
+--- @param parent ExtuiTreeParent
+--- @param getter fun():any
+--- @param setter fun(newValue:FixedString)
+--- @return ExtuiPopup
+function StyleHelpers.RenderTexturePopup(parent, getter, setter)
+    local optionToId = {}
+    local id = Uuid_v4()
+    local safeGetter = function ()
+        local propertyValue = getter()
+        if not IsUuidIncludingNull(propertyValue) then
+            Warning("StyleHelpers.RenderTexturePopup called with invalid UUID: " .. tostring(propertyValue))
+            propertyValue = GUID_NULL
+        end
+        return propertyValue
+    end
+    local propertyValue = safeGetter()
+    local res = Ext.Resource.Get(propertyValue, "Texture") --[[@as ResourceTextureResource]]
+    local popup = parent:AddPopup("EditStringParameterPopup##" .. id)
+    local alignedTable = StyleHelpers.AddAlignedTable(popup)
+    local getAllUnderPathCehck = alignedTable:AddCheckbox("Exact Folder", false)
+    getAllUnderPathCehck:Tooltip():AddText("Only shows textures directly in this folder (no subfolders).")
+    local searchInput = alignedTable:AddInputText("Search Texture", res and LSXHelpers.GetPathAfterData(res.SourceFile) or "Public/")
+    searchInput.SizeHint = {1000 * SCALE_FACTOR, 0}
+    local allCombo = alignedTable:AddCombo("Change Texture")
+    allCombo.HeightLarge = true
+    searchInput.OnChange = function()
+        local allRes = TextureResourceManager:GetAllTextureResourceUnderPath(searchInput.Text, getAllUnderPathCehck.Checked)
+        local options = {}
+        optionToId = {}
+        local seenSourceFiles = {}
+        table.sort(allRes, function(a, b) return a.Path < b.Path end)
+        for _, textureRes in pairs(allRes) do
+            local cnt = 1
+            local displayFileName = textureRes.SourceFile
+            while seenSourceFiles[displayFileName] do
+                cnt = cnt + 1
+                displayFileName = textureRes.SourceFile .. " (" .. tostring(cnt) .. ")"
+            end
+            table.insert(options, displayFileName)
+            seenSourceFiles[displayFileName] = true
+            optionToId[#options] = textureRes.ResourceUUID
+        end
+        allCombo.Options = options
+    end
+    getAllUnderPathCehck.OnChange = function()
+        searchInput:OnChange()
+    end
+
+    allCombo.OnChange = function()
+        local selected = optionToId[allCombo.SelectedIndex + 1]
+        if not selected then return end
+        setter(selected)
+    end
+
+    
+
+    return popup
+end

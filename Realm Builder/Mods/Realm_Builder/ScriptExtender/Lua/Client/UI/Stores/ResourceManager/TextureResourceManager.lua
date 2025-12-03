@@ -1,7 +1,6 @@
 --- @class RB_TextureResource
 --- @field SourceFile string
 
-
 --- @class TextureManager
 --- @field TextureResources table<GUIDSTRING, RB_TextureResource>
 --- @field TextureResourcesReverse table<string, GUIDSTRING>
@@ -109,7 +108,6 @@ function TextureResourceManager:GetAllTextureResourceUnderPath(pathPrefix, preci
         if #results >= maxSize then exceedFlag = true break end
         local fileName = self.TextureResources[id].SourceFile
         if searchCriteria and not fileName:find(searchCriteria, 1, true) then
-            -- If we are searching for a specific file name, skip if it doesn't match
             goto continue
         end
         table.insert(results, { Path = self.TextureResources[id].Path, ResourceUUID = id, SourceFile = fileName })

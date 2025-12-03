@@ -393,9 +393,7 @@ function IconBrowser:RenderSearchOptionsMenu()
 end
 
 function IconBrowser:RenderMiscMenu()
-
     self.miscButtonContainer = self.optionRow:AddCell()
-
 
     self.miscSearchButton = self.topMenuBar:AddMenu(GetLoca("Misc"))
     self.miscPopup = self.miscSearchButton

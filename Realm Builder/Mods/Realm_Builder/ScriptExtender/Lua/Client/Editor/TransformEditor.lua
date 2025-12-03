@@ -660,7 +660,7 @@ function TransformEditor:SetupGizmo()
             local axis = deltaAxis or Vec3.new{0,0,0}
             local angle = deltaAngle or 0
             if self.Space == "Local" then
-                axis = curRot:Rotate(axis)
+                axis = curRot:Rotate(axis) --[[@as Vec3]]
             elseif self.Space == "Parent" then
                 local parent = proxy:GetParent()
                 if parent and EntityExists(parent) then

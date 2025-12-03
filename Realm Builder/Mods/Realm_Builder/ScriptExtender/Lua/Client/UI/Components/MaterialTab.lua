@@ -472,54 +472,22 @@ function MaterialTab:RenderTextProperty(node, propertyName, propertyValue, prope
     textBox.AutoSelectAll = true
 
     textBox.OnRightClick = function()
-        local optionToId = {}
         local res = Ext.Resource.Get(propertyValue, "Texture") --[[@as ResourceTextureResource]]
         if not res then
             textBox.OnRightClick = nil
             return
         end
-        local editSourceFilePopup = node:AddPopup("EditStringParameterPopup##" .. self.MaterialName .. propertyName)
-        local alignedTable = StyleHelpers.AddAlignedTable(editSourceFilePopup, 2)
-        local getAllUnderPathCehck = alignedTable:AddCheckbox("Exact Folder", false)
-        getAllUnderPathCehck:Tooltip():AddText("Only shows textures directly in this folder (no subfolders).")
-        local searchInput = alignedTable:AddInputText("Search Texture", LSXHelpers.GetPathAfterData(res.SourceFile) or "")
-        searchInput.SizeHint = {1000 * SCALE_FACTOR, 0}
-        local allCombo = alignedTable:AddCombo("Change Texture")
-        allCombo.HeightLarge = true
-        searchInput.OnChange = function()
-            local allRes = TextureResourceManager:GetAllTextureResourceUnderPath(searchInput.Text, getAllUnderPathCehck.Checked)
-            local options = {}
-            optionToId = {}
-            local seenSourceFiles = {}
-            table.sort(allRes, function(a, b) return a.Path < b.Path end)
-            for _, textureRes in pairs(allRes) do
-                local cnt = 1
-                local displayFileName = textureRes.SourceFile
-                while seenSourceFiles[displayFileName] do
-                    cnt = cnt + 1
-                    displayFileName = textureRes.SourceFile .. " (" .. tostring(cnt) .. ")"
-                end
-                table.insert(options, displayFileName)
-                seenSourceFiles[displayFileName] = true
-                optionToId[#options] = textureRes.ResourceUUID
-            end
-            allCombo.Options = options
-        end
-        getAllUnderPathCehck.OnChange = function()
-            searchInput:OnChange()
-        end
 
-        allCombo.OnChange = function()
-            local selected = optionToId[allCombo.SelectedIndex + 1]
-            if not selected then return end
-            self:SetParameter(propertyName, selected, propertyType)
-            textBox.Text = selected
-        end
-
+        local editSourceFilePopup = StyleHelpers.RenderTexturePopup(node, function()
+            return self:GetParameter(propertyName)
+        end, function(newValue)
+            self:SetParameter(propertyName, newValue, propertyType)
+            textBox.Text = newValue
+        end)
+        editSourceFilePopup:Open()
         textBox.OnRightClick = function()
             editSourceFilePopup:Open()
         end
-        editSourceFilePopup:Open()
     end
 
     local resetButton = StyleHelpers.AddResetButton(node, true)

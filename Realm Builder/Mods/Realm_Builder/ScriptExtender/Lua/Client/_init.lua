@@ -272,7 +272,7 @@ end
 RegisterOnSessionLoaded(Realm_Builder_Population, 0)
 
 
-Ext.RegisterConsoleCommand("rb_open_the_bloody_gates", function()
+RegisterConsoleCommand("rb_open_the_bloody_gates", function()
     if GLOBAL_DEBUG_WINDOW then
         GLOBAL_DEBUG_WINDOW.Open = true
     end

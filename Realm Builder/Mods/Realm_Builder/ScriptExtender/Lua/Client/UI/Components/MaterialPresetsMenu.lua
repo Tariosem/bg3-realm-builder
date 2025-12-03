@@ -5,7 +5,7 @@ MATERIALPRESET_DRAGDROP_TYPE = "MaterialPreset"
 --- @class MaterialPresetData
 --- @field DisplayName string
 --- @field UIColor number[]
---- @field Parameters table<1|2|3|4, table<string, any>>
+--- @field Parameters RB_ParameterSet
 --- @field Deleted boolean -- temp dirty tag
 
 --- @class CCMOD_FolderDefinition
@@ -425,7 +425,7 @@ function MaterialPresetsMenu:RenderFolderRow(presetTab, folderName, openedFolder
         folderManagePopup:Open()
     end
 
-    local function refreshFolder() end
+    local refreshFolder
     folderHeader.UserData = {
         Opened = openedFolders,
         Delete = function()
@@ -993,7 +993,6 @@ function MaterialPresetsMenu:RenderExportPresetRow(parentTab, obj, uuid, onDelet
     nameInput.CanDrag = true
     nameInput.OnDragStart = colorBox.OnDragStart
     nameInput.OnDragDrop = colorBox.OnDragDrop
-
     row.DragDropType = MATERIALPRESET_DRAGDROP_TYPE
     row.CanDrag = true
     row.OnDragStart = colorBox.OnDragStart
@@ -1262,6 +1261,7 @@ function MaterialPresetsMenu:__exportToMod(modPack, progressCallback, exportThre
     end
 
     -- export material preset banks
+
     for folderName, bank in pairs(banks) do
         local def = folderDefs[folderName]
         if bank:CountChildren() > 0 then

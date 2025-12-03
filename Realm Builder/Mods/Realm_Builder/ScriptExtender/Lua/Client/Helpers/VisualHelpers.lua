@@ -375,6 +375,12 @@ function VisualHelpers.ApplyVisualParams(guid, preset, retryCnt)
             goto continue1
         end
         local comp = VisualHelpers.GetEffectComponent(guid, compIndex) --[[@as AspkComponent]]
+        if comp.TypeName ~= compType then
+            Warning("Component type mismatch in preset key:" ..
+                "\n Parsed key:" .. tostring(key),
+                " Expected Type: " .. tostring(compType) .. " Actual Type: " .. tostring(comp.TypeName))
+            goto continue1
+        end
         if comp.TypeName == "Light" then
             for propName, value in pairs(compParams) do
                 VisualHelpers.ApplyValueToLightComponent(guid, compIndex, value, propName)

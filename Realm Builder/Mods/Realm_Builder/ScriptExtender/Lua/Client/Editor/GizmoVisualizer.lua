@@ -116,7 +116,7 @@ local function SetGizmoAxisTextureColorParam(axis, guid, Value)
             return nil
         end
         if obj.Renderable.ActiveMaterial.MaterialName == GIZMO_TEXTURE[axis] then
-            local material = obj.Renderable.ActiveMaterial.Material
+            local material = obj.Renderable.ActiveMaterial
 
             material:SetVector4("Color", Value)
 
@@ -160,7 +160,7 @@ function GizmoVisualizer:Visualize3DCursor(guid, factor)
     local color = Vec4.new(self.AxisLineColor["X"])
     for _,obj in ipairs(objs) do
         obj.Renderable:SetWorldScale(scaleVec)
-        obj.Renderable.ActiveMaterial.Material:SetVector4("Color", color)
+        obj.Renderable.ActiveMaterial:SetVector4("Color", color)
     end
 end
 
@@ -283,7 +283,7 @@ function GizmoVisualizer:SetLineFxColor(guid, color, width)
         local oriScale = renderable.WorldTransform.Scale
         local toSet = { width or oriScale[1], width or oriScale[2], oriScale[3] }
         renderable:SetWorldScale(toSet)
-        renderable.ActiveMaterial.Material:SetVector4("Color", color)
+        renderable.ActiveMaterial:SetVector4("Color", color)
     end
     --Debug("SetLineFxColor: Set color of "..tostring(guid).." to "..table.concat(color, ", "))
 end

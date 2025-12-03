@@ -22,6 +22,8 @@ local readOnlyFields = {
     ["GUID"] = true,
     ["Guid"] = true,
     ["WhiteBalanceMatrix"] = true,
+    ["Atmosphere"] = true,
+    ["Lighting"] = true,
 }
 
 local preassignedRanges = {
@@ -182,7 +184,7 @@ function ResourceEditor:RenderArrayEditor(parent, label, objGetter, objSetter)
         end
         table.insert(inputs, input)
     end
-    
+
     --- @type function
     local refresh
     function refresh()
@@ -289,6 +291,18 @@ function ResourceEditor:RenderEditor(parent, label, objGetter, objSetter)
             input.OnRightClick = function()
                 input.Text = initValue
             end
+            --[[input.OnClick = function()
+                local popup = StyleHelpers.RenderTexturePopup(parent, function()
+                        return getter()
+                    end,
+                    function(newValue)
+                        setter(newValue)
+                    end)
+                popup:Open()
+                input.OnClick = function ()
+                    popup:Open()
+                end
+            end]]
             updateFunc = function()
                 input.Text = getter()
             end
@@ -438,7 +452,7 @@ if GLOBAL_DEBUG_WINDOW then
 
     local notif = Notification.new("Resource Editor")
     GLOBAL_DEBUG_WINDOW:AddButton("Open Atmosphere Editor").OnClick = function()
-        local cameraPos = {GetCameraPosition()}
+        local cameraPos = { GetCameraPosition() }
         NetChannel.GetAtmosphere:RequestToServer({ Position = cameraPos }, function(response)
             local atmosphereUuid = response.Guid
             if atmosphereUuid == "" then
@@ -461,7 +475,7 @@ if GLOBAL_DEBUG_WINDOW then
         end)
     end
     GLOBAL_DEBUG_WINDOW:AddButton("Open Lighting Editor").OnClick = function()
-        local cameraPos = {GetCameraPosition()}
+        local cameraPos = { GetCameraPosition() }
         NetChannel.GetLighting:RequestToServer({ Position = cameraPos }, function(response)
             local lightingUuid = response.Guid
             if lightingUuid == "" then

@@ -183,7 +183,7 @@ function XMLNode:Stringify(opts, co)
         return self:__stringify(opts)
     end
 
-    if co and type(co) ~= "thread" and coroutine.status(co) == "dead" then
+    if co and (type(co) ~= "thread" or coroutine.status(co) == "dead") then
         co = nil
         Warning("XMLNode:Stringify: Coroutine is invalid.")
     end
@@ -270,14 +270,15 @@ function XMLNode:__stringify(stringifyOpts, co)
         table.insert(lines, '<?xml version="1.0" encoding="utf-8"?>')
     end
 
-    -- iterative DFS using stack. Each frame: { node<XMLNode>, state<0[enter]/1[exit]>, depth<number> }
+    -- iterative DFS using stack. Each frame: { node<XMLNode>, state<true[enter]/false[exit]>, depth<number> }
     local isInCoroutine = co and true or false
     local lastYieldTime = isInCoroutine and Ext.Timer.MicrosecTime() or 0
     local seen = {}
-    local stack = { { self, 0, 0 } }
+    local stack = { { self, true, 0 } }
     local top = 1
     while #stack > 0 do
         local frame = stack[top]
+        
         stack[top] = nil -- pop
         top = top - 1
         local node = frame[1]
@@ -290,7 +291,7 @@ function XMLNode:__stringify(stringifyOpts, co)
             pad = indentCache[curDepth]
         end
 
-        if frame[2] == 0 then -- 'enter'
+        if frame[2] then -- 'enter'
             if seen[node] and stringifyOpts.AvoidRecursion then
                 table.insert(lines,
                     pad ..
@@ -311,7 +312,7 @@ function XMLNode:__stringify(stringifyOpts, co)
                 table.insert(lines, pad .. string.format('<%s%s>', node.__name or 'Node', attrStr))
                 -- push exit frame
                 top = top + 1
-                stack[top] = { node, 1, curDepth }
+                stack[top] = { node, false, curDepth }
                 
                 -- push children in reverse so they are processed in order
                 for i = #children, 1, -1 do
@@ -324,7 +325,7 @@ function XMLNode:__stringify(stringifyOpts, co)
                     end
 
                     top = top + 1
-                    stack[top] = { children[i], 0, curDepth + 1 }
+                    stack[top] = { children[i], true, curDepth + 1 }
                     ::skipChild::
                 end
             elseif node.__innerText and type(node.__innerText) == "string" and node.__innerText ~= "" then
@@ -340,6 +341,7 @@ function XMLNode:__stringify(stringifyOpts, co)
             table.insert(lines, pad .. string.format('</%s>', node.__name or 'Node'))
         end
 
+        
         if isInCoroutine then
             local now = Ext.Timer.MicrosecTime()
             if now - lastYieldTime >= 1 then

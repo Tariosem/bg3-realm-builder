@@ -236,22 +236,6 @@ function TemplateExportMenu:RenderTemplateEntry(cell, entData)
         DisplayIcon = true,
     }
 
-    local sceneryAttrs = {
-        AllowCameraMovement = true,
-        WalkOn = true,
-        WalkThrough = true,
-        CanClimbOn = true,
-        CanShootThrough = true,
-        CanSeeThrough = true,
-        IsBlocker = true,
-    }
-
-    if entData.TemplateType == "scenery" then
-        for k, _ in pairs(sceneryAttrs) do
-            entData[k] = entData[k] or false
-        end
-    end
-
     local attrOrder = {
         "TemplateType",
         "TemplateId",
