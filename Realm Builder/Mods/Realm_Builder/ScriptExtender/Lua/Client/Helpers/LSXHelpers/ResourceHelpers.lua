@@ -15,8 +15,8 @@ local function createParameterAttrNodes(paramObj, overrideValue, parameterName)
         end
 
         local value = v
-        if k == "Value" and overrideValue then
-            value = #overrideValue == 1 and overrideValue[1] or overrideValue
+        if (k == "Value" or k == "ID") and overrideValue ~= nil then
+            value = overrideValue
         end
 
         local attr = lsattrNode(k, valueType, value)
@@ -64,9 +64,6 @@ local function createParameterNodes(matRes, parameters)
             local valueField = i > 4 and "ID" or "Value"
             if parameters and parameters[i] then
                 value = parameters[i][paramName] or param[valueField]
-                if type(value) == "number" then
-                    value = { value }
-                end
             end
             local attrs = createParameterAttrNodes(param, value, paramName)
             if not attrs then
@@ -92,7 +89,7 @@ function ResourceHelpers.BuildMaterialResource(srcMat, uuid, params, customName)
     local matRes = Ext.Resource.Get(srcMat, "Material") --[[@as ResourceMaterialResource]]
     if not matRes then
         Error("CustomMaterialProxy: Could not find origin material resource for '" ..
-            tostring(srcMat) .. "'. Cannot export to LSX.")
+            tostring(srcMat) .. "'.")
         return nil
     end
 
@@ -122,7 +119,6 @@ end
 local function createPresetParamAttrNodes(parameterName, value)
     local attrs = {}
     local valueType = LSXHelpers.LSValueType(value)
-    local saveValue = #value == 1 and value[1] or value
     if not valueType then
         Warning("CustomMaterialProxy: Could not determine LSX value type for preset parameter '" ..
             tostring(parameterName) .. "'. Skipping.")
@@ -130,21 +126,13 @@ local function createPresetParamAttrNodes(parameterName, value)
     end
 
     local valueField = "Value"
-    local stringValue = type(value) == "string" and value or nil
-    if stringValue then
-        valueField = "ID"
-    end
 
     attrs = {
         lsattrNode("Custom", LSValueType.bool, false),
         lsattrNode("Enabled", LSValueType.bool, true),
-        lsattrNode(valueField, valueType, saveValue),
+        lsattrNode(valueField, valueType, value),
         lsattrNode("Parameter", LSValueType.FixedString, parameterName),
     }
-
-    if not stringValue then
-        table.insert(attrs, 1, lsattrNode("Color", LSValueType.bool, false))
-    end
 
     return attrs
 end
@@ -152,6 +140,7 @@ end
 local function createPresetParameterNodes(matRes, parameters)
     local paramNodes = {} --[[@as XMLNode[] ]]
     for i, params in pairs(parameters) do
+        if i == 5 then break end -- Texture2DParameters and VirtualTextureParameters are not supported in presets
         for paramName, value in pairs(params) do
             local node = XMLNode.new("node", { id = ParamTypeToField[i] })
             local attrs = createPresetParamAttrNodes(paramName, value)
@@ -175,6 +164,8 @@ end
 ---@return XMLNode
 function ResourceHelpers.BuildMaterialPresetResourceNode(parameters, uuid, internalName)
     local root = XMLNode.new("node", { id = "Resource" })
+
+    --- material preset doesn't support texture parameters
 
     local baseAttr = {
         lsattrNode("ID", LSValueType.FixedString, uuid),
@@ -261,7 +252,7 @@ local function buildMaterialOverrideNodes(matOv, overrideMaterialPresets, modfie
         matPresetsNode:AppendChild(presetNode)
     end
 
-    local paramSetProxy = ParametersSetProxy.BuildFromMaterialPresetParamSet(matOv)
+    local paramSetProxy = ParametersSetProxy.BuildFromResourcePresetData(matOv)
     if not paramSetProxy then
         Warning("Failed to create ParametersSetProxy for CharacterVisual MaterialOverrides")
         paramSetProxy = { Parameters = modfiedParams or {} }

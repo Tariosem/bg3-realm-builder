@@ -8,7 +8,6 @@
 --- @field CachedTextureTrie table<string, any>
 TextureResourceManager = {
     TextureResources = {},
-    TextureResourcesReverse = {},
     CachedTextureTrie = {},
 
     VirtualTextureResources = {},
@@ -43,7 +42,6 @@ function TextureResourceManager:PopulateTextureResource(id)
         SourceFile = fileName,
         Path = s,
     }
-    self.TextureResourcesReverse[s] = id
 
     return res
 end
@@ -58,42 +56,68 @@ function TextureResourceManager:GetTextureResourcePath(id)
     return self.TextureResources[id].SourceFile
 end
 
+--- @param path string
+function TextureResourceManager:GetTextureResourceByPath(path)
+    local paths = SplitByString(path, "/")
+    if #paths == 0 then return nil end
+    local fileName = paths[#paths]
+    local trieNode = self.CachedTextureTrie
 
---- @param pathPrefix any
---- @return {Path:string, ResourceUUID:string, SourceFile:string}[]
+    for depth = 1, #paths - 1 do
+        trieNode = trieNode.__children and trieNode.__children[paths[depth]]
+        if not trieNode then
+            return nil
+        end
+    end
+    for resId,_ in pairs(trieNode.__resources or {}) do
+        if self.TextureResources[resId].SourceFile == fileName then
+            return self.TextureResources[resId]
+        end
+    end
+end
+
+--- @param pathPrefix string
+--- @return {Path:string, ResourceUUID:string, SourceFile:string}[], boolean exceedFlag
 function TextureResourceManager:GetAllTextureResourceUnderPath(pathPrefix, precise)
     local paths = SplitByString(pathPrefix, "/")
-    local lastFileName = paths[#paths]:lower()
-    if #paths == 0 then return {} end
+    local searchCriteria = nil
+    if pathPrefix:sub(-1) ~= "/" then
+        -- If the path does not end with a slash, we assume it's a file name
+        searchCriteria = paths[#paths]
+        paths[#paths] = nil
+    end
+    if #paths == 0 then return {}, false end
     precise = precise or false
     local trieNode = self.CachedTextureTrie
     for depth = 1, #paths do
         trieNode = trieNode.__children and trieNode.__children[paths[depth]]
         if not trieNode then
-            return {}
+            return {}, false
         end
     end
 
     local results = {}
     local fetchField = precise and "__resources" or "__all"
     local maxSize = 100
+    local exceedFlag = false
+
+    --for id,_ in pairs(trieNode[fetchField] or {}) do
+        --_P("Found texture resource under path: " .. pathPrefix .. " -> " .. self.TextureResources[id].SourceFile)
+    --end
+
     for id,_ in pairs(trieNode[fetchField] or {}) do
-        if #results >= maxSize then break end
+        if #results >= maxSize then exceedFlag = true break end
         local fileName = self.TextureResources[id].SourceFile
-        if not fileName:find(lastFileName) then
+        if searchCriteria and not fileName:find(searchCriteria, 1, true) then
+            -- If we are searching for a specific file name, skip if it doesn't match
             goto continue
         end
         table.insert(results, { Path = self.TextureResources[id].Path, ResourceUUID = id, SourceFile = fileName })
         ::continue::
     end
 
-    return results
+    return results, exceedFlag
 end
-
-function TextureResourceManager:GetTextureResourceByPath(path)
-    return self.TextureResourcesReverse[path]
-end
-
 function TextureResourceManager:PopulateVirtualTextureResource(id)
     local res = Ext.Resource.Get(id, "VirtualTexture") --[[@as ResourceVirtualTextureResource]]
 
@@ -104,7 +128,6 @@ function TextureResourceManager:PopulateVirtualTextureResource(id)
             TileSetFileName = res.TileSetFileName or "",
             RootPath = res.RootPath or ""
         }
-        self.VirtualTextureResourcesReverse[s] = id
     end
 end
 

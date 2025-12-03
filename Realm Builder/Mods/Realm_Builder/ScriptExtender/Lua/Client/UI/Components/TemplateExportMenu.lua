@@ -209,24 +209,10 @@ function TemplateExportMenu:RenderTemplateEntry(cell, entData)
         Warning("[TemplateExportMenu] Failed to get template object for template ID: " .. tostring(entData.TemplateId))
         return nil
     end
-    local icon = cell:AddImageButton("##" .. entData.Guid .. "icon", entData.DisplayIcon, IMAGESIZE.SMALL)
     local header = StyleHelpers.AddTree(cell, entData.DisplayName or templateObj.Name or entData.TemplateId)
+    header:AddTreeIcon(entData.DisplayIcon, IMAGESIZE.SMALL)
     local attrTable = header:AddTable("Attributes", 2)
     header.SameLine = true
-
-    icon.OnClick = function()
-        SetImguiDisabled(header, not header.Disabled)
-        SetAlphaByBool(icon, not header.Disabled)
-        header:SetOpen(not header.Disabled)
-        attrTable.Visible = not header.Disabled
-
-        if header.Disabled then
-            entData.ExcludeFromExport = true
-        else
-            entData.ExcludeFromExport = false
-        end
-    end
-    icon:Tooltip():AddText("Click to exclude this entity from export.")
 
     attrTable.RowBg = true
     attrTable.SizingFixedSame = true
@@ -452,8 +438,19 @@ function TemplateExportMenu:RenderTemplateEntry(cell, entData)
         renderAttr()
         header.OnExpand = function() end
     end
-    header.OnRightClick = function()
+    header.OnClick = function()
         self:VisualizeExportEntry(entData.Guid)
+    end
+    header.OnRightClick = function()
+        SetImguiDisabled(header, not header.Disabled)
+        header:SetOpen(not header.Disabled)
+        attrTable.Visible = not header.Disabled
+
+        if header.Disabled then
+            entData.ExcludeFromExport = true
+        else
+            entData.ExcludeFromExport = false
+        end
     end
 
     return header

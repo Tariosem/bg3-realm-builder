@@ -353,7 +353,6 @@ function VisualHelpers.ApplyVisualParams(guid, preset, retryCnt)
     end
 
     retryCnt = retryCnt or 0
-    local isCharacter = CIsCharacter(guid)
 
     local entity = UuidToHandle(guid)
     if not entity or not entity.Visual then
@@ -376,8 +375,14 @@ function VisualHelpers.ApplyVisualParams(guid, preset, retryCnt)
             goto continue1
         end
         local comp = VisualHelpers.GetEffectComponent(guid, compIndex) --[[@as AspkComponent]]
-        for propName, value in pairs(compParams) do
-            VisualHelpers.ApplyValueToLightComponent(guid, compIndex, value, propName)
+        if comp.TypeName == "Light" then
+            for propName, value in pairs(compParams) do
+                VisualHelpers.ApplyValueToLightComponent(guid, compIndex, value, propName)
+            end
+        else
+            for propName, value in pairs(compParams) do
+                comp[propName] = value
+            end
         end
 
         ::continue1::
@@ -403,15 +408,13 @@ function VisualHelpers.ApplyVisualParams(guid, preset, retryCnt)
             end
         end
 
-        local mat = isCharacter and VisualHelpers.GetActiveMaterial(guid, descIndex, attachIndex) or
-        VisualHelpers.GetMaterial(guid, descIndex, attachIndex)
+        local mat = VisualHelpers.GetActiveMaterial(guid, descIndex, attachIndex)
         if not mat then return false end
 
         for i, params in pairs(matParam) do
             i = tonumber(i) --[[@as number]]
             for paramName, value in pairs(params) do
-                local applyValue = #value == 1 and value[1] or value
-                mat[ParamTypeToFunc[#value]](mat, paramName, applyValue)
+                mat[ParamTypeToFunc[i]](mat, paramName, value)
             end
         end
         ::continue::

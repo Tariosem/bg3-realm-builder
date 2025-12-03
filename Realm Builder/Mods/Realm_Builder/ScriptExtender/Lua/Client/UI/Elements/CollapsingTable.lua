@@ -120,12 +120,12 @@ end
 --- @return CollapsingTableStyle
 function AddCollapsingTable(parent, mainAreaTitle, sideBarTitle, opts)
     local IDContext = Uuid_v4()
-    local table = parent:AddTable(IDContext .. "_Table", 2)
-    local row = table:AddRow()
+    local cT = parent:AddTable(IDContext .. "_Table", 2)
+    local row = cT:AddRow()
     local tableCells = { row:AddCell(), row:AddCell() }
 
     opts = opts or {}
-    table.Borders = false
+    cT.Borders = false
 
     local collapseDirection = opts.CollapseDirection or "Left"
     local collapseStatus = opts.Collapsed or false --- @type boolean true when table is collapsed
@@ -137,8 +137,8 @@ function AddCollapsingTable(parent, mainAreaTitle, sideBarTitle, opts)
     local mainAreaIndex = collapseDirection == "Right" and 1 or 2
 
     --- @type CollapsingTableStyle
-    table.UserData = {
-        Table = table,                                              --- @type ExtuiTable
+    cT.UserData = {
+        Table = cT,                                                 --- @type ExtuiTable
         MainArea = tableCells[mainAreaIndex],                       --- @type ExtuiTableCell
         SideBar = tableCells[sideBarIndex],                         --- @type ExtuiTableCell
 
@@ -162,7 +162,7 @@ function AddCollapsingTable(parent, mainAreaTitle, sideBarTitle, opts)
     }
 
     --- @type CollapsingTableStyle
-    local ud = table.UserData
+    local ud = cT.UserData
     local sideBar = ud.SideBar
     local mainArea = ud.MainArea
 
@@ -184,9 +184,9 @@ function AddCollapsingTable(parent, mainAreaTitle, sideBarTitle, opts)
 
     ud.TitleCell = titleCell
 
-    table.ColumnDefs[1] = {}
-    table.ColumnDefs[sideBarIndex] = { Width = ud.SideBarWidth }
-    table.ColumnDefs[mainAreaIndex] = { Width = ud.MainAreaWidth, WidthStretch = true }
+    cT.ColumnDefs[1] = {}
+    cT.ColumnDefs[sideBarIndex] = { Width = ud.SideBarWidth }
+    cT.ColumnDefs[mainAreaIndex] = { Width = ud.MainAreaWidth, WidthStretch = true }
 
     collapseButtonTable.ColumnDefs[1] = {}
     collapseButtonTable.ColumnDefs[sideBarIndex] = { Width = 40 * SCALE_FACTOR, WidthFixed = true }
@@ -215,13 +215,13 @@ function AddCollapsingTable(parent, mainAreaTitle, sideBarTitle, opts)
         if runningAnimation then
             runningAnimation:Stop()
         end
-        local ud = table.UserData
+        local ud = cT.UserData
         ud.CollapseDirection = collapseDirection
         collapseStatus = not collapseStatus
         collapseButton.Label = GetCollapseButtonLabel(collapseStatus, ud.CollapseDirection)
 
         local columnIndex = sideBarIndex
-        local startWidth = table.ColumnDefs[columnIndex].Width
+        local startWidth = cT.ColumnDefs[columnIndex].Width
         local fps = ud.AnimationFPS or 90
         local fromAlpha = sideBar:GetStyle("Alpha") or collapseStatus and 0 or 1
         local toAlpha = collapseStatus and 0 or 1
@@ -236,7 +236,7 @@ function AddCollapsingTable(parent, mainAreaTitle, sideBarTitle, opts)
         end
 
         local function onUpdate(newWidth, progress)
-            table.ColumnDefs[columnIndex].Width = newWidth
+            cT.ColumnDefs[columnIndex].Width = newWidth
             local newAlpha = fromAlpha + (toAlpha - fromAlpha) * progress
             sideBar:SetStyle("Alpha", newAlpha)
             if ud.OnWidthChange then
@@ -288,7 +288,7 @@ function AddCollapsingTable(parent, mainAreaTitle, sideBarTitle, opts)
             autoCollapseTimer = nil
         end
 
-        local ud = table.UserData
+        local ud = cT.UserData
         local fps = ud.AnimationFPS or 90
         local duration = ud.ExpandTime or 400
         local easingType = ud.ExpandType or "EaseOutQuad"
@@ -298,7 +298,7 @@ function AddCollapsingTable(parent, mainAreaTitle, sideBarTitle, opts)
         collapseButton.Label = GetCollapseButtonLabel(false, collapseDirection)
         --collapseButton.Disabled = true
 
-        local startWidth = table.ColumnDefs[sideBarIndex].Width
+        local startWidth = cT.ColumnDefs[sideBarIndex].Width
         local targetWidth = newWidth or (ud.SideBarWidth or (200 * SCALE_FACTOR))
         local fromAlpha = sideBar:GetStyle("Alpha") or 0
         local toAlpha = 1
@@ -314,7 +314,7 @@ function AddCollapsingTable(parent, mainAreaTitle, sideBarTitle, opts)
                 ud.SideBarWidth = newWidth
             end,
             function(newWidth, progress)
-                table.ColumnDefs[sideBarIndex].Width = newWidth --[[@as number]]
+                cT.ColumnDefs[sideBarIndex].Width = newWidth --[[@as number]]
                 local newAlpha = fromAlpha + (toAlpha - fromAlpha) * progress
                 sideBar:SetStyle("Alpha", newAlpha)
                 if ud.OnWidthChange then
@@ -335,18 +335,17 @@ function AddCollapsingTable(parent, mainAreaTitle, sideBarTitle, opts)
 
     ud.StopAnimation = StopAnimation
 
-
-    local configPopup = RenderCollapseingTableConfig(buttonCell, table)
-
     collapseButton.OnClick = toggleTable
     collapseButton.OnRightClick = function()
-        if configPopup then
+        local configPopup = RenderCollapseingTableConfig(buttonCell, cT)
+        configPopup:Open()
+        collapseButton.OnRightClick = function()
             configPopup:Open()
         end
     end
 
     collapseButton.OnHoverEnter = function()
-        local ud = table.UserData
+        local ud = cT.UserData
         if collapseStatus and ud.HoverToExpand then
             toggleTable()
         end
@@ -364,19 +363,19 @@ function AddCollapsingTable(parent, mainAreaTitle, sideBarTitle, opts)
 
     sideBar.OnClick = sideBar.OnHoverEnter
 
-    table.UserData.Collapse = function()
+    cT.UserData.Collapse = function()
         if not collapseStatus and not ud.DisableOuterCollapse then
             toggleTable()
         end
     end
 
-    table.UserData.Expand = function()
+    cT.UserData.Expand = function()
         if collapseStatus then
             toggleTable()
         end
     end
 
-    table.UserData.Destroy = function()
+    cT.UserData.Destroy = function()
         if runningAnimation then
             runningAnimation:Stop()
             runningAnimation = nil
@@ -385,14 +384,11 @@ function AddCollapsingTable(parent, mainAreaTitle, sideBarTitle, opts)
             Timer:Cancel(autoCollapseTimer)
             autoCollapseTimer = nil
         end
-        if configPopup then
-            configPopup:Destroy()
-        end
-        table:Destroy()
+        cT:Destroy()
     end
 
     if collapseStatus then
-        table.ColumnDefs[sideBarIndex].Width = 0
+        cT.ColumnDefs[sideBarIndex].Width = 0
         sideBar:SetStyle("Alpha", 0)
     else
         sideBar:SetStyle("Alpha", 1)
@@ -421,5 +417,5 @@ function AddCollapsingTable(parent, mainAreaTitle, sideBarTitle, opts)
         end
     })
 
-    return table.UserData
+    return cT.UserData
 end

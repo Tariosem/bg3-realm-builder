@@ -1,17 +1,17 @@
 --- @class MaterialEditor
---- @field Material string -- origin Material UUID
+--- @field Material FixedString -- GUIDSTRING of the material
 --- @field SourceFile string
---- @field MaterialType number
+--- @field MaterialType MaterialType
 --- @field DiffusionProfileUUID string
 --- @field ParamSetProxy ParametersSetProxy -- ParameterSetProxy instance for easier parameter access
 --- @field Instance fun():Material
---- @field ParamsSrc fun():MaterialParametersSet
---- @field new fun(originMaterial: GUIDSTRING, matSrc:fun():Material , paramsSrc:fun():MaterialParametersSet):MaterialEditor
+--- @field ParamsSrc fun():MaterialParameters
+--- @field new fun(originMaterial: GUIDSTRING, matSrc:fun():Material , paramsSrc:fun():MaterialParameters):MaterialEditor
 MaterialEditor = _Class("MaterialEditor")
 
 ---@param originMaterial string
 ---@param matSrc fun():Material
----@param paramsSrc fun():MaterialParametersSet
+---@param paramsSrc fun():MaterialParameters
 function MaterialEditor:__init(originMaterial, matSrc, paramsSrc)
     local matRes = Ext.Resource.Get(originMaterial, "Material") --[[@as ResourceMaterialResource]]
     if not matRes then
@@ -21,8 +21,6 @@ function MaterialEditor:__init(originMaterial, matSrc, paramsSrc)
 
     self.Material = originMaterial or ""
     self.SourceFile = LSXHelpers.GetPathAfterData(matRes.SourceFile or "")
-    self.MaterialType = matRes.MaterialType or 0
-    self.DiffusionProfileUUID = matRes.DiffusionProfileUUID or ""
 
     self.ParamSetProxy = ParametersSetProxy.new(paramsSrc()) --[[@as ParametersSetProxy]]
 
@@ -43,7 +41,7 @@ end
 function MaterialEditor:SetDefaultParameters(params)
     for ptype,paramsTable in pairs(params) do
         for paramName,value in pairs(paramsTable) do
-            self.ParamSetProxy:SetDefaultParameter(paramName, value, ptype)     
+            self.ParamSetProxy:SetDefaultParameter(paramName, value, ptype) 
         end
     end
 
@@ -51,7 +49,7 @@ function MaterialEditor:SetDefaultParameters(params)
 end
 
 ---@param paramName string
----@return number[]|string?, RB_ParamType?
+---@return number|number[]|string?, RB_MaterialParamType?
 function MaterialEditor:GetParameter(paramName)
     local ptype = self.ParamSetProxy:GetParameterType(paramName)
     if not ptype then
@@ -114,12 +112,11 @@ function MaterialEditor:SetParameter(paramName, value, ptype)
     end
 
     local funcName = ParamTypeToFunc[ptype]
-    local applyValue = #value == 1 and value[1] or value
 
     --Debug("MaterialEditor: Setting parameter", paramName, "of type", ptype, "to value", applyValue)
     --Debug("Using function", funcName)
 
-    mat[funcName](mat, paramName, applyValue)
+    mat[funcName](mat, paramName, value)
 
     self.Parameters[ptype][paramName] = value
 
@@ -138,9 +135,8 @@ function MaterialEditor:ResetParameter(paramName)
     end
 
     local funcName = ParamTypeToFunc[ptype]
-    local applyValue = #value == 1 and value[1] or value
 
-    mat[funcName](mat, paramName, applyValue)
+    mat[funcName](mat, paramName, value)
 
     self.Parameters[ptype][paramName] = nil
 
@@ -156,30 +152,18 @@ function MaterialEditor:ApplyParameters(parameters)
     for i,params in pairs(parameters) do
         i = tonumber(i) --[[@as number]]
         for paramName, value in pairs(params) do
-            if not self.ParamSetProxy:GetParameterType(paramName) then goto continue end
-            local applyValue = #value == 1 and value[1] or value
-
-            if type(applyValue) == "string" then
-                
-            elseif #value ~= i then
-                Warning("MaterialEditor: Parameter '" .. tostring(paramName) .. "' value length does not match parameter type. Skipping.")
+            local existParam, paramType = self:GetParameter(paramName)
+            if not existParam or paramType ~= i then
                 goto continue
             end
 
-            mat[ParamTypeToFunc[i]](mat, paramName, applyValue)
+            mat[ParamTypeToFunc[i]](mat, paramName, value)
             self.Parameters[i][paramName] = value
             ::continue::
         end
     end
 
     return true
-end
-
----@return Vec4
-function MaterialEditor:GetPreviewColor()
-    --- traverse vec3 and vec4 parameters contains "Color" in their name and compute an color for preview
-    
-    return MaterialProxy.GetPreviewColor(self)
 end
 
 function MaterialEditor:ClearParameters()

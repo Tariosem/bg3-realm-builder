@@ -3,10 +3,10 @@
 --- @field Editor MaterialEditor
 --- @field Panel ExtuiTreeParent
 --- @field ResetFuncs table<string, fun()>
---- @field UpdateFuncs table<string, fun(newValue: number[]|string?)>
+--- @field UpdateFuncs table<string, fun(newValue: number|number[]|string?)>
 --- @field ParamNodeRefs table<string, ExtuiSelectable>
 --- @field MaterialName string
---- @field new fun(parent: ExtuiTreeParent, materialName: string, materialFunc:fun():Material , paramsSrc: fun():MaterialParametersSet):MaterialTab
+--- @field new fun(parent: ExtuiTreeParent, materialName: string, materialFunc:fun():Material , paramsSrc: fun():MaterialParameters):MaterialTab
 MaterialTab = _Class("MaterialEditor")
 
 
@@ -18,7 +18,7 @@ MaterialTab = _Class("MaterialEditor")
 ---@param parent ExtuiTreeParent
 ---@param materialName string
 ---@param materialFunc fun():Material
----@param paramsSrc fun():MaterialParametersSet
+---@param paramsSrc fun():MaterialParameters
 function MaterialTab:__init(parent, materialName, materialFunc, paramsSrc)
     self.Parent = parent
     self.Editor = MaterialEditor.new(materialName, materialFunc, paramsSrc)
@@ -51,12 +51,12 @@ function MaterialTab:Render(parent)
         Parameters = self.Editor and self.Editor.Parameters or nil
     }
 
-    parentNode.OnDragStart = function (sel)
+    parentNode.OnDragStart = function(sel)
         sel.DragPreview:AddImage(RB_ICONS.Mask, IMAGESIZE.ROW).Tint = HexToRGBA("FFAC3232")
         sel.DragPreview:AddText(sourceFileName).SameLine = true
     end
 
-    parentNode.OnDragDrop = function (sel, drop)
+    parentNode.OnDragDrop = function(sel, drop)
         sel.UserData.PresetProxy = self.Editor.PresetProxy --[[@as MaterialPresetProxy ]]
         if drop.UserData and drop.UserData.Parameters then
             local params = drop.UserData.Parameters
@@ -102,7 +102,7 @@ function MaterialTab:Render(parent)
         end
 
         local searchTerm = sel.Text:lower()
-        for paramName,cell in pairs(self.ParamTableRefs) do
+        for paramName, cell in pairs(self.ParamTableRefs) do
             if paramName:lower():find(searchTerm) then
                 cell.Visible = true
             else
@@ -111,10 +111,11 @@ function MaterialTab:Render(parent)
         end
     end
 
-    for paramType,propNames in ipairs(params) do
+    for paramType, propNames in ipairs(params) do
         local propType = indexToDisplay[paramType]
         if #propNames < 1 then goto continue end
-        local typeNode = parentNode:AddTree(propType .. "##" .. self.MaterialName, self.cachedExpandedState[paramType] == true) --[[@as ExtuiSelectable ]]
+        local typeNode = parentNode:AddTree(propType .. "##" .. self.MaterialName,
+            self.cachedExpandedState[paramType] == true) --[[@as ExtuiSelectable ]]
         local paramsGroup = typeNode:AddGroup("AllPropertiesGroup##" .. self.MaterialName .. tostring(math.random()))
 
         self.ParamTypeNodeRefs[paramType] = typeNode
@@ -124,17 +125,17 @@ function MaterialTab:Render(parent)
         paramTable.BordersOuter = true
         paramTable.RowBg = true
 
-        typeNode.OnCollapse = function ()
+        typeNode.OnCollapse = function()
             self.cachedExpandedState[paramType] = false
         end
 
         typeNode.DragDropType = MATERIALPRESET_DRAGDROP_TYPE
         typeNode.CanDrag = true
-        typeNode.OnDragStart = function (sel)
+        typeNode.OnDragStart = function(sel)
             sel.DragPreview:AddText(propType)
             local allParamNames = self:GetAllParameterNames()[paramType]
             local udParams = {}
-            for i=1, paramType do
+            for i = 1, paramType do
                 udParams[i] = {}
             end
             for _, paramName in pairs(allParamNames) do
@@ -148,11 +149,11 @@ function MaterialTab:Render(parent)
             sel.UserData.Parameters = udParams
         end
 
-        typeNode.OnDragDrop = function (sel, drop)
+        typeNode.OnDragDrop = function(sel, drop)
             if drop.UserData and drop.UserData.Parameters then
                 local udParams = DeepCopy(drop.UserData.Parameters)
 
-                for i=1, 6 do
+                for i = 1, 6 do
                     if i ~= paramType then
                         udParams[i] = {}
                     end
@@ -170,7 +171,7 @@ function MaterialTab:Render(parent)
         end
 
         local function renderParamTable()
-            for _,propertyName in ipairs(propNames) do
+            for _, propertyName in ipairs(propNames) do
                 local rowCell = paramRow:AddCell()
                 local tab = rowCell:AddTable("PropertyTable##" .. self.MaterialName .. propertyName, 3)
                 tab.ColumnDefs[1] = { WidthFixed = true }
@@ -185,12 +186,19 @@ function MaterialTab:Render(parent)
                 local paramgroup = row:AddCell()
                 paramgroup.SameLine = true
 
-                propNode.OnHoverEnter = function ()
+                propNode.OnClick = function(sel)
+                    sel.Highlight = false
+                    sel.Selected = false
+                    self.Editor:ResetParameter(propertyName)
+                    self.UpdateFuncs[propertyName]()
+                end
+
+                propNode.OnHoverEnter = function()
                     local paramValue, ptype = self:GetParameter(propertyName)
                     if type(paramValue) == "string" then
                         self:RenderTextProperty(paramgroup, propertyName, paramValue, ptype, rowCell)
                     else
-                        self:RenderProperty(paramgroup, propertyName, paramValue, rowCell)
+                        self:RenderNumberProperty(paramgroup, propertyName, paramValue, rowCell)
                     end
                     propNode.OnHoverEnter = function()
                         propNode.Highlight = self:HasChanged(propertyName) and true or false
@@ -212,7 +220,7 @@ function MaterialTab:Render(parent)
                 propNode.CanDrag = true
                 propNode.DragDropType = MATERIALPRESET_DRAGDROP_TYPE
 
-                propNode.OnDragStart = function (sel)
+                propNode.OnDragStart = function(sel)
                     propNode.DragPreview:AddText(propertyName)
 
                     local value, ptype = self:GetParameter(propertyName) --[[@as number[] ]]
@@ -224,27 +232,29 @@ function MaterialTab:Render(parent)
                         local displayName = indexToDisplay[paramType] or "Unknown"
                         propNode.DragPreview:AddText(displayName .. " : " .. value)
                         return
+                    elseif type(value) == "number" then
+                        value = { value }
                     end
 
-                    
+            
                     if #value >= 3 then
                         local colorRect = propNode.DragPreview:AddColorEdit("##" .. self.MaterialName .. propertyName)
-                        colorRect.Color = {value[1], value[2], value[3], value[4] or 1}
+                        colorRect.Color = { value[1], value[2], value[3], value[4] or 1 }
                     else
-                        for i=1, #value do
+                        for i = 1, #value do
                             value[i] = FormatDecimal(value[i], 2)
                         end
                         propNode.DragPreview:AddText("Value: " .. table.concat(value, ", "))
                     end
                 end
 
-                propNode.OnDragDrop = function (sel, drop)
+                propNode.OnDragDrop = function(sel, drop)
                     if drop.UserData and drop.UserData.ParameterValue then
                         local newValue = drop.UserData.ParameterValue --[[@as number[] ]]
-                        local vType = drop.UserData.ParameterType --[[@as RB_ParamType ]]
-                        local currentValue = self:GetParameter(propertyName)
+                        local vType = drop.UserData.ParameterType --[[@as RB_MaterialParamType ]]
+                        local currentValue, cType = self:GetParameter(propertyName)
                         if newValue and currentValue then
-                            if not #newValue == #currentValue then
+                            if not cType or vType ~= cType then
                                 return
                             end
                         else
@@ -264,7 +274,7 @@ function MaterialTab:Render(parent)
 
                 propNode.UserData = {
                     ParameterName = propertyName,
-                    OnDestroy = function ()
+                    OnDestroy = function()
                         allParamNode[propertyName] = nil
                         self.ParamNodeRefs[propertyName] = nil
                         self.UpdateFuncs[propertyName] = nil
@@ -275,10 +285,10 @@ function MaterialTab:Render(parent)
             end
         end
 
-        typeNode.OnExpand = function ()
+        typeNode.OnExpand = function()
             renderParamTable()
             renderParamTable = function() end
-            for _,node in pairs(allParamNode) do
+            for _, node in pairs(allParamNode) do
                 node:OnHoverEnter()
             end
             self.cachedExpandedState[paramType] = true
@@ -290,7 +300,7 @@ function MaterialTab:Render(parent)
 
         ::continue::
     end
-    
+
     return parentNode
 end
 
@@ -304,54 +314,54 @@ end
 
 --- @param node ExtuiTreeParent
 --- @param propertyName string
---- @param propertyValue number[]
-function MaterialTab:RenderProperty(node, propertyName, propertyValue)
+--- @param vecValue number|number[]
+function MaterialTab:RenderNumberProperty(node, propertyName, vecValue)
     local sliders = {} --[[@type ExtuiSliderScalar[] ]]
     local colorPicker = nil
-    if type(propertyValue) == "number" then
-        propertyValue = { propertyValue }
+    if type(vecValue) == "number" then
+        vecValue = { vecValue }
     end
 
-    if #propertyValue >= 3 then
+    if #vecValue >= 3 then
         colorPicker = node:AddColorEdit("##" .. self.MaterialName .. propertyName)
         local resetButton = StyleHelpers.AddResetButton(node, true)
-        resetButton.OnClick = function (sel)
+        resetButton.OnClick = function(sel)
             self:ResetValue(propertyName)
 
             local newValue = self:GetParameter(propertyName)
             if newValue then
                 colorPicker.Color = ToVec4(newValue)
-                for i=1, #newValue do
+                for i = 1, #newValue do
                     if sliders[i] then
-                        sliders[i].Value = {newValue[i], 0, 0, 0}
+                        sliders[i].Value = { newValue[i], 0, 0, 0 }
                     end
                 end
             end
 
             self.ParamNodeRefs[propertyName].Highlight = self:HasChanged(propertyName) and true or false
         end
-        colorPicker.Color = ToVec4(propertyValue)
-        colorPicker.AlphaBar = (#propertyValue == 4)
-        colorPicker.NoAlpha = (#propertyValue == 3)
+        colorPicker.Color = ToVec4(vecValue)
+        colorPicker.AlphaBar = (#vecValue == 4)
+        colorPicker.NoAlpha = (#vecValue == 3)
         colorPicker.NoInputs = true
         colorPicker.ItemWidth = 400 * SCALE_FACTOR
-        colorPicker.OnChange = function (sel)
+        colorPicker.OnChange = function(sel)
             local newValue = { sel.Color[1], sel.Color[2], sel.Color[3], sel.Color[4] } --[[@as number[] ]]
 
-            for j=#propertyValue+1, 4 do
+            for j = #vecValue + 1, 4 do
                 newValue[j] = nil
             end
 
-            for i=1, #sliders do
-                sliders[i].Value = {newValue[i], 0, 0, 0}
+            for i = 1, #sliders do
+                sliders[i].Value = { newValue[i], 0, 0, 0 }
             end
 
             self:SetParameter(propertyName, newValue)
 
             self.ParamNodeRefs[propertyName].Highlight = self:HasChanged(propertyName) and true or false
         end
-        colorPicker.OnRightClick = function (sel)
-            for i=1, #propertyValue do
+        colorPicker.OnRightClick = function(sel)
+            for i = 1, #vecValue do
                 if sliders[i] then
                     sliders[i].Visible = not sliders[i].Visible
                 end
@@ -360,7 +370,7 @@ function MaterialTab:RenderProperty(node, propertyName, propertyValue)
     end
 
     local range = { min = -100, max = 100, step = 0.1 }
-    for i=1, #propertyValue do
+    for i = 1, #vecValue do
         local isIndex = propertyName:find("Index") ~= nil
         if isIndex then
             range.min = 0
@@ -370,23 +380,25 @@ function MaterialTab:RenderProperty(node, propertyName, propertyValue)
             range.max = 100
             range.step = 0.1
         end
-        if propertyValue[i] > range.max then
-            range.max = propertyValue[i] * 2
+        if vecValue[i] > range.max then
+            range.max = vecValue[i] * 2
         end
-        if propertyValue[i] < range.min then
-            range.min = propertyValue[i] / 2
+        if vecValue[i] < range.min then
+            range.min = vecValue[i] / 2
         end
-        local slider = StyleHelpers.AddSliderWithStep(node, propertyName .. "##" .. self.MaterialName .. i, propertyValue[i], range.min, range.max, range.step, propertyName:find("Index") ~= nil)
+        local slider = StyleHelpers.AddSliderWithStep(node, propertyName .. "##" .. self.MaterialName .. i,
+            vecValue[i], range.min, range.max, range.step, propertyName:find("Index") ~= nil)
         slider.ItemWidth = 400 * SCALE_FACTOR
 
         if colorPicker then
             slider.Visible = false
             slider.HideResetButton = true
         end
-        slider.OnChange = function (sel)
-            local newValue = { sliders[1].Value[1], sliders[2] and sliders[2].Value[1] or 0, sliders[3] and sliders[3].Value[1] or 0, sliders[4] and sliders[4].Value[1] or 0 } --[[@as number[] ]]
+        slider.OnChange = function(sel)
+            local newValue = { sliders[1].Value[1], sliders[2] and sliders[2].Value[1] or 0, sliders[3] and
+            sliders[3].Value[1] or 0, sliders[4] and sliders[4].Value[1] or 0 } --[[@as number[] ]]
 
-            for j=#propertyValue+1, 4 do
+            for j = #vecValue + 1, 4 do
                 newValue[j] = nil
             end
 
@@ -394,7 +406,7 @@ function MaterialTab:RenderProperty(node, propertyName, propertyValue)
                 colorPicker.Color = ToVec4(newValue)
             end
 
-            self:SetParameter(propertyName, newValue)
+            self:SetParameter(propertyName, #newValue == 1 and newValue[1] or newValue)
 
             self.ParamNodeRefs[propertyName].Highlight = self:HasChanged(propertyName) and true or false
         end
@@ -407,9 +419,12 @@ function MaterialTab:RenderProperty(node, propertyName, propertyValue)
 
         local newValue = self:GetParameter(propertyName)
         if newValue then
-            for i=1, #newValue do
+            if type(newValue) == "number" then
+                newValue = { newValue }
+            end
+            for i = 1, #newValue do
                 if sliders[i] then
-                    sliders[i].Value = {newValue[i], 0, 0, 0}
+                    sliders[i].Value = { newValue[i], 0, 0, 0 }
                 end
             end
             if colorPicker then
@@ -422,9 +437,12 @@ function MaterialTab:RenderProperty(node, propertyName, propertyValue)
 
     local function updateSliders(newValue)
         if newValue then
-            for i=1, #newValue do
+            if type(newValue) == "number" then
+                newValue = { newValue }
+            end
+            for i = 1, #newValue do
                 if sliders[i] then
-                    sliders[i].Value = {newValue[i], 0, 0, 0}
+                    sliders[i].Value = { newValue[i], 0, 0, 0 }
                 end
             end
             if colorPicker then
@@ -443,8 +461,9 @@ end
 
 --- @param node ExtuiTreeParent
 function MaterialTab:RenderTextProperty(node, propertyName, propertyValue, propertyType)
-    if propertyType ~= RB_ParamType.Texture2D and propertyType ~= RB_ParamType.VirtualTexture then
-        Warning("MaterialTab:RenderTextProperty called for unsupported property type '" .. tostring(propertyType) .. "' for property '" .. tostring(propertyName) .. "'.")
+    if propertyType ~= RB_MaterialParamType.Texture2D and propertyType ~= RB_MaterialParamType.VirtualTexture then
+        Warning("MaterialTab:RenderTextProperty called for unsupported property type '" ..
+            tostring(propertyType) .. "' for property '" .. tostring(propertyName) .. "'.")
         return
     end
     local textBox = node:AddInputText("##" .. self.MaterialName .. propertyName)
@@ -452,26 +471,31 @@ function MaterialTab:RenderTextProperty(node, propertyName, propertyValue, prope
     textBox.ItemWidth = 600 * SCALE_FACTOR
     textBox.AutoSelectAll = true
 
-    textBox.OnRightClick = function ()
+    textBox.OnRightClick = function()
         local optionToId = {}
         local res = Ext.Resource.Get(propertyValue, "Texture") --[[@as ResourceTextureResource]]
-        if not res then textBox.OnRightClick = nil return end
+        if not res then
+            textBox.OnRightClick = nil
+            return
+        end
         local editSourceFilePopup = node:AddPopup("EditStringParameterPopup##" .. self.MaterialName .. propertyName)
         local alignedTable = StyleHelpers.AddAlignedTable(editSourceFilePopup, 2)
+        local getAllUnderPathCehck = alignedTable:AddCheckbox("Exact Folder", false)
+        getAllUnderPathCehck:Tooltip():AddText("Only shows textures directly in this folder (no subfolders).")
         local searchInput = alignedTable:AddInputText("Search Texture", LSXHelpers.GetPathAfterData(res.SourceFile) or "")
-        searchInput.ItemWidth = 1000 * SCALE_FACTOR
+        searchInput.SizeHint = {1000 * SCALE_FACTOR, 0}
         local allCombo = alignedTable:AddCombo("Change Texture")
         allCombo.HeightLarge = true
-        searchInput.OnChange = function ()
-            local allRes = TextureResourceManager:GetAllTextureResourceUnderPath(searchInput.Text)
+        searchInput.OnChange = function()
+            local allRes = TextureResourceManager:GetAllTextureResourceUnderPath(searchInput.Text, getAllUnderPathCehck.Checked)
             local options = {}
             optionToId = {}
             local seenSourceFiles = {}
-            table.sort(allRes, function (a,b) return a.Path < b.Path end)
-            for _,textureRes in pairs(allRes) do
+            table.sort(allRes, function(a, b) return a.Path < b.Path end)
+            for _, textureRes in pairs(allRes) do
                 local cnt = 1
                 local displayFileName = textureRes.SourceFile
-                while seenSourceFiles[textureRes.SourceFile] do
+                while seenSourceFiles[displayFileName] do
                     cnt = cnt + 1
                     displayFileName = textureRes.SourceFile .. " (" .. tostring(cnt) .. ")"
                 end
@@ -481,22 +505,25 @@ function MaterialTab:RenderTextProperty(node, propertyName, propertyValue, prope
             end
             allCombo.Options = options
         end
+        getAllUnderPathCehck.OnChange = function()
+            searchInput:OnChange()
+        end
 
-        allCombo.OnChange = function ()
+        allCombo.OnChange = function()
             local selected = optionToId[allCombo.SelectedIndex + 1]
             if not selected then return end
             self:SetParameter(propertyName, selected, propertyType)
             textBox.Text = selected
         end
 
-        textBox.OnRightClick = function ()
+        textBox.OnRightClick = function()
             editSourceFilePopup:Open()
         end
         editSourceFilePopup:Open()
     end
 
     local resetButton = StyleHelpers.AddResetButton(node, true)
-    resetButton.OnClick = function (sel)
+    resetButton.OnClick = function(sel)
         self:ResetValue(propertyName)
         local newValue = self:GetParameter(propertyName)
         if newValue and type(newValue) == "string" then
@@ -505,23 +532,23 @@ function MaterialTab:RenderTextProperty(node, propertyName, propertyValue, prope
 
         self.ParamNodeRefs[propertyName].Highlight = self:HasChanged(propertyName) and true or false
     end
-    textBox.OnChange = function (sel)
+    textBox.OnChange = function(sel)
         local newValue = sel.Text
-        if IsUuidIncludingNull(newValue) == false then return end
-        
+        if not IsUuidIncludingNull(newValue) then return end
+
         self:SetParameter(propertyName, newValue, propertyType)
 
         self.ParamNodeRefs[propertyName].Highlight = self:HasChanged(propertyName) and true or false
     end
 
-    self.UpdateFuncs[propertyName] = function (newValue)
+    self.UpdateFuncs[propertyName] = function(newValue)
         if newValue and type(newValue) == "string" then
             textBox.Text = newValue
         end
 
         self.ParamNodeRefs[propertyName].Highlight = self:HasChanged(propertyName) and true or false
     end
-    self.ResetFuncs[propertyName] = function ()
+    self.ResetFuncs[propertyName] = function()
         self:ResetValue(propertyName)
         local newValue = self:GetParameter(propertyName)
         if newValue and type(newValue) == "string" then
@@ -540,10 +567,12 @@ function MaterialTab:ResetAll()
         [1] = {},
         [2] = {},
         [3] = {},
-        [4] = {}
+        [4] = {},
+        [5] = {},
+        [6] = {},
     }
     self.Editor:ResetAll()
-    
+
     self:UpdateUIState()
 end
 
@@ -582,7 +611,8 @@ end
 
 function MaterialTab:BuildMaterialResourceNode(uuid, internalName)
     local saveNode = LSXHelpers.BuildMaterialResource()
-    local materialNode = ResourceHelpers.BuildMaterialResourceNode(self.Editor.Parameters, self.Editor.Material, uuid, internalName)
+    local materialNode = ResourceHelpers.BuildMaterialResourceNode(self.Editor.Parameters, self.Editor.Material, uuid,
+        internalName)
     saveNode:AppendChild(materialNode)
 
     return saveNode
@@ -652,19 +682,6 @@ function MaterialTab:HasChangeInType(paramType)
     return self.Editor:HasChangeInType(paramType)
 end
 
-function MaterialTab:ExportMaterial(defaultPath)
-    local finalPath = defaultPath or ("Realm_Builder/Materials/Defaults/" .. GetLastPath(self.Editor.SourceFile))
-    self.Editor:BuildMaterialResource(finalPath)
-end
-
-function MaterialTab:ExportPreset(defaultPath)
-    local finalPath = defaultPath or ("Realm_Builder/Materials/Defaults/" .. GetLastPath(self.Editor.SourceFile))
-    self.Editor:BuildMaterialPresetResource(finalPath)
-end
-
-function MaterialTab:ApplyToOthers()
-end
-
 function MaterialTab:SavePreset()
     MaterialPresetsMenu:SaveMaterialPreset(self.Editor)
 end
@@ -684,7 +701,7 @@ function MaterialMixerTab:__init(parameters)
     self.Parent = RegisterWindow(self.Label, "Material Mixer", "Material Mixer Tab", self)
     self.Parent.Closeable = true
 
-    self.Parent.OnClose = function (win)
+    self.Parent.OnClose = function(win)
         DeleteWindow(self.Parent)
     end
 
@@ -720,11 +737,11 @@ function MaterialMixerTab:Render(parent)
     self.ContextMenu = managePopup
     self:SetupManagePopup(managePopup)
 
-    parentNode.OnRightClick = function (sel)
+    parentNode.OnRightClick = function(sel)
         managePopup:Open()
     end
 
-    parentNode.OnDragDrop = function (sel, drop)
+    parentNode.OnDragDrop = function(sel, drop)
         if drop.UserData and drop.UserData.Parameters then
             local params = drop.UserData.Parameters
 
@@ -740,11 +757,11 @@ function MaterialMixerTab:Render(parent)
     end
 end
 
-function MaterialMixerTab:RenderProperty(node, propertyName, propertyValue, propRow)
-    MaterialTab.RenderProperty(self, node, propertyName, propertyValue, propRow)
+function MaterialMixerTab:RenderNumberProperty(node, propertyName, propertyValue, propRow)
+    MaterialTab.RenderNumberProperty(self, node, propertyName, propertyValue, propRow)
 
     local removeBtn = StyleHelpers.AddMiddleAlignedImageButton(node, RB_ICONS.X_Square, true) --[[@as ExtuiImageButton ]]
-    removeBtn.OnClick = function (sel)
+    removeBtn.OnClick = function(sel)
         self.ParamNodeRefs[propertyName].UserData.OnDestroy()
         self.ParametersSetProxy:RemoveParameter(propertyName)
         propRow:Destroy()
@@ -752,11 +769,11 @@ function MaterialMixerTab:RenderProperty(node, propertyName, propertyValue, prop
     end
 end
 
-function MaterialMixerTab:RenderTextProperty(node, propertyName, propertyValue, propertyType, propRow)    
+function MaterialMixerTab:RenderTextProperty(node, propertyName, propertyValue, propertyType, propRow)
     MaterialTab.RenderTextProperty(self, node, propertyName, propertyValue, propertyType)
 
     local removeBtn = StyleHelpers.AddMiddleAlignedImageButton(node, RB_ICONS.X_Square, true) --[[@as ExtuiImageButton ]]
-    removeBtn.OnClick = function (sel)
+    removeBtn.OnClick = function(sel)
         self.ParamNodeRefs[propertyName].UserData.OnDestroy()
         self.ParametersSetProxy:RemoveParameter(propertyName)
         propRow:Destroy()
@@ -801,7 +818,7 @@ function MaterialMixerTab:HasChanged(name)
 end
 
 function MaterialMixerTab:HasChangeInType(paramType)
-    --- 
+    ---
     return false
 end
 
@@ -832,14 +849,14 @@ end
 function MaterialMixerTab:SetupManagePopup(popup)
     local contextMenu = StyleHelpers.AddContextMenu(popup)
 
-    contextMenu:AddItem("Export As Preset##" .. self.MaterialName, function (sel)
+    contextMenu:AddItem("Export As Preset##" .. self.MaterialName, function(sel)
         local save = LSXHelpers.BuildMaterialPresetBank()
         local uuid = Uuid_v4()
-        local preset = ResourceHelpers.BuildMaterialPresetResourceNode(self.ParametersSetProxy.Parameters, uuid, "MaterialMixer_Preset")
+        local preset = ResourceHelpers.BuildMaterialPresetResourceNode(self.ParametersSetProxy.Parameters, uuid,
+            "MaterialMixer_Preset")
         save:AppendChild(preset)
         local finalPath = "Realm_Builder/Materials/" .. uuid .. ".lsx"
 
         Ext.IO.SaveFile(finalPath, save:Stringify({ AutoFindRoot = true }))
-    end)    
+    end)
 end
-

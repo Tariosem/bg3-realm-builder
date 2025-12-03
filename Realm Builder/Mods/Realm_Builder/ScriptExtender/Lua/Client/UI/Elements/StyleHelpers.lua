@@ -122,7 +122,6 @@ function StyleHelpers.AddSliderWithStep(parent, IDContext, defaultValue, min, ma
     local slider = nil
     local decreButton = nil
     local increButton = nil
-    local sliderPopup = nil
     step = step or 0.1
     if isInteger then
         step = math.floor(step)
@@ -163,24 +162,48 @@ function StyleHelpers.AddSliderWithStep(parent, IDContext, defaultValue, min, ma
     increButton.SameLine = true
     slider.SameLine = true
 
+    --- @param s ExtuiSliderScalar|ExtuiSliderInt
     slider.OnRightClick = function(s)
         if s.UserData.DisableRightClickSet then
             return
         end
 
-        if not sliderPopup then
-            sliderPopup = parent:AddPopup("SliderPopup##" .. IDContext)
-            sliderPopup.IDContext = IDContext .. "_SliderPopup"
-            stepInput = isInteger and sliderPopup:AddInputInt("Step", math.floor(step)) or sliderPopup:AddInputScalar("Step", step)
-            stepInput.IDContext = IDContext .. "_StepInput"
-            stepInput.OnChange = function(input)
-                local val = isInteger and math.floor(input.Value[1]) or input.Value[1]
-                s.UserData.Step = val
-            end
-            s.UserData.StepInput = stepInput
+        local sliderPopup = parent:AddPopup("SliderPopup##" .. IDContext)
+        local alignedTable = StyleHelpers.AddAlignedTable(sliderPopup)
+        sliderPopup.IDContext = IDContext .. "_SliderPopup"
+        stepInput = isInteger and alignedTable:AddInputInt("Step", math.floor(step)) or alignedTable:AddInputScalar("Step", step)
+        stepInput.IDContext = IDContext .. "_StepInput"
+        stepInput.OnChange = function(input)
+            local val = isInteger and math.floor(input.Value[1]) or input.Value[1]
+            s.UserData.Step = val
         end
 
+        max = s.Max[1] or max
+        local maxInput = isInteger and alignedTable:AddInputInt("Max", math.floor(max)) or alignedTable:AddInputScalar("Max", max)
+        maxInput.IDContext = IDContext .. "_MaxInput"
+        maxInput.OnChange = function(input)
+            local val = isInteger and math.floor(input.Value[1]) or input.Value[1]
+            s.Max = {val, val, val, val}
+        end
+
+        min = s.Min[1] or min
+        local minInput = isInteger and alignedTable:AddInputInt("Min", math.floor(min)) or alignedTable:AddInputScalar("Min", min)
+        minInput.IDContext = IDContext .. "_MinInput"
+        minInput.OnChange = function(input)
+            local val = isInteger and math.floor(input.Value[1]) or input.Value[1]
+            s.Min = {val, val, val, val}
+        end
+
+        s.UserData.StepInput = stepInput
+
         sliderPopup:Open()
+        slider.OnRightClick = function ()
+            local toFunc = isInteger and ToVec4Int or ToVec4
+            stepInput.Value = toFunc(isInteger and math.floor(s.UserData.Step) or s.UserData.Step)
+            minInput.Value = toFunc(isInteger and math.floor(s.Min[1]) or s.Min[1])
+            maxInput.Value = toFunc(isInteger and math.floor(s.Max[1]) or s.Max[1])
+            sliderPopup:Open()
+        end
     end
 
     resetButton.IDContext = IDContext .. "_ResetButton"
@@ -1179,17 +1202,30 @@ end
 function RenderExportSettingPanel(parent, settings)
     local modNameText = parent:AddText("Mod Name*")
     local modNameInput = parent:AddInputText("##MaterialPresetModName")
-    local currentModInternalNameTooltip = modNameInput:Tooltip():AddText("Current Mod Internal Name:")
+    local modNameTooltip = modNameInput:Tooltip()
+
+    modNameTooltip:SetColor("Border", {1,0,0,1})
+    modNameTooltip:SetStyle("FrameBorderSize", 2)
+    modNameTooltip:SetStyle("WindowBorderSize", 2)
+
+    local currentModInternalNameTooltip = modNameTooltip:AddText("Current Mod Internal Name:")
+    currentModInternalNameTooltip:SetColor("Text", HexToRGBA("FFFFBC51"))
+    local modIntenalNameTooltip = modNameTooltip:AddText(settings.ModName and ValidateFolderName(settings.ModName) or "")
+    modIntenalNameTooltip:SetColor("Text", HexToRGBA("FFFFFFFF"))
+    modIntenalNameTooltip.SameLine = true
+
     modNameInput.Hint = "Enter Mod Name..."
     modNameInput:SetStyle("FrameBorderSize", 2)
+    modNameInput:SetStyle("WindowBorderSize", 2)
+    
 
     modNameInput.OnChange = Debounce(50, function()
         if ValidateFolderName(modNameInput.Text) ~= 'Unnamed' then
-            currentModInternalNameTooltip.Label = "Current Mod Internal Name: " .. ValidateFolderName(modNameInput.Text)
+            modIntenalNameTooltip.Label = ValidateFolderName(modNameInput.Text)
             ClearWarningBorder(modNameInput)
             settings.ModName = modNameInput.Text
         else
-            currentModInternalNameTooltip.Label = "Current Mod Internal Name: Invalid Name"
+            modIntenalNameTooltip.Label = "Current Mod Internal Name: Invalid Name"
             SetWarningBorder(modNameInput)
             settings.ModName = ""
             GuiAnim.PulseBorder(modNameInput, 2)
@@ -1204,10 +1240,10 @@ function RenderExportSettingPanel(parent, settings)
     local authorNameText = parent:AddText("Author Name*")
     local authorNameInput = parent:AddInputText("##MaterialPresetAuthorName")
     authorNameInput:SetStyle("FrameBorderSize", 2)
-    modNameInput:Tooltip():AddText("CAUTION:")
-    modNameInput:Tooltip():AddText("Special character will be removed from mod internal name.")
-    modNameInput:Tooltip():AddText("Space will be treated as underscore (_), but display name will remain unchanged.")
-    modNameInput:Tooltip():AddText("My Mod and My_Mod are considered the same mod name.")
+    modNameInput:Tooltip():AddText("CAUTION:"):SetColor("Text", HexToRGBA("FFFF0000"))
+    modNameInput:Tooltip():AddText("Special character will be removed from mod internal name."):SetColor("Text", HexToRGBA("FFFFBD4C"))
+    modNameInput:Tooltip():AddText("Space will be treated as underscore (_), but display name will remain unchanged."):SetColor("Text", HexToRGBA("FFFFBD4C"))
+    modNameInput:Tooltip():AddText("My Mod and My_Mod are considered the same mod name."):SetColor("Text", HexToRGBA("FFFFBD4C"))
 
     authorNameInput.Hint = "Enter Author Name..."
     authorNameInput.OnChange = Debounce(50, function()

@@ -1083,11 +1083,12 @@ end
 
 ---@param modPack CCMod_Pack
 ---@param progressCallback fun(progress:number, message:string?)
+---@param exportThread thread?
 function MaterialPresetsMenu:__exportToMod(modPack, progressCallback, exportThread)
     local startTime = Ext.Timer.MonotonicTime()
     local suc = true
 
-    local lastYieldTime = startTime
+    local lastYieldTime = Ext.Timer.MicrosecTime()
     progressCallback = progressCallback or function(progress, message)
         Debug("MaterialPresetsMenu: ExportToMod Progress: " ..
             tostring(progress) .. "% " .. (message and (" - " .. message) or ""))
@@ -1105,8 +1106,8 @@ function MaterialPresetsMenu:__exportToMod(modPack, progressCallback, exportThre
     local existingLoca = self.modLocalizations[modFolderName] or {}
 
     local modFolderDisplayName = modFolderName ..
-    "_" ..
-    BuildVersionString(version[1], version[2], version[3], version[4]) .. "_" .. GetFormatTime()
+        "_" ..
+        BuildVersionString(version[1], version[2], version[3], version[4]) .. "_" .. GetFormatTime()
 
     local presetCnt = CountMap(matPresets)
     local folderCnt = CountMap(folders)
@@ -1128,7 +1129,7 @@ function MaterialPresetsMenu:__exportToMod(modPack, progressCallback, exportThre
     local progress = 0
     local progressStep = 100 / actionCnt
 
-    local yieldThreshold = 5 -- ms
+    local yieldThreshold = 1 -- 50ms
 
     local function throwError(message)
         progress = -1
@@ -1145,21 +1146,20 @@ function MaterialPresetsMenu:__exportToMod(modPack, progressCallback, exportThre
     end
 
     local function yieldyield()
-        if Ext.Timer.MonotonicTime() - lastYieldTime < yieldThreshold then return end
+        if Ext.Timer.MicrosecTime() - lastYieldTime < yieldThreshold then return end
 
-        local thread = exportThread
         Ext.OnNextTick(function()
-            if thread and coroutine.status(thread) == "suspended" then
-                local sucr, err = coroutine.resume(thread)
+            if exportThread and coroutine.status(exportThread) == "suspended" then
+                local sucr, err = coroutine.resume(exportThread)
                 if not sucr then
-                    throwError("ExportToMod: Error resuming coroutine: " .. tostring(err))
+                    throwError("CC Export: " .. tostring(err))
                 end
             else
-                Warning("MaterialPresetsMenu: ExportToMod coroutine not in suspended state after yield, cannot resume.")
+                throwError("CC Export: Export thread is no longer valid.")
             end
         end)
+        lastYieldTime = Ext.Timer.MicrosecTime()
         coroutine.yield()
-        lastYieldTime = Ext.Timer.MonotonicTime()
     end
 
     local function advance(message)
@@ -1171,8 +1171,12 @@ function MaterialPresetsMenu:__exportToMod(modPack, progressCallback, exportThre
 
     local function saveFile(path, string)
         suc = Ext.IO.SaveFile(path, string)
-        if not suc then throwError("ExportToMod: Failed to save file at " .. path) return end
+        if not suc then
+            throwError("ExportToMod: Failed to save file at " .. path)
+            return false
+        end
         yieldyield()
+        return true
     end
 
     local function completeAdvance(message)
@@ -1196,11 +1200,13 @@ function MaterialPresetsMenu:__exportToMod(modPack, progressCallback, exportThre
     local modUuid = existUuid and existUuid or Uuid_v4()
     modPack.ModuleUUID = modUuid
 
-    --- build mod meta.lsx first
+    --- build mod meta.lsx
     local metaLsx = LSXHelpers.BuildModMeta(modUuid, displayModName, modFolderName, authorName, version, description)
     local mataFilePath = RealmPath.GetCCAModMetaPath(modFolderDisplayName, modFolderName)
 
-    saveFile(mataFilePath, metaLsx:Stringify({ Indent = 4 }))
+    if not saveFile(mataFilePath, metaLsx:Stringify({ Indent = 4 })) then
+        return
+    end
     advance("Saved mod meta file.")
 
     --- build localization file first because CC presets need it
@@ -1216,7 +1222,9 @@ function MaterialPresetsMenu:__exportToMod(modPack, progressCallback, exportThre
 
     local locaFilePath = RealmPath.GetCCALocalizationPath(modFolderDisplayName, modFolderName, "English") -- currently assume English only
 
-    saveFile(locaFilePath, locaLsx)
+    if not saveFile(locaFilePath, locaLsx) then
+        return
+    end
     advance("Saved localization file.")
 
     --- build material presets file first because CC presets need it
@@ -1237,7 +1245,10 @@ function MaterialPresetsMenu:__exportToMod(modPack, progressCallback, exportThre
         for presetGuid, _ in pairs(folderObj) do
             local preset = matPresets[presetGuid]
             local presetType = folderDefs[folderName] and folderDefs[folderName].ExportType
-            if not presetType then throwError("ExportToMod: No preset type defined for folder '" .. folderName .. "'") return end
+            if not presetType then
+                throwError("ExportToMod: No preset type defined for folder '" .. folderName .. "'")
+                return
+            end
             matPresetDefs[presetGuid] = presetType
 
             local internalName = modFolderName .. cheapName[presetType] .. internalNames[preset]
@@ -1258,7 +1269,9 @@ function MaterialPresetsMenu:__exportToMod(modPack, progressCallback, exportThre
             local matPresetFile = RealmPath.GetCCAMaterialPresetsFile(presetType, modFolderDisplayName, modFolderName,
                 folderName) --[[@as string]]
 
-            saveFile(matPresetFile, bank:Stringify({ Indent = 4, AutoFindRoot = true }))
+            if not saveFile(matPresetFile, bank:Stringify({ Indent = 4, AutoFindRoot = true }, exportThread)) then
+                return
+            end
         end
         advance("Saving material preset banks...")
     end
@@ -1331,7 +1344,9 @@ function MaterialPresetsMenu:__exportToMod(modPack, progressCallback, exportThre
         if def:CountChildren() > 0 then
             local ccaFilePath = RealmPath.GetCCAPresetsFile(presetType, modFolderDisplayName, modFolderName) --[[@as string]]
 
-            saveFile(ccaFilePath, def:Stringify({ Indent = 4, AutoFindRoot = true }))
+            if not saveFile(ccaFilePath, def:Stringify({ Indent = 4, AutoFindRoot = true })) then
+                return
+            end
         end
         advance("Saving CCA presets definition...")
     end
@@ -1558,7 +1573,7 @@ function MaterialPresetsMenu:RenderCCPresetList(presetName, parent)
     local outerSuspended = false
 
     local function renderAllResources()
-        local lastYieldTime = Ext.Timer.MonotonicTime()
+        local lastYieldTime = Ext.Timer.MicrosecTime()
         if row then
             row:Destroy()
             row = nil
@@ -1610,7 +1625,7 @@ function MaterialPresetsMenu:RenderCCPresetList(presetName, parent)
             end
 
             uuidToCells[res.ResourceUUID] = cell
-            if Ext.Timer.MonotonicTime() - lastYieldTime > 1 then
+            if Ext.Timer.MicrosecTime() - lastYieldTime > 1 then
                 Ext.OnNextTick(function()
                     if renderThread and coroutine.status(renderThread) == "suspended" then
                         local sucr, err = coroutine.resume(renderThread)
@@ -1621,11 +1636,11 @@ function MaterialPresetsMenu:RenderCCPresetList(presetName, parent)
                         end
                     else
                         Warning(
-                        "MaterialPresetsMenu: RenderCCPresetList: render coroutine not in suspended state after yield, cannot resume.")
+                            "MaterialPresetsMenu: RenderCCPresetList: render coroutine not in suspended state after yield, cannot resume.")
                     end
                 end)
                 coroutine.yield()
-                lastYieldTime = Ext.Timer.MonotonicTime()
+                lastYieldTime = Ext.Timer.MicrosecTime()
             end
         end
     end
@@ -1638,8 +1653,7 @@ function MaterialPresetsMenu:RenderCCPresetList(presetName, parent)
         renderThread = coroutine.create(renderAllResources)
         local ok, err = coroutine.resume(renderThread)
         if not ok then
-            Warning("MaterialPresetsMenu: RenderCCPresetList: Error starting render coroutine: " .. tostring(err))
-            Ext.Debug.DumpStack()
+            Error(debug.traceback(renderThread, "MaterialPresetsMenu: RenderCCPresetList: Error starting render coroutine: " .. tostring(err)))
         end
     end
 

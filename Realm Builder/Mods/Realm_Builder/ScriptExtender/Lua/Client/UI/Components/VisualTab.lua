@@ -487,21 +487,21 @@ function VisualTab:RenderPresetsCell(parent)
     warningImage:Tooltip():AddText(GetLoca("Some changes will affect all instances of the same template."))
     warningImage:Tooltip():AddText(GetLoca("If 'Reset All' doesn't work, reload a save."))
 
-    resetAllButton.OnClick = function(_, notResetOnServer)
+    resetAllButton.OnClick = function(_)
         Timer:Ticks(10, function()
             local isChara = CIsCharacter(self.guid)
 
             for key, matTab in pairs(self.Materials) do
                 matTab.Editor:ClearParameters()
 
-                if not isChara or notResetOnServer then
+                if not isChara then
                     matTab.Editor:ResetAll()
                 end
 
                 matTab:UpdateUIState()
             end
 
-            if isChara and not notResetOnServer then
+            if isChara  then
                 NetChannel.Replicate:SendToServer({
                     Guid = self.guid,
                     Field = "GameObjectVisual",
@@ -516,10 +516,6 @@ function VisualTab:RenderPresetsCell(parent)
                 end
             end
         end)
-    end
-
-    resetAllButton.OnRightClick = function()
-        resetAllButton:OnClick(true)
     end
 
     --#endregion Left Cell Content
@@ -948,6 +944,7 @@ function VisualTab:RenderAttachmentEditors()
             local objNode = parentNode:AddTree(modelName .. "##" .. tostring(attIndex) .. "::" .. tostring(descIndex), false)
             objNode:AddTreeIcon(RB_ICONS.Bounding_Box, IMAGESIZE.ROW).Tint = HexToRGBA("FF27B040")
 
+
             local matName = obj.Renderable.ActiveMaterial.Material.Name
             local function getliveMat()
                 local visual = self:GetVisual(self.guid)
@@ -962,7 +959,7 @@ function VisualTab:RenderAttachmentEditors()
                 return desc.Renderable.ActiveMaterial
             end
 
-            --- @return MaterialParametersSet|nil
+            --- @return MaterialParameters|nil
             local function getliveParams()
                 local mat = getliveMat()
                 if not mat then return nil end
@@ -1047,6 +1044,7 @@ function VisualTab:RenderObjectEditor()
 
         local renderable = desc.Renderable --[[@as RenderableObject]]
 
+
         local material = renderable.ActiveMaterial --[[@as AppliedMaterial]]
 
         local meshName = renderable.Model and renderable.Model.Name or "Unknown Mesh"
@@ -1071,16 +1069,16 @@ function VisualTab:RenderObjectEditor()
             local rend = visual.ObjectDescs[descIndex] and visual.ObjectDescs[descIndex].Renderable
             if not rend then return nil end
 
-            return rend.ActiveMaterial.Material
+            return rend.ActiveMaterial
         end
 
         local function getliveParams()
             local mat = getliveMat()
             if not mat then return nil end
-            return mat.Parameters
+            return mat.Material.Parameters
         end
 
-        --- @return MaterialParametersSet|nil
+        --- @return MaterialParameters|nil
 
         local keyName = meshName .. "::" .. tostring(descIndex)
         self:RenderTransformSliders(materialNode, descIndex, nil, keyName)

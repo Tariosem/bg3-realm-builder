@@ -44,7 +44,6 @@ end
 
 --- @type XMLStringifyOptions
 local defaultStringifyOptions = {
-    Beautify = false,
     Indent = 4,
     IncludeComments = true,
     MaxDepth = 64,
@@ -76,16 +75,11 @@ local function validateStringifyOptions(opts)
     if opts.AvoidRecursion ~= nil and type(opts.AvoidRecursion) == "boolean" then
         validOpts.AvoidRecursion = opts.AvoidRecursion
     end
-    if opts.Beautify ~= nil and type(opts.Beautify) == "boolean" then
-        validOpts.Beautify = opts.Beautify
-    end
 
     return validOpts
 end
 
 --- @class XMLStringifyOptions
---- @field Beautify boolean whether auto sort children by name
---- NOTE: this may break lsx structure (e.g. make <version> the last child, actually uglify XD) (default: false)
 --- @field Indent number number of spaces to use for indentation (default: 4)
 --- @field IncludeComments boolean (default: true)
 --- @field IncludeHeader boolean -- whether to include the XML declaration (default: true)
@@ -102,14 +96,14 @@ end
 --- @field private __innerText string|nil
 --- @field private __attrOrder string[]|nil
 --- @field private __stringify fun(self: XMLNode, stringifyOpts: XMLStringifyOptions): string
---- @field Stringify fun(self: XMLNode, stringifyOpts?: XMLStringifyOptions): string
+--- @field Stringify fun(self: XMLNode, stringifyOpts?: XMLStringifyOptions, co?:thread): string
 --- @field Unserialize fun(xmlString: string): XMLNode|nil, string|nil -- returns XMLNode or nil and error message
 --- @field SetInnerText fun(self: XMLNode, text: string): XMLNode -- returns self
 --- @field GetInnerText fun(self: XMLNode): string|nil
 --- @field GetName fun(self: XMLNode): string
 --- @field SetName fun(self: XMLNode, name: string): XMLNode -- returns self
 --- @field SetAttribute fun(self: XMLNode, key: string, value: any): XMLNode -- returns self
---- @field GetAttribute fun(self: XMLNode, key: string): any 
+--- @field GetAttribute fun(self: XMLNode, key: string): any
 --- @field SetAttrOrder fun(self: XMLNode, attrOrder: string[]): XMLNode -- returns self
 --- @field AppendChild fun(self: XMLNode, child: XMLNode|table?):XMLNode -- returns child
 --- @field AppendChildren fun(self: XMLNode, children: XMLNode[]|table[]):XMLNode -- returns self
@@ -143,7 +137,7 @@ local function validateInit(name, attrs, children, comments)
     if type(children) ~= "table" then
         children = {}
     end
-    for i=#children,1,-1 do
+    for i = #children, 1, -1 do
         local child = children[i]
         if not getmetatable(child) or getmetatable(child) ~= XMLNode then
             Error("LSXTableNode: Invalid child node, must be XMLNode, skipping")
@@ -152,7 +146,7 @@ local function validateInit(name, attrs, children, comments)
     end
     if type(comments) ~= "table" then
         if type(comments) == "string" then
-            comments = {comments}
+            comments = { comments }
         else
             comments = {}
         end
@@ -173,6 +167,7 @@ function XMLNode.new(name, attrs, children, comments)
 
     obj.__name = name
     obj.__attributes = attrs
+    --obj.__attrCache = ""
     obj.__children = children
     obj.__parent = nil
     obj.__comments = comments
@@ -181,12 +176,16 @@ function XMLNode.new(name, attrs, children, comments)
     return setmetatable(obj, XMLNode)
 end
 
-
-function XMLNode:Stringify(opts)
+function XMLNode:Stringify(opts, co)
     opts = validateStringifyOptions(opts or {})
 
     if not opts.AutoFindRoot then
         return self:__stringify(opts)
+    end
+
+    if co and type(co) ~= "thread" and coroutine.status(co) == "dead" then
+        co = nil
+        Warning("XMLNode:Stringify: Coroutine is invalid.")
     end
 
     local seen = {}
@@ -194,23 +193,76 @@ function XMLNode:Stringify(opts)
     while cur do
         if seen[cur] then
             Error("XMLNode:Stringify: Recursive parent reference detected, aborting AutoFindRoot")
-            return self:__stringify(opts)
+            return self:__stringify(opts, co)
         end
         seen[cur] = true
 
         if not cur.__parent then
-            return cur:__stringify(opts)
+            return cur:__stringify(opts, co)
         end
         cur = cur.__parent
     end
 
     Warning("XMLNode:Stringify: AutoFindRoot failed, falling back to self") -- should not reach here
-    return self:__stringify(opts)
+    return self:__stringify(opts, co)
 end
 
 XMLNode.__tostring = XMLNode.Stringify
 
-function XMLNode:__stringify(stringifyOpts)
+local function throwXMLStringifyError(node, message)
+    local errLog = {
+        Time = Ext.Timer.ClockTime(),
+        Message = message,
+        Stack = debug.traceback(),
+        Node = node,
+    }
+    Ext.IO.SaveFile(RealmPath.GetXMLErrorLogPath(GetFormatTime()),
+        Ext.Json.Stringify(errLog,
+            {
+                Beautify = true,
+                AvoidRecursion = true,
+                StringifyInternalTypes = true,
+            }))
+end
+
+local function buildAttrStr(node)
+    local attrs = {}
+    local seen = {}
+
+    for _, key in ipairs(node.__attrOrder or {}) do
+        local value = node.__attributes and node.__attributes[key]
+        if value ~= nil then
+            if type(value) == "string" then
+                table.insert(attrs, string.format('%s="%s"', key, escapeXML(value)))
+            else
+                table.insert(attrs, string.format('%s="%s"', key, serializeNonStringAttributes(value)))
+            end
+            seen[key] = true
+        end
+    end
+    local remainingKeys = {}
+    for key, _ in pairs(node.__attributes or {}) do
+        if not seen[key] then
+            table.insert(remainingKeys, key)
+        end
+    end
+    for _, key in ipairs(remainingKeys) do
+        local value = (node.__attributes or {})[key]
+        if value ~= nil then
+            if type(value) == "string" then
+                table.insert(attrs, string.format('%s="%s"', key, escapeXML(value)))
+            else
+                table.insert(attrs, string.format('%s="%s"', key, serializeNonStringAttributes(value)))
+            end
+        end
+    end
+
+    if #attrs == 0 then return '' end
+    return ' ' .. table.concat(attrs, ' ')
+end
+
+local indentCache = {}
+function XMLNode:__stringify(stringifyOpts, co)
     local indentStep = stringifyOpts.Indent
     local lines = {}
 
@@ -218,96 +270,91 @@ function XMLNode:__stringify(stringifyOpts)
         table.insert(lines, '<?xml version="1.0" encoding="utf-8"?>')
     end
 
-    -- iterative DFS using stack. Each frame: { node = <XMLNode>, state = 0[enter]/1[exit], depth = <number> }
-    -- avoid recursion by defaults
-    local function buildAttrStr(node)
-        local attrs = {}
-        local seen = {}
-
-        for _, key in ipairs(node.__attrOrder or {}) do
-            local value = node.__attributes and node.__attributes[key]
-            if value ~= nil then
-                if type(value) == "string" then
-                    table.insert(attrs, string.format('%s="%s"', key, escapeXML(value)))
-                else
-                    table.insert(attrs, string.format('%s="%s"', key, serializeNonStringAttributes(value)))
-                end
-                seen[key] = true
-            end
-        end
-        local remainingKeys = {}
-        for key, _ in pairs(node.__attributes or {}) do
-            if not seen[key] then
-                table.insert(remainingKeys, key)
-            end
-        end
-        if stringifyOpts.Beautify then
-            table.sort(remainingKeys)
-        end
-        for _, key in ipairs(remainingKeys) do
-            local value = (node.__attributes or {})[key]
-            if value ~= nil then
-                if type(value) == "string" then
-                    table.insert(attrs, string.format('%s="%s"', key, escapeXML(value)))
-                else
-                    table.insert(attrs, string.format('%s="%s"', key, serializeNonStringAttributes(value)))
-                end
-            end
-        end
-        
-        if #attrs == 0 then return '' end
-        return ' ' .. table.concat(attrs, ' ')
-    end
-
+    -- iterative DFS using stack. Each frame: { node<XMLNode>, state<0[enter]/1[exit]>, depth<number> }
+    local isInCoroutine = co and true or false
+    local lastYieldTime = isInCoroutine and Ext.Timer.MicrosecTime() or 0
     local seen = {}
-    local stack = { { node = self, state = 0, depth = 0 } }
+    local stack = { { self, 0, 0 } }
+    local top = 1
     while #stack > 0 do
-        local frame = table.remove(stack) -- pop
-        local node = frame.node
-        local curDepth = frame.depth
-        local pad = string.rep(' ', curDepth * indentStep)
+        local frame = stack[top]
+        stack[top] = nil -- pop
+        top = top - 1
+        local node = frame[1]
+        local curDepth = frame[3]
+        local pad = ""
+        if indentStep > 0 then
+            if not indentCache[curDepth] then
+                indentCache[curDepth] = string.rep(" ", indentStep * curDepth)
+            end
+            pad = indentCache[curDepth]
+        end
 
-        if frame.state == 0 then -- 'enter'
+        if frame[2] == 0 then -- 'enter'
             if seen[node] and stringifyOpts.AvoidRecursion then
-                table.insert(lines, pad .. string.format('<!-- Info: Recursive reference to "%s" skipped -->', tostring(node.__name or 'Node')))
+                table.insert(lines,
+                    pad ..
+                    string.format('<!-- Info: Recursive reference to "%s" skipped -->', tostring(node.__name or 'Node')))
                 goto continue
             end
-            if curDepth > stringifyOpts.MaxDepth then
-                table.insert(lines, pad .. string.format('<!-- Info: MaxDepth (%d) exceeded at node "%s", skipping further serialization -->', stringifyOpts.MaxDepth, tostring(node.__name or 'Node')))
-                goto continue
-            end
+            seen[node] = true
 
-            if node.__comments and stringifyOpts.IncludeComments then
+            if stringifyOpts.IncludeComments and node.__comments then
                 for _, comment in ipairs(node.__comments) do
                     table.insert(lines, pad .. '<!-- ' .. escapeXML(comment) .. ' -->')
                 end
             end
 
             local attrStr = buildAttrStr(node)
-            local children = {}
-            for i = 1, #(node.__children or {}) do children[i] = node.__children[i] end
-            if stringifyOpts.Beautify then
-                table.sort(children, function(a,b) return (a.__name or '') < (b.__name or '') end)
-            end
+            local children = node.__children or {}
             if #children > 0 then
                 table.insert(lines, pad .. string.format('<%s%s>', node.__name or 'Node', attrStr))
                 -- push exit frame
-                table.insert(stack, { node = node, state = 1, depth = curDepth })
+                top = top + 1
+                stack[top] = { node, 1, curDepth }
+                
                 -- push children in reverse so they are processed in order
                 for i = #children, 1, -1 do
-                    table.insert(stack, { node = children[i], state = 0, depth = curDepth + 1 })
+                    if curDepth + 1 > stringifyOpts.MaxDepth then
+                        table.insert(lines,
+                            pad ..
+                            string.format('<!-- Info: MaxDepth (%d) exceeded at node "%s", skipping. -->',
+                                stringifyOpts.MaxDepth, tostring(children[i].__name or 'Node')))
+                        goto skipChild
+                    end
+
+                    top = top + 1
+                    stack[top] = { children[i], 0, curDepth + 1 }
+                    ::skipChild::
                 end
             elseif node.__innerText and type(node.__innerText) == "string" and node.__innerText ~= "" then
                 local innerText = escapeXML(node.__innerText)
-                table.insert(lines, pad .. string.format('<%s%s>%s</%s>', node.__name or 'Node', attrStr, innerText, node.__name or 'Node'))
+                table.insert(lines,
+                    pad ..
+                    string.format('<%s%s>%s</%s>', node.__name or 'Node', attrStr, innerText, node.__name or 'Node'))
             else
                 table.insert(lines, pad .. string.format('<%s%s/>', node.__name or 'Node', attrStr))
             end
-
-            seen[node] = true
             ::continue::
         else -- 'exit'
             table.insert(lines, pad .. string.format('</%s>', node.__name or 'Node'))
+        end
+
+        if isInCoroutine then
+            local now = Ext.Timer.MicrosecTime()
+            if now - lastYieldTime >= 1 then
+                Ext.OnNextTick(function()
+                    local ok, err
+                    if co and coroutine.status(co) == "suspended" then
+                        ok, err = coroutine.resume(co)
+                        if ok then return end
+                    end
+                    throwXMLStringifyError(self, 
+                        "XMLNode:Stringify coroutine resume failed: " .. tostring(err or "unknown error"))
+                end)
+                lastYieldTime = now
+                coroutine.yield()
+            end
         end
     end
 
@@ -322,17 +369,17 @@ local function parseAttributes(attrStr)
     for key, val in attrStr:gmatch("([%w_:%-]+)%s*=%s*\"(.-)\"") do
         table.insert(order, key)
         attrs[key] = val:gsub("&lt;", "<")
-                        :gsub("&gt;", ">")
-                        :gsub("&quot;", "\"")
-                        :gsub("&apos;", "'")
-                        :gsub("&amp;", "&")
+            :gsub("&gt;", ">")
+            :gsub("&quot;", "\"")
+            :gsub("&apos;", "'")
+            :gsub("&amp;", "&")
     end
     return attrs, order
 end
 
 function XMLNode.Unserialize(xmlString)
     xmlString = xmlString:gsub("<%?xml.-%?>", "") -- remove XML declaration
-    xmlString = xmlString:gsub("\r", "") -- normalize newlines
+    xmlString = xmlString:gsub("\r", "")          -- normalize newlines
 
     local stack = {}
     local root = nil
@@ -379,7 +426,7 @@ function XMLNode.Unserialize(xmlString)
         inside = inside:match("^%s*(.-)%s*$") -- trim
         if inside:sub(-1) == "/" then
             -- comment , ignore
-        elseif tag:sub(1,1) == "/" then
+        elseif tag:sub(1, 1) == "/" then
             -- closing tag
             local name = tag:match("^/(%S+)")
             local node = table.remove(stack)
@@ -398,7 +445,6 @@ function XMLNode.Unserialize(xmlString)
                 local parent = stack[#stack]
                 parent:AppendChild(node)
             end
-
         elseif inside:sub(-1) == "/" then
             -- self-closing
             inside = inside:sub(1, -2):match("^%s*(.-)%s*$")
@@ -412,7 +458,6 @@ function XMLNode.Unserialize(xmlString)
                 local parent = stack[#stack]
                 parent:AppendChild(node)
             end
-
         else
             -- opening tags
             local name, attrStr = tag:match("^(%S+)%s*(.*)$")
@@ -433,7 +478,7 @@ function XMLNode:SetInnerText(text)
         return self
     end
     self.__innerText = text
-    
+
     return self
 end
 
@@ -462,6 +507,7 @@ function XMLNode:SetAttribute(key, value)
     end
     self.__attributes = self.__attributes or {}
     self.__attributes[key] = value
+
 
     return self
 end
@@ -543,7 +589,6 @@ function XMLNode:InsertChild(child, index)
 
     return child
 end
-
 
 --- @param index number
 --- @return XMLNode?
@@ -630,7 +675,7 @@ function XMLNode:RemoveChildren(predicate)
     if not self.__children then
         return {}
     end
-    
+
     local removed = {}
     for i = #self.__children, 1, -1 do
         if predicate(self.__children[i]) then

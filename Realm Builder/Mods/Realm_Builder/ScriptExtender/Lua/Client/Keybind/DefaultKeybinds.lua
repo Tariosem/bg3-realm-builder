@@ -1,12 +1,20 @@
 --- @type table<string, table<string, Keybinding>>
 local DEFAULT_KEYBINDS = {}
 
+DEFAULT_KEYBINDS.GeneralShortcuts = {
+    ["OpenMainMenu"] = { Key = "GRAVE" },
+    ["OpenBrowserMenu"] = { Key = "F1" },
+    ["OpenTransformToolbar"] = { Key = "TAB" },
+    ["DeleteAllGizmos"] = { Key = "X", Modifiers = { "SHIFT" } },
+}
+
 DEFAULT_KEYBINDS.TransformToolbar = {
     ["MultiSelect"] = { Key = "LSHIFT" },
     ["Select"] = { Key = "MMB" },
     ["ClearSelection"] = { Key = "ESCAPE" },
     ["Duplicate"] = { Key = "D", Modifiers = { "SHIFT" } },
     ["BoxSelect"] = { Key = "LMB", Modifiers = { "SHIFT" } },
+    ["DeleteSelection"] = { Key = "DEL" },
     ["HideSelection"] = { Key = "H" },
     ["ShowSelection"] = { Key = "H", Modifiers = { "SHIFT" } },
     ["ApplyGravity"] = { Key = "G", Modifiers = { "SHIFT" } },
@@ -14,7 +22,6 @@ DEFAULT_KEYBINDS.TransformToolbar = {
     ["Undo"] = { Key = "Z", Modifiers = { "CTRL" } },
     ["Redo"] = { Key = "Y", Modifiers = { "CTRL" } },
     ["OpenVisualTab"] = { Key = "TAB", Modifiers = { "SHIFT" } },
-    ["DeleteAllGizmos"] = { Key = "X", Modifiers = { "SHIFT" } },
     ["Move3DCursor"] = { Key = "RMB", Modifiers = { "SHIFT" } },
 }
 

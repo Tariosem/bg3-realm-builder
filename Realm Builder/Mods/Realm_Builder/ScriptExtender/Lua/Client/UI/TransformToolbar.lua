@@ -136,6 +136,20 @@ function TransformToolbar:RegisterKeyInputEvents()
         Commands.DuplicateCommand(targets)
     end)
 
+    ttMod:RegisterEvent("DeleteSelection", function (e)
+        if e.Event ~= "KeyDown" then return end
+        if not RB_GLOBALS.TransformEditor.Target or #RB_GLOBALS.TransformEditor.Target == 0 then return end
+        local targets = {}
+        for _,proxy in pairs(RB_GLOBALS.TransformEditor.Target) do
+            if proxy.Guid then
+                table.insert(targets, proxy.Guid)
+            end
+        end
+        if #targets == 0 then return end
+
+        Commands.DeleteCommand(targets)
+    end)
+
     ttMod:RegisterEvent("OpenVisualTab", function (e)
         if e.Event ~= "KeyDown" then return end
         local host = CGetHostCharacter()
@@ -217,7 +231,7 @@ function TransformToolbar:RegisterKeyInputEvents()
 
         local targets = {}
 
-        for _,proxy in pairs(RB_GLOBALS.TransformEditor.Target) do
+        for _,proxy in pairs(RB_GLOBALS.TransformEditor.Target or {}) do
             if proxy.Guid then
                 table.insert(targets, proxy.Guid)
             end
@@ -229,8 +243,9 @@ function TransformToolbar:RegisterKeyInputEvents()
     buMod:RegisterEvent("BindPopup", function (e)
         if e.Event ~= "KeyDown" then return end
         local targets = {}
+        
 
-        for _,proxy in pairs(RB_GLOBALS.TransformEditor.Target) do
+        for _,proxy in pairs(RB_GLOBALS.TransformEditor.Target or {}) do
             if proxy.Guid then
                 table.insert(targets, proxy.Guid)
             end
@@ -274,10 +289,10 @@ function TransformToolbar:RegisterKeyInputEvents()
             })
         end)
     end
-    registerToggleEvent("LookAt", "SetType", "KeepLookingAt", true, false, buMod)
-    registerToggleEvent("StopLookAt", "SetType", "KeepLookingAt", false, true, buMod)
-    registerToggleEvent("Follow", "SetType", "FollowParent", true, false, buMod)
-    registerToggleEvent("StopFollow", "SetType", "FollowParent", false, true, buMod)
+    --registerToggleEvent("LookAt", "SetType", "KeepLookingAt", true, false, buMod)
+    --registerToggleEvent("StopLookAt", "SetType", "KeepLookingAt", false, true, buMod)
+    --registerToggleEvent("Follow", "SetType", "FollowParent", true, false, buMod)
+    --registerToggleEvent("StopFollow", "SetType", "FollowParent", false, true, buMod)
     registerToggleEvent("HideSelection", "SetAttributes", "Visible", false, true, ttMod)
     registerToggleEvent("ShowSelection", "SetAttributes", "Visible", true, false, ttMod)
     registerToggleEvent("ApplyGravity", "SetAttributes", "Gravity", true, false, ttMod)
@@ -348,21 +363,6 @@ function TransformToolbar:RegisterTransformEditorEvents()
         if e.Key == teMod:GetKeyByEvent("ScaleMode").Key then resetTransform.Scale = {1,1,1} end
 
         Commands.SetTransform(globalEditor.Target or {}, resetTransform)
-    end)
-
-    self.KeybindModule:RegisterEvent("DeleteAllGizmos", function (e)
-        if e.Event ~= "KeyDown" then return end
-        if globalEditor.IsDragging then return end
-        if not globalEditor.Gizmo.Guid then
-            NetChannel.ManageGizmo:RequestToServer({ Clear = true }, function (response)
-                globalEditor.Gizmo.Guid = nil
-                globalEditor.Gizmo.Translate = nil
-                globalEditor.Gizmo.Rotate = nil
-                globalEditor.Gizmo.Scale = nil
-            end)
-        end
-        globalEditor.Gizmo:DeleteItem()
-        globalEditor.Target = nil
     end)
 end
 

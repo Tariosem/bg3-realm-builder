@@ -19,9 +19,9 @@ function RealmBuilderMainMenu:__init()
 end
 
 function RealmBuilderMainMenu:RegisterEvents()
-    local meMod = KeybindManager:CreateModule("General Shortcuts")
+    local meMod = KeybindManager:CreateModule("GeneralShortcuts")
 
-    meMod:RegisterEvent("OpenMenu", function(e)
+    meMod:RegisterEvent("OpenMainMenu", function(e)
         if e.Event ~= "KeyDown" then return end
 
         if self.panel then
@@ -41,6 +41,22 @@ function RealmBuilderMainMenu:RegisterEvents()
         if self.browserMenu then
             self.browserMenu.Open = not self.browserMenu.Open
         end
+    end)
+    
+    meMod:RegisterEvent("DeleteAllGizmos", function (e)
+        local globalEditor = RB_GLOBALS.TransformEditor
+        if e.Event ~= "KeyDown" then return end
+        if globalEditor.IsDragging then return end
+        if not globalEditor.Gizmo.Guid then
+            NetChannel.ManageGizmo:RequestToServer({ Clear = true }, function (response)
+                globalEditor.Gizmo.Guid = nil
+                globalEditor.Gizmo.Translate = nil
+                globalEditor.Gizmo.Rotate = nil
+                globalEditor.Gizmo.Scale = nil
+            end)
+        end
+        globalEditor.Gizmo:DeleteItem()
+        globalEditor.Target = nil
     end)
 end
 
@@ -127,33 +143,40 @@ function RealmBuilderMainMenu:Render()
     end)
 
     Timer:Ticks(7, function()
+        Debug("Initializing Browsers...")
         self.browsers.item = ItemBrowser.new(RB_ItemManager, "Item - Browser")
         self.browsers.item:CreateCachedSort("DisplayName")
+        Debug("Item Browser initialized.")
     end)
 
     Timer:Ticks(8, function()
         self.browsers.effect = EffectBrowser.new(RB_MultiEffectManager, "Effect - Browser")
         self.browsers.effect:CreateCachedSort("DisplayName")
+        Debug("Effect Browser initialized.")
     end)
 
     Timer:Ticks(9, function()
         self.browsers.character = RootTemplateBrowser.new(RB_CharacterManager, "Character - Browser")
         self.browsers.character:CreateCachedSort("TemplateName")
+        Debug("Character Browser initialized.")
     end)
 
     Timer:Ticks(9, function()
         self.browsers.scenery = RootTemplateBrowser.new(RB_SceneryManager, "Scenery - Browser")
         self.browsers.scenery:CreateCachedSort("TemplateName")
+        Debug("Scenery Browser initialized.")
     end)
 
     Timer:Ticks(9, function()
         self.browsers.prefab = RootTemplateBrowser.new(RB_PrefabManager, "Prefab - Browser")
         self.browsers.prefab:CreateCachedSort("TemplateName")
+        Debug("Prefab Browser initialized.")
     end)
 
     Timer:Ticks(9, function()
         self.browsers.construction = RootTemplateBrowser.new(RB_TileConstructionManager, "Tile Construction - Browser")
         self.browsers.construction:CreateCachedSort("TemplateName")
+        Debug("Tile Construction Browser initialized.")
     end)
 
     Timer:Ticks(10, function()
@@ -163,6 +186,7 @@ function RealmBuilderMainMenu:Render()
         
         end
         self.browsers.visual:CreateCachedSort("SourceFile")
+        Debug("Visual Browser initialized.")
     end)
 
     Timer:Ticks(10, function()

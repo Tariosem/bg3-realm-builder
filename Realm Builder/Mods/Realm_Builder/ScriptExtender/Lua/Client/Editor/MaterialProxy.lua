@@ -1,8 +1,8 @@
 local materialProxies = {}
 
 --- @alias ParamterName string
---- @enum RB_ParamType
-RB_ParamType = {
+--- @enum RB_MaterialParamType
+RB_MaterialParamType = {
     Scalar = 1,
     Vector2 = 2,
     Vector3 = 3,
@@ -17,20 +17,20 @@ RB_ParamType = {
     [6] = "VirtualTexture",
 }
 
---- @alias RB_ParameterSet table< RB_ParamType, table<ParamterName, number[]> > 
+--- @alias RB_ParameterSet table< RB_MaterialParamType, table<ParamterName, number|number[]|string> >
 
 --- @class MaterialProxy
 --- @field Material GUIDSTRING
---- @field TypeRefs table<string, RB_ParamType> Mapping of property name to type
---- @field IndexRefs table<RB_ParamType, table<ParamterName, number>> Mapping of type to property name to index in resource
+--- @field TypeRefs table<string, RB_MaterialParamType> Mapping of property name to type
+--- @field IndexRefs table<RB_MaterialParamType, table<ParamterName, number>> Mapping of type to property name to index in resource
 --- @field BaseValues RB_ParameterSet Mapping of type to property name to base value
 --- @field Parameters RB_ParameterSet
 --- @field new fun(materialName: GUIDSTRING): MaterialProxy|nil
 --- @field GetResource fun(self): ResourceMaterialResource
---- @field GetParameter fun(self, paramName: string): number[]|?
+--- @field GetParameter fun(self, paramName: string): number|number[]|string|nil
 --- @field SetParameter fun(self, paramName: string, value: number[]): boolean
---- @field GetValue fun(self, paramName: string): number[]|nil
---- @field GetBaseValue fun(self, paramName: string): number[]|nil
+--- @field GetValue fun(self, paramName: string): number|number[]|string|nil
+--- @field GetBaseValue fun(self, paramName: string): number|number[]|string|nil
 --- @field ResetParameter fun(self, paramName: string): boolean
 --- @field ResetAll fun(self)
 --- @field ResetToBaseValues fun(self)
@@ -47,7 +47,7 @@ setmetatable(MaterialPresetProxy, {__index = MaterialProxy})
 --- @class ParametersSetProxy : MaterialProxy
 --- @field RemoveParameter fun(self, paramName: string): boolean
 --- @field Update fun(self)
---- @field new fun(paramSetName: MaterialParametersSet?): ParametersSetProxy|nil
+--- @field new fun(paramSetName: MaterialParameters?): ParametersSetProxy|nil
 ParametersSetProxy = {}
 ParametersSetProxy.__index = ParametersSetProxy
 setmetatable(ParametersSetProxy, {__index = MaterialProxy})
@@ -126,11 +126,6 @@ function MaterialProxy.__buildParameterTables(self, paramsList, name, fieldName,
                 goto continue
             end
             local value = param[valueField]
-            if type(value) == "number" then
-                value = {value}
-            else
-                value = DeepCopy(value)
-            end
 
             if self.Parameters[typeRef][paramName] then
                 Warning(string.format("Duplicate parameter '%s' in '%s'. Overwriting.", paramName, name))
@@ -250,13 +245,12 @@ function ParametersSetProxy.new(paramSet)
     return mP
 end
 
---- actually copy from format parameters
+--- copy from format parameters
 --- @param params RB_ParameterSet
 function ParametersSetProxy.BuildFromFormatParameters(params)
     local paramSetProxy = setmetatable({}, ParametersSetProxy) --[[@as ParametersSetProxy]]
     paramSetProxy.TypeRefs = {}
     paramSetProxy.IndexRefs = {}
-    paramSetProxy.BaseValues = {}
     paramSetProxy.Parameters = {
         [1] = {}, -- ScalarParameters
         [2] = {}, -- Vector2Parameters
@@ -268,14 +262,11 @@ function ParametersSetProxy.BuildFromFormatParameters(params)
 
     for i=1, #paramSetProxy.Parameters do
         paramSetProxy.Parameters[i] = {}
-        paramSetProxy.BaseValues[i] = {}
         paramSetProxy.IndexRefs[i] = {}
     end
 
     for itype, paramList in pairs(params) do
         for parameterName, value in pairs(paramList) do
-            value = type(value) == "number" and {value} or value --[[@as number[] ]]
-
             paramSetProxy.TypeRefs[parameterName] = itype
             paramSetProxy.Parameters[itype][parameterName] = value
             ::continue::
@@ -285,7 +276,7 @@ function ParametersSetProxy.BuildFromFormatParameters(params)
     return paramSetProxy
 end
 
-function ParametersSetProxy.BuildFromMaterialPresetParamSet(paramSet)
+function ParametersSetProxy.BuildFromResourcePresetData(paramSet)
     local paramSetProxy = setmetatable({}, ParametersSetProxy) --[[@as ParametersSetProxy]]
     
     MaterialProxy.__buildParameterTables(paramSetProxy, {
@@ -300,7 +291,7 @@ function ParametersSetProxy.BuildFromMaterialPresetParamSet(paramSet)
     return paramSetProxy
 end
 
----@param paramSet MaterialParametersSet
+---@param paramSet MaterialParameters
 function ParametersSetProxy:__init(paramSet)
     MaterialProxy.__buildParameterTables(self, {
         paramSet.ScalarParameters,
@@ -333,9 +324,12 @@ function ParametersSetProxy:SetParameter(paramName, value, typeRef)
     if type(value) == "string" and not typeRef then
         Warning("ParametersSetProxy: When setting string parameter '" .. tostring(paramName) .. "', typeRef must be provided.")
         return false
+    elseif type(value) == "number" then
+        typeRef = 1
     else
         typeRef = #value
     end
+
     if not typeRef or typeRef < 1 or typeRef > 6 then
         return false
     end
@@ -357,7 +351,7 @@ function ParametersSetProxy:SetParameter(paramName, value, typeRef)
     return true
 end
 
---- @param paramSet MaterialParametersSet
+--- @param paramSet MaterialParameters
 function ParametersSetProxy:Update(paramSet)
     local valueField = "Value"
     for typeRef, paramList in pairs({
@@ -374,11 +368,6 @@ function ParametersSetProxy:Update(paramSet)
         end) do
             local paramName = param.ParameterName
             local value = param[valueField]
-            if type(value) == "number" then
-                value = {value}
-            else
-                value = DeepCopy(value)
-            end
 
             self.TypeRefs[paramName] = typeRef
             self.Parameters[typeRef][paramName] = value
@@ -390,9 +379,12 @@ function ParametersSetProxy:SetDefaultParameter(paramName, value, typeRef)
     if type(value) == "string" and not typeRef then
         Warning("ParametersSetProxy: When setting string parameter '" .. tostring(paramName) .. "', typeRef must be provided.")
         return false
+    elseif type(value) == "number" then
+        typeRef = 1
     else
         typeRef = #value
     end
+
     if not typeRef or typeRef < 1 or typeRef > 6 then
         return false
     end
@@ -461,9 +453,6 @@ function MaterialProxy:GetParameter(paramName)
     end
 
     local value = param.Value
-    if type(value) == "number" then
-        value = {value}
-    end
 
     return value
 end
@@ -504,9 +493,6 @@ function MaterialPresetProxy:GetParameter(paramName)
     end
 
     local value = param.Value
-    if type(value) == "number" then
-        value = {value}
-    end
 
     return value
 end
@@ -602,40 +588,8 @@ function MaterialProxy:ApplyToMaterial(mat)
     for typeRef,props in pairs(self.Parameters) do
         for propertyName,value in pairs(props) do
             if mat[ParamTypeToFunc[typeRef]] then
-                local val = #value == 1 and value[1] or value
-                mat[ParamTypeToFunc[typeRef]](mat, propertyName, val)
+                mat[ParamTypeToFunc[typeRef]](mat, propertyName, value)
             end
         end
     end
-end
-
---- @param self table<1|2|3|4, table<string, number[]>>
---- @return Vec4
-function MaterialProxy:GetPreviewColor()
-    local color = Vec4.new(0.5, 0.5, 0.5, 1)
-
-    local cnt = 0
-    local toTraverse = {
-        [3] = self.Parameters[3],
-        [4] = self.Parameters[4],
-    }
-
-    for ptype, params in pairs(toTraverse) do
-        for paramName, value in pairs(params) do
-            if paramName:lower():find("color") == nil then
-                local newVec4 = Vec4.new(value)
-
-                color = color + newVec4
-                cnt = cnt + 1
-            end
-        end
-    end
-
-    color = color / math.max(cnt, 1)
-
-    AdjustColor(color, 0.8, 1.2)
-
-    color[4] = 1.0
-
-    return color
 end

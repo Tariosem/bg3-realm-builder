@@ -8,7 +8,7 @@ KeybindMenu = {
 }
 
 local KEYBIND_MODULE_RENDER_ORDER = {
-    "General Shortcuts",
+    "GeneralShortcuts",
     "TransformToolbar",
     "TransformEditor",
     "BindUtility",
@@ -20,8 +20,8 @@ local KEYBIND_EVENT_RENDER_ORDER = {
         "BoxSelect",
         "Select",
         "ClearSelection",
+        "DeleteSelection",
         "Duplicate",
-        "SlowDown",
         "Undo",
         "Redo",
         "OpenVisualTab",
@@ -35,15 +35,12 @@ local KEYBIND_EVENT_RENDER_ORDER = {
         "RotateMode",
         "ScaleMode",
         "FollowTarget",
-        "DeleteSelection",
-        "DeleteAllGizmos",
     },
     BindUtility = {
         "BindPopup",
         "BindTo",
         "Unbind",
         "Snap",
-        "LookAt",
     },
 }
 
