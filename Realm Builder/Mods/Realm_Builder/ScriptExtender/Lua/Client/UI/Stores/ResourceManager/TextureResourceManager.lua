@@ -28,9 +28,6 @@ function TextureResourceManager:PopulateTextureResource(id)
         trieNode.__children[part] = trieNode.__children[part] or {}
         trieNode = trieNode.__children[part]
 
-        trieNode.__all = trieNode.__all or {}
-        trieNode.__all[id] = true
-
         if i == #paths then
             trieNode.__resources = trieNode.__resources or {}
             trieNode.__resources[id] = true
@@ -87,31 +84,40 @@ function TextureResourceManager:GetAllTextureResourceUnderPath(pathPrefix, preci
     end
     if #paths == 0 then return {}, false end
     precise = precise or false
-    local trieNode = self.CachedTextureTrie
+    local curNode = self.CachedTextureTrie
+    local allTrieNode = curNode
     for depth = 1, #paths do
-        trieNode = trieNode.__children and trieNode.__children[paths[depth]]
-        if not trieNode then
-            return {}, false
+        curNode = curNode.__children and curNode.__children[paths[depth]]
+    end
+    allTrieNode = {curNode}
+    local function collectAllChildren(node)
+        if not node or not node.__children then return end
+        for _,child in pairs(node.__children) do
+            table.insert(allTrieNode, child)
+            collectAllChildren(child)
         end
     end
+    collectAllChildren(curNode)
 
     local results = {}
-    local fetchField = precise and "__resources" or "__all"
-    local maxSize = 100
+    local maxSize = 1000
     local exceedFlag = false
 
     --for id,_ in pairs(trieNode[fetchField] or {}) do
         --_P("Found texture resource under path: " .. pathPrefix .. " -> " .. self.TextureResources[id].SourceFile)
     --end
 
-    for id,_ in pairs(trieNode[fetchField] or {}) do
+    for _,trieNode in pairs(allTrieNode) do
         if #results >= maxSize then exceedFlag = true break end
-        local fileName = self.TextureResources[id].SourceFile
-        if searchCriteria and not fileName:find(searchCriteria, 1, true) then
-            goto continue
+        for id,_ in pairs(trieNode.__resources or {}) do
+            if #results >= maxSize then exceedFlag = true break end
+            local fileName = self.TextureResources[id].SourceFile
+            if searchCriteria and not fileName:find(searchCriteria, 1, true) then
+                goto continue
+            end
+            table.insert(results, { Path = self.TextureResources[id].Path, ResourceUUID = id, SourceFile = fileName })
+            ::continue::
         end
-        table.insert(results, { Path = self.TextureResources[id].Path, ResourceUUID = id, SourceFile = fileName })
-        ::continue::
     end
 
     return results, exceedFlag

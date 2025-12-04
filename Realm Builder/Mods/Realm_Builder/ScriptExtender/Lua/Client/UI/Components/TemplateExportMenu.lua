@@ -423,6 +423,7 @@ function TemplateExportMenu:RenderTemplateEntry(cell, entData)
         header.OnExpand = function() end
     end
     header.OnClick = function()
+        header.Selected = false
         self:VisualizeExportEntry(entData.Guid)
     end
     header.OnRightClick = function()
@@ -468,7 +469,7 @@ function TemplateExportMenu:VisualizeExportEntry(uuid, duration)
             Warning("[TemplateExportMenu] Failed to spawn preview entity for template ID: " .. tostring(entry.TemplateId))
             return
         end
-        if duration < 0 then
+        if duration and duration < 0 then
             self.visualizations = self.visualizations or {}
             table.insert(self.visualizations, response.Guid)
         end

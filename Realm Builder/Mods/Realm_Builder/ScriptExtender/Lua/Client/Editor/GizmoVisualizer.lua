@@ -300,6 +300,9 @@ function GizmoVisualizer:SetLineLength(guid, length, width)
         width = self.Scale[1] * 0.15
     end
     length = length / 10
+    if length == 0 then
+        width = 0
+    end
 
     local entity = Ext.Entity.Get(guid)
     if not entity then return end
@@ -309,8 +312,7 @@ function GizmoVisualizer:SetLineLength(guid, length, width)
 
     for _,obj in pairs(visual.ObjectDescs) do
         local renderable = obj.Renderable
-        local oriScale = renderable.WorldTransform.Scale
-        local toSet = { width or oriScale[1], width or oriScale[2], length }
+        local toSet = { width, width, length }
         renderable:SetWorldScale(toSet)
     end
     --Debug("SetLineLength: Set length of "..tostring(guid).." to "..tostring(length))

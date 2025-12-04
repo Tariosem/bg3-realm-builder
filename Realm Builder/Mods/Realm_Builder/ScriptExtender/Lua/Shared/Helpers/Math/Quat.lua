@@ -86,4 +86,12 @@ function Quat.FromEuler(euler)
     return Quat.new(Ext.Math.QuatFromEuler(euler))
 end
 
+function Quat.FromTo(fromVec, toVec)
+    if #fromVec ~= 3 or #toVec ~= 3 then
+        Warning("Quat.FromTo: Invalid vector length, expected 3 got "..tostring(#fromVec)..", "..tostring(#toVec))
+        return Quat.Identity()
+    end
+    return Quat.new(Ext.Math.QuatFromToRotation(fromVec, toVec))
+end
+
 Quat.IsQuat = true

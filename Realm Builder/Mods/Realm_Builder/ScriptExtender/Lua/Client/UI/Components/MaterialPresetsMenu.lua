@@ -1269,7 +1269,7 @@ function MaterialPresetsMenu:__exportToMod(modPack, progressCallback, exportThre
             local matPresetFile = RealmPath.GetCCAMaterialPresetsFile(presetType, modFolderDisplayName, modFolderName,
                 folderName) --[[@as string]]
 
-            if not saveFile(matPresetFile, bank:Stringify({ Indent = 4, AutoFindRoot = true }, exportThread)) then
+            if not saveFile(matPresetFile, bank:Stringify({  Indent = 4, AutoFindRoot = true }, exportThread)) then
                 return
             end
         end

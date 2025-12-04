@@ -4,31 +4,19 @@ PICKER_CONSTANTS.CENTER_SPHERE = {
     Radius = 0.1
 }
 
-PICKER_CONSTANTS.CENTER_BB = {
-    HalfSizes = {0.1, 0.1, 0.1}
-}
-
 PICKER_CONSTANTS.TRANSLATE_PLANE_SQUARE = {
     Inner = 0,
     HalfSize = 0.4
 }
 
-PICKER_CONSTANTS.TRANSLATE_AXIS_CYLINDER = {
-    Radius = 0.03,
-    Height = 1.5
-}
-
 PICKER_CONSTANTS.TRANSLATE_AXIS_BB = {
-    HalfSizes = {0.03, 0.03, 0.45}
+    HalfSize = 0.03,
+    Length = 1.1,
 }
 
-PICKER_CONSTANTS.ROTATE_CYLINDER = {
-    Radius = 1,
-    Height = 0.05
-}
-
-PICKER_CONSTANTS.ROTATE_BB = {
-    HalfSizes = {1.0, 0.05, 1.0}
+PICKER_CONSTANTS.SCALE_AXIS_BB = {
+    HalfSize = 0.03,
+    Length = 0.9,
 }
 
 PICKER_CONSTANTS.ROTATE_RING = {
@@ -36,31 +24,175 @@ PICKER_CONSTANTS.ROTATE_RING = {
     OuterRadius = 0.65
 }
 
-if GLOBAL_DEBUG_WINDOW then
-    local header = GLOBAL_DEBUG_WINDOW:AddCollapsingHeader("Gizmo Picker Constants")
-    for name,constant in pairs(PICKER_CONSTANTS) do
-        local node = header:AddTree(name)
-        for k,v in pairs(constant) do
-            local getter = function ()
-                return constant[k]
-            end
-            local setter = function (val)
-                constant[k] = val
-            end
+--- @class GizmoPickerHitPart
+--- @field Name string
+--- @field Priority number -- Lower number = higher priority
+--- @field PreferMode TransformEditorMode -- Optional preferred mode for this part
+--- @field Mode table<TransformEditorMode, boolean> -- Modes this part is active in
+--- @field Axis table<TransformAxis, boolean> -- Axes this part is associated with
+--- @field HitTest fun(picker: GizmoPicker, localRay: Ray):Hit?
+--- @field UpdateScale fun(picker: GizmoPicker, scale: number)
 
-            StyleHelpers.AddNumberSliders(node, k, getter, setter, { IsColor = false, ResetValue = constant[k], Range = {0, 5, 0.01} })
+local PICKER_HIT_PARTS = {}
+local AxisIndexMap = AxisIndexMap
+local axisNames = { "X", "Y", "Z" }
+local localOrigin = Vec3.new(0, 0, 0)
+
+local makeCenterSphere = function()
+    local centerSphereRadius = PICKER_CONSTANTS.CENTER_SPHERE.Radius
+    return {
+        Name = "CenterSphere",
+        Priority = 0,
+        PreferMode = "Scale",
+        Mode = { Translate = true, Scale = true },
+        Axis = { X = true, Y = true, Z = true },
+        ---@param picker GizmoPicker
+        ---@param localRay Ray
+        HitTest = function(picker, localRay)
+            return localRay:IntersectSphere(localOrigin, centerSphereRadius)
+        end,
+        UpdateScale = function(picker, scale)
+            centerSphereRadius = PICKER_CONSTANTS.CENTER_SPHERE.Radius * scale
+        end,
+    }
+end
+
+--- @param axis TransformAxis
+--- @return GizmoPickerHitPart
+local function makeTranslateBB(axis)
+    local idx = AxisIndexMap[axis]
+    local halfSize = PICKER_CONSTANTS.TRANSLATE_AXIS_BB.HalfSize
+    local max = Vec3.new(halfSize, halfSize, halfSize)
+    local min = -max
+    max[idx] = PICKER_CONSTANTS.TRANSLATE_AXIS_BB.Length
+    return {
+        Name = "TranslateAxis" .. axis,
+        Priority = 2,
+        PreferMode = "Translate",
+        Mode = { Translate = true },
+        Axis = { [axis] = true },
+        ---@param picker GizmoPicker
+        ---@param localRay Ray
+        HitTest = function(picker, localRay)
+            return localRay:IntersectAABB(min, max)
+        end,
+        UpdateScale = function(picker, scale)
+            halfSize = PICKER_CONSTANTS.TRANSLATE_AXIS_BB.HalfSize * scale
+            max = Vec3.new(halfSize, halfSize, halfSize)
+            min = -max
+            max[idx] = PICKER_CONSTANTS.TRANSLATE_AXIS_BB.Length * scale
+        end,
+    }
+end
+
+--- @param axis TransformAxis
+--- @return GizmoPickerHitPart
+local makeScaleBB = function(axis)
+    local idx = AxisIndexMap[axis]
+    local halfSize = PICKER_CONSTANTS.SCALE_AXIS_BB.HalfSize
+    local max = Vec3.new(halfSize, halfSize, halfSize)
+    local min = -max
+    max[idx] = PICKER_CONSTANTS.SCALE_AXIS_BB.Length
+    return {
+        Name = "ScaleAxis" .. axis,
+        Priority = 1,
+        PreferMode = "Scale",
+        Mode = { Scale = true },
+        Axis = { [axis] = true },
+        ---@param picker GizmoPicker
+        ---@param localRay Ray
+        HitTest = function(picker, localRay)
+            return localRay:IntersectAABB(min, max)
+        end,
+        UpdateScale = function(picker, scale)
+            halfSize = PICKER_CONSTANTS.SCALE_AXIS_BB.HalfSize * scale
+            max = Vec3.new(halfSize, halfSize, halfSize)
+            min = -max
+            max[idx] = PICKER_CONSTANTS.SCALE_AXIS_BB.Length * scale
+        end,
+    }
+end
+
+local function makePlaneSquare(axis)
+    local normal = GLOBAL_COORDINATE[axis]
+    local halfSize = PICKER_CONSTANTS.TRANSLATE_PLANE_SQUARE.HalfSize
+    local inner = PICKER_CONSTANTS.TRANSLATE_PLANE_SQUARE.Inner
+    local hitAxes = {}
+    for _, a in pairs(axisNames) do
+        if a ~= axis then
+            hitAxes[a] = true
         end
     end
-    GLOBAL_DEBUG_WINDOW.Open = true
+    --- @type GizmoPickerHitPart
+    return {
+        Name = "PlaneSquare" .. axis,
+        Priority = 3,
+        PreferMode = "Translate",
+        Mode = { Translate = true, Scale = true },
+        Axis = hitAxes,
+        ---@param picker GizmoPicker
+        ---@param localRay Ray
+        HitTest = function(picker, localRay)
+            local hit = localRay:IntersectPlane(localOrigin, normal, true)
+            if not hit or not hit.Position then return nil end
+
+            local dist = hit.Position - localOrigin
+
+            for a, _ in pairs(hitAxes) do
+                local val = dist[a]
+                if val < 0 then
+                    return nil
+                end
+
+                if val > halfSize or val < inner then
+                    return nil
+                end
+            end
+
+            return hit
+        end,
+        UpdateScale = function(picker, scale)
+            halfSize = PICKER_CONSTANTS.TRANSLATE_PLANE_SQUARE.HalfSize * scale
+            inner = PICKER_CONSTANTS.TRANSLATE_PLANE_SQUARE.Inner * scale
+        end,
+    }
+end
+
+local function makeRotateRing(axis)
+    local innerRadius = PICKER_CONSTANTS.ROTATE_RING.InnerRadius
+    local outerRadius = PICKER_CONSTANTS.ROTATE_RING.OuterRadius
+    local normal = GLOBAL_COORDINATE[axis]
+    --- @type GizmoPickerHitPart
+    return {
+        Name = "RotateRing" .. axis,
+        Priority = 2,
+        PreferMode = "Rotate",
+        Mode = { Rotate = true },
+        Axis = { [axis] = true },
+        ---@param picker GizmoPicker
+        ---@param localRay Ray
+        HitTest = function(picker, localRay)
+            return localRay:IntersectRing(
+                localOrigin,
+                normal,
+                innerRadius,
+                outerRadius
+            )
+        end,
+        UpdateScale = function(picker, scale)
+            innerRadius = PICKER_CONSTANTS.ROTATE_RING.InnerRadius * scale
+            outerRadius = PICKER_CONSTANTS.ROTATE_RING.OuterRadius * scale
+        end,
+    }
 end
 
 --- @class GizmoPicker
---- @field Gizmo Gizmo
+--- @field Gizmo TransformGizmo
 --- @field Position Vec3
 --- @field Rotation Quat
---- @field AABB AABound|nil
 --- @field Scale number
---- @field new fun(gizmo: Gizmo): GizmoPicker
+--- @field HitParts GizmoPickerHitPart[]
+--- @field new fun(gizmo: TransformGizmo): GizmoPicker
 --- @field GetTransform fun(self: GizmoPicker): (Vec3?, Quat?)
 --- @field GetAxes fun(self: GizmoPicker, origin: Vec3?, rotation: Quat?): table<TransformAxis, Vec3>
 --- @field Hit fun(self: GizmoPicker, ray: Ray): (GizmoPickerHit|nil)
@@ -76,23 +208,26 @@ GizmoPicker = _Class("GizmoPicker")
 function GizmoPicker:__init(gizmo, position, rotation)
     self.Gizmo = gizmo
     self.Parameters = DeepCopy(PICKER_CONSTANTS)
-    self.Position = position or Vec3.new({0,0,0})
-    self.Rotation = rotation or Quat.new({0,0,0,1})
-    self.AABB = nil
+    self.Position = position or Vec3.new({ 0, 0, 0 })
+    self.Rotation = rotation or Quat.new({ 0, 0, 0, 1 })
     self.Scale = 1.0
+
+    self.HitParts = { makeCenterSphere() }
+    for _, axis in pairs(axisNames) do
+        self.HitParts[#self.HitParts + 1] = makeTranslateBB(axis)
+        self.HitParts[#self.HitParts + 1] = makeScaleBB(axis)
+        self.HitParts[#self.HitParts + 1] = makeRotateRing(axis)
+        self.HitParts[#self.HitParts + 1] = makePlaneSquare(axis)
+    end
+    table.sort(self.HitParts, function(a, b)
+        return a.Priority < b.Priority
+    end)
 end
 
 function GizmoPicker:UpdateParamsByScale()
-    for name,constant in pairs(self.Parameters) do
-        local base = PICKER_CONSTANTS[name]
-        for k,v in pairs(constant) do
-            if type(v) ~= "number" then
-                for i=1,#v do
-                    constant[k][i] = base[k][i] * (self.Scale or 1)
-                end
-            else
-                constant[k] = base[k] * (self.Scale or 1)
-            end
+    for _, part in pairs(self.HitParts) do
+        if part.UpdateScale then
+            part.UpdateScale(self, self.Scale)
         end
     end
 end
@@ -100,23 +235,15 @@ end
 function GizmoPicker:SetTransform(pos, rot, scale)
     self.Position = pos or self.Position
     self.Rotation = rot or self.Rotation
-
     self.Scale = scale or self.Scale
 
-    local min = Vec3.new(-1,-1,-1) * scale
-    local max = Vec3.new(1,1,1) * scale
+    self:UpdateParamsByScale()
 
-    local worldMin = Ext.Math.Add(self.Position, min)
-    local worldMax = Ext.Math.Add(self.Position, max)
-
-    self.AABB = { Min = worldMin, Max = worldMax }
     self.axesDirty = true
 end
 
 --- @return Vec3|nil, Quat|nil
 function GizmoPicker:GetTransform()
-    self:UpdateParamsByScale()
-
     return self.Position, self.Rotation
 end
 
@@ -149,126 +276,57 @@ function GizmoPicker:GetAxes(origin, rotation)
 end
 
 --- @class GizmoPickerHit
---- @field Axis table<'X' | 'Y' | 'Z', boolean>
+--- @field Axis table<TransformAxis, boolean>
+--- @field HitMode TransformEditorMode
 --- @field Hit Hit
 
---- @param ray Ray
+--- @param ray Ray -- in world space
 --- @return GizmoPickerHit|nil
 function GizmoPicker:Hit(ray)
-    local mode = self.Gizmo and self.Gizmo.Mode or "Translate"
+    local mode = self.Gizmo and self.Gizmo.ActiveMode or "Translate"
 
     local origin, rotation = self:GetTransform()
-    if not origin or not rotation then Warning("GizmoPicker:Hit: No transform found") return nil end
 
-    local params = self.Parameters
-
-    -- Check AABB first
-    local aabb = self.AABB or {Min=Vec3.new(-1,-1,-1), Max=Vec3.new(1,1,1)}
-    local gizmoAABBHit = ray:IntersectAABB(aabb.Min, aabb.Max)
-    if not gizmoAABBHit or not gizmoAABBHit.Position then return nil end
-
-    local axes = self:GetAxes(origin, rotation)
-    --- @diagnostic disable-next-line
-    if mode == "Rotate" then return self:HitRotationTorus(ray, origin, rotation, axes) end
-
-    -- Check center OBBs next
-    local closestHit = nil
-    local hitAxes = nil
-    local centerHalfSizes = Vec3.new(params.CENTER_BB.HalfSizes)
-    if self.Gizmo.Mode == "Scale" then
-        centerHalfSizes = centerHalfSizes * 3
+    if not origin or not rotation then
+        Warning("GizmoPicker:Hit: No transform found")
+        return nil
     end
 
-    local centerHit = ray:IntersectOBB(origin, centerHalfSizes, rotation)
-    if centerHit and centerHit.Position then
-        hitAxes = {X=true, Y=true, Z=true}
-        closestHit = centerHit
-    end
+    -- Check Sphere first
+    local gizmoSphereHit = ray:IntersectSphere(origin, self.Scale * 1.1)
+    if not gizmoSphereHit or not gizmoSphereHit.Position then return nil end
 
-    -- Check axis OBBs next
-    for axis,dir in pairs(axes) do
-        local axisCenter = origin + dir * params.TRANSLATE_AXIS_BB.HalfSizes[3]
-        local obbRotation = DirectionToQuat(dir)
-        local halfSizes = Vec3.new(params.TRANSLATE_AXIS_BB.HalfSizes)
+    local localRay = ray:ToLocal({
+        Translate = origin,
+        RotationQuat = rotation,
+    })
 
-        local hit = ray:IntersectOBB(axisCenter, halfSizes, obbRotation)
-        if hit and hit.Position then
-            if hit:IsCloserThan(closestHit) then
-                hitAxes = {[axis]=true}
-                closestHit = hit
-            end
-        end
-    end
-
-    -- Check plane squares last
-    local planeAxes = {
-        {X=true,Y=true},
-        {Y=true,Z=true},
-        {X=true,Z=true}
+    local isUniformMode = mode == "Transform"
+    local bestHit = {
+        Hit = {}
     }
-    for _,plane in pairs(planeAxes) do
-        local planeHit = self:HitPlaneByAxes(ray, plane)
-        local halfSize = params.TRANSLATE_PLANE_SQUARE.HalfSize
-        if planeHit and planeHit.Position then
-            local dist = planeHit.Position - origin
-            local localPos = Vec3.new(
-                Ext.Math.Dot(dist, axes.X),
-                Ext.Math.Dot(dist, axes.Y),
-                Ext.Math.Dot(dist, axes.Z)
-            )
-
-            local halfSize = params.TRANSLATE_PLANE_SQUARE.HalfSize
-            local inner = params.TRANSLATE_PLANE_SQUARE.Inner
-            for axis,_ in pairs(plane) do
-                if localPos[axis] < 0 then
-                    goto continue
-                end
-
-                if localPos[axis] > halfSize or localPos[axis] < inner then
-                    goto continue
-                end
-            end
-
-            if planeHit and planeHit.Position then
-                if planeHit:IsCloserThan(closestHit) then
-                    closestHit = planeHit
-                    hitAxes = plane
-                end
-                
-            end
-        end
-
-        ::continue::
-    end
-
-    return closestHit and {
-        Axis = hitAxes,
-        Hit = closestHit
-    } or nil
-end
-
---- @param ray Ray
---- @return GizmoPickerHit|nil
-function GizmoPicker:HitRotationTorus(ray, origin, rotation, axes)
-    -- Check rotation torus next
-    local closest = nil
-    local closestAxis = nil
-    for axis,dir in pairs(axes) do
-        local params = self.Parameters.ROTATE_RING
-        local hit = ray:IntersectRing(origin, dir, params.InnerRadius, params.OuterRadius)
-        --local hit = ray:IntersectTorus(origin, ROTATE_TORUS.MajorRadius, ROTATE_TORUS.MinorRadius, dir) I give up
-        if hit and hit.Position then
-            if hit:IsCloserThan(closest) then
-                closest = hit
-                closestAxis = axis
+    for _, part in pairs(self.HitParts) do
+        if isUniformMode or part.Mode[mode] then
+            local hit = part.HitTest(self, localRay)
+            if hit and hit.Position and hit:IsCloserThan(bestHit.Hit) then
+                bestHit = {
+                    Axis = part.Axis,
+                    HitMode = isUniformMode and part.PreferMode or mode,
+                    Hit = hit,
+                }
             end
         end
     end
 
-    return closest and {
-        Axis = {[closestAxis]=true},
-        Hit = closest
-    } or nil
+    -- since this function is only used for hovering and clicking, there is no need to transform the hit back to world space
+    --[[if bestHit.Hit.Position then
+        bestHit.Hit = bestHit.Hit:Transform({
+            Translate = origin,
+            RotationQuat = rotation,
+        })
+    end]]
+
+    return bestHit.Hit.Position and bestHit or nil
 end
 
 ---@param ray Ray
@@ -280,9 +338,9 @@ function GizmoPicker:ClosestPointOnAxis(ray, axis)
     local dir = axisMap[axis]
     if not dir or not origin then
         Warning("GizmoPicker:ClosestPointOnAxis: Invalid axis: ", tostring(axis))
-        return origin or Vec3.new(0,0,0)
+        return origin or Vec3.new(0, 0, 0)
     end
-    
+
     local gizmoRay = Ray.new(origin, dir)
     local closestPoint = gizmoRay:ClosestTTo(ray, true)
 
@@ -330,7 +388,7 @@ function GizmoPicker:HitPlaneByAxes(ray, axes)
     local axis1 = nil
     local axis2 = nil
     local axisMap = self:GetAxes()
-    for axis,_ in pairs(axes) do
+    for axis, _ in pairs(axes) do
         if not axis1 then
             axis1 = axisMap[axis]
         elseif not axis2 then
@@ -364,9 +422,9 @@ function GizmoPicker:HitPlanePerpToAxis(ray, axis)
         return self:HitPlaneByNormal(ray, axis)
     end
 
-    local axes = {X = true, Y = true, Z = true}
+    local axes = { X = true, Y = true, Z = true }
     axes[axis] = nil
-    
+
     if not axes.X and not axes.Y and not axes.Z then
         Warning("GizmoPicker:HitPlanePerpToAxis: Invalid axis: ", tostring(axis))
         return nil
@@ -377,7 +435,7 @@ end
 function GizmoPicker:ClosestPlane(ray)
     local perpAxis = nil
     local closestHit = nil
-    for _,axis in pairs({"X","Y","Z"}) do
+    for _, axis in pairs({ "X", "Y", "Z" }) do
         local hit = self:HitPlanePerpToAxis(ray, axis)
         if not closestHit or (hit and hit:IsCloserThan(closestHit)) then
             closestHit = hit
@@ -394,7 +452,7 @@ function GizmoPicker:ClosestAxis(ray)
     local axes = self:GetAxes(origin, rotation)
     local closestAxis = nil
     local closestDist = math.huge
-    for axis,dir in pairs(axes) do
+    for axis, dir in pairs(axes) do
         --- @diagnostic disable-next-line
         local pointOnAxis = self:ClosestPointOnAxis(ray, axis)
         local dist = Ext.Math.Distance(pointOnAxis, origin)

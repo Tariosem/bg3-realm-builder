@@ -3,6 +3,7 @@
 --- @field Direction Vec3
 --- @field new fun(origin:Vec3|Vec, direction:Vec3|Vec):Ray
 --- @field At fun(self:Ray, t:number):Vec3
+--- @field Transform fun(self:Ray, transform:Transform):Ray
 --- @field IntersectPlane fun(self:Ray, planePoint:Vec3, planeNormal:Vec3, includeBehind?:boolean):Hit|nil
 --- @field IntersectAABB fun(self:Ray, min:Vec3, max:Vec3):Hit|nil, Hit[]|nil
 --- @field IntersectOBB fun(self:Ray, obbCenter:Vec3, halfsizes:Vec3, rotation:Quat):Hit|nil, Hit[]|nil
@@ -22,6 +23,25 @@ end
 
 function Ray:__tostring()
     return string.format("Ray(Origin: %s, Direction: %s)", tostring(self.Origin), tostring(self.Direction))
+end
+
+---@param transform Transform
+---@return Ray
+function Ray:Transform(transform)
+    local translate = transform.Translate
+    local rotation = transform.RotationQuat
+    local newOrigin = rotation * self.Origin + translate
+    local newDirection = rotation * self.Direction
+    return Ray.new(newOrigin, newDirection)
+end
+
+---@param pivotTransform Transform
+---@return Ray
+function Ray:ToLocal(pivotTransform)
+    local invRot = pivotTransform.RotationQuat:Inverse()
+    local localOrigin = invRot:Rotate(self.Origin - pivotTransform.Translate)
+    local localDirection = invRot:Rotate(self.Direction)
+    return Ray.new(localOrigin, localDirection)
 end
 
 --- @param other Ray

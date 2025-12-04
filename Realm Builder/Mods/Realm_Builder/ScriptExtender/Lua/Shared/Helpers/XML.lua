@@ -270,7 +270,7 @@ function XMLNode:__stringify(stringifyOpts, co)
         table.insert(lines, '<?xml version="1.0" encoding="utf-8"?>')
     end
 
-    -- iterative DFS using stack. Each frame: { node<XMLNode>, state<true[enter]/false[exit]>, depth<number> }
+    -- Each frame: { node<XMLNode>, state<true[enter]/false[exit]>, depth<number> }
     local isInCoroutine = co and true or false
     local lastYieldTime = isInCoroutine and Ext.Timer.MicrosecTime() or 0
     local seen = {}
@@ -278,7 +278,6 @@ function XMLNode:__stringify(stringifyOpts, co)
     local top = 1
     while #stack > 0 do
         local frame = stack[top]
-        
         stack[top] = nil -- pop
         top = top - 1
         local node = frame[1]

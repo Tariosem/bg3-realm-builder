@@ -1,5 +1,5 @@
 --- @class TransformEditor
---- @field Gizmo Gizmo|nil
+--- @field Gizmo TransformGizmo|nil
 --- @field Cursor GUIDSTRING|nil
 --- @field Target RB_MovableProxy[]|nil
 --- @field Subscriptions table<string, RBSubscription>
@@ -10,7 +10,7 @@
 --- @field IsDragging boolean
 --- @field SelectionChangedNotif Notification|nil
 --- @field PointVisualizations string[]|nil
---- @field LineVisualizations string[]|nil
+--- @field LineVisualizations (string[])[]|nil
 --- @field registered boolean
 --- @field SetupGizmo fun(self: TransformEditor)
 --- @field RegisterEvents fun(self: TransformEditor)
@@ -28,7 +28,7 @@ TransformEditor = _Class("TransformEditor")
 
 function TransformEditor:__init()
     self.Target = nil
-    self.Gizmo = Gizmo.new(self)
+    self.Gizmo = TransformGizmo.new(self)
     self.Cursor = nil
     self.Subscriptions = {}
     self.Space = "World"
@@ -167,7 +167,7 @@ function TransformEditor:HandleGizmo()
         return
     end
     if not self.Gizmo then
-        self.Gizmo = Gizmo.new(self)
+        self.Gizmo = TransformGizmo.new(self)
 
     end
 
@@ -247,10 +247,10 @@ end
 
 function TransformEditor:SetMode(mode)
     if not Enums.TransformEditorMode[mode] then return end
-    if mode and mode ~= self.Gizmo.Mode then
+    if mode and mode ~= self.Gizmo.ActiveMode then
         self.Gizmo:SetMode(mode)
         --Debug("TransformEditor Mode: "..tostring(self.Gizmo.Mode))
-    elseif mode and mode == self.Gizmo.Mode and not self.IsDragging then
+    elseif mode and mode == self.Gizmo.ActiveMode and not self.IsDragging then
         self.Gizmo:StartDragging()
     end
 end
@@ -299,7 +299,7 @@ function TransformEditor:RegisterEvents()
     self:SetupGizmo()
 end
 
---- @param gizmo Gizmo
+--- @param gizmo TransformGizmo
 --- @param pointTransform Transform
 --- @param index integer
 function TransformEditor:MakePointVisualization(gizmo, pointTransform, index)
@@ -353,20 +353,27 @@ function TransformEditor:MakePointVisualization(gizmo, pointTransform, index)
     end)
 end
 
---- @param gizmo Gizmo
+--- @param gizmo TransformGizmo
 --- @param ray Ray
 --- @param color vec3
 --- @param index integer
 function TransformEditor:MakeAxisLineVisualization(gizmo, ray, color, index)
     local beamDirection = ray.Direction * -1
     local startPoint = ray:At(-30)
+    local secondPoint = ray:At(30)
 
     if self.LineVisualizations[index] then
-        local lineGuid = self.LineVisualizations[index]
+        local lineGuid = self.LineVisualizations[index][1]
+        local line2Guid = self.LineVisualizations[index][2]
         gizmo.Visualizer:SetLineFxColor(lineGuid, color)
+        gizmo.Visualizer:SetLineFxColor(line2Guid, color)
         local newLineTransform = {
             Translate = startPoint,
             RotationQuat = DirectionToQuat(beamDirection),
+        }
+        local newLine2Transform = {
+            Translate = secondPoint,
+            RotationQuat = DirectionToQuat(ray.Direction)
         }
         NetChannel.SetTransform:RequestToServer({ Guid = lineGuid, Transforms = {[lineGuid] = newLineTransform} }, function (response)
             -- prevent flickering
@@ -375,9 +382,16 @@ function TransformEditor:MakeAxisLineVisualization(gizmo, ray, color, index)
                 gizmo.Visualizer:SetLineLength(lineGuid, 200)
             end)
         end)
+        NetChannel.SetTransform:RequestToServer({ Guid = line2Guid, Transforms = {[line2Guid] = newLine2Transform }}, function (response)
+            Timer:Ticks(5, function (timerID)
+                if not self.IsDragging then return end
+                gizmo.Visualizer:SetLineLength(line2Guid, 200)
+            end)
+        end)
         return
     end
 
+    self.LineVisualizations[index] = {}
     NetChannel.Visualize:RequestToServer({
         Type = "Line",
         Position = startPoint,
@@ -392,7 +406,23 @@ function TransformEditor:MakeAxisLineVisualization(gizmo, ray, color, index)
             gizmo.Visualizer:SetLineFxColor(viz, color)
             gizmo.Visualizer:SetLineLength(viz, 200)
         end, 300)
-        table.insert(self.LineVisualizations, viz)
+        table.insert(self.LineVisualizations[index], viz)
+    end)
+    NetChannel.Visualize:RequestToServer({
+        Type = "Line",
+        Position = secondPoint,
+        EndPosition = ray:At(-100),
+        Width = gizmo.Visualizer.Scale[1] * 0.3,
+        Duration = -1,
+    }, function (response)
+        local viz = response[1]
+        WaitUntil(function ()
+            return VisualHelpers.GetEntityVisual(viz) ~= nil
+        end, function ()
+            gizmo.Visualizer:SetLineFxColor(viz, color)
+            gizmo.Visualizer:SetLineLength(viz, 200)
+        end, 300)
+        table.insert(self.LineVisualizations[index], viz)
     end)
 end
 
@@ -400,7 +430,7 @@ end
 
 function TransformEditor:SetupGizmo()
     if not self.Gizmo then
-        self.Gizmo = Gizmo.new(self)
+        self.Gizmo = TransformGizmo.new(self)
     end
 
     local GetRottt = function(gizmo)
@@ -420,10 +450,10 @@ function TransformEditor:SetupGizmo()
         self.LineVisualizations = self.LineVisualizations or {}
 
         for i=#self.LineVisualizations, 1, -1 do
-            local guid = self.LineVisualizations[i]
-            if not EntityExists(guid) then
-                NetChannel.Delete:RequestToServer({ Guid = guid }, function (response)
-                    
+            local guids = self.LineVisualizations[i]
+            if not EntityExists(guids[1]) or not EntityExists(guids[2]) then
+                NetChannel.Delete:RequestToServer({ Guid = guids }, function (response)
+                    -- make sure it's dead
                 end)
                 table.remove(self.LineVisualizations, i)
             end
@@ -439,105 +469,76 @@ function TransformEditor:SetupGizmo()
             end
         end
 
-        if gizmo.Mode == "Rotate" and gizmo.SelectedAxis and CountMap(gizmo.SelectedAxis) > 1 then
-            for _,v in pairs(self.LineVisualizations or {}) do
-                gizmo.Visualizer:SetLineLength(v, 0)
-            end
-            for _,v in pairs(self.PointVisualizations or {}) do
-                gizmo.Visualizer:HideGizmo(v)
-            end
+        for _,v in pairs(self.LineVisualizations or {}) do
+            gizmo.Visualizer:SetLineLength(v[1], 0)
+            gizmo.Visualizer:SetLineLength(v[2], 0)
+        end
+        for _,v in pairs(self.PointVisualizations or {}) do
+            gizmo.Visualizer:HideGizmo(v)
+        end
+
+        local selectedCnt = CountMap(gizmo.SelectedAxis)
+        if gizmo.ActiveMode == "Rotate" and gizmo.SelectedAxis and selectedCnt > 1 then
             return
         end
 
+        local pivotPos, pivotRot = gizmo:GetPickerTransform()
+
+        local newPointTransform = {
+            Translate = pivotPos,
+            RotationQuat = pivotRot,
+        }
+        self:MakePointVisualization(gizmo, newPointTransform, 1)
+
+        if selectedCnt > 2 then return end -- skip axis visualizations
+
+        -- make axis visualizations
         -- only calculate one visualization for space modes that use a common rotation
         if commonOriention[self.Space] then
-            local pivotPos, pivotRot = gizmo:GetPickerTransform()
-
-            local newPointTransform = {
-                Translate = pivotPos,
-                RotationQuat = pivotRot,
-            }
-            self:MakePointVisualization(gizmo, newPointTransform, 1)
-
-            if CountMap(gizmo.SelectedAxis) ~= 1 then 
-                for _,v in pairs(self.LineVisualizations or {}) do
-                    gizmo.Visualizer:SetLineLength(v, 0)
-                end
-                return
-            end
-
-            local selectedAxis = nil
             local color = nil
-            for axis,_ in pairs(gizmo.SelectedAxis) do
+            local cnt = 1
+            for _, axis in pairs({"X", "Y", "Z"}) do
+                if not gizmo.SelectedAxis[axis] then goto continue end
                 color = gizmo.Visualizer.AxisLineColor[axis] or {0.9, 0.9, 0.9, 0.8}
-                selectedAxis = axis
-                if self.LineVisualizations and #self.LineVisualizations > 0 then
-                    gizmo.Visualizer:SetLineFxColor(self.LineVisualizations[1], color)
-                end
-            end
 
-            if not pivotRot then return end
-            local vector = GLOBAL_COORDINATE[selectedAxis]
-            local ray = Ray.new(pivotPos, pivotRot:Rotate(vector))
-            self:MakeAxisLineVisualization(gizmo, ray, color, 1)
-            return
-        end
-
-        for cnt,proxy in pairs(self.Target or {}) do
-            local transform = proxy:GetSavedTransform()
-            local newPointTransform = {
-                Translate = transform.Translate,
-                RotationQuat = GetRottt(gizmo),
-            }
-            if self.Space == "Local" then
-                newPointTransform.RotationQuat = transform.RotationQuat
-            elseif self.Space == "Parent" then
-                local parent = proxy:GetParent()
-                if parent and EntityExists(parent) then
-                    newPointTransform.RotationQuat = parent:GetSavedTransform().RotationQuat
-                else
-                    newPointTransform.RotationQuat = Quat.Identity()
-                end
-            end
-
-            if transform and transform.Translate then
-                self:MakePointVisualization(gizmo, newPointTransform, cnt)
-            end
-        end
-
-        if CountMap(gizmo.SelectedAxis) ~= 1 then 
-            for _,v in pairs(self.LineVisualizations or {}) do
-                gizmo.Visualizer:SetLineLength(v, 0)
+                if not pivotRot then return end
+                local vector = GLOBAL_COORDINATE[axis]
+                local ray = Ray.new(pivotPos, pivotRot:Rotate(vector))
+                self:MakeAxisLineVisualization(gizmo, ray, color, cnt)
+                cnt = cnt + 1
+                ::continue::
             end
             return
         end
 
-        local color = nil
-        local selectedAxis = nil
-        for axis,_ in pairs(gizmo.SelectedAxis) do
+        local cnt = 1
+        local offset = #self.Target or 0
+        for _, axis in pairs({"X", "Y", "Z"}) do
+            if cnt > 2 then break end
+            if not gizmo.SelectedAxis[axis] then goto continue end
+            local color = nil
             color = gizmo.Visualizer.AxisLineColor[axis] or {0.9, 0.9, 0.9, 0.8}
-            selectedAxis = axis
-            if self.LineVisualizations and #self.LineVisualizations > 0 then
-                gizmo.Visualizer:SetLineFxColor(self.LineVisualizations[1], color)
-            end
-        end
-        for cnt,proxy in pairs(self.Target or {}) do
-            local transform = proxy:GetSavedTransform()
-            local rot = GetRottt(gizmo)
-            if self.Space == "Local" then
-                rot = Quat.new(transform.RotationQuat)
-            elseif self.Space == "Parent" then
-                local parent = proxy:GetParent()
-                if parent and EntityExists(parent) then
-                    rot = Quat.new(parent:GetSavedTransform().RotationQuat)
-                else
-                    rot = Quat.Identity()
+
+            for targetCnt,proxy in pairs(self.Target or {}) do
+                local transform = proxy:GetSavedTransform()
+                local rot = GetRottt(gizmo)
+                if self.Space == "Local" then
+                    rot = Quat.new(transform.RotationQuat)
+                elseif self.Space == "Parent" then
+                    local parent = proxy:GetParent()
+                    if parent and EntityExists(parent) then
+                        rot = Quat.new(parent:GetSavedTransform().RotationQuat)
+                    else
+                        rot = Quat.Identity()
+                    end
                 end
+                if not rot then return end
+                local vector = GLOBAL_COORDINATE[axis]
+                local ray = Ray.new(transform.Translate, rot:Rotate(vector))
+                self:MakeAxisLineVisualization(gizmo, ray, color, targetCnt + offset * (cnt -1))
             end
-            if not rot then return end
-            local vector = GLOBAL_COORDINATE[selectedAxis]
-            local ray = Ray.new(transform.Translate, rot:Rotate(vector))
-            self:MakeAxisLineVisualization(gizmo, ray, color, cnt)
+            cnt = cnt + 1
+            ::continue::
         end
     end
 
@@ -686,7 +687,8 @@ function TransformEditor:SetupGizmo()
 
     self.Gizmo.OnDragEnd = function(gizmo, isCancelled)
         for _,v in pairs(self.LineVisualizations or {}) do
-            gizmo.Visualizer:SetLineLength(v, 0)
+            gizmo.Visualizer:SetLineLength(v[1], 0)
+            gizmo.Visualizer:SetLineLength(v[2], 0)
         end
         for _,v in pairs(self.PointVisualizations or {}) do
             gizmo.Visualizer:HideGizmo(v)

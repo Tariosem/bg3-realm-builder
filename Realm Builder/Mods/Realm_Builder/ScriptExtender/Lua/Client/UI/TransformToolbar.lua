@@ -84,7 +84,7 @@ function TransformToolbar:RegisterKeyInputEvents()
             local selectedAxis = RB_GLOBALS.TransformEditor.Gizmo and RB_GLOBALS.TransformEditor.Gizmo.SelectedAxis
             RB_GLOBALS.TransformEditor.Gizmo:CancelDragging()
 
-            self:SetupOperator(RB_GLOBALS.TransformEditor.Gizmo.Mode, self:GetCurrentSpace(), selectedAxis)
+            self:SetupOperator(RB_GLOBALS.TransformEditor.Gizmo.ActiveMode, self:GetCurrentSpace(), selectedAxis)
         end
     end)
 

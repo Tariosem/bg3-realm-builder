@@ -1486,6 +1486,16 @@ function StyleHelpers.RenderGeneralTableEditor(parent, o, onSet)
     end
 end
 
+function StyleHelpers.ApplyWarningTooitipStyle(tooltip)
+    tooltip:SetColor("Text", HexToRGBA("FFFF0000"))
+    tooltip:SetColor("Border", HexToRGBA("FFFF4444"))
+    tooltip:SetColor("WindowBg", HexToRGBA("FF220000"))
+    tooltip:SetStyle("FrameBorderSize", 2)
+    tooltip:SetStyle("WindowBorderSize", 2)
+    tooltip:SetStyle("PopupBorderSize", 2)
+    tooltip:SetStyle("ChildBorderSize", 2)
+end
+
 --- @param parent ExtuiTreeParent
 --- @param getter fun():any
 --- @param setter fun(newValue:FixedString)
@@ -1505,14 +1515,20 @@ function StyleHelpers.RenderTexturePopup(parent, getter, setter)
     local res = Ext.Resource.Get(propertyValue, "Texture") --[[@as ResourceTextureResource]]
     local popup = parent:AddPopup("EditStringParameterPopup##" .. id)
     local alignedTable = StyleHelpers.AddAlignedTable(popup)
-    local getAllUnderPathCehck = alignedTable:AddCheckbox("Exact Folder", false)
-    getAllUnderPathCehck:Tooltip():AddText("Only shows textures directly in this folder (no subfolders).")
     local searchInput = alignedTable:AddInputText("Search Texture", res and LSXHelpers.GetPathAfterData(res.SourceFile) or "Public/")
     searchInput.SizeHint = {1000 * SCALE_FACTOR, 0}
-    local allCombo = alignedTable:AddCombo("Change Texture")
+    local allCombo, comboCell = alignedTable:AddCombo("Change Texture")
+    local exceedImage = comboCell:AddImage(RB_ICONS.Exclamation, IMAGESIZE.FRAME) --[[@as ExtuiImage]]
+    exceedImage.Tint = {1, 0, 0, 1}
+    exceedImage.SameLine = true
+    local exceedTooltip = exceedImage:Tooltip()
+    StyleHelpers.ApplyWarningTooitipStyle(exceedTooltip)
+    exceedTooltip:AddText("Too many results! Some results are not shown. Please refine your search.")
+    exceedImage.Visible = false
     allCombo.HeightLarge = true
     searchInput.OnChange = function()
-        local allRes = TextureResourceManager:GetAllTextureResourceUnderPath(searchInput.Text, getAllUnderPathCehck.Checked)
+        local allRes, exceed = TextureResourceManager:GetAllTextureResourceUnderPath(searchInput.Text)
+        exceedImage.Visible = exceed
         local options = {}
         optionToId = {}
         local seenSourceFiles = {}
@@ -1529,9 +1545,6 @@ function StyleHelpers.RenderTexturePopup(parent, getter, setter)
             optionToId[#options] = textureRes.ResourceUUID
         end
         allCombo.Options = options
-    end
-    getAllUnderPathCehck.OnChange = function()
-        searchInput:OnChange()
     end
 
     allCombo.OnChange = function()

@@ -592,7 +592,8 @@ Enums.TransformEditorSpace = {
 Enums.TransformEditorMode = {
     Translate = "Translate",
     Rotate = "Rotate",
-    Scale = "Scale"
+    Scale = "Scale",
+    Transform = "Transform"
 }
 
 --- @enum TransformEditorPivotMode

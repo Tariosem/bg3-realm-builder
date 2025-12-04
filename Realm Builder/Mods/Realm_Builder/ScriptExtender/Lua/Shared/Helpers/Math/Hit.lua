@@ -33,6 +33,17 @@ function Hit:IsCloserThan(other)
     return self.Distance < (other and other.Distance or math.huge)
 end
 
+---@param transform Transform
+function Hit:Transform(transform)
+    local pos = transform.Translate
+    local rot = transform.RotationQuat
+
+    local newPosition = self.Position and (rot * self.Position + pos) or nil
+    local newNormal = self.Normal and (rot * self.Normal) or nil
+
+    return Hit.new(newPosition, newNormal, self.Distance, self.Target)
+end
+
 ---@param other Hit
 ---@return Vec3 ?
 function Hit:__sub(other)

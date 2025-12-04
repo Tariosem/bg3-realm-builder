@@ -1,6 +1,7 @@
---- @class Gizmo
+--- @class TransformGizmo
 --- @field Editor TransformEditor
 --- @field Mode TransformEditorMode
+--- @field ActiveMode TransformEditorMode
 --- @field SelectedAxis table<TransformAxis, boolean> | nil
 --- @field HoveredAxis table<TransformAxis, boolean> | nil
 --- @field StartHit Hit | nil
@@ -17,17 +18,18 @@
 --- @field Visualizer GizmoVisualizer 
 --- @field Subscriptions table<string, RBSubscription>
 --- @field Timers table<string, TimerID>
---- @field new fun(editor: TransformEditor): Gizmo
---- @field OnDragStart fun(self: Gizmo)
---- @field OnDragTranslate fun(self: Gizmo, delta: Vec3)
---- @field OnDragRotate fun(self: Gizmo, delta: { Angle:number, Axis:Vec3 })
---- @field OnDragScale fun(self: Gizmo, delta: Vec3)
---- @field OnDragEnd fun(self: Gizmo)
-Gizmo = _Class("Gizmo")
+--- @field new fun(editor: TransformEditor): TransformGizmo
+--- @field OnDragStart fun(self: TransformGizmo)
+--- @field OnDragTranslate fun(self: TransformGizmo, delta: Vec3)
+--- @field OnDragRotate fun(self: TransformGizmo, delta: { Angle:number, Axis:Vec3 })
+--- @field OnDragScale fun(self: TransformGizmo, delta: Vec3)
+--- @field OnDragEnd fun(self: TransformGizmo)
+TransformGizmo = _Class("Gizmo")
 
-function Gizmo:__init(editor)
+function TransformGizmo:__init(editor)
     self.Editor = editor
     self.Mode = "Translate"
+    self.ActiveMode = "Translate"
     self.SelectedAxis = nil
     self.HoveredAxis = nil
     self.DisableHover = false
@@ -49,23 +51,23 @@ function Gizmo:__init(editor)
 end
 
 --- emit a zero-delta drag event
-function Gizmo:EmptyDrag()
+function TransformGizmo:EmptyDrag()
     self._delta = nil
     self._accuDelta = nil
-    if self.Mode == "Rotate" then
+    if self.ActiveMode == "Rotate" then
         self:OnDragRotate({ Angle = 0, Axis = Vec3.new { 0, 0, 0 } })
-    elseif self.Mode == "Translate" then
+    elseif self.ActiveMode == "Translate" then
         self:OnDragTranslate(Vec3.new { 0, 0, 0 })
     else
         self:OnDragScale(Vec3.new { 1, 1, 1 })
     end
 end
 
-function Gizmo:SetScale(scale)
+function TransformGizmo:SetScale(scale)
     self.Visualizer.GizmoScale = scale
 end
 
-function Gizmo:UpdatePicker()
+function TransformGizmo:UpdatePicker()
     if not self.PivotPosition or not self.PivotRotation then return end
     if not #self.PivotPosition == 3 then return end
 
@@ -73,11 +75,11 @@ function Gizmo:UpdatePicker()
     self.Picker:SetTransform(self.PivotPosition, self.PivotRotation, scale)
 end
 
-function Gizmo:GetPickerTransform()
+function TransformGizmo:GetPickerTransform()
     return self.Picker.Position, self.Picker.Rotation, self.Picker.Scale
 end
 
-function Gizmo:StartDragging(mouseRay, hit)
+function TransformGizmo:StartDragging(mouseRay, hit)
     mouseRay = mouseRay or ScreenToWorldRay()
     if not mouseRay then
         Warning("Gizmo:DragStart: Failed to get mouse ray")
@@ -98,11 +100,11 @@ function Gizmo:StartDragging(mouseRay, hit)
     self:DragVisualize()
 end
 
-function Gizmo:RestartDragging(mouseRay, axes)
+function TransformGizmo:RestartDragging(mouseRay, axes)
     mouseRay = mouseRay or ScreenToWorldRay()
     axes = axes or DeepCopy(self.SelectedAxis) or { X = true, Y = true, Z = true }
 
-    if self.Mode == Enums.TransformEditorMode.Rotate and CountMap(axes) == 2 then
+    if self.ActiveMode == Enums.TransformEditorMode.Rotate and CountMap(axes) == 2 then
         axes = { [next(axes)] = true }
     end
 
@@ -117,14 +119,14 @@ function Gizmo:RestartDragging(mouseRay, axes)
     self:DragVisualize()
 end
 
-function Gizmo:CancelDragging()
+function TransformGizmo:CancelDragging()
     self:StopWithoutCallbacks()
     self:EmptyDrag()
     self.IsDragging = false
     self:OnDragEnd(true)
 end
 
-function Gizmo:SetupListeners()
+function TransformGizmo:SetupListeners()
     self:StopListeners()
 
     self.Subscriptions["LockAxis"] = SubscribeKeyInput({}, function(e)
@@ -138,17 +140,19 @@ function Gizmo:SetupListeners()
         end
 
         if not GLOBAL_COORDINATE[e.Key] then return end
+        self.SelectedAxis = self.SelectedAxis or {}
 
         local axisToLock = tostring(e.Key):sub(1, 1):upper()
 
-        if self.Mode == "Rotate" then
-            if self.SelectedAxis and self.SelectedAxis[axisToLock] and CountMap(self.SelectedAxis) == 1 then return end
+        local curCnt = CountMap(self.SelectedAxis)
+        if self.ActiveMode == "Rotate" then
+            if self.SelectedAxis and self.SelectedAxis[axisToLock] and curCnt == 1 then return end
             self:RestartDragging(mouseRay, { [axisToLock] = true })
             return
         end
 
         local axes = { X = true, Y = true, Z = true }
-        if self.SelectedAxis and self.SelectedAxis[axisToLock] and CountMap(self.SelectedAxis) == 1 then
+        if self.SelectedAxis and self.SelectedAxis[axisToLock] and curCnt == 1 then
             -- do nothing
         elseif e.Modifiers == "LShift" or e.Modifiers == "RShift" then
             axes[axisToLock] = nil
@@ -156,10 +160,20 @@ function Gizmo:SetupListeners()
             axes = { [axisToLock] = true }
         end
 
+        local newCnt = CountMap(axes)
+        local changed = curCnt ~= newCnt
+        for a, _ in pairs(axes) do
+            if changed then break end
+            if not self.SelectedAxis[a] then
+                changed = true
+            end
+        end
+
+        if not changed then return end
         self:RestartDragging(mouseRay, axes)
     end)
 
-
+    --[[
     self.Subscriptions["MMBLockAxis"] = SubscribeMouseInput({}, function(e)
         if not self.IsDragging then return end
         if not e.Pressed or tonumber(e.Button) ~= 2 then return end
@@ -173,12 +187,12 @@ function Gizmo:SetupListeners()
         local axisToLock = self.Picker:ClosestPlane(mouseRay)
 
         if self.SelectedAxis and self.SelectedAxis[axisToLock] and CountMap(self.SelectedAxis) == 1 then return end
-
         local axes = { [axisToLock] = true }
 
         self:RestartDragging(mouseRay, axes)
     end)
-
+    ]]
+    
     self.Subscriptions["SlowDown"] = SubscribeKeyInput({ Key = "LSHIFT" }, function(e)
         if e.Repeat then return end
         if not self.IsDragging then return end
@@ -198,6 +212,7 @@ function Gizmo:SetupListeners()
             end
             local hit = self.Picker:Hit(mouseRay)
             if not hit or not hit.Axis then return end
+            self.ActiveMode = hit.HitMode or self.ActiveMode
             self:StartDragging(mouseRay, hit)
         end
     end)
@@ -216,8 +231,12 @@ function Gizmo:SetupListeners()
         end
     end)
 
+    local debugMode = Ext.Debug.IsDeveloperMode()
     self.Timers["DetectHover"] = Timer:EveryFrame(function(timerID)
         if self.IsDragging or not self.Picker then return end
+        if debugMode then
+            Ext.Utils.ProfileBegin("Gizmo Hover Detection")
+        end
         local mouseRay = ScreenToWorldRay()
         if not mouseRay then return end
 
@@ -229,6 +248,10 @@ function Gizmo:SetupListeners()
             self.HoveredAxis = nil
         end
         self:Visualize()
+
+        if debugMode then
+            Ext.Utils.ProfileEnd("Gizmo Hover Detection")
+        end
     end)
 
     self.Timers["Stick"] = Timer:EveryFrame(function(timerID)
@@ -259,27 +282,27 @@ function Gizmo:SetupListeners()
 end
 
 --- @return Vec3, Quat
-function Gizmo:GetPivot()
-    return {0,0,0}, {0,0,0,1}
+function TransformGizmo:GetPivot()
+    return Vec3.new({0,0,0}), Quat.new({0,0,0,1})
 end
 
-function Gizmo:DeleteItem()
+function TransformGizmo:DeleteItem()
     local guid = self.Guid
     --Debug("Gizmo:DeleteItem", guid)
     self:StopListeners()
     NetChannel.Delete:SendToServer({ Guid = guid })
     self.Guid = nil
-    self.SavedGizmos[self.Mode] = nil
+    self.SavedGizmos[self.ActiveMode] = nil
 end
 
-function Gizmo:CreateItem()
+function TransformGizmo:CreateItem()
     -- hide original gizmo if exists
     if self.creating then return end
     local pos = self.PivotPosition or {0,0,0}
 
-    if self.SavedGizmos[self.Mode] and EntityExists(self.SavedGizmos[self.Mode]) then
+    if self.SavedGizmos[self.ActiveMode] and EntityExists(self.SavedGizmos[self.ActiveMode]) then
         local originGuid = self.Guid
-        self.Guid = self.SavedGizmos[self.Mode]
+        self.Guid = self.SavedGizmos[self.ActiveMode]
         self.Visualizer:HideGizmo(originGuid)
 
         NetChannel.SetAttributes:SendToServer({
@@ -295,21 +318,21 @@ function Gizmo:CreateItem()
             }
         })
         return
-    elseif self.SavedGizmos[self.Mode] then
+    elseif self.SavedGizmos[self.ActiveMode] then
         -- make sure it's dead
-        NetChannel.Delete:SendToServer({ Guid = self.SavedGizmos[self.Mode] })
-        self.SavedGizmos[self.Mode] = nil
+        NetChannel.Delete:SendToServer({ Guid = self.SavedGizmos[self.ActiveMode] })
+        self.SavedGizmos[self.ActiveMode] = nil
     end
 
     self.creating = true
     NetChannel.ManageGizmo:RequestToServer({
-        GizmoType = self.Mode,
+        GizmoType = self.ActiveMode,
         Position = pos
     }, function(response)
         local orginGuid = self.Guid
         self.Guid = response.Guid
         self.Visualizer:HideGizmo(orginGuid)
-        self.SavedGizmos[self.Mode] = response.Guid
+        self.SavedGizmos[self.ActiveMode] = response.Guid
         local tryCnt = 0
         
         Timer:EveryFrame(function(timerID)
@@ -328,19 +351,19 @@ function Gizmo:CreateItem()
     end)
 end
 
-function Gizmo:SetMode(mode)
+function TransformGizmo:SetMode(mode)
     if not Enums.TransformEditorMode[mode] then
         Warning("Gizmo:SetMode: Invalid mode '" .. tostring(mode) .. "'")
         return
     end
-    if mode and mode ~= self.Mode then
+    if mode and mode ~= self.ActiveMode then
         local ifRestart = self.IsDragging
         if self.IsDragging then
             self:EmptyDrag()
             --self:StopWithoutCallbacks()
         end
 
-        self.Mode = mode
+        self.ActiveMode = mode
         self:CreateItem()
         if ifRestart then
             self:RestartDragging()
@@ -353,7 +376,7 @@ end
 local lastDraw = 0
 
 --- @param ray Ray
-function Gizmo:GetHit(ray)
+function TransformGizmo:GetHit(ray)
     local cnt = CountMap(self.SelectedAxis or {})
     if cnt == 0 then
         Debug("Gizm:GetHit: No Axis ")
@@ -363,7 +386,7 @@ function Gizmo:GetHit(ray)
     local hit = nil
     local pickerAxes = self.Picker:GetAxes()
     local axis = nil
-    if self.Mode == "Rotate" then
+    if self.ActiveMode == "Rotate" then
         if cnt == 1 or cnt == 2 then
             for a, _ in pairs(self.SelectedAxis) do axis = pickerAxes[a] break end
             if not axis then
@@ -456,7 +479,7 @@ end
 
 --- @param ray Ray
 --- @return Vec3|number|nil
-function Gizmo:GetDelta(ray)
+function TransformGizmo:GetDelta(ray)
     local hit, axis = self:GetHit(ray)
     if not hit or not hit.Position then return nil end
     local startHit = self.StartHit
@@ -468,9 +491,9 @@ function Gizmo:GetDelta(ray)
     local axes = self.Picker:GetAxes()
     local gizmoOrigin = Vec3.new(self.Picker.Position)
     local delta = nil
-    if self.Mode == "Translate" then
+    if self.ActiveMode == "Translate" then
         delta = hit.Position - startHit.Position
-    elseif self.Mode == "Rotate" then
+    elseif self.ActiveMode == "Rotate" then
         local startDir = (startHit.Position - gizmoOrigin):Normalize()
         local dir = (hit.Position - gizmoOrigin):Normalize()
 
@@ -496,7 +519,7 @@ function Gizmo:GetDelta(ray)
         self._rotLastAngle = curAngle
 
         delta = { Angle = self._rotAccum, Axis = axisVec }
-    elseif self.Mode == "Scale" then
+    elseif self.ActiveMode == "Scale" then
         delta = Vec3.new { 1, 1, 1 }
         local scaleValue = CalcScaleChange(startHit, hit, self.SelectedAxis, axes, gizmoOrigin)
 
@@ -519,12 +542,12 @@ end
 
 --#endregion math
 
-function Gizmo:SetupDragging()
+function TransformGizmo:SetupDragging()
     self._accuDelta = nil
     self.RotatePointer = self.RotatePointer or {}
     local pickerPos = Vec3.new(self.Picker.Position)
     local pickerRot = Quat.new(self.Picker.Rotation)
-    if self.Mode == "Rotate" then
+    if self.ActiveMode == "Rotate" then
         local axis = nil
         for a, _ in pairs(self.SelectedAxis) do axis = a end
         local mouseRay = ScreenToWorldRay()
@@ -601,11 +624,11 @@ function Gizmo:SetupDragging()
         delta = self:LerpDelta(delta)
         if not delta then return end -- may return nil to skip this frame
 
-        if self.Mode == "Rotate" then
+        if self.ActiveMode == "Rotate" then
             delta = delta --[[@as { Angle:number, Axis:Vec3 }]]
             self:VisualizeRotatePointer(delta.Angle, delta.Axis)
             self:OnDragRotate(delta)
-        elseif self.Mode == "Translate" then
+        elseif self.ActiveMode == "Translate" then
             delta = delta --[[@as Vec3]]
             self:OnDragTranslate(delta)
             NetChannel.SetTransform:SendToServer({
@@ -616,7 +639,7 @@ function Gizmo:SetupDragging()
                     }
                 }
             })
-        elseif self.Mode == "Scale" then
+        elseif self.ActiveMode == "Scale" then
             delta = delta --[[@as Vec3]]
             self.Visualizer.ScaleMultiplier = delta
             self:OnDragScale(delta)
@@ -626,12 +649,12 @@ function Gizmo:SetupDragging()
     end)
 end
 
-function Gizmo:StepDelta(delta)
-    if self.Mode == "Translate" then
+function TransformGizmo:StepDelta(delta)
+    if self.ActiveMode == "Translate" then
         delta = delta * self.Step
-    elseif self.Mode == "Rotate" then
+    elseif self.ActiveMode == "Rotate" then
         delta = { Angle = delta.Angle * self.Step, Axis = delta.Axis }
-    elseif self.Mode == "Scale" then
+    elseif self.ActiveMode == "Scale" then
         local scaleVec = Vec3.new { 1, 1, 1 }
         delta = scaleVec + (delta - scaleVec) * self.Step
     end
@@ -700,15 +723,15 @@ local slowDownhandlers = {
     end,
 }
 
-function Gizmo:LerpDelta(delta)
-    local handler = slowDownhandlers[self.Mode]
+function TransformGizmo:LerpDelta(delta)
+    local handler = slowDownhandlers[self.ActiveMode]
     if handler then
         return handler(self, delta)
     end
     return delta
 end
 
-function Gizmo:RegetStartHit()
+function TransformGizmo:RegetStartHit()
     if not self.IsDragging then
         Warning("Gizmo:RegetStartHit: Not dragging")
         return
@@ -723,13 +746,13 @@ function Gizmo:RegetStartHit()
     self._rotAccum = 0
 end
 
-function Gizmo:StopDragging()
+function TransformGizmo:StopDragging()
     self:StopWithoutCallbacks()
     self:OnDragEnd()
     self.IsDragging = false
 end
 
-function Gizmo:StopWithoutCallbacks()
+function TransformGizmo:StopWithoutCallbacks()
     Timer:Cancel(self.DraggingTimer)
     self.DraggingTimer = nil
     self.SelectedAxis = nil
@@ -744,19 +767,19 @@ function Gizmo:StopWithoutCallbacks()
     end
 end
 
-function Gizmo:OnDragStart() end
+function TransformGizmo:OnDragStart() end
 
-function Gizmo:OnDragTranslate(delta) end
+function TransformGizmo:OnDragTranslate(delta) end
 
-function Gizmo:OnDragRotate(delta) end
+function TransformGizmo:OnDragRotate(delta) end
 
-function Gizmo:OnDragScale(delta) end
+function TransformGizmo:OnDragScale(delta) end
 
-function Gizmo:OnDragEnd(isCancelled) end
+function TransformGizmo:OnDragEnd(isCancelled) end
 
-function Gizmo:DragVisualize() end
+function TransformGizmo:DragVisualize() end
 
-function Gizmo:StopListeners()
+function TransformGizmo:StopListeners()
     for k, v in pairs(self.Subscriptions) do
         if v then
             v:Unsubscribe()
@@ -771,7 +794,7 @@ function Gizmo:StopListeners()
     end
 end
 
-function Gizmo:Visualize(guid)
+function TransformGizmo:Visualize(guid)
     guid = guid or self.Guid
     if not EntityExists(guid) then return end
     local pos = {CGetPosition(guid)}
@@ -780,7 +803,7 @@ function Gizmo:Visualize(guid)
     end
     
     local selectedAxis = DeepCopy(self.SelectedAxis)
-    if CountMap(selectedAxis) > 2 and self.Mode == "Rotate" then
+    if CountMap(selectedAxis) > 2 and self.ActiveMode == "Rotate" then
         --- treat as single-axis rotation on closest axis
         selectedAxis = {}
     end
@@ -791,7 +814,7 @@ function Gizmo:Visualize(guid)
         end
         for _, axis in pairs({ "X", "Y", "Z" }) do
             if not (selectedAxis and selectedAxis[axis]) then
-                if self.Mode == "Translate" then
+                if self.ActiveMode == "Translate" then
                     self.Visualizer:ResetGizmoAxis(axis, guid)
                 else
                     self.Visualizer:HideGizmoAxis(axis, guid)
@@ -813,7 +836,7 @@ function Gizmo:Visualize(guid)
     end
 end
 
-function Gizmo:VisualizeRotatePointer(angle, axis)
+function TransformGizmo:VisualizeRotatePointer(angle, axis)
     local pointer = self.RotatePointer and self.RotatePointer[#self.RotatePointer]
     if not pointer or not EntityExists(pointer) then return end
     local pickerPos = self.Picker.Position
@@ -846,7 +869,7 @@ function Gizmo:VisualizeRotatePointer(angle, axis)
     })
 end
 
-function Gizmo:Hide()
+function TransformGizmo:Hide()
     if self.Guid and EntityExists(self.Guid) then
         self.Visualizer:HideGizmo(self.Guid)
     end
@@ -855,7 +878,7 @@ function Gizmo:Hide()
     self.Visualizer:HideGizmo(self.Translate)
 end
 
-function Gizmo:Disable()
+function TransformGizmo:Disable()
     if self.IsDragging then
         self:EmptyDrag()
         self:StopDragging()
@@ -865,7 +888,7 @@ function Gizmo:Disable()
     self:Hide()
 end
 
-function Gizmo:Enable()
+function TransformGizmo:Enable()
     if not self.Guid or not EntityExists(self.Guid) then
         self:CreateItem()
     end
