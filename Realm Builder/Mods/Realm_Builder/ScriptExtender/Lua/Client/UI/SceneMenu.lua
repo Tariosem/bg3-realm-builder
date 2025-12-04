@@ -80,9 +80,7 @@ function SceneMenu:Render()
     local prefix = l2:AddText(GetLoca("Anchor:"))
     prefix:Tooltip():AddText(GetLoca("The anchor object to save relative position and rotation to. If empty, the host character will be used as anchor.")).TextWrapPos = 900 * SCALE_FACTOR
 
-    r2:AddText("")
     local selectCombo = NearbyCombo.new(r2)
-    selectCombo.SameLine = true
 
     self.GetSelectedObject = function ()
         local object = selectCombo:GetSelected()

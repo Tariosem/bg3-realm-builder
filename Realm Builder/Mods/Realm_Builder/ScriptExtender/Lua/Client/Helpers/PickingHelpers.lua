@@ -2,6 +2,7 @@ PickingHelpers = {
     GuidRedirects = {},
 }
 
+--- for markers
 function PickingHelpers:RegisterGuidRedirect(fromGuid, toGuid)
     self.GuidRedirects[fromGuid] = toGuid
 end
@@ -14,7 +15,6 @@ function GetPickingGuid()
         local pickUuid = HandleToUuid(pickHandle)
         if pickUuid then
             if PickingHelpers.GuidRedirects[pickUuid] then
-                Debug("Redirected picked GUID from " .. pickUuid .. " to " .. PickingHelpers.GuidRedirects[pickUuid])
                 pickUuid = PickingHelpers.GuidRedirects[pickUuid]
             end
             return pickUuid
@@ -63,7 +63,7 @@ function GetCursorPos(picker)
     return pos[1], pos[2]
 end
 
---- Returns the hit position and rotation from a picking helper.
+--- Returns the hit position and normal from the picking helper.
 --- @param picker EclPlayerPickingHelper?
 --- @return Vec3?
 --- @return Quat?
@@ -92,8 +92,6 @@ end
 
 --[[
     Converts a 2D screen-space coordinate into a world-space ray.
-
-    though I don't know why near - far is the right direction 
 ]]
 ---@param cameraHandle EntityHandle?
 ---@param mouseX number?

@@ -138,11 +138,13 @@ end
 function TextureResourceManager:PopulateAllTextureResources()
     local textureResources = Ext.Resource.GetAll("Texture")
     local now = Ext.Timer.MonotonicTime()
-    RBPrintPurple("TextureResourceManager: Populating texture resources... (Found " .. #textureResources .. " resources)")
+    RBPrintPurple("[Realm Builder] Populating Texture Resources...")
     for _, res in pairs(textureResources) do
         self:PopulateTextureResource(res)
     end
-    RBPrintPurple("TextureResourceManager: Populated " .. #textureResources .. " texture resources in " .. string.format("%.2f", Ext.Timer.MonotonicTime() - now) .. " ms.")
+    RBPrintPurple("[Realm Builder] Populated " .. #textureResources .. " texture resources in " .. string.format("%.2f", Ext.Timer.MonotonicTime() - now) .. " ms.")
 end
 
-TextureResourceManager:PopulateAllTextureResources()
+RegisterOnSessionLoaded(function ()
+    TextureResourceManager:PopulateAllTextureResources()
+end)

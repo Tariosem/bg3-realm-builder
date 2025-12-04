@@ -20,10 +20,8 @@
 --- @field SortTreesByDepth fun(self:TreeTable, order?:any, candidates?:table, ignoreRoot?:boolean):table<{Key:any, Depth:integer}>
 --- @field SortNodesByDepth fun(self:TreeTable, order?:any, candidates?:table, ignoreRoot?:boolean):table<{Key:any, Node:any, Depth:integer, IsLeaf:boolean}>
 --- @field GetDepth fun(self:TreeTable, key:any):number|nil
---- @field GetSiblings fun(self:TreeTable, key:any):table|nil
 --- @field IsLeaf fun(self:TreeTable, key:any):boolean
 --- @field IsAncestor fun(self:TreeTable, ancestorKey:any, descendantKey:any):boolean
---- @field AreSiblings fun(self:TreeTable, key1:any, key2:any):boolean
 --- @field GetParent fun(self:TreeTable, key:any):any|nil
 --- @field GetParentKey fun(self:TreeTable, key:any):any|nil
 --- @field BuildAncestorCache fun(self:TreeTable)
@@ -67,7 +65,6 @@ function TreeTable.new()
 
         if t._nodeRefs[k] then
             --Debug("Key '" .. k .. "' already exists. Overwriting it.")
-            if k == "MusicalInstrument" then Info("Here") end
             t:Remove(k)
         end
 
@@ -412,12 +409,6 @@ function TreeTable:GetPath(key, excludeSelf, excludeRoot)
     return path
 end
 
-function TreeTable:AreSiblings(key1, key2)
-    local parent1 = self._parentRefs[key1]
-    local parent2 = self._parentRefs[key2]
-    return parent1 ~= nil and parent1 == parent2
-end
-
 function TreeTable:GetSiblings(key)
     local parentKey = self._parentRefs[key]
     if not parentKey then return {} end
@@ -431,17 +422,6 @@ function TreeTable:GetSiblings(key)
         end
     end
     return siblings
-end
-
-function TreeTable:AreCousins(key1, key2)
-    local parent1 = self._parentRefs[key1]
-    local parent2 = self._parentRefs[key2]
-    if not parent1 or not parent2 or parent1 == parent2 then
-        return false
-    end
-    local grandParent1 = self._parentRefs[parent1]
-    local grandParent2 = self._parentRefs[parent2]
-    return grandParent1 ~= nil and grandParent1 == grandParent2
 end
 
 function TreeTable:__detectCycle()
@@ -500,7 +480,7 @@ function TreeTable:__CheckIfAnyDuplicateKey()
     end
 end
 
-function TreeTable:BuildAncestorTable()
+function TreeTable:__buildAncestorTable()
     self._ancestorDepthCache = {}
     self._ancestorUpCache = {}
     self._ancestorDirty = false
@@ -551,7 +531,7 @@ end
 -- Don't know why I even wrote this
 function TreeTable:_LCA_Binary(key1, key2)
     if self._ancestorDirty then
-        self:BuildAncestorTable()
+        self:__buildAncestorTable()
     end
     if not self._ancestorDepthCache[key1] or not self._ancestorDepthCache[key2] then
         --Debug("One or both keys not found in ancestor table.")
@@ -595,7 +575,7 @@ end
 
 function TreeTable:_LCA(key1, key2)
     if self._ancestorDirty then
-        self:BuildAncestorTable()
+        self:__buildAncestorTable()
     end
 
     local path1 = self:GetPath(key1)
@@ -637,7 +617,6 @@ end
 --- @param key any
 --- @return any|nil removed node
 function TreeTable:Remove(key)
-    --Warning("Removing key " .. key)
     if key == ROOT then
         --Debug("Cannot remove the root node.")
         return nil
@@ -874,11 +853,11 @@ end
 
 function TreeTable:GetDepth(key)
     if self._ancestorDirty then
-        self:BuildAncestorTable()
+        self:__buildAncestorTable()
     end
     if not self._ancestorDepthCache[key] then
         --Debug("Key '" .. tostring(key) .. "' not found. Rebuilding ancestor table and retrying.")
-        self:BuildAncestorTable()
+        self:__buildAncestorTable()
         if not self._ancestorDepthCache[key] then
             --Debug("Key '" .. tostring(key) .. "' still not found after rebuilding ancestor table.")
             return nil
@@ -892,7 +871,7 @@ end
 --- @return table<{Key:any, Depth:integer}>|nil
 function TreeTable:SortTreesByDepth(order, candidates, ignoreRoot)
     if self._ancestorDirty then
-        self:BuildAncestorTable()
+        self:__buildAncestorTable()
     end
 
     order = order or "asc"
@@ -928,7 +907,7 @@ end
 --- @return table<{Key:any, Node:any, Depth:integer, IsLeaf:boolean}>|nil
 function TreeTable:SortNodesByDepth(order, candidates, ignoreRoot)
     if self._ancestorDirty then
-        self:BuildAncestorTable()
+        self:__buildAncestorTable()
     end
 
     order = order or "asc"

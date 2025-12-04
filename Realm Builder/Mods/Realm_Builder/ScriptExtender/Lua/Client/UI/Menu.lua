@@ -27,6 +27,8 @@ function RealmBuilderMainMenu:RegisterEvents()
         if self.panel then
             self.panel.Open = not self.panel.Open
         end
+        NetChannel.ManageEntity:SendToServer({ Action = "Scan" })
+        self.entityMenu:UpdateList()
     end)
 
     meMod:RegisterEvent("OpenTransformToolbar", function(e)
@@ -62,7 +64,6 @@ end
 
 function RealmBuilderMainMenu:RenderBrowserMenu()
     local function ToggleBrowser(targetKey)
-
         local targetBrowser = self.browsers[targetKey]
 
         for key, browser in pairs(self.browsers) do
@@ -88,10 +89,16 @@ function RealmBuilderMainMenu:RenderBrowserMenu()
     }
     table.sort(allAvailableBrowsers, function(a,b) return a.Label < b.Label end)
 
+    self.browserBtns = {}
     for _, browser in pairs(allAvailableBrowsers) do
-        browserMenu:AddButton(browser.Label).OnClick = function()
+        local btn = browserMenu:AddButton(browser.Label)
+        btn.OnClick = function()
             ToggleBrowser(browser.Key)
         end
+        if not self.browsers[browser.Key] then
+            btn.Visible = false
+        end
+        self.browserBtns[browser.Key] = btn
     end
     allAvailableBrowsers = nil
 
@@ -180,6 +187,9 @@ function RealmBuilderMainMenu:Render()
     end)
 
     Timer:Ticks(10, function()
+        if not RB_VisualManager or not RB_VisualManager.populated then
+            return
+        end
         self.browsers.visual = RootTemplateBrowser.new(RB_VisualManager, "Visual - Browser")
         self.browsers.visual.iconTooltipName = "SourceFile"
         self.browsers.visual.TooltipChangeLogic = function()
@@ -197,7 +207,7 @@ function RealmBuilderMainMenu:Render()
         local tab = self.tabBar:AddTabItem("Materials")
         local childWin = tab:AddChildWindow("Material Presets Workshop")
         local window = RegisterWindow("generic", "Material Presets Workshop", "Material Presets Workshop", MaterialPresetsMenu)
-        local render = MaterialPresetsMenu:RenderCustomMaterialPresets(childWin)
+        local render = MaterialPresetsMenu:RenderCCModExportMenu(childWin)
         local isWindow = false
 
         local tabDetachFunc

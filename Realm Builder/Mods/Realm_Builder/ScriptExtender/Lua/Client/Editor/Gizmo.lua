@@ -44,9 +44,12 @@ function TransformGizmo:__init(editor)
 
     self.Step = 1.0
 
-    Ext.Events.ResetCompleted:Subscribe(function()
-        self:DeleteItem()
+    Ext.Events.Shutdown:Subscribe(function()
         self:Disable()
+        self:DeleteItem()
+        for _, guid in pairs(self.SavedGizmos) do
+            NetChannel.Delete:SendToServer({ Guid = guid })
+        end
     end)
 end
 
@@ -192,7 +195,7 @@ function TransformGizmo:SetupListeners()
         self:RestartDragging(mouseRay, axes)
     end)
     ]]
-    
+
     self.Subscriptions["SlowDown"] = SubscribeKeyInput({ Key = "LSHIFT" }, function(e)
         if e.Repeat then return end
         if not self.IsDragging then return end
@@ -231,14 +234,13 @@ function TransformGizmo:SetupListeners()
         end
     end)
 
-    local debugMode = Ext.Debug.IsDeveloperMode()
+    local lastRay = nil
     self.Timers["DetectHover"] = Timer:EveryFrame(function(timerID)
         if self.IsDragging or not self.Picker then return end
-        if debugMode then
-            Ext.Utils.ProfileBegin("Gizmo Hover Detection")
-        end
         local mouseRay = ScreenToWorldRay()
         if not mouseRay then return end
+        if lastRay and mouseRay == lastRay then return end
+        lastRay = mouseRay
 
         self:UpdatePicker()
         local hit = self.Picker:Hit(mouseRay)
@@ -248,10 +250,6 @@ function TransformGizmo:SetupListeners()
             self.HoveredAxis = nil
         end
         self:Visualize()
-
-        if debugMode then
-            Ext.Utils.ProfileEnd("Gizmo Hover Detection")
-        end
     end)
 
     self.Timers["Stick"] = Timer:EveryFrame(function(timerID)

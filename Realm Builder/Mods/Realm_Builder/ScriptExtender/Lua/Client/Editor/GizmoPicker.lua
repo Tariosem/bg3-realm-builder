@@ -33,7 +33,6 @@ PICKER_CONSTANTS.ROTATE_RING = {
 --- @field HitTest fun(picker: GizmoPicker, localRay: Ray):Hit?
 --- @field UpdateScale fun(picker: GizmoPicker, scale: number)
 
-local PICKER_HIT_PARTS = {}
 local AxisIndexMap = AxisIndexMap
 local axisNames = { "X", "Y", "Z" }
 local localOrigin = Vec3.new(0, 0, 0)
@@ -207,7 +206,6 @@ GizmoPicker = _Class("GizmoPicker")
 
 function GizmoPicker:__init(gizmo, position, rotation)
     self.Gizmo = gizmo
-    self.Parameters = DeepCopy(PICKER_CONSTANTS)
     self.Position = position or Vec3.new({ 0, 0, 0 })
     self.Rotation = rotation or Quat.new({ 0, 0, 0, 1 })
     self.Scale = 1.0

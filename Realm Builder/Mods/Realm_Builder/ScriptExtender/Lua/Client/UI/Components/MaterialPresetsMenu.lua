@@ -79,7 +79,7 @@ function MaterialPresetsMenu:RenderCCPresetsLib(parent)
     self:RenderCCMaterialPresets(parent)
 end
 
-function MaterialPresetsMenu:RenderCustomMaterialPresets(par)
+function MaterialPresetsMenu:RenderCCModExportMenu(par)
     local workshopPanel = par
 
     local pack = self:SetupWorkspace(workshopPanel)
@@ -1208,7 +1208,7 @@ function MaterialPresetsMenu:__exportToMod(modPack, progressCallback, exportThre
     end
     advance("Saved mod meta file.")
 
-    --- build localization file first because CC presets need it
+    --- build localization file first
     local names = {}
 
     for _, preset in pairs(matPresets) do
@@ -1226,7 +1226,7 @@ function MaterialPresetsMenu:__exportToMod(modPack, progressCallback, exportThre
     end
     advance("Saved localization file.")
 
-    --- build material presets file first because CC presets need it
+    --- build material presets file first
     local cheapName = {
         CharacterCreationEyeColors = "_EyeColor_",
         CharacterCreationHairColors = "_HairColor_",
@@ -1261,7 +1261,6 @@ function MaterialPresetsMenu:__exportToMod(modPack, progressCallback, exportThre
     end
 
     -- export material preset banks
-
     for folderName, bank in pairs(banks) do
         local def = folderDefs[folderName]
         if bank:CountChildren() > 0 then

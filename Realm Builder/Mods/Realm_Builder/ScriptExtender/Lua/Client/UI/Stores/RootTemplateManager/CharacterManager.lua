@@ -94,13 +94,7 @@ function CharacterManager:HardCodeHierachy()
             ["Ogre"] = 0
         },
         ["Humanoids"] = {
-            ["CommonRaces"] = {
-                ["Dwarf"] = 0,
-                ["Elf"] = 0,
-                ["Gnome"] = 0,
-                ["Halfling"] = 0,
-                ["Human"] = 0
-            },
+            ["Human"] = 0,
             ["Dragonborns"] = {
                 ["Black Dragonborn"] = 0,
                 ["Blue Dragonborn"] = 0,
@@ -120,16 +114,20 @@ function CharacterManager:HardCodeHierachy()
                 ["Seldarine Drow"] = 0
             },
             ["Dwarves"] = {
+                
+                ["Dwarf"] = 0,
                 ["Duergar"] = 0,
                 ["Gold Dwarf"] = 0,
                 ["Shield Dwarf"] = 0
             },
             ["Elves"] = {
+                ["Elf"] = 0,
                 ["High Elf"] = 0,
                 ["Wood Elf"] = 0
             },
             ["Githyanki"] = 0,
             ["Gnomes"] = {
+                ["Gnome"] = 0,
                 ["Deep Gnome"] = 0,
                 ["Forest Gnome"] = 0,
                 ["Rock Gnome"] = 0
@@ -150,6 +148,7 @@ function CharacterManager:HardCodeHierachy()
                 ["Wood Half-Elf"] = 0
             },
             ["Halflings"] = {
+                ["Halfling"] = 0,
                 ["Lightfoot Halfling"] = 0,
                 ["Strongheart Halfling"] = 0
             },

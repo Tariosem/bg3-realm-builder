@@ -1436,7 +1436,12 @@ end
 function StyleHelpers.RenderGeneralTableEditor(parent, o, onSet)
     local alignedTable = StyleHelpers.AddAlignedTable(parent)
     local updateFuncs = {}
-    for k, v in pairs(o) do
+    for k, v in SortedPairs(o) do
+        k = tostring(k)
+        if k:sub(1, 1) == "_" then
+            --skip private variables
+            goto continue
+        end
         local updateFunc = nil
         if type(v) == "boolean" then
             local checkbox = alignedTable:AddCheckbox(k, v)
@@ -1472,11 +1477,12 @@ function StyleHelpers.RenderGeneralTableEditor(parent, o, onSet)
                     onSet()
                 end, { IsInt = true, Range = { Min = 0, Max = 100, Step = 1 }, ResetValue = v })
         else
-            Warning("[EntityTab] Unknown server character attribute type for key: " .. tostring(k))
+            --skip
         end
         if updateFunc then
             table.insert(updateFuncs, updateFunc)
         end
+        ::continue::
     end
 
     return function()

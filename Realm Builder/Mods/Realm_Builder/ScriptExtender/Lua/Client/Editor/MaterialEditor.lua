@@ -199,15 +199,3 @@ end
 function MaterialEditor:Reapply()
     self:ApplyParameters(self.Parameters)
 end
-
-function MaterialEditor:BuildMaterialPresetResource(path)
-    local bank = LSXHelpers.BuildMaterialPresetBank()
-
-    local uuid = Uuid_v4()
-    local resource = ResourceHelpers.BuildMaterialPresetResourceNode(self.Parameters, uuid, "Custom_Material_Preset")
-
-    bank:AppendChild(resource)
-
-    return bank, uuid
-end
-

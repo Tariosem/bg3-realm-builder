@@ -12,9 +12,9 @@ local RB_UserVars_Flags = {
     [8] = "DeleteLater",
 }
 
-RB_Flags_Field = "RB_Flags"
+RB_FLAG_FIELD = "RB_Flags"
 
-Ext.Vars.RegisterUserVariable(RB_Flags_Field, {
+Ext.Vars.RegisterUserVariable(RB_FLAG_FIELD, {
     Client = true,
 })
 
@@ -32,7 +32,7 @@ function RB_FlagHelpers.HasFlag(entity, flag)
     end
     if not entity then return false end
 
-    local flags = entity.Vars[RB_Flags_Field] or RB_UserVars_Flags.None
+    local flags = entity.Vars[RB_FLAG_FIELD] or RB_UserVars_Flags.None
     return (flags & flag) ~= 0
 end
 
@@ -48,8 +48,8 @@ function RB_FlagHelpers.SetFlag(entity, flag)
     end
     if not entity then return false end
 
-    local flags = entity.Vars[RB_Flags_Field] or RB_UserVars_Flags.None
-    entity.Vars[RB_Flags_Field] = flags | flag
+    local flags = entity.Vars[RB_FLAG_FIELD] or RB_UserVars_Flags.None
+    entity.Vars[RB_FLAG_FIELD] = flags | flag
     return true
 end
 
@@ -62,8 +62,8 @@ function RB_FlagHelpers.ClearFlag(entity, flag)
     end
     if not entity then return false end
 
-    local flags = entity.Vars[RB_Flags_Field] or RB_UserVars_Flags.None
-    entity.Vars[RB_Flags_Field] = flags & (~flag)
+    local flags = entity.Vars[RB_FLAG_FIELD] or RB_UserVars_Flags.None
+    entity.Vars[RB_FLAG_FIELD] = flags & (~flag)
     return true
 end
 

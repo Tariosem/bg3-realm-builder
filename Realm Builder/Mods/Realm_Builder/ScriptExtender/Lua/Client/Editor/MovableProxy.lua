@@ -1,5 +1,5 @@
 --- @class RB_MovableProxy
---- @field RestoredTransform Transform
+--- @field StoredTransform Transform
 --- @field SetWorldTranslate fun(self: RB_MovableProxy, position: Vec3)
 --- @field SetWorldRotation fun(self: RB_MovableProxy, rotation: Quat)
 --- @field SetWorldScale fun(self: RB_MovableProxy, scale: Vec3)
@@ -78,17 +78,17 @@ function MovableProxy:GetWorldScale()
 end
 
 function MovableProxy:SaveTransform()
-    self.RestoredTransform = self:GetTransform()
-    return DeepCopy(self.RestoredTransform)
+    self.StoredTransform = self:GetTransform()
+    return DeepCopy(self.StoredTransform)
 end
 
 function MovableProxy:GetSavedTransform()
-    return DeepCopy(self.RestoredTransform) or self:GetTransform()
+    return DeepCopy(self.StoredTransform) or self:GetTransform()
 end
 
 function MovableProxy:RestoreTransform()
-    if self.RestoredTransform then
-        self:SetTransform(self.RestoredTransform)
+    if self.StoredTransform then
+        self:SetTransform(self.StoredTransform)
     end
 end
 

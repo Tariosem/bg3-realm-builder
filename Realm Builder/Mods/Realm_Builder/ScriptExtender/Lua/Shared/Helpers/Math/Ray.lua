@@ -25,6 +25,10 @@ function Ray:__tostring()
     return string.format("Ray(Origin: %s, Direction: %s)", tostring(self.Origin), tostring(self.Direction))
 end
 
+function Ray:__eq(other)
+    return self.Origin == other.Origin and self.Direction == other.Direction
+end
+
 ---@param transform Transform
 ---@return Ray
 function Ray:Transform(transform)

@@ -25,8 +25,12 @@ local allNearbyComboRefs = {}
 --- @field OnChange fun(self:NearbyCombo, Guid:GUIDSTRING, displayName:string)
 NearbyCombo = _Class("NearbyCombo")
 NearbyCombo.__newindex = function (t, k, v)
-    if k == "SameLine" then
-        t.combo.SameLine = v
+    if rawget(t, "combo") == nil then
+        rawset(t, k, v)
+        return
+    end
+    if k == "SameLine" and t.panel then
+        t.panel.SameLine = v
     elseif k == "Label" then
         t.combo.Label = v
     elseif k == "SelectedIndex" then
@@ -76,12 +80,16 @@ end
 
 function NearbyCombo:Render()
     local parent = self.parent
-    local reservedForImage = parent:AddGroup("NearbyCombo##") -- For layout purposes
+    self.IDContext = "NearbyComboParent" .. Uuid_v4()
+    local overGroup = parent:AddGroup("NearbyComboOver##" .. self.IDContext)
+    local reservedForImage = overGroup:AddGroup("NearbyCombo##" .. self.IDContext .. "ImageReserved")
     reservedForImage:AddImage("Item_Unknown", IMAGESIZE.FRAME)
-    self.combo = parent:AddCombo("")
+    self.panel = overGroup
+    self.combo = overGroup:AddCombo("")
     self.combo.UserData = self.combo.UserData or {}
     self.combo.UserData.ImageReservedSpace = reservedForImage
     self.combo.IDContext = "NearbyCombo" .. Uuid_v4()
+    self.combo.SameLine = true
 
     self.combo.Options = {}
     self:UpdateOptions()
@@ -223,7 +231,7 @@ function NearbyCombo:RenderSelectionTable(parent)
     end
 
     local configPopup = parent:AddPopup(parent.IDContext .. "ConfigPopup")
-    local configButton = right:AddImageButton("", RB_ICONS.Gear, IMAGESIZE.ROW)
+    local configButton = right:AddImageButton("", RB_ICONS.Gear, IMAGESIZE.FRAME)
     configButton:SetColor("Button", {0,0,0,0})
     local sortButton = right:AddSelectable("Sort by DisplayName")
     local refreshBtn = StyleHelpers.AddResetButton(right, true)

@@ -38,6 +38,11 @@ Ext.Events.GameStateChanged:Subscribe(function (e)
     end
 end)
 
+Ext.Events.ResetCompleted:Subscribe(function ()
+    EntityManager:LoadFromModVar()
+    NetChannel.ClearHistory:Broadcast({})
+end)
+
 local initModVar = Ext.Vars.GetModVariables(ModuleUUID)
 if not initModVar then
     initModVar = {}
@@ -71,27 +76,6 @@ RegisterConsoleCommand("rb_dump_modvar", function ()
     local modVar = getModVar()
     RainbowDumpTable(modVar)
 end, "Dump the EntityManager mod variable to console.")
-
---[[
-RegisterOnSessionLoaded(function ()
-    local modVar = getModVar()
-    for guid, _ in pairs(modVar.DeleteOnNextSession) do
-        Osi.RequestDelete(guid)
-        Osi.RequestDeleteTemporary(guid)
-        modVar.SavedEntities[guid] = nil
-        modVar.DeleteOnNextSession[guid] = nil
-    end
-end)
-
-Ext.Events.ResetCompleted:Subscribe(function ()
-    local modVar = getModVar()
-    for guid, _ in pairs(modVar.DeleteOnNextSession) do
-        Osi.RequestDelete(guid)
-        Osi.RequestDeleteTemporary(guid)
-        modVar.SavedEntities[guid] = nil
-        modVar.DeleteOnNextSession[guid] = nil
-    end
-end)]]
 
 function EntityManager:StoreGuid(guid)
     local modVar = getModVar()
@@ -151,7 +135,6 @@ function EntityManager:RestoreEntities(guids)
     setModVar(modVar)
     NetChannel.Entities.Added:Broadcast({Entities = self:GetEntities(guids)})
     
-
     return true
 end
 
@@ -260,7 +243,8 @@ function EntityManager:CreateAt(templateId, x, y, z, rx, ry, rz, w)
         Error("Failed to create prop with TemplateId: " .. tostring(templateId))
         return nil
     end
-    Debug(debugText:format(tostring(templateObj.TemplateType), x, y, z, tostring(templateId), tostring(newProp)))
+    local templateType = templateObj and templateObj.TemplateType or "Visual"
+    Debug(debugText:format(tostring(templateType), x, y, z, tostring(templateId), tostring(newProp)))
 
     OsirisHelpers.Propify(newProp)
     RB_FlagHelpers.SetFlag(newProp, "IsSpawned")
@@ -268,7 +252,7 @@ function EntityManager:CreateAt(templateId, x, y, z, rx, ry, rz, w)
     if rx and ry and rz and w then
         OsirisHelpers.RotateTo(newProp, rx, ry, rz, w)
     end
-    if templateObj.TemplateType == "character" then
+    if templateType == "character" then
         NetChannel.SetVisualTransform:Broadcast({Guid = newProp, Transforms = { [newProp] = { RotationQuat = {rx, ry, rz, w}, Translate = {x, y, z} } } })
     end
 
@@ -371,8 +355,8 @@ end
 function EntityManager:LoadFromModVar()
     local modVar = getModVar()
 
-    Debug("Loading from mod var")
-    _D(modVar)
+    Debug("\n[Realm Builder] Loading from mod var\n")
+    RainbowDumpTable(modVar)
 
     local existingEntities = {}
     for guid,_ in pairs(modVar.DeleteOnNextSession) do
@@ -382,7 +366,7 @@ function EntityManager:LoadFromModVar()
         modVar.DeleteOnNextSession[guid] = nil
     end
 
-    local allFlagged = Ext.Vars.GetEntitiesWithVariable(RB_Flags_Field)
+    local allFlagged = Ext.Vars.GetEntitiesWithVariable(RB_FLAG_FIELD)
     for _,uuid in pairs(allFlagged) do
         if RB_FlagHelpers.HasFlag(uuid, "IsGizmo") or RB_FlagHelpers.HasFlag(uuid, "DeleteLater") then
             Osi.RequestDeleteTemporary(uuid)
@@ -391,26 +375,28 @@ function EntityManager:LoadFromModVar()
     end
 
     for guid, _ in pairs(modVar.SavedEntities) do
-        if TakeTailTemplate(Osi.GetTemplate(guid)) == INVISIBLE_HELPER_SCENERY then
+        local templateId = TakeTailTemplate(Osi.GetTemplate(guid))
+        if templateId == INVISIBLE_HELPER_SCENERY or templateId == INVISIBLE_HELPER_PREVIEW then
             Osi.RequestDelete(guid)
             Osi.RequestDeleteTemporary(guid)
+            modVar.SavedEntities[guid] = nil
             goto continue
         end
-        if not self:AddEntity(guid) then
+        --[[if not self:AddEntity(guid) then
             modVar.SavedEntities[guid] = nil
         else
             table.insert(existingEntities, guid)
-        end
+        end]]
         ::continue::
     end
-    NetChannel.Entities.Added:Broadcast({Entities = self:GetEntities(existingEntities)})
+    --NetChannel.Entities.Added:Broadcast({Entities = self:GetEntities(existingEntities)})
 
     setModVar(modVar)
 end
 
 function EntityManager:ScanForEntities()
     local modVar = getModVar()
-    local allEntities = Ext.Vars.GetEntitiesWithVariable(RB_Flags_Field)
+    local allEntities = Ext.Vars.GetEntitiesWithVariable(RB_FLAG_FIELD)
 
     if not allEntities or #allEntities == 0 then
         local entities = Ext.Entity.GetAllEntitiesWithComponent("Tag")
@@ -422,7 +408,7 @@ function EntityManager:ScanForEntities()
     
     local allToBroadcast = {}
     for _, uuid in pairs(allEntities) do
-        if uuid and (RB_FlagHelpers.HasFlag(uuid, "IsSpawned") or CIsTaggedProp(uuid)) and not modVar.DeleteOnNextSession[uuid] and not self.SavedEntities[uuid] then
+        if (RB_FlagHelpers.HasFlag(uuid, "IsSpawned") or CIsTaggedProp(uuid)) and not modVar.DeleteOnNextSession[uuid] and not self.SavedEntities[uuid] then
             self:AddEntity(uuid)
             table.insert(allToBroadcast, uuid)
             --NetChannel.Entities.Added:Broadcast({Entities = self:GetEntities({uuid})})
@@ -530,6 +516,8 @@ function EntityManager:BF_DeleteAll()
             table.insert(broadcastData, uuid)
         end
     end
+
+    setModVar(modVar)
 
     NetChannel.Entities.Deleted:Broadcast(broadcastData)
 end

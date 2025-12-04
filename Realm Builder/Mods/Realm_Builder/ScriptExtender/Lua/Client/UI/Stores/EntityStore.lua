@@ -78,21 +78,8 @@ setmetatable(EntityStore, {
     end
 })
 
-local function templateType(guid)
-    local entity = Ext.Entity.Get(guid)
-    if CIsCharacter(guid) then
-        return "character"
-    elseif CIsItem(guid) then
-        return "item"
-    elseif entity and entity.Scenery then
-        return "scenery"
-    end
-
-    return "scenery"
-end
-
 function EntityStore:SetupServerListeners()
-
+    Debug("Setting up EntityStore server listeners...")
     local popupNotif = Notification.new("Realm Builder")
     popupNotif.Pivot = {0.5, 0.1}
     popupNotif.FlickToDismiss = true
@@ -110,7 +97,9 @@ function EntityStore:SetupServerListeners()
                 table.insert(list, entity.Guid)
             end
         end
-        RBMenu:NewEntityAdded(list)
+        if RBMenu then
+            RBMenu:NewEntityAdded(list)
+        end
     end)
 
 

@@ -23,7 +23,6 @@ local readOnlyFields = {
     ["Guid"] = true,
     ["WhiteBalanceMatrix"] = true,
     ["Atmosphere"] = true,
-    ["Lighting"] = true,
 }
 
 local preassignedRanges = {

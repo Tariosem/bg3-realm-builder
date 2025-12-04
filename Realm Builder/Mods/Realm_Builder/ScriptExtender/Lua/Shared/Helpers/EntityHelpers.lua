@@ -509,7 +509,7 @@ end
 
 function GetAllSpawned()
     local props = {}
-    local AllUuids = Ext.Vars.GetEntitiesWithVariable(RB_Flags_Field)
+    local AllUuids = Ext.Vars.GetEntitiesWithVariable(RB_FLAG_FIELD)
 
     if not AllUuids or #AllUuids == 0 then
         AllUuids = GetAllUuidsWithComponent("Tag")
@@ -537,7 +537,7 @@ end
 
 function GetAllGizmos()
     local gizmos = {}
-    local AllUuids = Ext.Vars.GetEntitiesWithVariable(RB_Flags_Field)
+    local AllUuids = Ext.Vars.GetEntitiesWithVariable(RB_FLAG_FIELD)
 
     for _, uuid in ipairs(AllUuids) do
         if IsGizmo(uuid) then
