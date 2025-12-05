@@ -2,13 +2,13 @@
 
 --- @class TransformGizmo
 --- @field Editor TransformEditor
---- @field Mode TransformEditorMode 
+--- @field Mode TransformEditorMode
 --- @field ActiveMode TransformEditorMode
 --- @field SelectedAxis table<TransformAxis, boolean> | nil
 --- @field HoveredAxis table<TransformAxis, boolean> | nil
 --- @field StartHit Hit | nil
 --- @field DraggingTimer TimerID|nil -- emit drag events every frame while dragging
---- @field IsDragging boolean -- whether currently dragging
+--- @field IsDragging boolean
 --- @field SlowDown boolean
 --- @field PivotPosition Vec3 -- current pivot position
 --- @field PivotRotation Quat -- current pivot rotation
@@ -16,22 +16,24 @@
 --- @field SavedGizmos table<TransformEditorMode, GUIDSTRING> -- guids of saved gizmos for each mode
 --- @field RotatePointer GUIDSTRING[] -- guids of rotate pointer visualizations
 --- @field Picker GizmoPicker
---- @field Visualizer GizmoVisualizer 
+--- @field Visualizer GizmoVisualizer
 --- @field Subscriptions table<string, RBSubscription>
 --- @field Timers table<string, TimerID>
 --- @field new fun(editor: TransformEditor): TransformGizmo
 --- @field OnDragStart fun(self: TransformGizmo)
 --- @field OnDragTranslate fun(self: TransformGizmo, delta: Vec3)
---- @field OnDragRotate fun(self: TransformGizmo, delta: { Angle:number, Axis:Vec3 })
+--- @field OnDragRotate fun(self: TransformGizmo, delta: QuatInfo)
 --- @field OnDragScale fun(self: TransformGizmo, delta: Vec3)
 --- @field OnDragEnd fun(self: TransformGizmo)
 TransformGizmo = _Class("Gizmo")
 
 local modeEnum = Enums.TransformEditorMode
+local AxisIndexMap = AxisIndexMap
 
---- @class QuatInfo
---- @field Angle number
---- @field Axis Vec3
+--- instead of returning a quat for rotation delta,
+--- this make orientation of quat more intuitive to work with (At least for me orz)
+--- just rotate the first three components as an axis
+--- @alias QuatInfo Vec4 -- { AxisX, AxisY, AxisZ, AngleInRadians }
 
 function TransformGizmo:__init(editor)
     self.Editor = editor
@@ -51,14 +53,6 @@ function TransformGizmo:__init(editor)
 
     self.Step = 1.0
 
-    for _, mod in pairs({
-        "Translate",
-        "Rotate",
-        "Scale",
-    }) do
-        self:CreateModeItem(mod)
-    end
-
     Ext.Events.Shutdown:Subscribe(function()
         self:Disable()
         self:DeleteItem()
@@ -73,7 +67,7 @@ function TransformGizmo:EmptyDrag()
     self._delta = nil
     self._accuDelta = nil
     if self.ActiveMode == "Rotate" then
-        self:OnDragRotate({ Angle = 0, Axis = Vec3.new { 0, 0, 0 } })
+        self:OnDragRotate(Vec4.new { 0, 0, 0, 0 })
     elseif self.ActiveMode == "Translate" then
         self:OnDragTranslate(Vec3.new { 0, 0, 0 })
     else
@@ -108,9 +102,14 @@ function TransformGizmo:StartDragging(mouseRay, hit)
     self.IsDragging = true
     if hit and hit.Axis then
         self.SelectedAxis = hit.Axis
-        self.ActiveMode = hit.HitMode or self.ActiveMode
+        --self.ActiveMode = hit.HitMode or self.ActiveMode
     else
         self.SelectedAxis = { X = true, Y = true, Z = true }
+    end
+    if self.ActiveMode == "Rotate" and CountMap(self.SelectedAxis) == 2 then
+        -- only rotate around one axis
+        local firstAxis = next(self.SelectedAxis)
+        self.SelectedAxis = { [firstAxis] = true }
     end
     self.HoveredAxis = nil
     self.StartHit = self:GetHit(mouseRay)
@@ -155,6 +154,11 @@ end
 function TransformGizmo:SetupListeners()
     self:StopListeners()
 
+    self:SetupActionSubscriptions()
+    self:SetupIdelTimers()
+end
+
+function TransformGizmo:SetupActionSubscriptions()
     self.Subscriptions["LockAxis"] = SubscribeKeyInput({}, function(e)
         if not self.IsDragging then return end
         if e.Event ~= "KeyDown" or not e.Pressed or e.Repeat then return end
@@ -256,8 +260,11 @@ function TransformGizmo:SetupListeners()
             self:StopDragging()
         end
     end)
+end
 
+function TransformGizmo:SetupIdelTimers()
     local lastRay = nil
+    
     self.Timers["DetectHover"] = Timer:EveryFrame(function(timerID)
         if self.IsDragging or not self.Picker then return end
         local mouseRay = ScreenToWorldRay()
@@ -278,9 +285,9 @@ function TransformGizmo:SetupListeners()
 
     self.Timers["Stick"] = Timer:EveryFrame(function(timerID)
         if self.IsDragging then return end
-        
+
         local pos, rot = self:GetPivot()
-        local allGuids = { }
+        local allGuids = {}
         for _, guid in pairs(self.SavedGizmos) do
             table.insert(allGuids, guid)
         end
@@ -304,7 +311,7 @@ end
 
 --- @return Vec3, Quat
 function TransformGizmo:GetPivot()
-    return Vec3.new({0,0,0}), Quat.new({0,0,0,1})
+    return Vec3.new({ 0, 0, 0 }), Quat.new({ 0, 0, 0, 1 })
 end
 
 function TransformGizmo:DeleteItem()
@@ -344,14 +351,14 @@ function TransformGizmo:CreateModeItem(mode)
 
     NetChannel.ManageGizmo:RequestToServer({
         GizmoType = mode,
-        Position = self.PivotPosition or {0,0,0}
+        Position = self.PivotPosition or { 0, 0, 0 }
     }, function(response)
         if not response or not response.Guid then
             Warning("Gizmo:CreateModeItem: Failed to create gizmo of mode '" .. tostring(mode) .. "'")
             return
         end
         self.SavedGizmos[mode] = response.Guid
-        
+
         WaitUntil(function()
             return VisualHelpers.GetEntityVisual(self.SavedGizmos[mode]) ~= nil
         end, function()
@@ -366,7 +373,7 @@ function TransformGizmo:CreateModeItem(mode)
 end
 
 function TransformGizmo:CycleMode()
-    local modes = {"Translate", "Rotate", "Scale", "Transform"}
+    local modes = { "Translate", "Rotate", "Scale", "Transform" }
     local currentIndex = 1
     for i, mode in ipairs(modes) do
         if mode == self.Mode then
@@ -382,7 +389,7 @@ function TransformGizmo:HideGizmosByActiveMode()
     local gizmos = {}
     for mode, guid in pairs(self.SavedGizmos) do
         if mode ~= self.ActiveMode then
-            table.insert(gizmos, guid)  
+            table.insert(gizmos, guid)
         end
     end
     NetChannel.SetAttributes:SendToServer({
@@ -486,18 +493,19 @@ function TransformGizmo:SetActiveMode(mode)
             self:RestartDragging()
         end
     end
-end 
+end
 
 --#region math
 
 local lastDraw = 0
 
 --- @param ray Ray
+--- @return Hit, Vec3
 function TransformGizmo:GetHit(ray)
     local cnt = CountMap(self.SelectedAxis or {})
     if cnt == 0 then
         Debug("Gizm:GetHit: No Axis ")
-        return Hit.new(self.Picker.Position, nil, 0, nil)
+        return Hit.new(self.Picker.Position, nil, 0, nil), Vec3.new { 0, 0, 0 }
     end
 
     local hit = nil
@@ -505,20 +513,23 @@ function TransformGizmo:GetHit(ray)
     local axis = nil
     if self.ActiveMode == "Rotate" then
         if cnt == 1 or cnt == 2 then
-            for a, _ in pairs(self.SelectedAxis) do axis = pickerAxes[a] break end
+            for a, _ in pairs(self.SelectedAxis) do
+                axis = pickerAxes[a]
+                break
+            end
             if not axis then
                 Warning("Gizmo:GetHit: Failed to get axis vector for rotation")
-                return Hit.new(self.Picker.Position, nil, 0, nil)
+                return Hit.new(self.Picker.Position, nil, 0, nil), Vec3.new { 0, 0, 0 }
             end
         elseif cnt == 3 then
-            axis = GetCameraForward() 
+            axis = GetCameraForward()
             if not axis then
                 Warning("Gizmo:GetHit: Failed to get camera forward for 3-axis rotation")
-                return Hit.new(self.Picker.Position, nil, 0, nil)
+                return Hit.new(self.Picker.Position, nil, 0, nil), Vec3.new { 0, 0, 0 }
             end
         else
             Warning("Gizmo:GetHit: Invalid axis count for rotation: " .. tostring(cnt))
-            return Hit.new(self.Picker.Position, nil, 0, nil)
+            return Hit.new(self.Picker.Position, nil, 0, nil), Vec3.new { 0, 0, 0 }
         end
 
         hit = self.Picker:HitPlaneByNormal(ray, axis)
@@ -527,7 +538,10 @@ function TransformGizmo:GetHit(ray)
     else
         if cnt == 1 then
             local axisName = nil
-            for a, _ in pairs(self.SelectedAxis) do axisName = a break end
+            for a, _ in pairs(self.SelectedAxis) do
+                axisName = a
+                break
+            end
             -- https://underdisc.net/blog/6_gizmos/index.html
             local p = self.Picker:ClosestPointOnAxis(ray, axisName)
             hit = Hit.new(p, nil, (p - ray.Origin):Length(), nil)
@@ -543,7 +557,7 @@ function TransformGizmo:GetHit(ray)
             end
         else
             Warning("Gizmo:GetHit: Invalid axis count for translation/scale: " .. tostring(cnt))
-            return Hit.new(self.Picker.Position, nil, 0, nil)
+            return Hit.new(self.Picker.Position, nil, 0, nil), Vec3.new { 0, 0, 0 }
         end
     end
 
@@ -559,10 +573,10 @@ function TransformGizmo:GetHit(ray)
     end
 
     if not hit or not hit.Position then
-        return Hit.new(self.Picker.Position, nil, 0, nil)
+        return Hit.new(self.Picker.Position, nil, 0, nil), Vec3.new { 0, 0, 0 }
     end
 
-    return hit, axis
+    return hit, axis or Vec3.new { 0, 0, 0 }
 end
 
 --- Ext.Math.Angle doesn't return signed angles
@@ -595,7 +609,7 @@ local function CalcScaleChange(startHit, hit, selectedAxes, axes, origin)
 end
 
 --- @param ray Ray
---- @return Vec3|number|QuatInfo|nil
+--- @return Vec3|QuatInfo|nil
 function TransformGizmo:GetDelta(ray)
     local hit, axis = self:GetHit(ray)
     if not hit or not hit.Position then return nil end
@@ -635,19 +649,16 @@ function TransformGizmo:GetDelta(ray)
 
         self._rotLastAngle = curAngle
 
-        delta = { Angle = self._rotAccum, Axis = axisVec }
+        delta = { axisVec[1], axisVec[2], axisVec[3], self._rotAccum } -- as QuatInfo
     elseif self.ActiveMode == "Scale" then
         delta = Vec3.new { 1, 1, 1 }
         local scaleValue = CalcScaleChange(startHit, hit, self.SelectedAxis, axes, gizmoOrigin)
 
         local scaleVec = Vec3.new { 1, 1, 1 }
         for axisName, _ in pairs(self.SelectedAxis or {}) do
-            if axisName == "X" then
-                scaleVec[1] = scaleValue
-            elseif axisName == "Y" then
-                scaleVec[2] = scaleValue
-            elseif axisName == "Z" then
-                scaleVec[3] = scaleValue
+            local idx = AxisIndexMap[axisName]
+            if idx then
+                scaleVec[idx] = scaleValue
             end
         end
 
@@ -742,12 +753,12 @@ function TransformGizmo:SetupDragging()
 
         delta = self:StepDelta(delta)
 
-        delta = self:LerpDelta(delta) --[[@as Vec3|number|QuatInfo ]]
+        delta = self:LerpDelta(delta) --[[@as Vec3|QuatInfo ]]
         if not delta then return end -- may return nil to skip this frame
 
         if self.ActiveMode == "Rotate" then
             delta = delta --[[@as QuatInfo ]]
-            self:VisualizeRotatePointer(delta.Angle, delta.Axis)
+            self:VisualizeRotatePointer(delta[4], Vec3.new(delta[1], delta[2], delta[3]))
             self:OnDragRotate(delta)
         elseif self.ActiveMode == "Translate" then
             delta = delta --[[@as Vec3 ]]
@@ -777,7 +788,7 @@ function TransformGizmo:StepDelta(delta)
     if self.ActiveMode == "Translate" then
         delta = delta * self.Step
     elseif self.ActiveMode == "Rotate" then
-        delta = { Angle = delta.Angle * self.Step, Axis = delta.Axis }
+        delta[4] = delta[4] * self.Step
     elseif self.ActiveMode == "Scale" then
         local scaleVec = Vec3.new { 1, 1, 1 }
         delta = scaleVec + (delta - scaleVec) * self.Step
@@ -807,7 +818,7 @@ local slowDownhandlers = {
     end,
 
     Rotate = function(o, delta)
-        local deltaAngle = delta.Angle
+        local deltaAngle = delta[4]
         if o.SlowDown and not o._delta then
             o._delta = deltaAngle
         elseif o.SlowDown and o._delta then
@@ -820,9 +831,10 @@ local slowDownhandlers = {
             return
         end
 
-        delta.Angle = deltaAngle
+        delta[4] = deltaAngle
         if o._accuDelta then
-            return { Angle = o._accuDelta + deltaAngle, Axis = delta.Axis }
+            --return { Angle = o._accuDelta + deltaAngle, Axis = delta.Axis }
+            return { delta[1], delta[2], delta[3], o._accuDelta + deltaAngle }
         end
         return delta
     end,
@@ -926,11 +938,11 @@ end
 function TransformGizmo:Visualize(guid)
     guid = guid or self.SavedGizmos[self.ActiveMode]
     if not EntityExists(guid) then return end
-    local pos = {CGetPosition(guid)}
+    local pos = { CGetPosition(guid) }
     if #pos == 3 then
         self.Visualizer:UpdateScale(pos)
     end
-    
+
     local selectedAxis = DeepCopy(self.SelectedAxis)
     if CountMap(selectedAxis) > 2 and self.ActiveMode == "Rotate" then
         --- treat as single-axis rotation on closest axis
@@ -984,10 +996,10 @@ function TransformGizmo:VisualizeRotatePointer(angle, axis)
 
     local cnt = CountMap(self.SelectedAxis or {})
     if cnt > 2 then
-        for _,viz in ipairs(self.RotatePointer or {}) do
+        for _, viz in ipairs(self.RotatePointer or {}) do
             self.Visualizer:HideGizmo(viz)
         end
-        return 
+        return
     end
 
     for _, guid in ipairs(self.RotatePointer or {}) do

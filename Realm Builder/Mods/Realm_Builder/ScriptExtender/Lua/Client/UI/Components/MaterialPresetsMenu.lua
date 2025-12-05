@@ -756,9 +756,9 @@ function MaterialPresetsMenu:RenderFolderManagePopup(popup, folderName, folderSe
     renameInput:SetStyle("FrameBorderSize", 2)
     renameInput:SetColor("Text", HexToRGBA("FFFFFFFF"))
     renameInput:SetColor("Border", HexToRGBA("FF888888"))
-    renameInput.OnChange = Debounce(50, function()
-        local newName = renameInput.Text
-        if not IsValidName(newName) then
+    renameInput.OnChange = function()
+        local newName = ValidateFolderName(renameInput.Text)
+        if not IsValidFolderName(newName) then
             SetWarningBorder(renameInput)
             GuiAnim.PulseBorder(renameInput, 2)
             return
@@ -778,7 +778,7 @@ function MaterialPresetsMenu:RenderFolderManagePopup(popup, folderName, folderSe
         end
 
         ClearWarningBorder(renameInput)
-    end)
+    end
 
     local function rename() end
     confirmBtn.OnClick = function()
@@ -788,7 +788,11 @@ function MaterialPresetsMenu:RenderFolderManagePopup(popup, folderName, folderSe
         local newName = renameInput.Text
         if newName == folderName then return end
 
-        if not IsValidName(newName) then return end
+        if not IsValidFolderName(newName) then
+            SetWarningBorder(renameInput)
+            GuiAnim.PulseBorder(renameInput, 2)
+            return
+        end
 
         newName = newName:gsub("%s", "_")
         if exportSettings.Folders[newName] then

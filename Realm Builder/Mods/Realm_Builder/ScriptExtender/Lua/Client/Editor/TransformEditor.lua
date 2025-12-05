@@ -641,8 +641,8 @@ function TransformEditor:SetupGizmo()
     end
 
     self.Gizmo.OnDragRotate = function(gizmo, delta)
-        local deltaAngle = delta.Angle or 0
-        local deltaAxis = Vec3.new(delta.Axis or {0,0,0})
+        local deltaAngle = delta[4]
+        local deltaAxis = Vec3.new(delta[1], delta[2], delta[3])
 
         if deltaAxis == Vec3.new(0,0,0) or deltaAngle == 0 then
             for _,proxy in pairs(self.Target or {}) do

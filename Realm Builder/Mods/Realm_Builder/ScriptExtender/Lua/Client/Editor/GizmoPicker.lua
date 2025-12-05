@@ -1,5 +1,9 @@
 local PICKER_CONSTANTS = {}
 
+PICKER_CONSTANTS.BOUNDING_SPHERE = {
+    Radius = 1.1
+}
+
 PICKER_CONSTANTS.CENTER_SPHERE = {
     Radius = 0.1
 }
@@ -37,10 +41,10 @@ end
 --- @class GizmoPickerHitPart
 --- @field Name string
 --- @field Priority number -- Lower number = higher priority
---- @field PreferMode TransformEditorMode -- Optional preferred mode for this part
+--- @field PreferMode TransformEditorMode -- Optional preferred mode for this part， used in "Transform" mode
 --- @field Mode table<TransformEditorMode, boolean> -- Modes this part is active in
 --- @field Axis table<TransformAxis, boolean> -- Axes this part is associated with
---- @field HitTest fun(picker: GizmoPicker, localRay: Ray):Hit?
+--- @field HitTest fun(picker: GizmoPicker, localRay: Ray):Hit? -- localRay is in gizmo local space
 --- @field UpdateScale fun(picker: GizmoPicker, scale: number)
 
 local AxisIndexMap = AxisIndexMap
@@ -301,7 +305,7 @@ function GizmoPicker:Hit(ray)
     end
 
     -- Check Sphere first
-    local gizmoSphereHit = ray:IntersectSphere(origin, self.Scale * 1.1)
+    local gizmoSphereHit = ray:IntersectSphere(origin, self.Scale * PICKER_CONSTANTS.BOUNDING_SPHERE.Radius)
     if not gizmoSphereHit or not gizmoSphereHit.Position then return nil end
 
     local localRay = ray:ToLocal({

@@ -69,11 +69,11 @@ function Ray:ClosestTTo(other, noLimit)
 
         local t2 = Ext.Math.Dot(d2, base_point - other.Origin) / e
         t2 = math.max(t2, 0)
-        
+
         local c1 = base_point
         local c2 = other:At(t2)
         local distance = (c1 - c2):Length()
-        
+
         return c1, c2, distance
     end
 
@@ -86,7 +86,7 @@ function Ray:ClosestTTo(other, noLimit)
         s = math.max(0, s)
         t = math.max(0, t)
     end
-    
+
     local c1 = self:At(s)
     local c2 = other:At(t)
     local distance = (c1 - c2):Length()
@@ -151,7 +151,7 @@ function Ray:IntersectRing(planePoint, planeNormal, innerRadius, outerRadius)
 
     local toHit = hit.Position - planePoint
     local distSqr = Ext.Math.Dot(toHit, toHit)
-    if distSqr < innerRadius*innerRadius or distSqr > outerRadius*outerRadius then return nil end
+    if distSqr < innerRadius * innerRadius or distSqr > outerRadius * outerRadius then return nil end
 
     return hit
 end
@@ -190,12 +190,12 @@ function Ray:IntersectAABB(min, max)
     ))
 
     return Hit.new(
-        self:At(tmin),
-        nil,
-        tmin,
-        nil
-    ),
-    otherHit
+            self:At(tmin),
+            nil,
+            tmin,
+            nil
+        ),
+        otherHit
 end
 
 ---@param obbCenter Vec3
@@ -218,7 +218,7 @@ function Ray:IntersectOBB(obbCenter, halfsizes, rotation)
     if hit then
         hit.Position = rotation:Rotate(hit.Position) + obbCenter
         if otherHits then
-            for _,h in ipairs(otherHits) do
+            for _, h in ipairs(otherHits) do
                 h.Position = rotation:Rotate(h.Position) + obbCenter
             end
         end
@@ -250,18 +250,18 @@ function Ray:IntersectCylinder(pos, radius, height, axis)
 
     local a = Ext.Math.Dot(dPerp, dPerp)
     local b = 2 * Ext.Math.Dot(oPerp, dPerp)
-    local c = Ext.Math.Dot(oPerp, oPerp) - radius*radius
+    local c = Ext.Math.Dot(oPerp, oPerp) - radius * radius
 
     local closestHit = Hit.None()
 
-    local disc = b*b - 4*a*c
+    local disc = b * b - 4 * a * c
     if disc >= 0 and a > EPSILON then
         local sqrtDisc = math.sqrt(disc)
-        for _,t in ipairs{(-b - sqrtDisc)/(2*a), (-b + sqrtDisc)/(2*a)} do
+        for _, t in ipairs { (-b - sqrtDisc) / (2 * a), (-b + sqrtDisc) / (2 * a) } do
             if t >= 0 then
                 local p = self:At(t)
                 local hProj = Ext.Math.Dot(p - pos, axis)
-                if math.abs(hProj) <= height*0.5 then
+                if math.abs(hProj) <= height * 0.5 then
                     if t < closestHit.Distance then
                         closestHit = Hit.new(
                             p,
@@ -275,7 +275,7 @@ function Ray:IntersectCylinder(pos, radius, height, axis)
         end
     end
 
-    for _,sign in ipairs{1,-1} do
+    for _, sign in ipairs { 1, -1 } do
         local capCenter = pos + axis * (sign * height * 0.5)
         local denom = Ext.Math.Dot(d, axis)
         if math.abs(denom) > EPSILON then
@@ -348,6 +348,3 @@ function Ray:Debug()
     }, function(response)
     end)
 end
-
-
-

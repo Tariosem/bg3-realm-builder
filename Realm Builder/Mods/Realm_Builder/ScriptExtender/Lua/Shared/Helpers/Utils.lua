@@ -133,13 +133,19 @@ function IsArrayOf(tbl, valueType)
     return true
 end
 
-function IsValidName(name)
-    if name:match("[^%w_%s%-]") then
+---@param name any
+---@return boolean
+function IsValidFolderName(name)
+    if type(name) ~= "string" then
         return false
     end
-    if name == "" then
+
+    local safe = name:gsub('[\\/:*?"<>|]', "")
+    safe = safe:match("^%s*(.-)%s*$")
+    if safe == "" then
         return false
     end
+
     return true
 end
 
@@ -160,48 +166,9 @@ function ValidateFolderName(name)
     return safe
 end
 
-function TableMerge(dest, src)
-    for k, v in pairs(src) do
-        dest[k] = v
-    end
-end
-
-function DeepTableMerge(dest, src)
-    for k, v in pairs(src) do
-        if type(v) == "table" or type(v) == "userdata" and not IsArray(v) then
-            dest[k] = dest[k] or {}
-            DeepTableMerge(dest[k], v)
-        else
-            dest[k] = v
-        end
-    end
-end
-
-function TableCover(dest, src)
-    for k, v in pairs(dest) do
-        if src[k] == nil then
-            dest[k] = nil
-        else
-            dest[k] = DeepCopy(src[k])
-        end
-    end
-end
-
-function DeepTableCover(dest, src)
-    for k, v in pairs(dest) do
-        local sv = src[k]
-
-        if sv == nil then
-            dest[k] = nil
-
-        elseif type(v) == "table" and type(sv) == "table" then
-            DeepTableCover(v, sv)
-        else
-            dest[k] = DeepCopy(sv)
-        end
-    end
-end
-
+--- @param arr1 any[]
+--- @param arr2 any[]
+--- @return any[]
 function MergeArrays(arr1, arr2)
     for _, v in ipairs(arr2) do
         table.insert(arr1, v)
@@ -209,6 +176,9 @@ function MergeArrays(arr1, arr2)
     return arr1
 end
 
+--- @param input string
+--- @param trimWhitespace boolean?
+--- @return string[]
 function SplitBySemicolon(input, trimWhitespace)
     if type(input) ~= "string" then
         return {}
@@ -280,6 +250,8 @@ function SplitByString(input, separator, trimWhitespace)
     return tokens
 end
 
+--- @param input string
+--- @return string[]
 function SplitBySpace(input)
     if not input or type(input) ~= "string" then
         return {}
@@ -295,6 +267,9 @@ function SplitBySpace(input)
     return result
 end
 
+--- @param obj string
+--- @param prefix string
+--- @return boolean
 function StartWith(obj, prefix)
     if type(obj) ~= "string" or type(prefix) ~= "string" then
         return false
@@ -302,6 +277,8 @@ function StartWith(obj, prefix)
     return string.sub(obj, 1, #prefix) == prefix
 end
 
+---@param map any
+---@return integer cnt
 function CountMap(map)
     map = map or {}
     local count = 0
