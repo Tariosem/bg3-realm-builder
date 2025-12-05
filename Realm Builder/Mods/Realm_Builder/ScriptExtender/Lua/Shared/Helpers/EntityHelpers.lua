@@ -842,7 +842,7 @@ function ClearDummyData()
 
     if Ext.IsClient() then
         ClientDummyEntity = {}
-        Post("UpdateDummies", { DummyDestroyed = true })
+        NetChannel.UpdateDummies:SendToServer({ Deactive = true })
     end
 end
 

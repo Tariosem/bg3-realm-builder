@@ -189,9 +189,9 @@ function MaterialTab:Render(parent)
                 propNode.OnClick = function(sel)
                     sel.Highlight = false
                     sel.Selected = false
-                    self.Editor:ResetParameter(propertyName)
-                    self.UpdateFuncs[propertyName]()
+                    self.ResetFuncs[propertyName]()
                 end
+                propNode.OnRightClick = propNode.OnClick
 
                 propNode.OnHoverEnter = function()
                     local paramValue, ptype = self:GetParameter(propertyName)
@@ -204,13 +204,6 @@ function MaterialTab:Render(parent)
                         propNode.Highlight = self:HasChanged(propertyName) and true or false
                         typeNode.Framed = self:HasChangeInType(paramType)
                     end
-                end
-
-                propNode.OnRightClick = function(sel)
-                    sel.Highlight = false
-                    sel.Selected = false
-                    self.Editor:ResetParameter(propertyName)
-                    self.UpdateFuncs[propertyName]()
                 end
 
                 if paramgroup.Visible then
@@ -380,14 +373,8 @@ function MaterialTab:RenderNumberProperty(node, propertyName, vecValue)
             range.max = 100
             range.step = 0.1
         end
-        if vecValue[i] > range.max then
-            range.max = vecValue[i] * 2
-        end
-        if vecValue[i] < range.min then
-            range.min = vecValue[i] / 2
-        end
         local slider = StyleHelpers.AddSliderWithStep(node, propertyName .. "##" .. self.MaterialName .. i,
-            vecValue[i], range.min, range.max, range.step, propertyName:find("Index") ~= nil)
+            vecValue[i], range.min, range.max, range.step, isIndex)
         slider.ItemWidth = 400 * SCALE_FACTOR
 
         if colorPicker then
@@ -395,9 +382,10 @@ function MaterialTab:RenderNumberProperty(node, propertyName, vecValue)
             slider.HideResetButton = true
         end
         slider.OnChange = function(sel)
-            local newValue = { sliders[1].Value[1], sliders[2] and sliders[2].Value[1] or 0, sliders[3] and
-            sliders[3].Value[1] or 0, sliders[4] and sliders[4].Value[1] or 0 } --[[@as number[] ]]
-
+            local newValue = { sliders[1].Value[1] }
+            for j = 2, #vecValue do
+                newValue[j] = sliders[j].Value[1]
+            end
             for j = #vecValue + 1, 4 do
                 newValue[j] = nil
             end
@@ -406,12 +394,13 @@ function MaterialTab:RenderNumberProperty(node, propertyName, vecValue)
                 colorPicker.Color = ToVec4(newValue)
             end
 
-            self:SetParameter(propertyName, #newValue == 1 and newValue[1] or newValue)
+            local applyValue = #vecValue == 1 and newValue[1] or newValue
+            self:SetParameter(propertyName, applyValue, #vecValue, true)
 
             self.ParamNodeRefs[propertyName].Highlight = self:HasChanged(propertyName) and true or false
         end
 
-        table.insert(sliders, slider)
+        sliders[i] = slider
     end
 
     local function reset()
@@ -424,7 +413,7 @@ function MaterialTab:RenderNumberProperty(node, propertyName, vecValue)
             end
             for i = 1, #newValue do
                 if sliders[i] then
-                    sliders[i].Value = { newValue[i], 0, 0, 0 }
+                    sliders[i].Value = { newValue[i], newValue[i], newValue[i], newValue[i] }
                 end
             end
             if colorPicker then
@@ -440,9 +429,9 @@ function MaterialTab:RenderNumberProperty(node, propertyName, vecValue)
             if type(newValue) == "number" then
                 newValue = { newValue }
             end
-            for i = 1, #newValue do
+            for i = 1, #vecValue do
                 if sliders[i] then
-                    sliders[i].Value = { newValue[i], 0, 0, 0 }
+                    sliders[i].Value = { newValue[i], newValue[i], newValue[i], newValue[i] }
                 end
             end
             if colorPicker then
@@ -611,11 +600,10 @@ function MaterialTab:GetParameter(name)
     return self.Editor:GetParameter(name)
 end
 
-function MaterialTab:SetParameter(name, value, ptype)
+function MaterialTab:SetParameter(name, value, ptype, dontUpdate)
     self.Editor:SetParameter(name, value, ptype)
-    if self.UpdateFuncs[name] then
-        self.UpdateFuncs[name](value)
-    end
+    if dontUpdate or not self.UpdateFuncs[name] then return end
+    self.UpdateFuncs[name](value)
 end
 
 function MaterialTab:ResetParameter(name)

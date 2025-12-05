@@ -284,7 +284,9 @@ function EntityManager:SetEntity(guid, entInfo)
         else
             Osi.SetGravity(guid, 1)
         end
-        self.SavedEntities[guid].Gravity = entInfo.Gravity
+        if self.SavedEntities[guid] then
+            self.SavedEntities[guid].Gravity = entInfo.Gravity
+        end
     end
 
     if type(entInfo.Visible) == "boolean" then

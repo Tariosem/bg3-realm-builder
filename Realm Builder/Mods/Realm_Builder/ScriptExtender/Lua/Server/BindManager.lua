@@ -97,7 +97,8 @@ function BindManager:Bind(child, parent, attributes)
     self.BindStores[child].KeepLookingAt = keepLookingAt and keepLookingAt or false
     self.BindStores[child].FollowParent = followParent
 
-    Debug(self.BindTree._table)
+    Debug("Current Bind Tree:")
+    RainbowDumpTable(self.BindTree._table)
 
     self:SetupBindTimer(child)
 

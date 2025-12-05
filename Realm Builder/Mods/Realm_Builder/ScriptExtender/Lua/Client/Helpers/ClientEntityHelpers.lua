@@ -146,6 +146,11 @@ end
 function GetDisplayNameForTemplateId(uuid)
     uuid = TakeTailTemplate(uuid)
     local template = Ext.Template.GetTemplate(uuid)
+    if not template then
+        local isVisual = Ext.Resource.Get(uuid, "Visual") --[[@as ResourceVisualResource]]
+        if not isVisual then return "Unknown" end
+        return GetLastPath(isVisual.SourceFile)
+    end
     if template.TemplateType == "TileConstruction" then return template.Name end
     local transalatedString = template.DisplayName.Handle.Handle
     local translated = Ext.Loca.GetTranslatedString(transalatedString)

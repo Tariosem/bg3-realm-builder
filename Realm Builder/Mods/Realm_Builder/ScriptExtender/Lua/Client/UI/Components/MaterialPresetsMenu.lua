@@ -1540,7 +1540,7 @@ function MaterialPresetsMenu:RenderCCPresetList(presetName, parent)
 
     local maxRecent = 100
     local recentTable = recentList:AddTable("RecentCCPresets", 4)
-    local recentRow = recentTable:AddRow()
+    local recentRow = recentTable:AddRow() --[[@as ExtuiTableRow?]]
 
     local recentQueue = self.Recent[presetName] or {} --[[@type ResourceCharacterCreationColor[] ]]
     self.Recent[presetName] = recentQueue
@@ -1570,6 +1570,18 @@ function MaterialPresetsMenu:RenderCCPresetList(presetName, parent)
     local uuidToCells = {}
     local renderThread = nil
     local outerSuspended = false
+
+    local function renderRecentTable()
+        if recentRow then
+            recentRow:Destroy()
+            recentRow = nil
+        end
+        recentRow = recentTable:AddRow()
+        for _, recent in ipairs(recentQueue) do
+            local recentCell = recentRow:AddCell()
+            self:RenderPresetColorBox(recent, recentCell)
+        end
+    end
 
     local function renderAllResources()
         local lastYieldTime = Ext.Timer.MicrosecTime()
@@ -1603,6 +1615,7 @@ function MaterialPresetsMenu:RenderCCPresetList(presetName, parent)
                             end
                         end
                         recentQueue = uniqueRecent
+                        self.Recent[presetName] = recentQueue
 
                         -- Trim to maxRecent
                         while #recentQueue > maxRecent do
@@ -1610,13 +1623,7 @@ function MaterialPresetsMenu:RenderCCPresetList(presetName, parent)
                         end
 
                         -- Refresh
-                        recentTable:Destroy()
-                        recentTable = recentList:AddTable("RecentCCPresets", 4)
-                        recentRow = recentTable:AddRow()
-                        for _, recent in ipairs(recentQueue) do
-                            local recentCell = recentRow:AddCell()
-                            self:RenderPresetColorBox(recent, recentCell)
-                        end
+                        renderRecentTable()
                     end
 
                     sel.UserData.SuccessApply = false
@@ -1657,6 +1664,7 @@ function MaterialPresetsMenu:RenderCCPresetList(presetName, parent)
     end
 
     startRenderThread()
+    renderRecentTable()
 
     local sortButton = leftSearchCell:AddButton("Hue##CCPresetSort")
     local stooltip = sortButton:Tooltip():AddText("Sort presets by Hue")

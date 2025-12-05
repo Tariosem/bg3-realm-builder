@@ -399,8 +399,6 @@ RegisterOnSessionLoaded(function()
     KeybindManager:LoadFromFile()
 end)
 
-
-
 RegisterConsoleCommand("rb_dump_keybinds", function()
     local bindings = KeybindManager:GetAllBindings()
     local count = #bindings

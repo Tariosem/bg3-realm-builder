@@ -1014,8 +1014,54 @@ function StyleHelpers.SetWarningProgressBarStyle(pBar)
 end
 
 --- @class RadioButtonOption
---- @field Name string
+--- @field Label string
 --- @field Value integer
+
+--- @param enumType string
+--- @return RadioButtonOption[]
+function StyleHelpers.CreateRadioButtonOptionFromEnum(enumType)
+    local enum = Ext.Enums[enumType]
+    if not enum then
+        Warning("Enum type " .. enumType .. " not found!")
+        return {}
+    end
+
+    local options = {}
+    for name, value in pairs(enum) do
+        if type(name) == "string" then
+            table.insert(options, {
+                Label = name,
+                Value = value.Value
+            })
+        end
+    end
+    table.sort(options, function(a, b)
+        return a.Value < b.Value
+    end)
+    return options
+end
+
+function StyleHelpers.CreateRadioButtonOptionFromBitmask(enumType)
+    local enum = Ext.Enums[enumType]
+    if not enum then
+        Warning("Enum type " .. enumType .. " not found!")
+        return {}
+    end
+
+    local options = {}
+    for name, value in pairs(enum) do
+        if type(name) == "string" then
+            table.insert(options, {
+                Label = name,
+                Value = value.__Value
+            })
+        end
+    end
+    table.sort(options, function(a, b)
+        return a.Value < b.Value
+    end)
+    return options
+end
 
 --- @class BitmaskRadioButtonsGroup : ExtuiGroup
 --- @field OnChange fun(radioBtn: ExtuiRadioButton, value: integer)
@@ -1059,8 +1105,8 @@ function StyleHelpers.AddBitmaskRadioButtons(parent, options, initValue)
 
     local uuid = Uuid_v4()
     for i, option in ipairs(options) do
-        local radio = group:AddRadioButton(option.Name or ("Option" .. i))
-        radio.IDContext = "BitmaskRadioButton__" .. option.Name .. "__" .. i .. "__" .. uuid
+        local radio = group:AddRadioButton(option.Label or ("Option" .. i))
+        radio.IDContext = "BitmaskRadioButton__" .. option.Label .. "__" .. i .. "__" .. uuid
         radio.Active = initValue and (initValue & option.Value) ~= 0 or false
         radio.OnChange = function(r)
             r.Active = not r.Active
@@ -1120,7 +1166,7 @@ function StyleHelpers.AddEnumRadioButtons(parent, options, initValue)
 
     
     for i, option in ipairs(options) do
-        local enumName = option.Name
+        local enumName = option.Label
         local enumValue = option.Value
         local radio = group:AddRadioButton(enumName .. "##_Setter")
         radioButtons[enumName] = radio
@@ -1453,7 +1499,7 @@ function StyleHelpers.RenderGeneralTableEditor(parent, o, onSet)
                 checkbox.Checked = o[k]
             end
         elseif type(v) == "number" then
-            local slider, _ = alignedTable:AddSliderWithStep(k, v, 0, 100, 1, true)
+            local slider, _ = alignedTable:AddSliderWithStep(k, v, 0, 100, 1, math.type(v) == "integer")
             slider.OnChange = function(sel)
                 o[k] = sel.Value[1]
                 onSet()
@@ -1475,7 +1521,7 @@ function StyleHelpers.RenderGeneralTableEditor(parent, o, onSet)
                 function(value)
                     o[k] = value
                     onSet()
-                end, { IsInt = true, Range = { Min = 0, Max = 100, Step = 1 }, ResetValue = v })
+                end, { IsInt = math.type(v[1]) == "integer", Range = { Min = 0, Max = 100, Step = 1 }, ResetValue = v })
         else
             --skip
         end

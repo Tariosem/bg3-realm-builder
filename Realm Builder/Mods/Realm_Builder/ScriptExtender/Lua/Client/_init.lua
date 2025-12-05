@@ -1,49 +1,7 @@
-function Post(channel, payload)
-    payload = payload or {}
-    if type(payload) ~= "string" then
-        payload = Ext.Json.Stringify(payload)
-    end
-    Ext.ClientNet.PostMessageToServer(channel .. ModuleUUID, payload)
-end
-
----@param channel any
----@param callback fun(data:table):any
----@return RBSubscription
-function ClientSubscribe(channel, callback)
-    --Debug("Subscribe to channel: " .. channel)
-    local unsubscribed = false
-    local sub
-
-    local unsub = function()
-        if sub ~= -1 then
-            unsubscribed = true
-            Ext.Events.NetMessage:Unsubscribe(sub)
-            sub = -1
-        end
-    end
-
-    sub = Ext.Events.NetMessage:Subscribe(function (e)
-        if unsubscribed then return end
-        if e.Channel == channel .. ModuleUUID then
-            local data = Ext.Json.Parse(e.Payload)
-            if not data then
-                Error("Invalid payload for channel: " .. channel .. " - " .. tostring(e.Payload))
-                return
-            end
-            local callbakcReturn = callback(data)
-            if callbakcReturn == UNSUBSCRIBE_SYMBOL then
-                unsub()
-            end
-        end
-    end)
-
-    return { Unsubscribe = unsub, ID = sub } 
-end
-
-if Ext.Utils.GetGameState() ~= "Menu" then
+if Ext.Debug.IsDeveloperMode() then
     GLOBAL_DEBUG_WINDOW = Ext.IMGUI.NewWindow("Realm_Builder_DebugWindow")
     GLOBAL_DEBUG_WINDOW.Closeable = true
-    GLOBAL_DEBUG_WINDOW.Open = false
+    --GLOBAL_DEBUG_WINDOW.Open = Ext.Debug.IsDeveloperMode()
 end
 
 RequireFiles("Client/", {
@@ -60,20 +18,9 @@ RequireFiles("Client/", {
 
 if GLOBAL_DEBUG_WINDOW then
     local debugButton = GLOBAL_DEBUG_WINDOW:AddButton("Debug Info")
-    local surprise = Notification.new("Debug Info")
-    surprise.Pivot = {0.5, 0.5}
-    surprise.FlickToDismiss = true
-    surprise.Duration = 5000
 
     debugButton.OnClick = function()
         ErrorNotify("Debug", "Memory Usage: " .. tostring(Ext.Utils.GetMemoryUsage()/1024/1024) .. " MB")
-        ErrorNotify("Error", "This is a test error notification.")
-
-        local entities = Ext.Entity.GetAllEntitiesWithComponent("ServerAtmosphereTrigger")
-
-        for cnt,ent in pairs(entities) do
-            Ext.IO.SaveFile("Atmosphere_" .. cnt .. ".Json", Ext.DumpExport(ent:GetAllComponents()))
-        end
     end
 
     local visualizeMouseRay = GLOBAL_DEBUG_WINDOW:AddButton("Visualize Mouse Ray")
@@ -123,13 +70,7 @@ if false and GLOBAL_DEBUG_WINDOW then
     end
 
     --- @type RadioButtonOption[]
-    local options = {}
-
-    for flagName,flagValue in pairs(PhysicsGroupFlags) do
-        if type(flagName) == "string" then
-            table.insert(options, {Name = flagName, Value = flagValue})
-        end
-    end
+    local options = StyleHelpers.CreateRadioButtonOptionFromEnum("PhysicsGroupFlags")
 
     local separator = header:AddSeparatorText("Include Groups")
     local includeGroup = StyleHelpers.AddBitmaskRadioButtons(header, options, configurableIntersect.PhysicsGroupFlags)

@@ -20,7 +20,7 @@
 --- @field Select fun(self: TransformEditor, selection: RB_MovableProxy[], notRecordHistory:boolean|nil):boolean|nil -- returns true if selection changed
 --- @field AddTarget fun(self: TransformEditor, proxy: RB_MovableProxy)
 --- @field Clear fun(self: TransformEditor)
---- @field SetMode fun(self: TransformEditor, mode: "Translate"|"Rotate"|"Scale")
+--- @field SetMode fun(self: TransformEditor, mode: TransformEditorMode)
 --- @field InitGizmo fun(self: TransformEditor)
 --- @field UpdateGizmo fun(self: TransformEditor)
 --- @field new fun(): TransformEditor
@@ -124,6 +124,12 @@ function TransformEditor:Select(selection, notRecordHistory)
     self:PopupNotify()
 
     return true
+end
+
+function TransformEditor:StartDragging()
+    if self.Gizmo then
+        self.Gizmo:StartDragging()
+    end
 end
 
 function TransformEditor:AddTarget(proxy)

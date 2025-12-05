@@ -128,12 +128,16 @@ local function SetGizmoAxisTextureColorParam(axis, guid, Value)
     return corRendrable
 end
 
-function GizmoVisualizer:ScaleGizmo(axis, renderable)
+local translateScale = 1.1 / 0.9
+function GizmoVisualizer:ScaleGizmo(axis, renderable, isTranslate)
     if tonumber(axis) then
         axis = IndexAxisMap[axis]
     end
     local rend = renderable
     local scale = self.Scale[AxisIndexMap[axis]] or 1.0
+    if isTranslate then
+        scale = scale * translateScale
+    end
     local toScale = ToVec3(scale)
     toScale[AxisIndexMap[axis]] = toScale[AxisIndexMap[axis]] * (self.ScaleMultiplier[AxisIndexMap[axis]] or 1.0)
     for _,r in ipairs(rend or {}) do
@@ -197,28 +201,43 @@ function GizmoVisualizer:HideGizmo(guid)
     end
 end
 
+
+local translateItemTemplateId = TakeTailTemplate(GIZMO_ITEM.Translate)
 function GizmoVisualizer:HighLightGizmoAxis(axis, guid)
     if tonumber(axis) then
         axis = IndexAxisMap[axis]
     end
+    local entity = Ext.Entity.Get(guid) --[[@as EntityHandle]]
     local rend = SetGizmoAxisTextureColorParam(axis, guid, self:GetHighlightColor(axis))
-    self:ScaleGizmo(axis, rend)
+    local isTranslate = entity and entity.GameObjectVisual and entity.GameObjectVisual.RootTemplateId == translateItemTemplateId
+    self:ScaleGizmo(axis, rend, isTranslate)
 end
 
 function GizmoVisualizer:HoverGizmoAxis(axis, guid)
     if tonumber(axis) then
         axis = IndexAxisMap[axis]
     end
+    local entity = Ext.Entity.Get(guid) --[[@as EntityHandle]]
     local rend = SetGizmoAxisTextureColorParam(axis, guid, self:GetHoveredColor(axis))
-    self:ScaleGizmo(axis, rend)
+    local rootTemplateId = entity and entity.GameObjectVisual and entity.GameObjectVisual.RootTemplateId or ""
+    local isTranslate = rootTemplateId ==  translateItemTemplateId
+    self:ScaleGizmo(axis, rend, isTranslate)
 end
 
 function GizmoVisualizer:ResetGizmoAxis(axis, guid)
     if tonumber(axis) then
         axis = IndexAxisMap[axis]
     end
+    local entity = Ext.Entity.Get(guid) --[[@as EntityHandle]]
     local rend = SetGizmoAxisTextureColorParam(axis, guid, self:GetDefaultColor(axis))
-    self:ScaleGizmo(axis, rend)
+    local isTranslate = entity and entity.GameObjectVisual and entity.GameObjectVisual.RootTemplateId == translateItemTemplateId
+    self:ScaleGizmo(axis, rend, isTranslate)
+end
+
+function GizmoVisualizer:ResetGizmo(guid)
+    for _,axis in pairs({"X", "Y", "Z"}) do
+        self:ResetGizmoAxis(axis, guid)
+    end
 end
 
 function GizmoVisualizer:VisualizeRotatePointer(guid, axis)

@@ -52,13 +52,39 @@ function RealmBuilderMainMenu:RegisterEvents()
         if not globalEditor.Gizmo.Guid then
             NetChannel.ManageGizmo:RequestToServer({ Clear = true }, function (response)
                 globalEditor.Gizmo.Guid = nil
-                globalEditor.Gizmo.Translate = nil
-                globalEditor.Gizmo.Rotate = nil
-                globalEditor.Gizmo.Scale = nil
+                globalEditor.Gizmo.SavedGizmos = {}
             end)
         end
         globalEditor.Gizmo:DeleteItem()
         globalEditor.Target = nil
+    end)
+
+    meMod:RegisterEvent("OpenVisualTab", function (e)
+        if e.Event ~= "KeyDown" then return end
+        local host = CGetHostCharacter()
+
+        if IsInCharacterCreationMirror() then
+            VisualTab.new(host, GetName(host), nil, nil):Render()
+            return
+        end
+
+        local pick = GetPickingEntity()
+        local pickId = HandleToUuid(pick)
+
+        if not pick then
+            pickId = host
+        end
+
+        if pickId then
+            VisualTab.new(pickId, GetName(pickId), nil, nil):Render()
+        elseif pick.Visual then
+            VisualHelpers.RegisterVisual(pick)
+            if pick.Scenery then
+                VisualTab.CreateByEntity(pick, pick.Scenery.Uuid, "Scenery"):Render()
+            else
+                _D(pick:GetAllComponents())
+            end
+        end
     end)
 end
 
@@ -76,7 +102,7 @@ function RealmBuilderMainMenu:RenderBrowserMenu()
 
     local browserMenu = RegisterWindow("generic", "Browser Menu", "Browser Menu")
     browserMenu.Closeable = true
-    browserMenu:SetSize({ 300 * SCALE_FACTOR, 400 * SCALE_FACTOR })
+    browserMenu:SetSize({ 300 * SCALE_FACTOR, 600 * SCALE_FACTOR })
 
     local allAvailableBrowsers = {
         {Key = "item", Label = "Item"},

@@ -5,8 +5,8 @@ PICKER_CONSTANTS.CENTER_SPHERE = {
 }
 
 PICKER_CONSTANTS.TRANSLATE_PLANE_SQUARE = {
-    Inner = 0,
-    HalfSize = 0.4
+    Inner = 0.4,
+    HalfSize = 0.8
 }
 
 PICKER_CONSTANTS.TRANSLATE_AXIS_BB = {
@@ -23,6 +23,16 @@ PICKER_CONSTANTS.ROTATE_RING = {
     InnerRadius = 0.55,
     OuterRadius = 0.65
 }
+
+if GLOBAL_DEBUG_WINDOW then
+    local pickerHeader = StyleHelpers.AddTree(GLOBAL_DEBUG_WINDOW, "Gizmo Picker Constants")
+    for partName,part in pairs(PICKER_CONSTANTS) do
+        local partTree = StyleHelpers.AddTree(pickerHeader, partName)
+        StyleHelpers.RenderGeneralTableEditor(partTree, part, function ()
+            
+        end)
+    end
+end
 
 --- @class GizmoPickerHitPart
 --- @field Name string
@@ -281,7 +291,7 @@ end
 --- @param ray Ray -- in world space
 --- @return GizmoPickerHit|nil
 function GizmoPicker:Hit(ray)
-    local mode = self.Gizmo and self.Gizmo.ActiveMode or "Translate"
+    local mode = self.Gizmo and self.Gizmo.Mode or "Translate"
 
     local origin, rotation = self:GetTransform()
 
@@ -307,9 +317,13 @@ function GizmoPicker:Hit(ray)
         if isUniformMode or part.Mode[mode] then
             local hit = part.HitTest(self, localRay)
             if hit and hit.Position and hit:IsCloserThan(bestHit.Hit) then
+                local returnMode = mode
+                if isUniformMode then
+                    returnMode = part.PreferMode
+                end
                 bestHit = {
                     Axis = part.Axis,
-                    HitMode = isUniformMode and part.PreferMode or mode,
+                    HitMode = returnMode,
                     Hit = hit,
                 }
             end

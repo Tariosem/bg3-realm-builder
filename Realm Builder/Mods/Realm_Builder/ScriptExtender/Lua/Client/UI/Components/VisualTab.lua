@@ -780,7 +780,7 @@ function VisualTab:DetermineOverrideCharacterParameters()
             if i == 3 then
                 num = num * 0.4
             end
-            params[1][paramName] = { num or 0.0 }
+            params[1][paramName] = num
             mergeParameterSets(overrideCharacterParams, params)
         end
         
@@ -888,8 +888,7 @@ function VisualTab:DetermineOverrideCharacterParameters()
         for ptype, paramList in pairs(paramLists) do
             for _, param in pairs(paramList) do
                 if not overrideCharacterParams[ptype][param.Parameter] and param.Enabled then
-                    local fValue = type(param.Value) == "number" and { param.Value } or param.Value
-                    overrideCharacterParams[ptype][param.Parameter] = fValue
+                    overrideCharacterParams[ptype][param.Parameter] = param.Value
                 end
             end
         end
@@ -1300,9 +1299,15 @@ function VisualTab:RenderEffectComponentEditor(parent, key, getComp, renderInfo)
             self:RenderEffectComponentBooleanCheckbox(tree, getComp, key, propName, propInfo)
         end,
         BitMask = function(tree, propName, propInfo)
+            if propInfo.EnumName then
+                propInfo.Options = StyleHelpers.CreateRadioButtonOptionFromBitmask(propInfo.EnumName)
+            end
             self:RenderEffectComponentBitmaskRadioButtons(tree, getComp, key, propName, propInfo)
         end,
         Enum = function(tree, propName, propInfo)
+            if propInfo.EnumName then
+                propInfo.Options = StyleHelpers.CreateRadioButtonOptionFromEnum(propInfo.EnumName)
+            end
             self:RenderEffectComponentEnumRadioButtons(tree, getComp, key, propName, propInfo)
         end,
     }
@@ -1618,51 +1623,47 @@ function VisualTab:RenderLightEntity(node, component, compIndex)
         return
     end
 
+    --- @type table<string, EffectComponentParameterInfo>
     local bitMaskParamMap = {
         LightChannelFlag = {
             Options = {
-                { Name = "Character", Value = 1 << 5 },
-                { Name = "Scenery", Value = 1 },
+                { Label = "Character", Value = 1 << 5 },
+                { Label = "Scenery", Value = 1 },
             },
             DisplayName = "Light Channel",
             Group = "Light Flags",
         },
         Flags = {
+            EnumName = "LightFlags",
             Options = {
-                { Name = "Use Temperature", Value = 0x1 },
-                { Name = "Is Flickering", Value = 0x2 },
-                { Name = "Is Moving", Value = 0x4 },
-                { Name = "Cast Shadow", Value = 0x8 },
-                { Name = "Cast Volumetric Shadow", Value = 0x10 },
-                { Name = "Enabled", Value = 0x20 },
-                { Name = "Pre Expose", Value = 0x40 },
-                { Name = "Fill Light", Value = 0x80 },
             },
             DisplayName = "Light Flags",
             Group = "Light Flags",
         },
     }
+
+
     local enumParamMap = {
         LightType = {
+            EnumName = "LightType",
             Options = {
-                { Name = "Point", Value = 0 },
-                { Name = "Spot", Value = 1 },
-                { Name = "Directional", Value = 2 },
             },
             DisplayName = "Light Type",
             Group = "General Light Settings",
         },
         DirectionLightAttenuationFunction = {
             Options = {
-                { Name = "Linear", Value = 0 },
-                { Name = "Inverse Square", Value = 1 },
-                { Name = "Smooth Step", Value = 2 },
-                { Name = "Smoother Step", Value = 3 },
+                { Label = "Linear", Value = 0 },
+                { Label = "Inverse Square", Value = 1 },
+                { Label = "Smooth Step", Value = 2 },
+                { Label = "Smoother Step", Value = 3 },
             },
             DisplayName = "Attenuation Function",
             Group = "Directional Light Settings",
         },
     }
+
+
     local scalarParamMap = {
         SpotLightInnerAngle = {
             Range = { Min = 0, Max = 180, Step = 1 },

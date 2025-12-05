@@ -150,33 +150,7 @@ function TransformToolbar:RegisterKeyInputEvents()
         Commands.DeleteCommand(targets)
     end)
 
-    ttMod:RegisterEvent("OpenVisualTab", function (e)
-        if e.Event ~= "KeyDown" then return end
-        local host = CGetHostCharacter()
 
-        if IsInCharacterCreationMirror() then
-            VisualTab.new(host, GetName(host), nil, nil):Render()
-            return
-        end
-
-        local pick = GetPickingEntity()
-        local pickId = HandleToUuid(pick)
-
-        if not pick then
-            pickId = host
-        end
-
-        if pickId then
-            VisualTab.new(pickId, GetName(pickId), nil, nil):Render()
-        elseif pick.Visual then
-            VisualHelpers.RegisterVisual(pick)
-            if pick.Scenery then
-                VisualTab.CreateByEntity(pick, pick.Scenery.Uuid, "Scenery"):Render()
-            else
-                _D(pick:GetAllComponents())
-            end
-        end
-    end)
 
     ttMod:RegisterEvent("OpenNearbyPopup", function (e)
         if e.Event ~= "KeyDown" then return end
@@ -336,6 +310,12 @@ function TransformToolbar:RegisterTransformEditorEvents()
     teMod:RegisterEvent("ScaleMode", function (e)
         if e.Event == "KeyDown" then
             globalEditor:SetMode("Scale")
+        end
+    end)
+
+    teMod:RegisterEvent("TransformMode", function (e)
+        if e.Event == "KeyDown" then
+            globalEditor:SetMode("Transform")
         end
     end)
 

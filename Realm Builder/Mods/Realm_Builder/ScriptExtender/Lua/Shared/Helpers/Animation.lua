@@ -45,10 +45,10 @@ AnimationEasing = {
 }
 
 -- https://cubic-bezier.com/
--- B(t) = (1-t)³P0 + 3(1-t)²tP1 + 3(1-t)t²P2 + t³P3
+-- B(t) = (1-t)^3 * P0 + 3(1-t)^2 * t * P1 + 3(1-t)t^2 * P2 + t^3 * P3
 local function CubicBezier(p0, p1, p2, p3, t)
     local u = 1 - t
-    return u^3 * p0 + 3 * u^2 * t * p1 + 3 * u * t^2 * p2 + t^3 * p3
+    return u ^ 3 * p0 + 3 * u ^ 2 * t * p1 + 3 * u * t ^ 2 * p2 + t ^ 3 * p3
 end
 
 local function MakeBezierEasing(p1y, p2y)
@@ -60,13 +60,13 @@ end
 local EasingFuncs = {}
 
 local function genratePowerEasing(pow, name)
-    EasingFuncs["EaseIn" .. name] = function(t) return t^pow end
-    EasingFuncs["EaseOut" .. name] = function(t) return 1 - (1 - t)^pow end
+    EasingFuncs["EaseIn" .. name] = function(t) return t ^ pow end
+    EasingFuncs["EaseOut" .. name] = function(t) return 1 - (1 - t) ^ pow end
     EasingFuncs["EaseInOut" .. name] = function(t)
         if t < 0.5 then
-            return (2 * t)^pow / 2
+            return (2 * t) ^ pow / 2
         else
-            return 1 - (-2 * t + 2)^pow / 2
+            return 1 - (-2 * t + 2) ^ pow / 2
         end
     end
 end
@@ -80,18 +80,18 @@ EasingFuncs = {
     EaseInOut = MakeBezierEasing(0.42, 0.58),
 
     EaseInExpo = function(t)
-        return t == 0 and 0 or 2^(10 * t - 10)
+        return t == 0 and 0 or 2 ^ (10 * t - 10)
     end,
     EaseOutExpo = function(t)
-        return t == 1 and 1 or 1 - 2^(-10 * t)
+        return t == 1 and 1 or 1 - 2 ^ (-10 * t)
     end,
     EaseInOutExpo = function(t)
         if t == 0 then return 0 end
         if t == 1 then return 1 end
         if t < 0.5 then
-            return 2^(20 * t - 10) / 2
+            return 2 ^ (20 * t - 10) / 2
         else
-            return (2 - 2^(-20 * t + 10)) / 2
+            return (2 - 2 ^ (-20 * t + 10)) / 2
         end
     end,
 
@@ -133,12 +133,12 @@ EasingFuncs = {
 
     EaseInBack = function(t)
         local c1, c3 = 1.70158, 2.70158
-        return c3 * t^3 - c1 * t^2
+        return c3 * t ^ 3 - c1 * t ^ 2
     end,
     EaseOutBack = function(t)
         local c1, c3 = 1.70158, 2.70158
         t = t - 1
-        return 1 + c3 * t^3 + c1 * t^2
+        return 1 + c3 * t ^ 3 + c1 * t ^ 2
     end,
     EaseInOutBack = function(t)
         local c2 = 2.5949095
@@ -154,14 +154,14 @@ EasingFuncs = {
         local c4 = (2 * math.pi) / 3
         if t == 0 then return 0 end
         if t == 1 then return 1 end
-        return -2^(10 * t - 10) * math.sin((t * 10 - 10.75) * c4)
+        return -2 ^ (10 * t - 10) * math.sin((t * 10 - 10.75) * c4)
     end,
 
     EasingOutElastic = function(t)
         local c4 = (2 * math.pi) / 3
         if t == 0 then return 0 end
         if t == 1 then return 1 end
-        return 2^(-10 * t) * math.sin((t * 10 - 0.75) * c4) + 1
+        return 2 ^ (-10 * t) * math.sin((t * 10 - 0.75) * c4) + 1
     end,
 
     EasingInOutElastic = function(t)
@@ -169,9 +169,9 @@ EasingFuncs = {
         if t == 0 then return 0 end
         if t == 1 then return 1 end
         if t < 0.5 then
-            return -(2^(20 * t - 10) * math.sin((20 * t - 11.125) * c5)) / 2
+            return -(2 ^ (20 * t - 10) * math.sin((20 * t - 11.125) * c5)) / 2
         else
-            return (2^(-20 * t + 10) * math.sin((20 * t - 11.125) * c5)) / 2 + 1
+            return (2 ^ (-20 * t + 10) * math.sin((20 * t - 11.125) * c5)) / 2 + 1
         end
     end,
 }
@@ -199,16 +199,16 @@ genratePowerEasing(5, "Quint")
 function AnimateValue(fps, fromValue, toValue, duration, easing, onComplete, onUpdate)
     if type(fromValue) == "table" or type(toValue) == "table" then
         if type(fromValue) ~= "table" or type(toValue) ~= "table" then
-            Warning("Invalid input format") 
+            Warning("Invalid input format")
             return nil
         elseif #fromValue ~= #toValue then
-            Warning("Non matching vector") 
+            Warning("Non matching vector")
             return nil
         end
         fromValue = Vector.new(fromValue)
         toValue = Vector.new(toValue)
     end
-        
+
     fps = math.max(fps or 90, 1)
     duration = math.max(duration or 1000, 1)
 
@@ -305,12 +305,12 @@ end
 
 function GetAllEasings(namdDescend)
     local easings = {}
-    for k,_ in pairs(AnimationEasing) do
+    for k, _ in pairs(AnimationEasing) do
         if type(k) == "string" then
             table.insert(easings, k)
         end
     end
-    table.sort(easings, namdDescend and function(a,b) return a>b end or function(a,b) return a<b end)
+    table.sort(easings, namdDescend and function(a, b) return a > b end or function(a, b) return a < b end)
     return easings
 end
 
@@ -323,8 +323,8 @@ GuiAnim = {}
 ---@return RunningAnimation?
 function GuiAnim.Vibrate(gui, dur, freq, amp, fps)
     local amplitude = tonumber(amp) or 10
-    local frequency = tonumber(freq) or 30       -- Hz
-    local duration = tonumber(dur) or 500        -- ms
+    local frequency = tonumber(freq) or 30 -- Hz
+    local duration = tonumber(dur) or 500  -- ms
     local framePerSecond = tonumber(fps) or 90
 
     local originalPos = gui.PositionOffset
@@ -333,7 +333,7 @@ function GuiAnim.Vibrate(gui, dur, freq, amp, fps)
     local phaseY = math.random() * 2 * math.pi
 
     local startTime = Ext.Utils.MonotonicTime()
-    local anim = AnimateValue(framePerSecond, {0,0}, {1,1}, duration, AnimationEasing.EaseOutSine,
+    local anim = AnimateValue(framePerSecond, { 0, 0 }, { 1, 1 }, duration, AnimationEasing.EaseOutSine,
         function()
             gui.PositionOffset = originalPos
         end,
@@ -352,7 +352,7 @@ function GuiAnim.Vibrate(gui, dur, freq, amp, fps)
             local offsetX = (oscX * amplitude + jitter) * (1 - eased)
             local offsetY = (oscY * amplitude + jitter) * (1 - eased)
 
-            gui.PositionOffset = {offsetX, offsetY}
+            gui.PositionOffset = { offsetX, offsetY }
         end
     )
 
@@ -361,13 +361,13 @@ end
 
 function GuiAnim.Shake(gui, dur, freq, amp, fps)
     local amplitude = tonumber(amp) or 10
-    local frequency = tonumber(freq) or 10       -- Hz
-    local duration = tonumber(dur) or 500        -- ms
+    local frequency = tonumber(freq) or 10 -- Hz
+    local duration = tonumber(dur) or 500  -- ms
     local framePerSecond = tonumber(fps) or 90
 
     local originalPos = gui.PositionOffset
 
-    local anim = AnimateValue(framePerSecond, {0,0}, {1,1}, duration, AnimationEasing.EaseOutSine,
+    local anim = AnimateValue(framePerSecond, { 0, 0 }, { 1, 1 }, duration, AnimationEasing.EaseOutSine,
         function()
             gui.PositionOffset = originalPos
         end,
@@ -379,7 +379,7 @@ function GuiAnim.Shake(gui, dur, freq, amp, fps)
             local offsetX = osc * amplitude * (1 - eased)
             local offsetY = osc * amplitude * (1 - eased)
 
-            gui.PositionOffset = {offsetX, offsetY}
+            gui.PositionOffset = { offsetX, offsetY }
         end
     )
 
@@ -395,8 +395,8 @@ end
 ---@return RunningAnimation?
 function GuiAnim.PulseBorder(gui, originalSize, dur, freq, amp, fps)
     local amplitude = tonumber(amp) or 5
-    local frequency = tonumber(freq) or 2       -- Hz
-    local duration = tonumber(dur) or 1000      -- ms
+    local frequency = tonumber(freq) or 2  -- Hz
+    local duration = tonumber(dur) or 1000 -- ms
     local framePerSecond = tonumber(fps) or 90
 
     local function setBorderSize(size)
@@ -418,7 +418,7 @@ function GuiAnim.PulseBorder(gui, originalSize, dur, freq, amp, fps)
         function(value, eased)
             local t = value
             local angle = t * frequency * 2 * math.pi
-            local osc = (math.sin(angle) + 1) / 2  -- Normalize to [0,1]
+            local osc = (math.sin(angle) + 1) / 2 -- Normalize to [0,1]
 
             local borderWidth = originalWidth + osc * amplitude * (1 - eased)
             setBorderSize(borderWidth)
@@ -435,7 +435,7 @@ end
 ---@param fps any
 ---@return RunningAnimation?
 function GuiAnim.Blend(gui, fromColor, toColor, dur, fps)
-    local duration = tonumber(dur) or 500      -- ms
+    local duration = tonumber(dur) or 500 -- ms
     local framePerSecond = tonumber(fps) or 90
 
     local anim = AnimateValue(framePerSecond, fromColor, toColor, duration, AnimationEasing.Linear,
@@ -455,10 +455,10 @@ function GuiAnim.Blend(gui, fromColor, toColor, dur, fps)
 end
 
 function GuiAnim.FlashColor(gui, flashColor, dur, fps, originalColor)
-    local duration = tonumber(dur) or 500      -- ms
+    local duration = tonumber(dur) or 500 -- ms
     local framePerSecond = tonumber(fps) or 90
 
-    flashColor = flashColor or {1, 1, 1, 1}
+    flashColor = flashColor or { 1, 1, 1, 1 }
     local origColor = originalColor or gui.Color
 
     local anim = AnimateValue(framePerSecond, 0, 1, duration, AnimationEasing.EaseInOutSine,
@@ -471,7 +471,7 @@ function GuiAnim.FlashColor(gui, flashColor, dur, fps, originalColor)
             local g = origColor[2] + (flashColor[2] - origColor[2]) * (1 - math.abs(0.5 - t) * 2)
             local b = origColor[3] + (flashColor[3] - origColor[3]) * (1 - math.abs(0.5 - t) * 2)
             local a = origColor[4] + (flashColor[4] - origColor[4]) * (1 - math.abs(0.5 - t) * 2)
-            gui.Color = {r, g, b, a}
+            gui.Color = { r, g, b, a }
         end
     )
 

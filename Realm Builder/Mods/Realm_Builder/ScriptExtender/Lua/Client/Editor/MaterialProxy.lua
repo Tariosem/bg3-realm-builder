@@ -126,7 +126,6 @@ function MaterialProxy.__buildParameterTables(self, paramsList, name, fieldName,
                 goto continue
             end
             local value = param[valueField]
-
             if self.Parameters[typeRef][paramName] then
                 Warning(string.format("Duplicate parameter '%s' in '%s'. Overwriting.", paramName, name))
             end
@@ -311,8 +310,7 @@ function ParametersSetProxy:GetParameter(paramName)
         return nil
     end
 
-    local param = nil
-    param = self.Parameters[typeRef][paramName]
+    local param = self.Parameters[typeRef][paramName]
     if not param then
         return nil
     end

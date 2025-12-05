@@ -53,20 +53,19 @@ end
 function MaterialEditor:GetParameter(paramName)
     local ptype = self.ParamSetProxy:GetParameterType(paramName)
     if not ptype then
-        Warning("MaterialEditor: Could not determine parameter type for '" .. tostring(paramName) .. "'.")
+        --Warning("MaterialEditor: Could not determine parameter type for '" .. tostring(paramName) .. "'.")
         return nil
     end
 
     local value = self.Parameters[ptype][paramName]
 
     if not value then
-        local proxyParam = self.ParamSetProxy:GetParameter(paramName)
+        value = self.ParamSetProxy:GetParameter(paramName)
 
-        if not proxyParam then
+        if not value then
             Warning("MaterialEditor: Could not find parameter '" .. tostring(paramName) .. "' in material proxy for material '" .. tostring(self.Material) .. "'.")
             return nil
         end
-        value = proxyParam
     end
 
     return value, ptype
@@ -103,7 +102,7 @@ function MaterialEditor:SetParameter(paramName, value, ptype)
 
     ptype = ptype or self.ParamSetProxy:GetParameterType(paramName)
     if not ptype then
-        Warning("MaterialEditor: Could not find parameter '" .. tostring(paramName) .. "' in material proxy for material '" .. tostring(self.Material) .. "'. Cannot set.")
+        --Warning("MaterialEditor: Could not find parameter '" .. tostring(paramName) .. "' in material proxy for material '" .. tostring(self.Material) .. "'. Cannot set.")
         return false
     end
     if not ParamTypeToFunc[ptype] then
@@ -187,9 +186,8 @@ function MaterialEditor:ResetAll()
     for ptype,params in pairs(self.ParamSetProxy.Parameters) do
         for paramName,value in pairs(params) do
             local funcName = ParamTypeToFunc[ptype]
-            local applyValue = #value == 1 and value[1] or value
 
-            mat[funcName](mat, paramName, applyValue)
+            mat[funcName](mat, paramName, value)
 
             self.Parameters[ptype][paramName] = nil
         end

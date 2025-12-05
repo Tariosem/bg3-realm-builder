@@ -15,6 +15,13 @@ local KEYBIND_MODULE_RENDER_ORDER = {
 }
 
 local KEYBIND_EVENT_RENDER_ORDER = {
+    GeneralShortcuts = {
+        "OpenMainMenu",
+        "OpenBrowserMenu",
+        "OpenTransformToolbar",
+        "OpenVisualTab",
+        "DeleteAllGizmos",
+    },
     TransformToolbar = {
         "MultiSelect",
         "BoxSelect",
@@ -24,7 +31,6 @@ local KEYBIND_EVENT_RENDER_ORDER = {
         "Duplicate",
         "Undo",
         "Redo",
-        "OpenVisualTab",
         "HideSelection",
         "ShowSelection",
         "ApplyGravity",

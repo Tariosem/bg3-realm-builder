@@ -1,4 +1,4 @@
-RB_DEBUG_LEVEL = 4
+RB_DEBUG_LEVEL = Ext.Debug.IsDeveloperMode() and 5 or 3
 
 RB_ENABLE_LOGGER = false
 
@@ -346,7 +346,6 @@ RegisterConsoleCommand("rb_debug_level", function(cmd, level)
     end
 
     if Ext.IsClient() then
-        Post("SetDebugLevel", { Level = RB_DEBUG_LEVEL })
         CONFIG.DEBUG_LEVEL = RB_DEBUG_LEVEL
     end
 end, debuglevelCommandDes)

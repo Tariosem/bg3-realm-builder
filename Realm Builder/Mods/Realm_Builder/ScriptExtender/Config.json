@@ -1,5 +1,5 @@
 {
-    "RequiredVersion": 25,
+    "RequiredVersion": 29,
     "ModTable": "Realm_Builder",
     "FeatureFlags": ["Lua"]
 }

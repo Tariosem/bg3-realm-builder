@@ -1,6 +1,6 @@
 --- @class TransformGizmo
 --- @field Editor TransformEditor
---- @field Mode TransformEditorMode
+--- @field Mode TransformEditorMode 
 --- @field ActiveMode TransformEditorMode
 --- @field SelectedAxis table<TransformAxis, boolean> | nil
 --- @field HoveredAxis table<TransformAxis, boolean> | nil
@@ -25,6 +25,10 @@
 --- @field OnDragScale fun(self: TransformGizmo, delta: Vec3)
 --- @field OnDragEnd fun(self: TransformGizmo)
 TransformGizmo = _Class("Gizmo")
+
+--- @class QuatInfo
+--- @field Angle number
+--- @field Axis Vec3
 
 function TransformGizmo:__init(editor)
     self.Editor = editor
@@ -92,6 +96,7 @@ function TransformGizmo:StartDragging(mouseRay, hit)
     self.IsDragging = true
     if hit and hit.Axis then
         self.SelectedAxis = hit.Axis
+        self.ActiveMode = hit.HitMode or self.ActiveMode
     else
         self.SelectedAxis = { X = true, Y = true, Z = true }
     end
@@ -246,6 +251,7 @@ function TransformGizmo:SetupListeners()
         local hit = self.Picker:Hit(mouseRay)
         if hit and hit.Axis then
             self.HoveredAxis = hit.Axis
+            self.ActiveMode = hit.HitMode or self.ActiveMode
         else
             self.HoveredAxis = nil
         end
@@ -254,7 +260,6 @@ function TransformGizmo:SetupListeners()
 
     self.Timers["Stick"] = Timer:EveryFrame(function(timerID)
         if self.IsDragging then return end
-        if not self.Guid then return end
         
         local pos, rot = self:GetPivot()
         local allGuids = { }
@@ -285,68 +290,137 @@ function TransformGizmo:GetPivot()
 end
 
 function TransformGizmo:DeleteItem()
-    local guid = self.Guid
-    --Debug("Gizmo:DeleteItem", guid)
+    local guidlist = {}
+    for _, guid in pairs(self.SavedGizmos) do
+        table.insert(guidlist, guid)
+    end
     self:StopListeners()
-    NetChannel.Delete:SendToServer({ Guid = guid })
-    self.Guid = nil
-    self.SavedGizmos[self.ActiveMode] = nil
+    NetChannel.Delete:SendToServer({ Guid = guidlist })
+    self.SavedGizmos = {}
 end
 
 function TransformGizmo:CreateItem()
     -- hide original gizmo if exists
-    if self.creating then return end
     local pos = self.PivotPosition or {0,0,0}
+    if self.Mode == "Transform" then
+        for _, mode in ipairs({ "Translate", "Rotate", "Scale" }) do
+            self:CreateModeItem(mode)
+        end
+        return
+    end
 
-    if self.SavedGizmos[self.ActiveMode] and EntityExists(self.SavedGizmos[self.ActiveMode]) then
-        local originGuid = self.Guid
-        self.Guid = self.SavedGizmos[self.ActiveMode]
+    if self.LastMode == "Transform" then
+        for _, mode in ipairs({ "Translate", "Rotate", "Scale" }) do
+            local originGuid = self.SavedGizmos[mode]
+            self.Visualizer:HideGizmo(originGuid)
+            NetChannel.SetAttributes:SendToServer({
+                Guid = originGuid,
+                Attributes = {
+                    Visible = false,
+                }
+            })
+        end
+    end
+
+    if self.SavedGizmos[self.Mode] and EntityExists(self.SavedGizmos[self.Mode]) then
+        local originGuid = self.SavedGizmos[self.LastMode]
+        local activeGuid = self.SavedGizmos[self.Mode]
         self.Visualizer:HideGizmo(originGuid)
 
         NetChannel.SetAttributes:SendToServer({
-            Guid = self.Guid,
+            Guid = activeGuid,
             Attributes = {
                 Visible = true,
             }
         })
+
         NetChannel.SetAttributes:SendToServer({
             Guid = originGuid,
             Attributes = {
                 Visible = false,
             }
         })
+
         return
-    elseif self.SavedGizmos[self.ActiveMode] then
+    elseif self.SavedGizmos[self.Mode] then
         -- make sure it's dead
-        NetChannel.Delete:SendToServer({ Guid = self.SavedGizmos[self.ActiveMode] })
-        self.SavedGizmos[self.ActiveMode] = nil
+        NetChannel.Delete:SendToServer({ Guid = self.SavedGizmos[self.Mode] })
+        self.SavedGizmos[self.Mode] = nil
     end
 
-    self.creating = true
     NetChannel.ManageGizmo:RequestToServer({
-        GizmoType = self.ActiveMode,
+        GizmoType = self.Mode,
         Position = pos
     }, function(response)
-        local orginGuid = self.Guid
-        self.Guid = response.Guid
+        local orginGuid = self.SavedGizmos[self.LastMode]
+        local newGuid = response.Guid
         self.Visualizer:HideGizmo(orginGuid)
-        self.SavedGizmos[self.ActiveMode] = response.Guid
-        local tryCnt = 0
+        self.SavedGizmos[self.Mode] = newGuid
         
-        Timer:EveryFrame(function(timerID)
-            if tryCnt > 300 then return UNSUBSCRIBE_SYMBOL end
-            if not VisualHelpers.GetEntityVisual(self.Guid) then tryCnt = tryCnt + 1 return end
-
+        WaitUntil(function()
+            return VisualHelpers.GetEntityVisual(newGuid) ~= nil
+        end, function()
             NetChannel.SetAttributes:SendToServer({
-                Guid = self.Guid,
+                Guid = newGuid,
                 Attributes = {
                     Visible = true,
                 }
             })
-            return UNSUBSCRIBE_SYMBOL
+            NetChannel.SetAttributes:SendToServer({
+                Guid = orginGuid,
+                Attributes = {
+                    Visible = false,
+                }
+            })
         end)
-        self.creating = false
     end)
+end
+
+function TransformGizmo:CreateModeItem(mode)
+    if self.SavedGizmos[mode] and EntityExists(self.SavedGizmos[mode]) then
+        NetChannel.SetAttributes:SendToServer({
+            Guid = self.SavedGizmos[mode],
+            Attributes = {
+                Visible = true,
+            }
+        })
+        return
+    elseif self.SavedGizmos[mode] then
+        -- make sure it's dead
+        NetChannel.Delete:SendToServer({ Guid = self.SavedGizmos[mode] })
+        self.SavedGizmos[mode] = nil
+    end
+
+    NetChannel.ManageGizmo:RequestToServer({
+        GizmoType = mode,
+        Position = self.PivotPosition or {0,0,0}
+    }, function(response)
+        self.SavedGizmos[mode] = response.Guid
+        
+        WaitUntil(function()
+            return VisualHelpers.GetEntityVisual(self.SavedGizmos[mode]) ~= nil
+        end, function()
+            NetChannel.SetAttributes:SendToServer({
+                Guid = self.SavedGizmos[mode],
+                Attributes = {
+                    Visible = true,
+                }
+            })
+        end)
+    end)
+end
+
+function TransformGizmo:StepMode()
+    local modes = {"Translate", "Rotate", "Scale", "Transform"}
+    local currentIndex = 1
+    for i, mode in ipairs(modes) do
+        if mode == self.Mode then
+            currentIndex = i
+            break
+        end
+    end
+    local nextIndex = currentIndex % #modes + 1
+    self:SetMode(modes[nextIndex])
 end
 
 function TransformGizmo:SetMode(mode)
@@ -354,14 +428,18 @@ function TransformGizmo:SetMode(mode)
         Warning("Gizmo:SetMode: Invalid mode '" .. tostring(mode) .. "'")
         return
     end
-    if mode and mode ~= self.ActiveMode then
+    if mode and mode ~= self.Mode then
         local ifRestart = self.IsDragging
         if self.IsDragging then
             self:EmptyDrag()
             --self:StopWithoutCallbacks()
         end
 
-        self.ActiveMode = mode
+        self.LastMode = self.Mode
+        self.Mode = mode
+        if mode ~= "Transform" then
+            self.ActiveMode = mode
+        end
         self:CreateItem()
         if ifRestart then
             self:RestartDragging()
@@ -476,7 +554,7 @@ local function CalcScaleChange(startHit, hit, selectedAxes, axes, origin)
 end
 
 --- @param ray Ray
---- @return Vec3|number|nil
+--- @return Vec3|number|QuatInfo|nil
 function TransformGizmo:GetDelta(ray)
     local hit, axis = self:GetHit(ray)
     if not hit or not hit.Position then return nil end
@@ -619,26 +697,27 @@ function TransformGizmo:SetupDragging()
 
         delta = self:StepDelta(delta)
 
-        delta = self:LerpDelta(delta)
+        delta = self:LerpDelta(delta) --[[@as Vec3|number|QuatInfo ]]
         if not delta then return end -- may return nil to skip this frame
 
         if self.ActiveMode == "Rotate" then
-            delta = delta --[[@as { Angle:number, Axis:Vec3 }]]
+            delta = delta --[[@as QuatInfo ]]
             self:VisualizeRotatePointer(delta.Angle, delta.Axis)
             self:OnDragRotate(delta)
         elseif self.ActiveMode == "Translate" then
-            delta = delta --[[@as Vec3]]
+            delta = delta --[[@as Vec3 ]]
             self:OnDragTranslate(delta)
             NetChannel.SetTransform:SendToServer({
-                Guid = self.Guid,
+                Guid = self.SavedGizmos.Translate,
                 Transforms = {
-                    [self.Guid] = {
+                    [self.SavedGizmos.Translate] = {
                         Translate = pickerPos + delta,
+                        RotationQuat = pickerRot,
                     }
                 }
             })
         elseif self.ActiveMode == "Scale" then
-            delta = delta --[[@as Vec3]]
+            delta = delta --[[@as Vec3 ]]
             self.Visualizer.ScaleMultiplier = delta
             self:OnDragScale(delta)
         end
@@ -647,6 +726,8 @@ function TransformGizmo:SetupDragging()
     end)
 end
 
+--- @param delta Vec3|number|QuatInfo
+--- @return Vec3|number|QuatInfo
 function TransformGizmo:StepDelta(delta)
     if self.ActiveMode == "Translate" then
         delta = delta * self.Step
@@ -721,6 +802,8 @@ local slowDownhandlers = {
     end,
 }
 
+--- @param delta Vec3|number|QuatInfo
+--- @return Vec3|number|QuatInfo|nil
 function TransformGizmo:LerpDelta(delta)
     local handler = slowDownhandlers[self.ActiveMode]
     if handler then
@@ -793,7 +876,7 @@ function TransformGizmo:StopListeners()
 end
 
 function TransformGizmo:Visualize(guid)
-    guid = guid or self.Guid
+    guid = guid or self.SavedGizmos[self.ActiveMode]
     if not EntityExists(guid) then return end
     local pos = {CGetPosition(guid)}
     if #pos == 3 then
@@ -820,6 +903,11 @@ function TransformGizmo:Visualize(guid)
             end
         end
 
+        for _, other in pairs(self.SavedGizmos) do
+            if other ~= guid then
+                self.Visualizer:HideGizmo(other)
+            end
+        end
         return
     end
 
@@ -830,6 +918,12 @@ function TransformGizmo:Visualize(guid)
     for _, axis in pairs({ "X", "Y", "Z" }) do
         if not (self.HoveredAxis and self.HoveredAxis[axis]) then
             self.Visualizer:ResetGizmoAxis(axis, guid)
+        end
+    end
+
+    for mode, other in pairs(self.SavedGizmos) do
+        if mode ~= self.ActiveMode then
+            self.Visualizer:ResetGizmo(other)
         end
     end
 end
@@ -868,12 +962,15 @@ function TransformGizmo:VisualizeRotatePointer(angle, axis)
 end
 
 function TransformGizmo:Hide()
-    if self.Guid and EntityExists(self.Guid) then
-        self.Visualizer:HideGizmo(self.Guid)
+    for _, guid in pairs(self.SavedGizmos) do
+        NetChannel.SetAttributes:SendToServer({
+            Guid = guid,
+            Attributes = {
+                Visible = false,
+            }
+        })
+        self.Visualizer:HideGizmo(guid)
     end
-    self.Visualizer:HideGizmo(self.Rotate)
-    self.Visualizer:HideGizmo(self.Scale)
-    self.Visualizer:HideGizmo(self.Translate)
 end
 
 function TransformGizmo:Disable()
@@ -887,8 +984,6 @@ function TransformGizmo:Disable()
 end
 
 function TransformGizmo:Enable()
-    if not self.Guid or not EntityExists(self.Guid) then
-        self:CreateItem()
-    end
+    self:CreateItem()
     self:SetupListeners()
 end
