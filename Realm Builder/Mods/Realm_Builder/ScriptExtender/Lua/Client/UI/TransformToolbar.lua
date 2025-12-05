@@ -295,27 +295,27 @@ function TransformToolbar:RegisterTransformEditorEvents()
         return globalEditor.Target and #globalEditor.Target > 0 or false
     end)
     
-    teMod:RegisterEvent("RotateMode", function (e)
+    teMod:RegisterEvent("Rotate", function (e)
         if e.Event == "KeyDown" then
             globalEditor:SetMode("Rotate")
         end
     end)
 
-    teMod:RegisterEvent("TranslateMode", function (e)
+    teMod:RegisterEvent("Grab", function (e)
         if e.Event == "KeyDown" then
             globalEditor:SetMode("Translate")
         end
     end)
 
-    teMod:RegisterEvent("ScaleMode", function (e)
+    teMod:RegisterEvent("Scale", function (e)
         if e.Event == "KeyDown" then
             globalEditor:SetMode("Scale")
         end
     end)
 
-    teMod:RegisterEvent("TransformMode", function (e)
+    teMod:RegisterEvent("CycleMode", function (e)
         if e.Event == "KeyDown" then
-            globalEditor:SetMode("Transform")
+            globalEditor:CycleMode()
         end
     end)
 

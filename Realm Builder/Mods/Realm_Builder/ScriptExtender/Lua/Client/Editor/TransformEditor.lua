@@ -21,6 +21,7 @@
 --- @field AddTarget fun(self: TransformEditor, proxy: RB_MovableProxy)
 --- @field Clear fun(self: TransformEditor)
 --- @field SetMode fun(self: TransformEditor, mode: TransformEditorMode)
+--- @field SetActiveMode fun(self: TransformEditor, mode: TransformEditorMode)
 --- @field InitGizmo fun(self: TransformEditor)
 --- @field UpdateGizmo fun(self: TransformEditor)
 --- @field new fun(): TransformEditor
@@ -254,11 +255,18 @@ end
 function TransformEditor:SetMode(mode)
     if not Enums.TransformEditorMode[mode] then return end
     if mode and mode ~= self.Gizmo.ActiveMode then
-        self.Gizmo:SetMode(mode)
+        self.Gizmo:SetActiveMode(mode)
+        if not self.IsDragging then
+            self.Gizmo:StartDragging()
+        end
         --Debug("TransformEditor Mode: "..tostring(self.Gizmo.Mode))
     elseif mode and mode == self.Gizmo.ActiveMode and not self.IsDragging then
         self.Gizmo:StartDragging()
     end
+end
+
+function TransformEditor:CycleMode()
+    self.Gizmo:CycleMode()
 end
 
 function TransformEditor:GetPivotRotation()

@@ -26,10 +26,11 @@ local DEFAULT_KEYBINDS = {
     },
 
     TransformEditor = {
-        ["TranslateMode"] = { Key = "G" },
-        ["RotateMode"] = { Key = "R" },
-        ["ScaleMode"] = { Key = "L" },
+        ["Grab"] = { Key = "G" },
+        ["Rotate"] = { Key = "R" },
+        ["Scale"] = { Key = "L" },
         ["FollowTarget"] = { Key = "KP_PERIOD" },
+        ["CycleMode"] = { Key = "T" }
     },
 
     BindUtility = {

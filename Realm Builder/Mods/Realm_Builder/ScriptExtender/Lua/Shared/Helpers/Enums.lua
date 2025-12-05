@@ -593,7 +593,11 @@ Enums.TransformEditorMode = {
     Translate = "Translate",
     Rotate = "Rotate",
     Scale = "Scale",
-    Transform = "Transform"
+    Transform = "Transform",
+    [1] = "Translate",
+    [2] = "Rotate",
+    [3] = "Scale",
+    [4] = "Transform"
 }
 
 --- @enum TransformEditorPivotMode
@@ -601,7 +605,11 @@ Enums.TransformEditorPivotMode = {
     Individual = "Individual",
     Median = "Median",
     Cursor = "Cursor",
-    Active = "Active"
+    Active = "Active",
+    [1] = "Individual",
+    [2] = "Median",
+    [3] = "Cursor",
+    [4] = "Active"
 }
 
 --- @enum TransformAxis

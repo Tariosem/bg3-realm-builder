@@ -1,3 +1,5 @@
+--- I don't even know what I'm doing here
+
 --- @class TransformGizmo
 --- @field Editor TransformEditor
 --- @field Mode TransformEditorMode 
@@ -8,7 +10,6 @@
 --- @field DraggingTimer TimerID|nil -- emit drag events every frame while dragging
 --- @field IsDragging boolean -- whether currently dragging
 --- @field SlowDown boolean
---- @field Guid Guid -- Gizmo entity guid, this is only a visual representation, most pick and drag logic is handled in gizmo picker
 --- @field PivotPosition Vec3 -- current pivot position
 --- @field PivotRotation Quat -- current pivot rotation
 --- @field Step number -- multiplier for delta steps
@@ -25,6 +26,8 @@
 --- @field OnDragScale fun(self: TransformGizmo, delta: Vec3)
 --- @field OnDragEnd fun(self: TransformGizmo)
 TransformGizmo = _Class("Gizmo")
+
+local modeEnum = Enums.TransformEditorMode
 
 --- @class QuatInfo
 --- @field Angle number
@@ -47,6 +50,14 @@ function TransformGizmo:__init(editor)
     self.SlowDown = false
 
     self.Step = 1.0
+
+    for _, mod in pairs({
+        "Translate",
+        "Rotate",
+        "Scale",
+    }) do
+        self:CreateModeItem(mod)
+    end
 
     Ext.Events.Shutdown:Subscribe(function()
         self:Disable()
@@ -87,6 +98,7 @@ function TransformGizmo:GetPickerTransform()
 end
 
 function TransformGizmo:StartDragging(mouseRay, hit)
+    if self.IsDragging then return end
     mouseRay = mouseRay or ScreenToWorldRay()
     if not mouseRay then
         Warning("Gizmo:DragStart: Failed to get mouse ray")
@@ -110,7 +122,10 @@ end
 
 function TransformGizmo:RestartDragging(mouseRay, axes)
     mouseRay = mouseRay or ScreenToWorldRay()
-    axes = axes or DeepCopy(self.SelectedAxis) or { X = true, Y = true, Z = true }
+    local toAxes = self.SelectedAxis or { X = true, Y = true, Z = true }
+    if axes then
+        toAxes = axes
+    end
 
     if self.ActiveMode == Enums.TransformEditorMode.Rotate and CountMap(axes) == 2 then
         axes = { [next(axes)] = true }
@@ -119,7 +134,7 @@ function TransformGizmo:RestartDragging(mouseRay, axes)
     self:StopWithoutCallbacks()
     self:Hide()
 
-    self.SelectedAxis = axes
+    self.SelectedAxis = toAxes
     self.HoveredAxis = nil
     self.IsDragging = true
     self.StartHit = self:GetHit(mouseRay)
@@ -132,6 +147,9 @@ function TransformGizmo:CancelDragging()
     self:EmptyDrag()
     self.IsDragging = false
     self:OnDragEnd(true)
+
+    self:HideGizmosByMode()
+    self:ShowGizmosByMode()
 end
 
 function TransformGizmo:SetupListeners()
@@ -300,80 +318,13 @@ function TransformGizmo:DeleteItem()
 end
 
 function TransformGizmo:CreateItem()
-    -- hide original gizmo if exists
-    local pos = self.PivotPosition or {0,0,0}
     if self.Mode == "Transform" then
         for _, mode in ipairs({ "Translate", "Rotate", "Scale" }) do
             self:CreateModeItem(mode)
         end
         return
     end
-
-    if self.LastMode == "Transform" then
-        for _, mode in ipairs({ "Translate", "Rotate", "Scale" }) do
-            local originGuid = self.SavedGizmos[mode]
-            self.Visualizer:HideGizmo(originGuid)
-            NetChannel.SetAttributes:SendToServer({
-                Guid = originGuid,
-                Attributes = {
-                    Visible = false,
-                }
-            })
-        end
-    end
-
-    if self.SavedGizmos[self.Mode] and EntityExists(self.SavedGizmos[self.Mode]) then
-        local originGuid = self.SavedGizmos[self.LastMode]
-        local activeGuid = self.SavedGizmos[self.Mode]
-        self.Visualizer:HideGizmo(originGuid)
-
-        NetChannel.SetAttributes:SendToServer({
-            Guid = activeGuid,
-            Attributes = {
-                Visible = true,
-            }
-        })
-
-        NetChannel.SetAttributes:SendToServer({
-            Guid = originGuid,
-            Attributes = {
-                Visible = false,
-            }
-        })
-
-        return
-    elseif self.SavedGizmos[self.Mode] then
-        -- make sure it's dead
-        NetChannel.Delete:SendToServer({ Guid = self.SavedGizmos[self.Mode] })
-        self.SavedGizmos[self.Mode] = nil
-    end
-
-    NetChannel.ManageGizmo:RequestToServer({
-        GizmoType = self.Mode,
-        Position = pos
-    }, function(response)
-        local orginGuid = self.SavedGizmos[self.LastMode]
-        local newGuid = response.Guid
-        self.Visualizer:HideGizmo(orginGuid)
-        self.SavedGizmos[self.Mode] = newGuid
-        
-        WaitUntil(function()
-            return VisualHelpers.GetEntityVisual(newGuid) ~= nil
-        end, function()
-            NetChannel.SetAttributes:SendToServer({
-                Guid = newGuid,
-                Attributes = {
-                    Visible = true,
-                }
-            })
-            NetChannel.SetAttributes:SendToServer({
-                Guid = orginGuid,
-                Attributes = {
-                    Visible = false,
-                }
-            })
-        end)
-    end)
+    self:CreateModeItem(self.Mode)
 end
 
 function TransformGizmo:CreateModeItem(mode)
@@ -395,6 +346,10 @@ function TransformGizmo:CreateModeItem(mode)
         GizmoType = mode,
         Position = self.PivotPosition or {0,0,0}
     }, function(response)
+        if not response or not response.Guid then
+            Warning("Gizmo:CreateModeItem: Failed to create gizmo of mode '" .. tostring(mode) .. "'")
+            return
+        end
         self.SavedGizmos[mode] = response.Guid
         
         WaitUntil(function()
@@ -410,7 +365,7 @@ function TransformGizmo:CreateModeItem(mode)
     end)
 end
 
-function TransformGizmo:StepMode()
+function TransformGizmo:CycleMode()
     local modes = {"Translate", "Rotate", "Scale", "Transform"}
     local currentIndex = 1
     for i, mode in ipairs(modes) do
@@ -421,6 +376,67 @@ function TransformGizmo:StepMode()
     end
     local nextIndex = currentIndex % #modes + 1
     self:SetMode(modes[nextIndex])
+end
+
+function TransformGizmo:HideGizmosByActiveMode()
+    local gizmos = {}
+    for mode, guid in pairs(self.SavedGizmos) do
+        if mode ~= self.ActiveMode then
+            table.insert(gizmos, guid)  
+        end
+    end
+    NetChannel.SetAttributes:SendToServer({
+        Guid = gizmos,
+        Attributes = {
+            Visible = false,
+        }
+    })
+end
+
+function TransformGizmo:ShowGizmosByActiveMode()
+    local gizmos = {}
+    for mode, guid in pairs(self.SavedGizmos) do
+        if mode == self.ActiveMode then
+            table.insert(gizmos, guid)
+        end
+    end
+    NetChannel.SetAttributes:SendToServer({
+        Guid = gizmos,
+        Attributes = {
+            Visible = true,
+        }
+    })
+end
+
+function TransformGizmo:HideGizmosByMode()
+    local gizmos = {}
+    if self.Mode == "Transform" then return end
+    for mode, guid in pairs(self.SavedGizmos) do
+        if mode ~= self.Mode then
+            table.insert(gizmos, guid)
+        end
+    end
+    NetChannel.SetAttributes:SendToServer({
+        Guid = gizmos,
+        Attributes = {
+            Visible = false,
+        }
+    })
+end
+
+function TransformGizmo:ShowGizmosByMode()
+    local gizmos = {}
+    for mode, guid in pairs(self.SavedGizmos) do
+        if self.Mode == "Transform" or mode == self.Mode then
+            table.insert(gizmos, guid)
+        end
+    end
+    NetChannel.SetAttributes:SendToServer({
+        Guid = gizmos,
+        Attributes = {
+            Visible = true,
+        }
+    })
 end
 
 function TransformGizmo:SetMode(mode)
@@ -435,17 +451,42 @@ function TransformGizmo:SetMode(mode)
             --self:StopWithoutCallbacks()
         end
 
-        self.LastMode = self.Mode
         self.Mode = mode
         if mode ~= "Transform" then
             self.ActiveMode = mode
         end
         self:CreateItem()
+        self:HideGizmosByMode()
         if ifRestart then
             self:RestartDragging()
         end
     end
 end
+
+function TransformGizmo:SetActiveMode(mode)
+    if not Enums.TransformEditorMode[mode] then
+        Warning("Gizmo:SetActiveMode: Invalid mode '" .. tostring(mode) .. "'")
+        return
+    end
+    if mode == "Transform" then
+        Warning("Gizmo:SetActiveMode: Cannot set active mode to 'Transform'")
+        return
+    end
+    if mode and mode ~= self.ActiveMode then
+        local ifRestart = self.IsDragging
+        if self.IsDragging then
+            self:EmptyDrag()
+            --self:StopWithoutCallbacks()
+        end
+
+        self.ActiveMode = mode
+        self:CreateModeItem(mode)
+        self:HideGizmosByActiveMode()
+        if ifRestart then
+            self:RestartDragging()
+        end
+    end
+end 
 
 --#region math
 
@@ -623,7 +664,8 @@ function TransformGizmo:SetupDragging()
     self.RotatePointer = self.RotatePointer or {}
     local pickerPos = Vec3.new(self.Picker.Position)
     local pickerRot = Quat.new(self.Picker.Rotation)
-    if self.ActiveMode == "Rotate" then
+    local axesCnt = CountMap(self.SelectedAxis or {})
+    if self.ActiveMode == "Rotate" and axesCnt == 1 then
         local axis = nil
         for a, _ in pairs(self.SelectedAxis) do axis = a end
         local mouseRay = ScreenToWorldRay()
@@ -679,10 +721,13 @@ function TransformGizmo:SetupDragging()
         end
     end
 
+    self:HideGizmosByActiveMode()
+    self:ShowGizmosByActiveMode()
+
     self.DraggingTimer = Timer:EveryFrame(function(timerID)
         if not self.IsDragging or not self.Picker or not self.StartHit or not self.SelectedAxis then
             self:StopDragging()
-            --Debug("Gizmo: Stopped dragging due to invalid state")
+            Debug("Gizmo: Stopped dragging due to invalid state")
             return UNSUBSCRIBE_SYMBOL
         end
 
@@ -831,6 +876,9 @@ function TransformGizmo:StopDragging()
     self:StopWithoutCallbacks()
     self:OnDragEnd()
     self.IsDragging = false
+
+    self:HideGizmosByMode()
+    self:ShowGizmosByMode()
 end
 
 function TransformGizmo:StopWithoutCallbacks()
