@@ -29,7 +29,7 @@ TransformEditor = _Class("TransformEditor")
 
 function TransformEditor:__init()
     self.Target = nil
-    self.Gizmo = TransformGizmo.new(self)
+    self.Gizmo = TransformGizmo.new()
     self.Cursor = nil
     self.Subscriptions = {}
     self.Space = "World"
@@ -96,7 +96,8 @@ function TransformEditor:Select(selection, notRecordHistory)
             end,
             Redo = function()
                 self:Select(selection or {}, true)
-            end
+            end,
+            Description = "Select Entities"
         })
     end
     
@@ -174,7 +175,7 @@ function TransformEditor:HandleGizmo()
         return
     end
     if not self.Gizmo then
-        self.Gizmo = TransformGizmo.new(self)
+        self.Gizmo = TransformGizmo.new()
 
     end
 
@@ -444,7 +445,7 @@ end
 
 function TransformEditor:SetupGizmo()
     if not self.Gizmo then
-        self.Gizmo = TransformGizmo.new(self)
+        self.Gizmo = TransformGizmo.new()
     end
 
     local GetRottt = function(gizmo)
@@ -744,7 +745,8 @@ function TransformEditor:SetupGizmo()
                         local endTransform = redoTransforms[proxy]
                         proxy:SetTransform(endTransform)
                     end
-                end
+                end,
+                Description = "Set Transform"
             })
         end
 

@@ -1,6 +1,7 @@
 --- @class HistoryCommand
 --- @field Undo fun()
 --- @field Redo fun()
+--- @field Description string
 
 --- @class HistoryManager
 --- @field History table<number, HistoryCommand>
@@ -26,6 +27,9 @@ function HistoryManager:Undo()
     local command = table.remove(self.UndoStack)
     if command then
         command:Undo()
+        if command.Description then
+            Debug("Undo: " .. command.Description)
+        end
         table.insert(self.RedoStack, command)
     end
 end
@@ -34,6 +38,9 @@ function HistoryManager:Redo()
     local command = table.remove(self.RedoStack)
     if command then
         command:Redo()
+        if command.Description then
+            Debug("Redo: " .. command.Description)
+        end
         table.insert(self.UndoStack, command)
     end
 end

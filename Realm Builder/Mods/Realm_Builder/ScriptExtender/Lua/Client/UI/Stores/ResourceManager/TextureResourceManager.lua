@@ -145,6 +145,14 @@ function TextureResourceManager:PopulateAllTextureResources()
     RBPrintPurple("[Realm Builder] Populated " .. #textureResources .. " texture resources in " .. string.format("%.2f", Ext.Timer.MonotonicTime() - now) .. " ms.")
 end
 
+function TextureResourceManager:HasTextureResource(id)
+    return self.TextureResources[id] ~= nil
+end
+
+function TextureResourceManager:HasVirtualTextureResource(id)
+    return self.VirtualTextureResources[id] ~= nil
+end
+
 RegisterOnSessionLoaded(function ()
     TextureResourceManager:PopulateAllTextureResources()
 end)

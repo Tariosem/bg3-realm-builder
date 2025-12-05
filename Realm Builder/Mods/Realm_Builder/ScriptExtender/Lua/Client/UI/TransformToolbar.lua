@@ -259,7 +259,8 @@ function TransformToolbar:RegisterKeyInputEvents()
 
             HistoryManager:PushCommand({
                 Undo = function() channel:SendToServer(paramsOff) end,
-                Redo = function() channel:SendToServer(paramsOn) end
+                Redo = function() channel:SendToServer(paramsOn) end,
+                Description = "Toggle " .. field,
             })
         end)
     end
@@ -807,7 +808,8 @@ function TransformToolbar:CreateBindPopup(guid)
                     Redo = function()
                         NetChannel.Bind:SendToServer({ Type = "SetAttributes", Guid = {guid}, Attributes = attr })
                         info[field] = newValue
-                    end
+                    end,
+                    Description = "Set Bind " .. field,
                 })
             end
             checkbox.SameLine = true

@@ -1,7 +1,19 @@
-if Ext.Debug.IsDeveloperMode() then
-    GLOBAL_DEBUG_WINDOW = Ext.IMGUI.NewWindow("Realm_Builder_DebugWindow")
-    GLOBAL_DEBUG_WINDOW.Closeable = true
-    --GLOBAL_DEBUG_WINDOW.Open = Ext.Debug.IsDeveloperMode()
+GLOBAL_DEBUG_WINDOW = Ext.IMGUI.NewWindow("Realm_Builder_DebugWindow")
+GLOBAL_DEBUG_WINDOW.Closeable = true
+--GLOBAL_DEBUG_WINDOW.Open = Ext.Debug.IsDeveloperMode()
+
+local debugWindowRegistery = {}
+
+RegisterOnSessionLoaded(function ()
+    for title,renderFunc in pairs(debugWindowRegistery) do
+        renderFunc(StyleHelpers.AddTree(GLOBAL_DEBUG_WINDOW, title))
+    end
+end)
+
+---@param title string
+---@param renderFunc fun(panel: ExtuiTreeParent)
+function RegisterDebugWindow(title, renderFunc)
+    debugWindowRegistery[title] = renderFunc
 end
 
 RequireFiles("Client/", {
@@ -16,14 +28,14 @@ RequireFiles("Client/", {
     "CameraUpdater",
 })
 
-if GLOBAL_DEBUG_WINDOW then
-    local debugButton = GLOBAL_DEBUG_WINDOW:AddButton("Debug Info")
+RegisterDebugWindow("Realm Builder Debug", function(panel)
+    local debugButton = panel:AddButton("Debug Info")
 
     debugButton.OnClick = function()
         ErrorNotify("Debug", "Memory Usage: " .. tostring(Ext.Utils.GetMemoryUsage()/1024/1024) .. " MB")
     end
 
-    local visualizeMouseRay = GLOBAL_DEBUG_WINDOW:AddButton("Visualize Mouse Ray")
+    local visualizeMouseRay = panel:AddButton("Visualize Mouse Ray")
     local rayVTimer = nil
 
     visualizeMouseRay.OnClick = function()
@@ -40,7 +52,7 @@ if GLOBAL_DEBUG_WINDOW then
         end)
     end
 
-end
+end)
 
 local PhysicsGroupFlags = Ext.Enums.PhysicsGroupFlags
 local PhysicsType = Ext.Enums.PhysicsType

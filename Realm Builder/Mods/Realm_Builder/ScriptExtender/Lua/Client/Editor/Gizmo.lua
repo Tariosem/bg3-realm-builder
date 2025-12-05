@@ -19,7 +19,7 @@
 --- @field Visualizer GizmoVisualizer
 --- @field Subscriptions table<string, RBSubscription>
 --- @field Timers table<string, TimerID>
---- @field new fun(editor: TransformEditor): TransformGizmo
+--- @field new fun(): TransformGizmo
 --- @field OnDragStart fun(self: TransformGizmo)
 --- @field OnDragTranslate fun(self: TransformGizmo, delta: Vec3)
 --- @field OnDragRotate fun(self: TransformGizmo, delta: QuatInfo)
@@ -35,8 +35,7 @@ local AxisIndexMap = AxisIndexMap
 --- just rotate the first three components as an axis
 --- @alias QuatInfo Vec4 -- { AxisX, AxisY, AxisZ, AngleInRadians }
 
-function TransformGizmo:__init(editor)
-    self.Editor = editor
+function TransformGizmo:__init()
     self.Mode = "Translate"
     self.ActiveMode = "Translate"
     self.SelectedAxis = nil

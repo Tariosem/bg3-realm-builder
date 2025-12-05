@@ -267,6 +267,7 @@ function OutlinerMenu:RenderTreeList()
                     propData.Visible = undoData.Attributes.Visible
                     toggleEye()
                 end,
+                Description = "Toggle Visibility"
             })
         end
 
@@ -330,6 +331,7 @@ function OutlinerMenu:RenderTreeList()
                     self.hiddenRoots[key] = not orginState
                     toggleHidden(true)
                 end,
+                Description = "Toggle Collection Visibility"
             })            
         end
         function updateEye()
@@ -413,11 +415,7 @@ end
 function OutlinerMenu:SetupLeaf(sel, key, node)
     local selectable = sel
 
-    local propData = EntityStore:GetStoredData(key) --[[@as EntityData]]
     selectable.OnRightClick = function()
-        if not table.find(self.selectedGuids, propData.Guid) and #self.selectedGuids < 2 then
-            self.selectedGuids = { propData.Guid }
-        end
         self:SetupSelectablePopup()
     end
     selectable.OnClick = function()
@@ -618,6 +616,7 @@ function OutlinerMenu:CommonContext()
             Undo = function()
                 doCommand(true)
             end,
+            Description = "Toggle Visibility In Context Menu"
         })
         doCommand(false)
     end
@@ -753,10 +752,8 @@ function OutlinerMenu:SetupSelectablePopup()
     local contextMenu = StyleHelpers.AddContextMenu(self.EntityContextMenu, "Object")
 
     local function select()
-        local target = self.selectedGuids
-        if not(self.selectedGuids and #self.selectedGuids > 0) then
-            target = {self.hoveringKey}
-        end
+        local target = self:DecideSelectedKeys()
+        if #target == 0 then return end
 
         local map = {}
         for _, guid in ipairs(target) do

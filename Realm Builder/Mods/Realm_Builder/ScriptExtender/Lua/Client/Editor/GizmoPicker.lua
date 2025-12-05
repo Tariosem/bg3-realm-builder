@@ -28,15 +28,14 @@ PICKER_CONSTANTS.ROTATE_RING = {
     OuterRadius = 0.65
 }
 
-if GLOBAL_DEBUG_WINDOW then
-    local pickerHeader = StyleHelpers.AddTree(GLOBAL_DEBUG_WINDOW, "Gizmo Picker Constants")
+RegisterDebugWindow("Gizmo Picker Constants", function(panel)
     for partName,part in pairs(PICKER_CONSTANTS) do
-        local partTree = StyleHelpers.AddTree(pickerHeader, partName)
+        local partTree = StyleHelpers.AddTree(panel, partName)
         StyleHelpers.RenderGeneralTableEditor(partTree, part, function ()
             
         end)
     end
-end
+end)
 
 --- @class GizmoPickerHitPart
 --- @field Name string

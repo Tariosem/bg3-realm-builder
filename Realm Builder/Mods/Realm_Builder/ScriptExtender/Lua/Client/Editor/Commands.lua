@@ -40,7 +40,8 @@ function Commands.SetTransform(proxies, transform, notRecordHistory)
             end,
             Redo = function()
                 doTransform(false)
-            end
+            end,
+            Description = "Set Transform"
         })
     end
 end
@@ -83,7 +84,8 @@ function Commands.Bind(targets, parent)
         end,
         Redo = function()
             NetChannel.Bind:SendToServer({ Type = "Bind", Parent = parent, Guid = targets })
-        end
+        end,
+        Description = "Bind Entities"
     })
 end
 
@@ -106,7 +108,8 @@ function Commands.Unbind(targets)
         end,
         Redo = function()
             NetChannel.Bind:SendToServer({ Type = "Unbind", Guid = targets })
-        end
+        end,
+        Description = "Unbind Entities"
     })
 end
 
@@ -176,7 +179,8 @@ local function spawnPrefab(prefabObj, entInfo)
             end,
             Redo = function()
                 NetChannel.Restore:SendToServer({ Guid = spawned })
-            end
+            end,
+            Description = "Spawn Prefab"
         })
     end
 
@@ -269,7 +273,8 @@ function Commands.SpawnCommand(template, entInfo)
             end,
             Redo = function()
                 NetChannel.Restore:SendToServer({ Guid = spawnedGuid })
-            end
+            end,
+            Description = "Spawn Entity"
         })
     end)
 end
@@ -343,7 +348,8 @@ function Commands.DuplicateCommand(targets, path)
             end,
             Redo = function()
                 NetChannel.Restore:SendToServer({ Guid = spawnedDuplications })
-            end
+            end,
+            Description = "Duplicate Entities"
         })
 
         Timer:Ticks(30, function()
@@ -411,7 +417,8 @@ function Commands.SpawnPreset(data)
             end,
             Redo = function()
                 NetChannel.Restore:SendToServer({ Guid = spawnedGuids })
-            end
+            end,
+            Description = "Spawn Preset"
         })
     end
 
@@ -496,7 +503,8 @@ function Commands.DeleteCommand(targets)
         end,
         Redo = function()
             NetChannel.Delete:SendToServer({ Guid = spawned })
-        end
+        end,
+        Description = "Delete Entities"
     })
 end
 

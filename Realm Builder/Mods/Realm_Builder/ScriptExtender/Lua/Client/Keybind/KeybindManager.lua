@@ -298,6 +298,7 @@ function KeybindManager:Save()
             table.insert(modifiers, parts[i])
         end
 
+        table.sort(modifiers)
         data[module][eventName] = {
             Key = key,
             Modifiers = #modifiers > 0 and modifiers or nil,
@@ -309,6 +310,9 @@ end
 function KeybindManager:Load(data)
     for module, events in pairs(data) do
         for eventName, keyInfo in pairs(events) do
+            if keyInfo.Modifiers then
+                table.sort(keyInfo.Modifiers)
+            end
             self:ForceBindTo(module, eventName, keyInfo.Key, keyInfo.Modifiers)
         end
     end

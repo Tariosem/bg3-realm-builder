@@ -400,7 +400,8 @@ function TransformOperator:Confirm()
             for proxy, transform in pairs(currentTransforms) do
                 proxy:SetTransform(transform)
             end
-        end
+        end,
+        Description = tostring(self),
     })
     NetChannel.Delete:SendToServer({ Guid = self.Visualizations }, function(response) end)
 end

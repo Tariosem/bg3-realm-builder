@@ -364,10 +364,10 @@ function ResourceEditor:RenderEditor(parent, label, objGetter, objSetter)
     return updateUIState
 end
 
-if GLOBAL_DEBUG_WINDOW then
+RegisterDebugWindow("Realm Builder Atmosphere Editor", function(panel)
     local inputs = {}
     for _, resType in pairs({ "Atmosphere", "Lighting" }) do
-        local resetBtn = GLOBAL_DEBUG_WINDOW:AddButton("Reset " .. resType .. " Resource")
+        local resetBtn = panel:AddButton("Reset " .. resType .. " Resource")
         resetBtn.OnClick = function()
             local setChannel = nil
             if resType == "Atmosphere" then
@@ -388,10 +388,10 @@ if GLOBAL_DEBUG_WINDOW then
             table.insert(nameArray, name)
         end
         table.sort(nameArray)
-        local inputForCopy = GLOBAL_DEBUG_WINDOW:AddInputText("##" .. resType .. "ResourceToCopy", "")
+        local inputForCopy = panel:AddInputText("##" .. resType .. "ResourceToCopy", "")
         inputForCopy.AutoSelectAll = true
         inputs[resType] = inputForCopy
-        local combo = GLOBAL_DEBUG_WINDOW:AddCombo("Select " .. resType .. " Resource")
+        local combo = panel:AddCombo("Select " .. resType .. " Resource")
         combo.OnHoverEnter = function()
             NetChannel["Get" .. resType]:RequestToServer({}, function(response)
                 local currentUuid = response.Guid
@@ -450,7 +450,7 @@ if GLOBAL_DEBUG_WINDOW then
     end
 
     local notif = Notification.new("Resource Editor")
-    GLOBAL_DEBUG_WINDOW:AddButton("Open Atmosphere Editor").OnClick = function()
+    panel:AddButton("Open Atmosphere Editor").OnClick = function()
         local cameraPos = { GetCameraPosition() }
         NetChannel.GetAtmosphere:RequestToServer({ Position = cameraPos }, function(response)
             local atmosphereUuid = response.Guid
@@ -473,7 +473,7 @@ if GLOBAL_DEBUG_WINDOW then
             editor:Render()
         end)
     end
-    GLOBAL_DEBUG_WINDOW:AddButton("Open Lighting Editor").OnClick = function()
+    panel:AddButton("Open Lighting Editor").OnClick = function()
         local cameraPos = { GetCameraPosition() }
         NetChannel.GetLighting:RequestToServer({ Position = cameraPos }, function(response)
             local lightingUuid = response.Guid
@@ -497,4 +497,4 @@ if GLOBAL_DEBUG_WINDOW then
             editor:Render()
         end)
     end
-end
+end)

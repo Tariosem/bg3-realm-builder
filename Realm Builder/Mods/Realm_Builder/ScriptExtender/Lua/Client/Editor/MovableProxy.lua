@@ -237,7 +237,8 @@ end
 function SceneryMovableProxy:Render(parent)
     local template = Ext.Resource.Get(self.Entity.Scenery.Visual, "Visual") --[[@as ResourceVisualResource|ResourceEffectResource]]
 
-    parent:AddText("Scenery: " .. SplitByString(GetLastPath(template.Template), ".")[1])
+    parent:AddImage(RB_ICONS.Scenery, IMAGESIZE.SMALL)
+    parent:AddText(SplitByString(GetLastPath(template.Template), ".")[1]).SameLine = true
     local uuid = parent:AddText("(" .. self.Entity.Scenery.Uuid .. ")")
     uuid.SameLine = true
     uuid:SetColor("Text", {0.5,0.5,0.5,0.6})
