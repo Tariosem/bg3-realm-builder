@@ -268,6 +268,12 @@ function ConfirmPopup:TimedConfirm(message, timeoutSeconds, onConfirm, onCancel)
     return ConfirmPopup:Show(message, GetLoca("Confirm"), GetLoca("Cancel"), onConfirm, onCancel, timeoutSeconds)
 end
 
+---@param message string
+---@param onConfirm function?
+---@param onCancel function?
+---@param confirmText string?
+---@param cancelText string?
+---@return ConfirmPopup?
 function ConfirmPopup:DangerConfirm(message, onConfirm, onCancel, confirmText, cancelText)
     confirmText = confirmText or GetLoca("DELETE")
     cancelText = cancelText or GetLoca("Cancel")

@@ -271,7 +271,7 @@ function VisualTab:RenderMaterialContextPopup()
     local popup = self.panel:AddPopup("MaterialContextMenu")
     self.materialContextPopup = popup
     self.SelectedMaterial = ""
-    local contextMenu = StyleHelpers.AddContextMenu(popup, "Material")
+    local contextMenu = ImguiElements.AddContextMenu(popup, "Material")
     local exportNotif = Notification.new(GetLoca("Material Exported"))
     exportNotif.Pivot = {0,0}
     exportNotif.ClickToDismiss = true
@@ -1572,7 +1572,7 @@ function VisualTab:SetupEffectContextMenu()
     local effectContextPopup = self.panel:AddPopup("EffectContextMenu")
     self.effectContextPopup = effectContextPopup
     self.SelectedEffectComponent = nil
-    local contextMenu = StyleHelpers.AddContextMenu(effectContextPopup, "Effect Component")
+    local contextMenu = ImguiElements.AddContextMenu(effectContextPopup, "Effect Component")
 
     contextMenu:AddItem("Apply To Same Type", function (sel)
         local compKey = self.SelectedEffectComponent

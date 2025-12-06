@@ -50,6 +50,9 @@ function Commands.SetTransform(proxies, transform, notRecordHistory)
     end
 end
 
+--- @param proxies RB_MovableProxy[]
+--- @param transforms table< RB_MovableProxy, Transform>
+--- @param notRecordHistory boolean|nil
 function Commands.SetTransformSeparate(proxies, transforms, notRecordHistory)
     local redoTransforms = transforms
     local undoTransforms = {}
@@ -162,9 +165,9 @@ end
 
 local function spawnPrefab(prefabObj, entInfo)
     local pivotTransform = {
-        Translate = entInfo.Position or {0,0,0},
-        RotationQuat = entInfo.Rotation or {0,0,0,1},
-        Scale = {1,1,1}
+        Translate = entInfo.Position or { 0, 0, 0 },
+        RotationQuat = entInfo.Rotation or { 0, 0, 0, 1 },
+        Scale = { 1, 1, 1 }
     }
     local spawned = {}
 
@@ -199,8 +202,8 @@ local function spawnPrefab(prefabObj, entInfo)
             end
             local childEntInfo = {}
 
-            childEntInfo.Position = prefabObj.ChildrenTransforms[i].Translate or {0,0,0}
-            childEntInfo.Rotation = prefabObj.ChildrenTransforms[i].RotationQuat or {0,0,0,1}
+            childEntInfo.Position = prefabObj.ChildrenTransforms[i].Translate or { 0, 0, 0 }
+            childEntInfo.Rotation = prefabObj.ChildrenTransforms[i].RotationQuat or { 0, 0, 0, 1 }
 
             -- Calculate relative position/rotation
             local pos, rot = GetLocalRelativeTransform(pivotTransform, childEntInfo.Position, childEntInfo.Rotation)
@@ -226,7 +229,7 @@ local function spawnPrefab(prefabObj, entInfo)
 
             if childTemplateObj.TemplateType ~= "item" and childTemplateObj.TemplateType ~= "character" then
                 -- Wait to make template overwirte work properly
-                Timer:Ticks(30, function (timerID)
+                Timer:Ticks(30, function(timerID)
                     local ok, suc = coroutine.resume(thread)
                     if not ok then
                         Error("Error resuming spawnPrefab coroutine: " .. tostring(suc))
@@ -297,7 +300,7 @@ function Commands.DuplicateCommand(targets, path)
     local nonItemNonCharacter = {}
 
     local toGet = {}
-    
+
     for _, guid in pairs(targets) do
         local stored = EntityStore:GetStoredData(guid)
         if stored then
@@ -365,7 +368,7 @@ function Commands.DuplicateCommand(targets, path)
     function spawn()
         for guid, templateId in pairs(templateMap) do
             local transform = oriTransforms[guid]
-            
+
             local entData = originStats[guid] or {}
             entData.Path = path
             entData.Position = transform.Translate
@@ -382,7 +385,7 @@ function Commands.DuplicateCommand(targets, path)
 
             if nonItemNonCharacter[guid] then
                 -- Wait to make template overwirte work properly
-                Timer:Ticks(30, function (timerID)
+                Timer:Ticks(30, function(timerID)
                     local ok, suc = coroutine.resume(thread)
                     if not ok then
                         Error("Error resuming duplication coroutine: " .. tostring(suc))
@@ -404,7 +407,7 @@ function Commands.SpawnPreset(data)
     local pivotTransform = {
         Translate = Vec3.new(data.Position),
         RotationQuat = Quat.new(data.Rotation),
-        Scale = Vec3.new(1,1,1)
+        Scale = Vec3.new(1, 1, 1)
     }
 
     local spawnNode
@@ -466,7 +469,7 @@ function Commands.SpawnPreset(data)
         local templateObj = Ext.Template.GetTemplate(TakeTailTemplate(entData.TemplateId))
         if not templateObj or (templateObj.TemplateType ~= "item" and templateObj.TemplateType ~= "character") then
             -- Wait to make template overwirte work properly
-            Timer:Ticks(30, function (timerID)
+            Timer:Ticks(30, function(timerID)
                 if not thread then
                     Error("SpawnPreset: Coroutine thread is nil.")
                     return
@@ -494,7 +497,7 @@ function Commands.DeleteCommand(targets)
     if #targets == 0 then return end
 
     local spawned = targets
-    
+
     for _, guid in ipairs(targets) do
         EntityStore:RemoveEntity(guid)
     end

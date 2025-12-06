@@ -4,6 +4,7 @@
 --- @field selectedItems table<any, boolean>
 --- @field itemRefs table<any, ExtuiSelectable>
 --- @field nodeRefs table<any, ExtuiTableCell>
+--- @field arrowRefs table<any, ExtuiImageButton>
 --- @field indexRefs table<any, number>
 --- @field indexRefsReverse table<number, any>
 --- @field rootTable ExtuiTable
@@ -24,7 +25,7 @@
 --- @field ClearSelection fun(self:TreeList)
 --- @field ClearList fun(self:TreeList)
 --- @field SelectLogic fun(self:TreeList, key:any, parent:any)
---- @field SetupArrow fun(self:TreeList, arrow:ExtuiGroup, key:any)
+--- @field SetupArrow fun(self:TreeList, arrow:ExtuiImageButton, key:any)
 --- @field GetLowestSelected fun(self:TreeList):any[]
 --- @field OnSelect fun(self:TreeList, selectedItems:table<any, boolean>)
 --- @field OnDragStart fun(self:TreeList, dragKey:any)
@@ -327,6 +328,37 @@ function TreeList:RenderList()
     })
     local itemCnt = 1
 
+
+
+    --- @param key any
+    --- @return unknown
+    local depthIndent = function(key)
+        local depth = self.tree:GetDepth(key)
+        return (depth - 1) * 64 * SCALE_FACTOR
+    end
+
+    local thread = nil
+    local outerSuspended = false
+    local yieldThreshold = 1 -- milliseconds
+    local lastYield = Ext.Timer.MicrosecTime()
+
+    local function yieldThread()
+        if Ext.Timer.MicrosecTime() - lastYield < yieldThreshold then return end
+        lastYield = Ext.Timer.MicrosecTime()
+        Ext.OnNextTick(function()
+            if not thread then return end
+            if coroutine.status(thread) == "suspended" then
+                local ok, err = coroutine.resume(thread)
+                if not ok then
+                    Error("Error resuming TreeList render coroutine: " .. tostring(err))
+                end
+            else
+                Error("TreeList render coroutine is no longer suspended!")
+            end
+        end)
+        coroutine.yield()
+    end
+
     local function collectChildren(key)
         local collector = {}
         local node = self.tree:Find(key)
@@ -337,49 +369,18 @@ function TreeList:RenderList()
         return collector
     end
 
-    --- @param key any
-    --- @return unknown
-    local depthIndent = function(key)
-        local depth = self.tree:GetDepth(key)
-        return (depth - 1) * 64
-    end
-
-    local stack = {}
-    local rootChildren = collectChildren(TreeTable.GetRootKey())
-    for i = #rootChildren, 1, -1 do
-        table.insert(stack, { key = rootChildren[i], depth = 1 })
-    end
-
-    if #stack == 0 then
-        self.rootTable.Visible = false
-        return
-    end
-    self.rootTable.Visible = true
-
-    local thread = nil
-    local outerSuspended = false
-    local yieldThreshold = 0.5 -- milliseconds
-    local lastYield = Ext.Timer.MicrosecTime()
-
-    local function yieldThread()
-        if Ext.Timer.MicrosecTime() - lastYield > yieldThreshold then
-            lastYield = Ext.Timer.MicrosecTime()
-            Ext.OnNextTick(function() 
-                if not thread then return end
-                if coroutine.status(thread) == "suspended" then
-                    local ok, err = coroutine.resume(thread)
-                    if not ok then
-                        Error("Error resuming TreeList render coroutine: " .. tostring(err))
-                    end
-                else
-                    Error("TreeList render coroutine is no longer suspended!")
-                end
-            end)
-            coroutine.yield()
-        end
-    end
-
     local renderFunc = function()
+        local stack = {}
+        local rootChildren = collectChildren(TreeTable.GetRootKey())
+        for i = #rootChildren, 1, -1 do
+            table.insert(stack, { key = rootChildren[i], depth = 1 })
+        end
+
+        if #stack == 0 then
+            self.rootTable.Visible = false
+            return
+        end
+        self.rootTable.Visible = true
         while #stack > 0 do
             if outerSuspended then return end
             local item = table.remove(stack)
@@ -389,7 +390,8 @@ function TreeList:RenderList()
                 local cell = row:AddCell()
                 self:SetupHoveringDetection(cell, key)
                 local indentDepth = depthIndent(key)
-                local innerTab = cell:AddTable("IndentTable##" .. tostring(key), 3)
+                local innerTab = cell:AddTable(self.label, 3)
+                innerTab.OptimizedDraw = true
                 innerTab.SameLine = true
                 innerTab.PreciseWidths = true
                 innerTab.ColumnDefs[1] = { WidthFixed = true, Width = indentDepth }
@@ -408,14 +410,12 @@ function TreeList:RenderList()
                     ele = self:RenderLeaf(key, leftCell, fixedCell)
                     cell.Visible = false
                 else
-                    local arrowReserved = leftCell:AddGroup("##ArrowReserved")
-                    arrowReserved.IDContext = "TreeList" .. self.label .. "ArrowReserved" .. tostring(key)
                     local icon = self.collapsedTree[key] and RB_ICONS.Tree_Collapsed or RB_ICONS.Tree_Expanded
-                    local arrowImage = arrowReserved:AddImageButton("##" .. key .. "ArrowBtn", icon, IMAGESIZE.ROW)
+                    local arrowImage = leftCell:AddImageButton("##" .. key, icon, IMAGESIZE.ROW)
                     ImguiHelpers.SetupImageButton(arrowImage)
                     ele = self:RenderTree(key, leftCell, fixedCell)
                     ele.SameLine = true
-                    self.arrowRefs[key] = arrowReserved
+                    self.arrowRefs[key] = arrowImage
                     cell.Visible = false
 
                     local children = collectChildren(key)
@@ -430,8 +430,8 @@ function TreeList:RenderList()
                 self.indexRefs[key] = itemCnt
                 self.indexRefsReverse[itemCnt] = key
                 itemCnt = itemCnt + 1
+                yieldThread()
             end
-            yieldThread()
         end
 
         for key,ele in pairs(self.itemRefs) do
@@ -701,6 +701,10 @@ function TreeList:SetUpLeaf(selectable, key)
     end
 end
 
+local icons = RB_ICONS
+local collapseUV = RB_ICON_UV01[icons.Tree_Collapsed]
+local expandUV = RB_ICON_UV01[icons.Tree_Expanded]
+
 ---@param tree ExtuiSelectable
 ---@param key any
 function TreeList:SetUpTree(tree, key)
@@ -719,10 +723,8 @@ function TreeList:SetUpTree(tree, key)
     local userLabel = tree.Label
     local toggleLabel = function()
         local reserved = self.arrowRefs[key]
-        ImguiHelpers.DestroyAllChildren(reserved)
-        local icon = self.collapsedTree[key] and RB_ICONS.Tree_Collapsed or RB_ICONS.Tree_Expanded
-        local arrowImage = reserved:AddImageButton("##" .. key .. "ArrowBtn", icon, IMAGESIZE.ROW)
-        ImguiHelpers.SetupImageButton(arrowImage)
+        local icon = self.collapsedTree[key] and collapseUV or expandUV
+        reserved.Image = icon
     end
 
 
@@ -804,7 +806,7 @@ function TreeList:SetUpTree(tree, key)
     })
 end
 
----@param arrow ExtuiGroup
+---@param arrow ExtuiImageButton
 ---@param key any
 function TreeList:SetupArrow(arrow, key)
     local show = false
@@ -813,13 +815,7 @@ function TreeList:SetupArrow(arrow, key)
         show = true
     end
 
-    arrow.OnHoverEnter = function ()
-        arrow:SetColor("Button", {1,1,1,0.2})
-    end
-
-    arrow.OnHoverLeave = function ()
-        arrow:SetColor("Button", {0,0,0,0})
-    end
+    ImguiHelpers.SetupImageButton(arrow)
 
     arrow.OnClick = function()
         if self.itemRefs[key] and self.itemRefs[key].UserData and self.itemRefs[key].UserData.Toggle then

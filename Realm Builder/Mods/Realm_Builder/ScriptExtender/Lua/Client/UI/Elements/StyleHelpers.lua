@@ -1,15 +1,19 @@
 --- @class StyleHelpers
---- @field AddContextMenu fun(parent: ExtuiTreeParent): RB_ContextMenu
---- @field AddSelectableButton fun(parent: ExtuiTreeParent, label: string, onClick: fun(selectable: ExtuiSelectable)): ExtuiSelectable
---- @field SetImguiDisabled fun(extui: ExtuiRenderable, disabled: boolean)
---- @field SetAlphaByBool fun(s: ExtuiRenderable, bool: boolean)
---- @field AddPrefixInput fun(parent: ExtuiTreeParent, prefix: string?, text: string, readOnly: boolean?): ExtuiInputText
---- @field AddReadOnlyAttrTable fun(parent:ExtuiTreeParent, contents:table<string, string>):AttrTable
+--- @field ApplyInfoButtonStyle fun(button:ExtuiButton)
+--- @field ApplyDangerButtonStyle fun(button:ExtuiButton)
+--- @field ApplyDangerSelectableStyle fun(s:ExtuiSelectable|ExtuiStyledRenderable)
+--- @field ApplyConfirmButtonStyle fun(button:ExtuiButton)
+--- @field SetAlphaByBool fun(s:ExtuiRenderable, bool:boolean)
+--- @field SetNormalProgressBarStyle fun(pBar:ExtuiProgressBar)
+--- @field SetWarningProgressBarStyle fun(pBar:ExtuiProgressBar)
+--- @field SetWarningBorder fun(extui:ExtuiStyledRenderable)
+--- @field ClearWarningBorder fun(extui:ExtuiStyledRenderable)
+--- @field ApplyWarningButtonStyle fun(button:ExtuiButton)
+--- @field ApplyOkButtonStyle fun(button:ExtuiButton)
+--- @field ApplyWarningTooltipStyle fun(tooltip:ExtuiStyledRenderable)
+--- @field ClearAllBorders fun(extui:ExtuiStyledRenderable)
+--- @field ApplyWarningTooitipStyle fun(tooltip:ExtuiStyledRenderable)
 StyleHelpers = StyleHelpers or {}
-
-ImguiHelpers = ImguiHelpers or {}
-
-ImguiElements = ImguiElements or {}
 
 function StyleHelpers.ApplyInfoButtonStyle(button)
     button:SetColor("Button", CONFIG.Misc.InfoButtonColor)

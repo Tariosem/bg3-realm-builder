@@ -103,7 +103,7 @@ end
 
 function NearbyCombo:GetSelected()
     local displayName = ImguiHelpers.GetCombo(self.combo)
-    return GetGuidFromDisplayName(displayName), displayName
+    return self.Selected, displayName
 end
 
 function NearbyCombo:SetSelected(guid)

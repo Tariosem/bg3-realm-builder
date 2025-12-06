@@ -1006,7 +1006,7 @@ function MaterialPresetsMenu:RenderExportPresetRow(parentTab, obj, uuid, onDelet
         managePopup:Open()
     end
 
-    local selectTable = StyleHelpers.AddContextMenu(managePopup, "Material Preset")
+    local selectTable = ImguiElements.AddContextMenu(managePopup, "Material Preset")
     local deleteBtn = selectTable:AddItem("Remove Preset##" .. obj.DisplayName, function(sel)
         obj.Deleted = true
         onDelete()
@@ -1458,7 +1458,7 @@ function MaterialPresetsMenu:RenderPresetColorBox(preset, parent)
         if not managePopup then
             managePopup = parent:AddPopup("ManagePresetPopup##" .. preset.ResourceUUID)
         end
-        local manageTab = StyleHelpers.AddContextMenu(managePopup, "Material Preset")
+        local manageTab = ImguiElements.AddContextMenu(managePopup, "Material Preset")
         local openMatMixerBtn = manageTab:AddItem("Open in Material Mixer##" .. preset.ResourceUUID,
             function(sel)
                 local presetProxy = MaterialPresetProxy.new(preset.MaterialPresetUUID)

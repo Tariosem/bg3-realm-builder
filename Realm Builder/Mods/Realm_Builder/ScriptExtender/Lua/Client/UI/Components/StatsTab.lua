@@ -432,7 +432,7 @@ end
 function StatsTab:SetupEffectContextMenu()
     local parent = self.effectTimelineWin:AddPopup("EffectContextMenu")
     self.contextMenu = parent
-    local contextMenu = StyleHelpers.AddContextMenu(parent, "Effect")
+    local contextMenu = ImguiElements.AddContextMenu(parent, "Effect")
 
     --- @type RB_ContextItem[]
     local contextItems = {

@@ -6,6 +6,7 @@
 --- @field HotKey Keybinding
 --- @field Separator boolean?
 --- @field DontClosePopups boolean?
+--- @field Danger boolean?
 
 --- @class RB_ContextMenu : ExtuiTable
 --- @field hotKeySubs table<string, RBSubscription>
@@ -13,7 +14,7 @@
 --- @field AddSeparator fun(self: RB_ContextMenu)
 --- @field AddItemPacked fun(self: RB_ContextMenu, item: RB_ContextItem): ExtuiSelectable
 --- @field AddMenu fun(self: RB_ContextMenu, label: string): RB_ContextMenu
---- @field AddContext fun(self: RB_ContextMenu, context: RB_ContextItem[], isFocus: fun(): boolean)
+--- @field AddContext fun(self: RB_ContextMenu, context: RB_ContextItem[], isFocus?: fun(): boolean)
 local ContextMenuClass = {}
 
 function ContextMenuClass:AddItem(label, onClick, hint, image)
@@ -71,11 +72,13 @@ function ContextMenuClass:AddMenu(label)
     local tab = self.tab
     local row = tab:AddRow()
     local cell = row:AddCell()
-    local menu = cell:AddMenu(label)
-    return StyleHelpers.AddContextMenu(menu)
+    local secondCell = row:AddCell()
+    local menu = secondCell:AddMenu(label)
+    return ImguiElements.AddContextMenu(menu)
 end
 
 function ContextMenuClass:AddContext(context, isFocus)
+    isFocus = isFocus or function() return false end
     for _, item in ipairs(context) do
         if item.Separator then
             self:AddSeparator()
@@ -83,9 +86,11 @@ function ContextMenuClass:AddContext(context, isFocus)
         end
 
         local selectable = self:AddItem(item.Label, item.OnClick, item.Hint, item.Icon)
+
         if item.Danger then
             StyleHelpers.ApplyDangerSelectableStyle(selectable)
         end
+
         if item.DontClosePopups then
             selectable.DontClosePopups = true
         end
@@ -125,7 +130,7 @@ end
 ---@param parent ExtuiTreeParent
 ---@param title string?
 ---@return RB_ContextMenu
-function StyleHelpers.AddContextMenu(parent, title)
+function ImguiElements.AddContextMenu(parent, title)
     local group = parent:AddGroup("ContextMenuGroup##" .. (title or Uuid_v4())) --[[@as ExtuiGroup]]
     if title and title ~= "" then
         local titleText = group:AddText(title)
@@ -134,7 +139,7 @@ function StyleHelpers.AddContextMenu(parent, title)
         titleText:SetColor("Text", HexToRGBA("FFAAAAAA"))
         group:AddSeparator()
     end
-    local tab = group:AddTable("SelectionTable##" .. Uuid_v4(), 2) --[[@as ExtuiTable]]
+    local tab = group:AddTable(parent.Label, 2) --[[@as ExtuiTable]]
     tab.ColumnDefs[1] = { WidthFixed = true }
     tab.ColumnDefs[2] = { WidthStretch = true }
 
@@ -159,6 +164,12 @@ function StyleHelpers.AddContextMenu(parent, title)
             end
             if keyToSetOnGroup[k] then
                 return group[k]
+            end
+            if k:sub(1, 3) == "Add" then
+                return function (_, ...)
+                    local alignedTable = ImguiElements.AddAlignedTable(parent)
+                    return alignedTable[k](alignedTable, ...)
+                end
             end
             return tab[k]
         end,

@@ -123,19 +123,19 @@ Ext.RegisterConsoleCommand("rb_help", function(cmd, args)
 
     print("\n------- Common Commands -------")
     local index = 1
-    for command, cmdData in pairs(commonCommands) do
+    for command, cmdData in SortedPairs(commonCommands) do
         print(string.format("%d. %s", index, command))
         index = index + 1
     end
     print("\n------- Server Context -------")
     index = 1
-    for command, cmdData in pairs(serverCommands) do
+    for command, cmdData in SortedPairs(serverCommands) do
         print(string.format("%d. %s", index, command))
         index = index + 1
     end
     print("\n------- Client Context -------")
     index = 1
-    for command, cmdData in pairs(clientCommands) do
+    for command, cmdData in SortedPairs(clientCommands) do
         print(string.format("%d. %s", index, command))
         index = index + 1
     end

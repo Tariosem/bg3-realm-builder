@@ -63,7 +63,8 @@ function GetCursorPos(picker)
     return pos[1], pos[2]
 end
 
---- Returns the hit position and normal from the picking helper.
+--- Returns the hit position and rotation from the picking helper
+--- rotation is Y axis aligned to the hit normal
 --- @param picker EclPlayerPickingHelper?
 --- @return Vec3?
 --- @return Quat?

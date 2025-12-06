@@ -813,7 +813,7 @@ function MaterialMixerTab:SetPreset(presetProxy)
 end
 
 function MaterialMixerTab:SetupManagePopup(popup)
-    local contextMenu = StyleHelpers.AddContextMenu(popup)
+    local contextMenu = ImguiElements.AddContextMenu(popup)
 
     contextMenu:AddItem("Export As Preset##" .. self.MaterialName, function(sel)
         local save = LSXHelpers.BuildMaterialPresetBank()

@@ -9,6 +9,7 @@
 --- @field GetWorldRotation fun(self: RB_MovableProxy): Quat
 --- @field GetWorldScale fun(self: RB_MovableProxy): Vec
 --- @field GetTransform fun(self: RB_MovableProxy): Transform
+--- @field GetWorldBoundingBox fun(self: RB_MovableProxy): AABound
 --- @field SaveTransform fun(self: RB_MovableProxy): Transform
 --- @field GetSavedTransform fun(self: RB_MovableProxy): Transform
 --- @field RestoreTransform fun(self: RB_MovableProxy)
@@ -66,6 +67,15 @@ function MovableProxy:GetTransform()
     }
 end
 
+--- @return AABound
+function MovableProxy:GetWorldBoundingBox()
+    local transform = self:GetTransform()
+    return {
+        Min = transform.Translate,
+        Max = transform.Translate,
+    }
+end
+
 function MovableProxy:GetWorldTranslate()
     return self:GetTransform().Translate
 end
@@ -115,6 +125,17 @@ end
 
 function ItemMovableProxy:GetTransform()
     return EntityHelpers.SaveTransform(self.Guid)
+end
+
+function ItemMovableProxy:GetWorldBoundingBox()
+    local ent = Ext.Entity.Get(self.Guid) --[[@as EntityHandle]]
+    if ent then
+        if ent.Visual then
+            return ent.Visual.Visual.WorldBound 
+        end
+    end
+
+    return MovableProxy.GetWorldBoundingBox(self)
 end
 
 function ItemMovableProxy:SetTransform(transform)

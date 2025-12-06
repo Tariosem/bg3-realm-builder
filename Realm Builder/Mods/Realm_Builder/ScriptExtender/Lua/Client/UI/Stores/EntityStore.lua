@@ -90,6 +90,7 @@ function EntityStore:SetupServerListeners()
         end
 
         local list = {}
+        local now = Ext.Timer.MonotonicTime()
         for _, entity in ipairs(data.Entities) do
             if not EntityDatas[entity.Guid] then
                 self:AddEntity(entity.Guid, entity)
@@ -97,9 +98,12 @@ function EntityStore:SetupServerListeners()
                 table.insert(list, entity.Guid)
             end
         end
+        Debug(string.format("Added %d new entities from server in %.2f ms", #list, (Ext.Timer.MonotonicTime() - now)))
+        now = Ext.Timer.MonotonicTime()
         if RBMenu then
             RBMenu:NewEntityAdded(list)
         end
+        Debug(string.format("Notified UI of %d new entities in %.2f ms", #list, (Ext.Timer.MonotonicTime() - now)))
     end)
 
 

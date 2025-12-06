@@ -55,9 +55,6 @@ function TransformGizmo:__init()
     Ext.Events.Shutdown:Subscribe(function()
         self:Disable()
         self:DeleteItem()
-        for _, guid in pairs(self.SavedGizmos) do
-            NetChannel.Delete:SendToServer({ Guid = guid })
-        end
     end)
 end
 

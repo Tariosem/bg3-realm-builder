@@ -1,4 +1,5 @@
 RequireFiles("Client/UI/Elements/", {
+    "ImguiAnim",
     "StyleHelpers",
     "ImguiHelpers",
     "ImguiElements",

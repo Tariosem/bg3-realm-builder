@@ -72,7 +72,7 @@ function RootTemplateBrowser:RenderIcon(entry, cell)
             rPopup = cell:AddPopup("Preview Template")
             rPopup.IDContext = entry.Uuid .. "RPopup" .. Uuid_v4()
             self:RenderCustomizationTab(rPopup, entry)
-            local actTab = StyleHelpers.AddContextMenu(rPopup, "Actions")
+            local actTab = ImguiElements.AddContextMenu(rPopup, "Actions")
             actTab:AddItem(GetLoca("Spawn"), function()
                 local selected = self.selectedGuid or CGetHostCharacter()
                 if not selected then return end

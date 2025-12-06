@@ -547,7 +547,7 @@ end
 
 function CustomEffectTab:SetupContextMenu()
     local parent = self.effectTimelineWin:AddPopup("Effects Context Menu")
-    local contextMenu = StyleHelpers.AddContextMenu(parent, "Effects")
+    local contextMenu = ImguiElements.AddContextMenu(parent, "Effects")
 
     --- @type RB_ContextItem[]
     local items = {

@@ -80,6 +80,7 @@ end, "Dump the EntityManager mod variable to console.")
 function EntityManager:StoreGuid(guid)
     local modVar = getModVar()
     modVar.SavedEntities[guid] = true
+    setModVar(modVar)
 end
 
 function EntityManager:DeleteEntities(guids)

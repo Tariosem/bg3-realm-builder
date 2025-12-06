@@ -42,7 +42,6 @@ function OutlinerMenu:__init(parent)
 end
 
 function OutlinerMenu:NewEntityAdded(guids)
-
     self:UpdateList()
 end
 
@@ -749,7 +748,7 @@ function OutlinerMenu:SetupSelectablePopup()
     self.EntityContextMenu = self.propTreeList.panel:AddPopup("PropRightClickPopup") --[[@as ExtuiPopup]]
     local tree = EntityStore.Tree
 
-    local contextMenu = StyleHelpers.AddContextMenu(self.EntityContextMenu, "Object")
+    local contextMenu = ImguiElements.AddContextMenu(self.EntityContextMenu, "Object")
 
     local function select()
         local target = self:DecideSelectedKeys()
@@ -848,7 +847,7 @@ function OutlinerMenu:SetupCollectionSelectablePopup(openKey)
     self.CollectionContextMenu = self.propTreeList.panel:AddPopup("CollectionRightClickPopup") --[[@as ExtuiPopup]]
     local tree = EntityStore.Tree
 
-    local contextMenu = StyleHelpers.AddContextMenu(self.CollectionContextMenu, "Collection")
+    local contextMenu = ImguiElements.AddContextMenu(self.CollectionContextMenu, "Collection")
 
     local function collectChildGuids(node, guids)
         if not node then return guids end

@@ -456,6 +456,96 @@ function SceneMenu:ClearSidebarHighlights()
     end
 end
 
+function SceneMenu:SetupContextMenu()
+    if self.presetContextMenu then
+        self.highLightPicker.Color = self.presets[self.selectedPreset].HighlightColor or {1,1,1,1}
+        self.presetContextMenu:Open()
+        return
+    end
+    local popup = self.panel:AddPopup("PresetInfoContextMenu")
+    self.presetContextMenu = popup
+
+
+    --- @type RB_ContextItem[]
+    local contextItems = {
+        {
+            Label = GetLoca("Spawn"),
+            OnClick = function()
+                if not self.selectedPreset then return end
+                self:LoadPreset(self.selectedPreset)
+            end
+        },
+        {
+            Label = GetLoca("Preview"),
+            OnClick = function()
+                if not self.selectedPreset then return end
+                self:LoadPreset(self.selectedPreset, true)
+            end
+        },
+        {
+            Label = GetLoca("Highlight"),
+            OnClick = function ()
+                if not self.selectedPreset then return end
+                self.presets[self.selectedPreset].Highlight = not self.presets[self.selectedPreset].Highlight
+                self:SaveToFile(self.selectedPreset)
+                self:RenderSidebarSelection()
+            end,
+        },
+        {
+            Label = GetLoca("Delete"),
+            OnClick = function()
+                if not self.selectedPreset then return end
+                ConfirmPopup:DangerConfirm(
+                    GetLoca("Are you sure you want to delete preset") .. " '" .. self.selectedPreset .. "'?",
+                    function()
+                        if self:DeletePreset(self.selectedPreset) then
+                        end
+                    end,
+                    nil
+                )
+            end,
+            Danger = true
+        },
+    }
+
+    local cm = ImguiElements.AddContextMenu(popup, "Scene")
+
+    cm:AddContext(contextItems)
+
+    local highLightPicker = cm:AddMenu(GetLoca("Highlight Color")):AddColorEdit(GetLoca("Select Highlight Color"))
+    self.highLightPicker = highLightPicker
+    if self.selectedPreset then
+        highLightPicker.Color = self.presets[self.selectedPreset].HighlightColor or {1,1,1,1}
+    else
+        highLightPicker.Color = {1,1,1,1}
+    end
+    highLightPicker.OnChange = function(colorPicker)
+        local name = self.selectedPreset
+        if not self.selectedPreset then return end
+        self.presets[self.selectedPreset].HighlightColor = highLightPicker.Color
+        self.presets[name].HighlightColor = colorPicker.Color
+        local btn = self.presetSideBarButtons[name]
+        if btn then
+            btn:SetColor("Header", AdjustColor(self.presets[name].HighlightColor, -0.05))
+            btn:SetColor("HeaderHovered", self.presets[name].HighlightColor)
+        end
+        if self.presentingPreset == name and self.presetInfoWindow then
+            self.previewTable.BordersOuter = true
+            --self.previewTable.RowBg = true
+            --self.previewTable:SetColor("TableRowBg", AdjustColor(self.presets[name].HighlightColor, -0.1, -0.1, -0.6))
+            self.previewTable:SetColor("TableBorderStrong", self.presets[name].HighlightColor)
+            local title = self.presetInfoWindow.UserData and self.presetInfoWindow.UserData.Title
+            if title then
+                title:SetColor("Header", AdjustColor(self.presets[name].HighlightColor, -0.05))
+                title:SetColor("HeaderHovered", self.presets[name].HighlightColor)
+            end
+        end
+        self:SaveToFile(name)
+    end
+
+    popup:Open()
+end
+
 function SceneMenu:RenderSidebarSelection()
     local ud = self.collapsingTable
     local buttonPanel = self.buttonPanel or ud.SideBar:AddChildWindow("buttonPanel")
@@ -507,85 +597,9 @@ function SceneMenu:RenderSidebarSelection()
             button.Selected = true
         end
 
-        local popup = cell:AddPopup(name .. "popup")
-        local secondPopup = popup:AddPopup(name .. "secondpopup")
-
         button.OnRightClick = function()
-            popup:Open()
-            popup:SetStyle("Alpha", 1)
-        end
-
-        local borderTable = popup:AddTable("borderTable", 1)
-        borderTable.BordersInnerH = true
-
-        local row = borderTable:AddRow()
-
-        local alwaysHighLightBtn = row:AddCell():AddSelectable(GetLoca("Highlight"))
-        local setHighLightColorBtn = row:AddCell():AddSelectable(GetLoca("Set Highlight Color"))
-        local previewBtn = row:AddCell():AddSelectable(GetLoca("Preview"))
-        local loadBtn = row:AddCell():AddSelectable(GetLoca("Spawn"))
-        local deleteBtn = row:AddCell():AddSelectable(GetLoca("Delete"))
-        StyleHelpers.ApplyDangerSelectableStyle(deleteBtn)
-
-        deleteBtn.OnClick = function()
-            ConfirmPopup:DangerConfirm(
-                GetLoca("Are you sure you want to delete preset") .. " '" .. name .. "'?",
-                function()
-                    if self:DeletePreset(name) then
-                    end
-                end,
-                nil
-            )
-            deleteBtn.Selected = false
-        end
-
-        loadBtn.OnClick = function()
-            self:LoadPreset(name)
-            loadBtn.Selected = false
-        end
-
-        previewBtn.OnClick = function()
-            self:LoadPreset(name, true)
-            previewBtn.Selected = false
-        end
-
-        alwaysHighLightBtn.OnClick = function ()
-            self.presets[name].Highlight = not self.presets[name].Highlight
-            button.Highlight = self.presets[name].Highlight
-            alwaysHighLightBtn.Selected =  self.presets[name].Highlight or false
-            self:SaveToFile(name)
-        end
-        alwaysHighLightBtn.Selected = self.presets[name].Highlight or false
-
-        setHighLightColorBtn.OnClick = function()
-            secondPopup:Open()
-            setHighLightColorBtn.Selected = true
-        end
-        setHighLightColorBtn.Selected = true
-        setHighLightColorBtn.DontClosePopups = true
-        if self.presets[name].HighlightColor then
-            setHighLightColorBtn:SetColor("Header", self.presets[name].HighlightColor)
-        end
-
-        local colorPicker = secondPopup:AddColorEdit(GetLoca("Highlight Color"))
-        colorPicker.Color = self.presets[name].HighlightColor or {1, 1, 0, 1}
-        colorPicker.OnChange = function()
-            self.presets[name].HighlightColor = colorPicker.Color
-            button:SetColor("Header", AdjustColor(self.presets[name].HighlightColor, -0.05))
-            button:SetColor("HeaderHovered", self.presets[name].HighlightColor)
-            setHighLightColorBtn:SetColor("Header", self.presets[name].HighlightColor)
-            if self.presentingPreset == name and self.presetInfoWindow then
-                self.previewTable.BordersOuter = true
-                --self.previewTable.RowBg = true
-                --self.previewTable:SetColor("TableRowBg", AdjustColor(self.presets[name].HighlightColor, -0.1, -0.1, -0.6))
-                self.previewTable:SetColor("TableBorderStrong", self.presets[name].HighlightColor)
-                local title = self.presetInfoWindow.UserData and self.presetInfoWindow.UserData.Title
-                if title then
-                    title:SetColor("Header", AdjustColor(self.presets[name].HighlightColor, -0.05))
-                    title:SetColor("HeaderHovered", self.presets[name].HighlightColor)
-                end
-            end
-            self:SaveToFile(name)
+            self.selectedPreset = name
+            self:SetupContextMenu()
         end
 
         self.presetSideBarButtons[name] = button
@@ -634,38 +648,9 @@ function SceneMenu:RenderPresetInfo(name)
         title:SetColor("HeaderHovered", presetData.HighlightColor)
     end
 
-    local titlePopup = self.presetInfoWindow:AddPopup(name .. "titlepopup")
-
-    local previewBtn = titlePopup:AddSelectable(GetLoca("Preview"))
-    local loadBtn = titlePopup:AddSelectable(GetLoca("Spawn"))
-    local deleteBtn = titlePopup:AddSelectable(GetLoca("Delete"))
-    StyleHelpers.ApplyDangerSelectableStyle(deleteBtn)
-
-    loadBtn.OnClick = function()
-        self:LoadPreset(name)
-        loadBtn.Selected = false
-    end
-
-    previewBtn.OnClick = function()
-        self:LoadPreset(name, true)
-        previewBtn.Selected = false
-    end
-
-    deleteBtn.OnClick = function()
-        ConfirmPopup:DangerConfirm(
-            GetLoca("Are you sure you want to delete preset") .. " '" .. name .. "'?",
-            function()
-                if self:DeletePreset(name) then
-                end
-            end,
-            nil
-        )
-        deleteBtn.Selected = false
-    end
-
     title.OnClick = function()
-        titlePopup:Open()
-        title.Selected = true
+        self.selectedPreset = name
+        self:SetupContextMenu()
     end
 
     title.OnRightClick = title.OnClick

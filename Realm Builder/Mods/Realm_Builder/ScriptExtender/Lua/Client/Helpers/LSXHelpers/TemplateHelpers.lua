@@ -279,6 +279,11 @@ function LSXHelpers.ChildrenNode()
     return XMLNode.new("children")
 end
 
+local attrorder = {
+    "contentuid",
+    "version",
+}
+
 ---@param names string[]
 ---@param version number|fun(name:string):number
 ---@return string, table<string, string[]>, table<string, string> -- content, string -> handle[], handle -> string
@@ -305,6 +310,7 @@ function LSXHelpers.GenerateLocalization(names, version)
             version = ver
         })
         contentNode:SetInnerText(name)
+        contentNode:SetAttrOrder(attrorder)
         root:AppendChild(contentNode)
         stringToHandles[name] = stringToHandles[name] or {}
         handleToString[handle] = name
@@ -337,6 +343,7 @@ function LSXHelpers.BuildLocalization(handleToName, versions)
             version = ver
         })
         contentNode:SetInnerText(name)
+        contentNode:SetAttrOrder(attrorder)
         root:AppendChild(contentNode)
     end
 

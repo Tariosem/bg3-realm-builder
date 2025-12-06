@@ -38,7 +38,8 @@ function ImguiHelpers.SetupImageButton(arrowImage)
     arrowImage:SetColor("ButtonActive", { 0, 0, 0, 0 })
 end
 
-
+--- @param Combo ExtuiCombo
+--- @return string
 function ImguiHelpers.GetCombo(Combo)
     return Combo.Options[Combo.SelectedIndex + 1]
 end
@@ -65,7 +66,7 @@ function ImguiHelpers.SetCombo(Combo, Value, ifNotFoundAdd, noTrigger)
     end
 end
 
----@param window any
+---@param window ExtuiWindow
 function ImguiHelpers.FocusWindow(window)
     if not IsWindowValid(window) then return end
 
@@ -95,6 +96,7 @@ local function EnableAndSetAlpha(extui)
     extui:SetStyle("Alpha", 1)
 end
 
+--- @param extui ExtuiStyledRenderable
 function ImguiHelpers.SetImguiDisabled(extui, disabled)
     if disabled then
         DisableAndSetAlpha(extui)
@@ -103,6 +105,7 @@ function ImguiHelpers.SetImguiDisabled(extui, disabled)
     end
 end
 
+--- @param parent ExtuiTreeParent
 function ImguiHelpers.DestroyAllChildren(parent)
     if not parent then return end
     if not parent.Children then

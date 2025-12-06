@@ -83,7 +83,7 @@ local individualPivotMode = {
     Individual = true,
 }
 
-local maxSize = 100
+local maxSize = 100 
 
 --- @param selection RB_MovableProxy[]
 function TransformEditor:Select(selection, notRecordHistory)

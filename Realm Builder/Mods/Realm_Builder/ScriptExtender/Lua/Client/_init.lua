@@ -4,8 +4,8 @@ GLOBAL_DEBUG_WINDOW.Open = false
 
 local debugWindowRegistery = {}
 
-RegisterOnSessionLoaded(function ()
-    for title,renderFunc in SortedPairs(debugWindowRegistery) do
+RegisterOnSessionLoaded(function()
+    for title, renderFunc in SortedPairs(debugWindowRegistery) do
         renderFunc(ImguiElements.AddTree(GLOBAL_DEBUG_WINDOW, title))
     end
     GLOBAL_DEBUG_WINDOW.Open = Ext.Debug.IsDeveloperMode()
@@ -33,7 +33,7 @@ RegisterDebugWindow("Realm Builder Debug", function(panel)
     local debugButton = panel:AddButton("Debug Info")
 
     debugButton.OnClick = function()
-        ErrorNotify("Debug", "Memory Usage: " .. tostring(Ext.Utils.GetMemoryUsage()/1024/1024) .. " MB")
+        ErrorNotify("Debug", "Memory Usage: " .. tostring(Ext.Utils.GetMemoryUsage() / 1024 / 1024) .. " MB")
     end
 
     local visualizeMouseRay = panel:AddButton("Visualize Mouse Ray")
@@ -52,7 +52,6 @@ RegisterDebugWindow("Realm Builder Debug", function(panel)
             ScreenToWorldRay():Debug()
         end)
     end
-
 end)
 
 local PhysicsGroupFlags = Ext.Enums.PhysicsGroupFlags
@@ -60,7 +59,7 @@ local PhysicsType = Ext.Enums.PhysicsType
 
 local configurableIntersect = {
     PhysicsType = PhysicsType.Dynamic | PhysicsType.Static,
-    PhysicsGroupFlags = PhysicsGroupFlags.Item 
+    PhysicsGroupFlags = PhysicsGroupFlags.Item
         | PhysicsGroupFlags.Character
         | PhysicsGroupFlags.Scenery
         | PhysicsGroupFlags.VisibleItem,
@@ -70,15 +69,16 @@ local configurableIntersect = {
 
 --- @return PhxPhysicsHit
 function Ray:IntersectDebug()
-    return Ext.Level[configurableIntersect.Function](self.Origin, self.Direction, configurableIntersect.PhysicsType, configurableIntersect.PhysicsGroupFlags, configurableIntersect.PhysicsGroupFlagsExclude, 1)
+    return Ext.Level[configurableIntersect.Function](self.Origin, self.Direction, configurableIntersect.PhysicsType,
+        configurableIntersect.PhysicsGroupFlags, configurableIntersect.PhysicsGroupFlagsExclude, 1)
 end
 
 if false and GLOBAL_DEBUG_WINDOW then
     local header = GLOBAL_DEBUG_WINDOW:AddCollapsingHeader("Raycast Options")
 
     local funcCombo = header:AddCombo("Function")
-    funcCombo.Options = {"RaycastClosest", "RaycastAll"}
-    funcCombo.OnChange = function (ev)
+    funcCombo.Options = { "RaycastClosest", "RaycastAll" }
+    funcCombo.OnChange = function(ev)
         configurableIntersect.Function = ImguiHelpers.GetCombo(ev)
     end
 
@@ -88,19 +88,20 @@ if false and GLOBAL_DEBUG_WINDOW then
     local separator = header:AddSeparatorText("Include Groups")
     local includeGroup = ImguiElements.AddBitmaskRadioButtons(header, options, configurableIntersect.PhysicsGroupFlags)
 
-    includeGroup.OnChange = function (radioBtn, value)
+    includeGroup.OnChange = function(radioBtn, value)
         configurableIntersect.PhysicsGroupFlags = value
     end
 
     local excludeSeparator = header:AddSeparatorText("Exclude Groups")
-    local excludeGroup = ImguiElements.AddBitmaskRadioButtons(header, options, configurableIntersect.PhysicsGroupFlagsExclude)
+    local excludeGroup = ImguiElements.AddBitmaskRadioButtons(header, options,
+        configurableIntersect.PhysicsGroupFlagsExclude)
 
-    excludeGroup.OnChange = function (radioBtn, value)
+    excludeGroup.OnChange = function(radioBtn, value)
         configurableIntersect.PhysicsGroupFlagsExclude = value
     end
 
     local debugBtn = header:AddButton("Debug Raycast")
-    debugBtn.OnClick = function ()
+    debugBtn.OnClick = function()
         local ray = ScreenToWorldRay()
         if not ray then
             return
@@ -127,6 +128,7 @@ function GetDataFromUuid(uuid)
     TakeTailTemplate(uuid)
     return RB_ItemManager.Data[uuid] or RB_MultiEffectManager.Data[uuid] or {}
 end
+
 --- @return table<string, integer>, integer
 local function PopulateAllTemplates()
     if RB_ItemManager.populated then return {}, 0 end
@@ -209,17 +211,19 @@ local function Realm_Builder_Population()
     local effectCnt = RB_MultiEffectManager:PopulateAllEffects()
     local effectsFinished = Ext.Timer:MonotonicTime()
     if sumCnt >= 0 then
-        RBPrintPurple("[Realm Builder] Populating " .. sumCnt .. " root templates took " .. (itemsFinished - now) .. " ms:")
+        RBPrintPurple("[Realm Builder] Populating " ..
+        sumCnt .. " root templates took " .. (itemsFinished - now) .. " ms:")
         local longest = -1
         local toPrint = {}
-        for k,v in SortedPairs(cnts) do
+        for k, v in SortedPairs(cnts) do
             longest = math.max(longest, #k)
-            table.insert(toPrint, {k, v})
+            table.insert(toPrint, { k, v })
         end
-        for _,pair in pairs(toPrint) do
+        for _, pair in pairs(toPrint) do
             RBPrintPurple("    " .. PadSuffix(pair[1] .. ":", longest + 2) .. " " .. pair[2])
         end
-        RBPrintPurple("[Realm Builder] Populating Effects took " .. (effectsFinished - itemsFinished) .. " ms for " .. effectCnt .. " effects")
+        RBPrintPurple("[Realm Builder] Populating Effects took " ..
+        (effectsFinished - itemsFinished) .. " ms for " .. effectCnt .. " effects")
     end
 end
 
@@ -235,23 +239,24 @@ end, "Opens the Realm Builder debug window.")
 --- some random stuff Other mods already did
 --- just putting it here for my own convenience
 if Ext.Debug.IsDeveloperMode() then
-    RegisterDebugWindow("Random", function (panel)
-        
+    RegisterDebugWindow("Random", function(panel)
         --- PM Extra Data Editor
         local pmTree = ImguiElements.AddTree(panel, "PhotoMode ExtraData")
         local pmEDField = {
             "PhotoModeCameraMovementSpeed",
             "PhotoModeCameraRotationSpeed"
         }
+        local alignedTable = ImguiElements.AddAlignedTable(pmTree)
         for i, string in pairs(pmEDField) do
-            if string:find("PhotoMode") then
-                local getter = function ()
-                    return Ext.Stats.GetStatsManager().ExtraData[string]
-                end
-                local setter = function (val)
-                    Ext.Stats.GetStatsManager().ExtraData[string] = val
-                end
-                ImguiElements.AddEditorByGetter(pmTree, string, getter, setter)
+            local getter = function()
+                return Ext.Stats.GetStatsManager().ExtraData[string]
+            end
+            local setter = function(val)
+                Ext.Stats.GetStatsManager().ExtraData[string] = val
+            end
+            alignedTable:AddSliderWithStep(string, getter(), 0, 10, 0.1, false)
+            .OnChange = function(slider)
+                setter(slider.Value[1])
             end
         end
 
@@ -281,13 +286,13 @@ if Ext.Debug.IsDeveloperMode() then
                     0,
                     ""
                 }
-            }, function (response)
+            }, function(response)
                 marker = response[1]
             end)
-            id = Ext.Events.Tick:Subscribe(function (e)
+            id = Ext.Events.Tick:Subscribe(function(e)
                 if not self:IsValid() then
                     --- @diagnostic disable-next-line
-                    NetChannel.Delete:SendToServer({Guid = marker})
+                    NetChannel.Delete:SendToServer({ Guid = marker })
                     Ext.Events.Tick:Unsubscribe(id)
                     return
                 end
@@ -312,7 +317,7 @@ if Ext.Debug.IsDeveloperMode() then
             return {
                 Translate = Vec3.new(comp.Transform.Translate),
                 RotationQuat = Quat.new(comp.Transform.RotationQuat),
-                Scale = Vec3.new(1,1,1)
+                Scale = Vec3.new(1, 1, 1)
             }
         end
 
@@ -327,7 +332,7 @@ if Ext.Debug.IsDeveloperMode() then
             if transform.RotationQuat then
                 comp.Transform.RotationQuat = transform.RotationQuat
             end
-            transform.Scale = {1,1,1}
+            transform.Scale = { 1, 1, 1 }
             self.StickTransform = transform
         end
 
@@ -335,14 +340,12 @@ if Ext.Debug.IsDeveloperMode() then
             return self.Entity and self.Entity.PhotoModeCameraTransform ~= nil
         end
 
-    
         local controlPMBtn = panel:AddButton("Control Photo Mode Camera")
-        controlPMBtn.OnClick = function ()
+        controlPMBtn.OnClick = function()
             local proxy = PhotoModeCameraProxy.new()
-            RB_GLOBALS.TransformEditor:Select({proxy})
+            RB_GLOBALS.TransformEditor:Select({ proxy })
         end
 
         --#endregion
     end)
-
 end
