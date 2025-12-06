@@ -84,7 +84,7 @@ function ContextMenuClass:AddContext(context, isFocus)
 
         local selectable = self:AddItem(item.Label, item.OnClick, item.Hint, item.Icon)
         if item.Danger then
-            ApplyDangerSelectableStyle(selectable)
+            StyleHelpers.ApplyDangerSelectableStyle(selectable)
         end
         if item.DontClosePopups then
             selectable.DontClosePopups = true

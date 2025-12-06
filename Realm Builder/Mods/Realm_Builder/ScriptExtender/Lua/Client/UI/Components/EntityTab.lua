@@ -125,7 +125,7 @@ function EntityTab:RenderMonitorTab()
         TemplateName = self.templateName,
     }
 
-    local attrTable = StyleHelpers.AddReadOnlyAttrTable(monitorTab, attrs)
+    local attrTable = ImguiElements.AddReadOnlyAttrTable(monitorTab, attrs)
     self.attrTable = attrTable
 
     local levelLine = {attrTable:AddNewLine()}
@@ -260,7 +260,7 @@ function EntityTab:RenderMonitorTab()
             rotationMonitor.Value = self.LastRotation or {0, 0, 0, 0}
             return
         end
-        if IsFocused(rotationMonitor) then
+        if ImguiHelpers.IsFocused(rotationMonitor) then
             return
         end
 
@@ -385,11 +385,11 @@ function EntityTab:RenderFilterTab()
 
     self.tagsInput.OnChange = function(text)
         if text.Text == "" then
-            SetImguiDisabled(self.tagsAddButton, true)
-            SetImguiDisabled(self.tagsRemoveButton, true)
+            ImguiHelpers.SetImguiDisabled(self.tagsAddButton, true)
+            ImguiHelpers.SetImguiDisabled(self.tagsRemoveButton, true)
         else
-            SetImguiDisabled(self.tagsAddButton, false)
-            SetImguiDisabled(self.tagsRemoveButton, false)
+            ImguiHelpers.SetImguiDisabled(self.tagsAddButton, false)
+            ImguiHelpers.SetImguiDisabled(self.tagsRemoveButton, false)
         end
     end
 
@@ -610,7 +610,7 @@ function EntityTab:Focus()
         if self.panel.Open == false then
             self.panel.Open = true 
         end
-        FocusWindow(self.panel)
+        ImguiHelpers.FocusWindow(self.panel)
     else
         Timer:After(100, function()
             if self.isWindow then
@@ -674,7 +674,7 @@ local readOnlyFields = {
 function EntityTab:RenderCharacterTab()
     local tabItem = self.tabBar:AddTabItem("Character")
 
-    local alignedTable = StyleHelpers.AddAlignedTable(tabItem)
+    local alignedTable = ImguiElements.AddAlignedTable(tabItem)
 
     local leaderCombo = alignedTable:AddCombo("Follower Of")
 
@@ -729,7 +729,7 @@ function EntityTab:RenderCharacterTab()
     end
 
     local function renderEditor()
-        StyleHelpers.RenderGeneralTableEditor(tabItem, serverCharacter, setServerCharacter)
+        ImguiElements.AddGeneralTableEditor(tabItem, serverCharacter, setServerCharacter)
     end
 
     NetChannel.GetServerEntity:RequestToServer({ Guid = self.guid, Data = { ServerCharacter = serverCharacter } }, function (data)
@@ -748,7 +748,7 @@ function EntityTab:RenderItemTab()
     end
 
     local function renderEditor()
-        StyleHelpers.RenderGeneralTableEditor(tabItem, serverItem, setServerItem)
+        ImguiElements.AddGeneralTableEditor(tabItem, serverItem, setServerItem)
     end
 
     NetChannel.GetServerEntity:RequestToServer({ Guid = self.guid, Data = { ServerItem = serverItem } }, function (data)

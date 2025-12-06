@@ -1,3 +1,4 @@
+--- only activate when user bind an object to camera
 local CameraUpdateTimer = nil
 local CameraBindCnt = {}
 local cameraSub = nil
@@ -101,7 +102,7 @@ local commandDes =
     - Status: Displays whether the camera update timer is active or not.
 ]]
 
-RegisterConsoleCommand("rb_camera_timer_inspect", function (cmd, args)
+RegisterConsoleCommand("rb_inspect_camera_timer", function (cmd, args)
     if args == "Cancel" then
         DeactiveCameraTimer()
     elseif args == "Start" then

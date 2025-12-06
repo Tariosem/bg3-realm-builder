@@ -524,7 +524,7 @@ function TransformToolbar:RenderTopBar()
     panel.NoMove = true
     panel.NoTitleBar = true
 
-    local topAlignedTable = StyleHelpers.AddCenterAlignTable(panel, "TopBar")
+    local topAlignedTable = ImguiElements.AddCenterAlignTable(panel, "TopBar")
     topAlignedTable.ColumnDefs[3] = { WidthFixed = true }
 
     local row = topAlignedTable:AddRow()
@@ -667,14 +667,14 @@ function TransformToolbar:RenderOtherConfigOptions(panel)
     local row2 = leftA:AddRow()
 
     row1:AddCell():AddText("Move Step")
-    local stepSlider = StyleHelpers.AddSliderWithStep(row1:AddCell(), "Step", 1, 0.1, 3, 0.05)
+    local stepSlider = ImguiElements.AddSliderWithStep(row1:AddCell(), "Step", 1, 0.1, 3, 0.05)
     stepSlider.OnChange = function (e)
         if not RB_GLOBALS.TransformEditor.Gizmo then return end
         RB_GLOBALS.TransformEditor.Gizmo.Step = e.Value[1]
     end
 
     row2:AddCell():AddText("Gizmo Size")
-    local gizmoSizeSlider = StyleHelpers.AddSliderWithStep(row2:AddCell(), "Gizmo Size", 0.1, 0.01, 2, 0.01)
+    local gizmoSizeSlider = ImguiElements.AddSliderWithStep(row2:AddCell(), "Gizmo Size", 0.1, 0.01, 2, 0.01)
     gizmoSizeSlider.OnChange = function (e)
         local editor = RB_GLOBALS.TransformEditor
         if editor.Gizmo then

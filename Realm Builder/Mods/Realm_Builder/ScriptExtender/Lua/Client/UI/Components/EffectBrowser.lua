@@ -84,7 +84,7 @@ function EffectBrowser:RenderIcon(entry, cell)
                 Icon = entry.Icon,
             }
 
-            StyleHelpers.AddReadOnlyAttrTable(popup, attrs)
+            ImguiElements.AddReadOnlyAttrTable(popup, attrs)
         end
         popup:Open()
 
@@ -179,8 +179,8 @@ function EffectBrowser:RenderPlayEffectPopup(getPopupFunc, entry)
 
     infoButton.SameLine = true
 
-    ApplyConfirmButtonStyle(playEffectButton)
-    ApplyInfoButtonStyle(infoButton)
+    StyleHelpers.ApplyConfirmButtonStyle(playEffectButton)
+    StyleHelpers.ApplyInfoButtonStyle(infoButton)
 
     playEffectButton.OnClick = function()
         previewEffect(self.selectedGuid or CGetHostCharacter(), entry)

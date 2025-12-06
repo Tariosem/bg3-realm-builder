@@ -30,9 +30,8 @@ PICKER_CONSTANTS.ROTATE_RING = {
 
 RegisterDebugWindow("Gizmo Picker Constants", function(panel)
     for partName,part in pairs(PICKER_CONSTANTS) do
-        local partTree = StyleHelpers.AddTree(panel, partName)
-        StyleHelpers.RenderGeneralTableEditor(partTree, part, function ()
-            
+        local partTree = ImguiElements.AddTree(panel, partName)
+        ImguiElements.AddGeneralTableEditor(partTree, part, function ()
         end)
     end
 end)
@@ -40,7 +39,7 @@ end)
 --- @class GizmoPickerHitPart
 --- @field Name string
 --- @field Priority number -- Lower number = higher priority
---- @field PreferMode TransformEditorMode -- Optional preferred mode for this part， used in "Transform" mode
+--- @field PreferMode TransformEditorMode -- Optional preferred mode for this part，used in "Transform" mode
 --- @field Mode table<TransformEditorMode, boolean> -- Modes this part is active in
 --- @field Axis table<TransformAxis, boolean> -- Axes this part is associated with
 --- @field HitTest fun(picker: GizmoPicker, localRay: Ray):Hit? -- localRay is in gizmo local space
@@ -148,7 +147,7 @@ local function makePlaneSquare(axis)
             local hit = localRay:IntersectPlane(localOrigin, normal, true)
             if not hit or not hit.Position then return nil end
 
-            local dist = hit.Position - localOrigin
+            local dist = hit.Position --[[@as Vec3]]
 
             for a, _ in pairs(hitAxes) do
                 local val = dist[a]

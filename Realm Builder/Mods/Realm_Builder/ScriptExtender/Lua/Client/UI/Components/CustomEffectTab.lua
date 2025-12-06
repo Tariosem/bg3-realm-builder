@@ -31,7 +31,7 @@ function CustomEffectTab:RenderProfile()
     local l2, r2 = row:AddCell(), row:AddCell()
     local l3, r3 = row:AddCell(), row:AddCell()
 
-    self.displayNameButton = AddSelectableButton(l1, GetLoca("Display Name"), function()
+    self.displayNameButton = ImguiElements.AddSelectableButton(l1, GetLoca("Display Name"), function()
         local text = self.displayNameInput.Text
         if text and text ~= "" then
             self.displayName = text
@@ -47,14 +47,14 @@ function CustomEffectTab:RenderProfile()
     self.displayNameInput.SameLine = true
 
     self.displayNameInputKeySub = SubscribeKeyInput({ Key = "RETURN"}, function()
-        local ok, focus = pcall(function() return IsFocused(self.displayNameInput) end)
+        local ok, focus = pcall(function() return ImguiHelpers.IsFocused(self.displayNameInput) end)
         if not ok then return UNSUBSCRIBE_SYMBOL end
         if focus then
             self.displayNameButton:OnClick()
         end
     end)
 
-    self.iconNameButton = AddSelectableButton(l2, GetLoca("Icon"), function()
+    self.iconNameButton = ImguiElements.AddSelectableButton(l2, GetLoca("Icon"), function()
         local icon = CheckIcon(self.iconNameInput.Text, self.icon)
         if icon and icon ~= "" then
             self.icon = icon
@@ -79,7 +79,7 @@ function CustomEffectTab:RenderProfile()
     self.iconNameInput.SameLine = true
 
     self.iconNameInputKeySub = SubscribeKeyInput({ Key = "RETURN"}, function()
-        local ok, focus = pcall(function() return IsFocused(self.iconNameInput) end)
+        local ok, focus = pcall(function() return ImguiHelpers.IsFocused(self.iconNameInput) end)
         if not ok then return UNSUBSCRIBE_SYMBOL end
         if focus then
             self.iconNameButton:OnClick()
@@ -87,7 +87,7 @@ function CustomEffectTab:RenderProfile()
     end)
 
 
-    self.descButton = AddSelectableButton(l3, GetLoca("Description"), function()
+    self.descButton = ImguiElements.AddSelectableButton(l3, GetLoca("Description"), function()
         local text = self.descInput.Text
         if text and text ~= "" then
             self.description = text
@@ -100,7 +100,7 @@ function CustomEffectTab:RenderProfile()
     self.descInput.SameLine = true
 
     self.descInputKeySub = SubscribeKeyInput({ Key = "RETURN"}, function()
-        local ok, focus = pcall(function() return IsFocused(self.descInput) end)
+        local ok, focus = pcall(function() return ImguiHelpers.IsFocused(self.descInput) end)
         if not ok then return UNSUBSCRIBE_SYMBOL end
         if focus then
             self.descButton:OnClick()
@@ -116,7 +116,7 @@ function CustomEffectTab:RenderProfile()
     end
 
     self.selfDestruction = self.profileTab:AddButton(GetLoca("Self Destruction"))
-    ApplyDangerButtonStyle(self.selfDestruction)
+    StyleHelpers.ApplyDangerButtonStyle(self.selfDestruction)
     self.selfDestruction.OnClick = function()
         if self.isCustom then
             ConfirmPopup:DangerConfirm(
@@ -240,7 +240,7 @@ function CustomEffectTab:RenderEffects()
 
     self.effectTimelineWin = self.effectTimelineWin or self.effectsInfoTab:AddChildWindow("EffectsTimeline")
 
-    self.effectRoot = self.effectRoot or StyleHelpers.AddTree(self.effectTimelineWin, GetLoca("Effects List"), true)
+    self.effectRoot = self.effectRoot or ImguiElements.AddTree(self.effectTimelineWin, GetLoca("Effects List"), true)
     self.effectRoot:DestroyChildren()
     self.effectRoot.OnRightClick = function()
         self.selectedIndex = 0
@@ -300,7 +300,7 @@ function CustomEffectTab:RenderEffects()
             self.cachedExpandedTrees[effectObj.DisplayName] = nil
         end
 
-        local attrTable = StyleHelpers.AddAlignedTable(effectTree)
+        local attrTable = ImguiElements.AddAlignedTable(effectTree)
 
         local displayNameInput = attrTable:AddInputText(GetLoca("Display Name"), effectObj.DisplayName)
         displayNameInput.OnClick = function()
@@ -471,7 +471,7 @@ function CustomEffectTab:RenderEffects()
     -- Add Effect Slot
 
     local emptyIcon = root:AddImageButton("EmptyEffect", RB_ICONS.Plus_Circle_Fill, IMAGESIZE.ROW)
-    StyleHelpers.SetupImageButton(emptyIcon)
+    ImguiHelpers.SetupImageButton(emptyIcon)
     emptyIcon:Tooltip():AddText(GetLoca("Drag an effect here, or paste an fx name into the box and click."))
     emptyIcon.DragDropType = "EffectInfo"
     emptyIcon.CanDrag = true

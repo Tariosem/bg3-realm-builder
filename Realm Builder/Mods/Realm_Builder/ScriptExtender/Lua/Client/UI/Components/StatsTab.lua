@@ -105,7 +105,7 @@ function StatsTab:RenderEffects()
     end
 
     self.effectTimelineWin = self.effectTimelineWin or self.effectsInfoTab:AddChildWindow("EffectsTimeline")
-    self.effectRoot = StyleHelpers.AddTree(self.effectTimelineWin, "Effects List", true)
+    self.effectRoot = ImguiElements.AddTree(self.effectTimelineWin, "Effects List", true)
 
     local warningCell = self.effectRoot:Tooltip()
     warningCell:AddText("For each effect type, you can select only one MultiEffect, ")
@@ -247,7 +247,7 @@ function StatsTab:RenderSingleEffectType(parent, effectType)
 
         self:SetupEffectTreeBehaviors(effectTree, effectType, name)
 
-        local attrTable = StyleHelpers.AddAlignedTable(effectTree)
+        local attrTable = ImguiElements.AddAlignedTable(effectTree)
         local displayNameInput = attrTable:AddInputText(GetLoca("DisplayName"), data.DisplayName or "")
         displayNameInput.SameLine = true
         displayNameInput.IDContext = "DisplayNameInput_" .. name
@@ -311,7 +311,7 @@ function StatsTab:RenderMultiEffectType(parent, effectType)
             effectTree:SetOpen(true)
         end
 
-        local attrTable = StyleHelpers.AddAlignedTable(effectTree)
+        local attrTable = ImguiElements.AddAlignedTable(effectTree)
 
         local displayNameInput = attrTable:AddInputText(GetLoca("DisplayName"), data.DisplayName or "")
         displayNameInput.SameLine = true
@@ -388,7 +388,7 @@ function SpellTab:RenderControlPanel(parent)
             self.searchData.WeaponTypes = animSet and animSet.WeaponAttack or nil
             self.searchData.Sheathing = animSet and animSet.Sheathing or nil
             animationInput.Text = animSet and animSet.SpellAnimation or ""
-            SetCombo(sheathInput, animSet and animSet.Sheathing or "Melee", true)
+            ImguiHelpers.SetCombo(sheathInput, animSet and animSet.Sheathing or "Melee", true)
             self:OnChange() 
         end
     end
@@ -401,16 +401,16 @@ function SpellTab:RenderControlPanel(parent)
     end
     weaponTypeInput.Visible = false
     sheathInput.OnChange = function(input)
-        self.searchData.Sheathing = GetCombo(input)
+        self.searchData.Sheathing = ImguiHelpers.GetCombo(input)
     end
 
-    local areaRadiusSlider = StyleHelpers.AddSliderWithStep(parent, "AreaRadius", self.searchData.AreaRadius or 9, 1, 100, 1, true)
+    local areaRadiusSlider = ImguiElements.AddSliderWithStep(parent, "AreaRadius", self.searchData.AreaRadius or 9, 1, 100, 1, true)
     areaRadiusSlider.OnChange = function(slider)
         self.searchData.AreaRadius = slider.Value[1]
     end
     parent:AddText(GetLoca("Hit Radius")).SameLine = true
 
-    local targetRadiusSlider = StyleHelpers.AddSliderWithStep(parent, "TargetRadius", self.searchData.TargetRadius or 18, 1, 100, 1, true)
+    local targetRadiusSlider = ImguiElements.AddSliderWithStep(parent, "TargetRadius", self.searchData.TargetRadius or 18, 1, 100, 1, true)
     targetRadiusSlider.OnChange = function(slider)
         self.searchData.TargetRadius = slider.Value[1]
     end
@@ -490,7 +490,7 @@ end
 
 function StatsTab:RenderEmptyIcon(parent, effectType)
     local emptyIcon = parent:AddImageButton("EmptyIcon", RB_ICONS.Plus_Circle_Fill, IMAGESIZE.ROW)
-    StyleHelpers.SetupImageButton(emptyIcon)
+    ImguiHelpers.SetupImageButton(emptyIcon)
     emptyIcon.IDContext = "EmptyIcon_" .. effectType
 
     emptyIcon.DragDropType = "EffectInfo"

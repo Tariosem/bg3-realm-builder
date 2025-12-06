@@ -127,10 +127,11 @@ local MouseToCode = {
 }
 
 local Enums = Enums
+local simplifiedModfierEnum = Enums.SimplifiedModfier
 local function excludeModfiers(modifs)
     for i = #modifs, 1, -1 do
-        local simplified = Enums.SimplifiedModfier[tostring(modifs[i]):upper()]
-        if not Enums.ModfierToPresentation[simplified] then
+        local simplified = simplifiedModfierEnum[tostring(modifs[i]):upper()]
+        if not simplifiedModfierEnum[simplified] then
             table.remove(modifs, i)
         else
             modifs[i] = simplified
@@ -221,7 +222,7 @@ function SetupInputEnterCallback(input, callback)
     local sub = nil
 
     sub = SubscribeKeyInput({}, function (e)
-        local ok, focused = pcall(IsFocused, input)
+        local ok, focused = pcall(ImguiHelpers.IsFocused, input)
         if not ok then
             Warning("[SetupInputEnterCallback] Failed to check focus state of input, unsubscribing key input listener.")
             return UNSUBSCRIBE_SYMBOL

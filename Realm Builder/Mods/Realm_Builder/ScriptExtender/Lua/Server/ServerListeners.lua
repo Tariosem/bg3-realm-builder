@@ -604,7 +604,7 @@ local function callOsirisFunction(data)
         return
     end
 
-    return Osi[func](table.unpack(args))
+    return {Osi[func](table.unpack(args))}
 end
 
 NetChannel.CallOsiris:SetHandler(function(data, userID)

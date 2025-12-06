@@ -83,7 +83,7 @@ CommandChannel:SetHandler(function(data, user)
 end)
 
 --- @param command string
---- @param func fun(...:string)
+--- @param func fun(command:string, ...:string)
 function RegisterConsoleCommand(command, func, description)
     if Ext.IsServer() then
         serverCommands[command] = {
@@ -95,8 +95,7 @@ function RegisterConsoleCommand(command, func, description)
         }
     end
     Ext.RegisterConsoleCommand(command, function(cmd, args)
-        args = SplitBySpace(args)
-        func(command, table.unpack(args))
+        func(command, args)
     end)
 end
 
@@ -115,8 +114,8 @@ end)
 Ext.RegisterConsoleCommand("rb_help", function(cmd, args)
     if args and (clientCommands[args] or serverCommands[args] or commonCommands[args]) then
         local cmdData = clientCommands[args] or serverCommands[args] or commonCommands[args]
-        print(string.format("Command: %s", args))
-        print(string.format("Description: %s", cmdData.description or "No description provided."))
+        print(string.format("Command:\n %s", args))
+        print(string.format("Description:\n %s", cmdData.description or "No description provided."))
         return
     end
 

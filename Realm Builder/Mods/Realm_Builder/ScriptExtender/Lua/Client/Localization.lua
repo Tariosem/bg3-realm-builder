@@ -17,6 +17,8 @@ for str, handle in pairs(vanillaLocalization) do
     StringToHandle[str] = handle
 end
 
+--- @param text string
+--- @return string
 function GetLoca(text)
     if StringToHandle[text] then
         return Ext.Loca.GetTranslatedString(StringToHandle[text], text)
@@ -41,14 +43,26 @@ local function ExportUnseenStrings()
 
     local string, stringToHandle = LSXHelpers.GenerateLocalization(toSave, 1)
 
-    local path = "Realm_Builder/Mods/Realm_Builder/Localization/UnseenStrings.lsx"
-    local stringToHandlePath = "Realm_Builder/Mods/Realm_Builder/Localization/UnseenStrings_StringToHandle.json"
+    local path = "Realm_Builder/Localization/UnseenStrings.lsx"
+    local stringToHandlePath = "Realm_Builder/Localization/UnseenStrings_StringToHandle.lua"
     local suc = Ext.IO.SaveFile(path, string)
-    Ext.IO.SaveFile(stringToHandlePath, Ext.Json.Stringify(stringToHandle))
+    local luaFileContent = ""
+    luaFileContent = luaFileContent .. "return {\n"
+    for str,handle in pairs(stringToHandle) do
+        luaFileContent = luaFileContent .. string.format("    [%q] = %q,\n", str, handle)
+    end
+    luaFileContent = luaFileContent .. "}\n"
+    local suc2 = Ext.IO.SaveFile(stringToHandlePath, luaFileContent)
 
     if not suc then
-        Error("ExportUnseenStrings: Failed to save unseen strings LSX file at " .. path)
-        return nil
+        Error("Failed to save unseen localization strings to " .. path)
+    else
+        RBPrintPurple("[Realm Builder] Exported " .. #toSave .. " unseen localization strings to " .. path)
+    end
+    if not suc2 then
+        Error("Failed to save unseen localization string-to-handle mapping to " .. stringToHandlePath)
+    else
+        RBPrintPurple("[Realm Builder] Exported unseen localization string-to-handle mapping to " .. stringToHandlePath)
     end
 
     return suc

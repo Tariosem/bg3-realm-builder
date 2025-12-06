@@ -245,8 +245,8 @@ function RealmBuilderMainMenu:Render()
             childWin.OnRightClick = tabDetachFunc
             isWindow = false
         
-            DestroyAllChildren(childWin)
-            DestroyAllChildren(window)
+            ImguiHelpers.DestroyAllChildren(childWin)
+            ImguiHelpers.DestroyAllChildren(window)
             render(childWin)
         end
 
@@ -256,8 +256,8 @@ function RealmBuilderMainMenu:Render()
             window.Open = true
             isWindow = true
 
-            DestroyAllChildren(childWin)
-            DestroyAllChildren(window)
+            ImguiHelpers.DestroyAllChildren(childWin)
+            ImguiHelpers.DestroyAllChildren(window)
             MaterialPresetsMenu:RenderCCPresetsLib(childWin)
             render(window)
         end

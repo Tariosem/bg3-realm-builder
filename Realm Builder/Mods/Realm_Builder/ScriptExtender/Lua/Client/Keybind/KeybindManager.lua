@@ -99,7 +99,7 @@ function KeybindManager:Bind(module, eventName, key, modifiers)
     modifiers = modifiers or {}
 
     key = tostring(key):upper()
-    for i=#modifiers,1,-1 do
+    for i = #modifiers, 1, -1 do
         local mod = modifiers[i]
         if not Enums.ModfierToPresentation[mod] then
             Warning("Invalid modifier: " .. tostring(mod))
@@ -231,7 +231,6 @@ function KeybindManager:Rebind(module, eventName, newKey, newModifiers)
     return self:Bind(module, eventName, newKey, newModifiers)
 end
 
-
 function KeybindManager:RebindByInput(module, eventName, callback)
     SubscribeKeyAndMouse(function(e)
         if e.Event == "KeyUp" then
@@ -338,6 +337,7 @@ function KeybindManager:LoadFromFile()
         self:Load(data)
     end
 end
+
 --- @class KeybindModule
 --- @field Name string
 --- @field Conditions (fun(e:SimplifiedInputEvent):boolean)[]
@@ -396,8 +396,6 @@ function KeybindManager:CreateModule(moduleName)
     return module
 end
 
-
-
 RegisterOnSessionLoaded(function()
     KeybindManager:Load(DEFAULT_KEYBINDS)
     KeybindManager:LoadFromFile()
@@ -421,10 +419,8 @@ RegisterConsoleCommand("rb_dump_keybinds", function()
         end
     end
     local lastHue = 0
-    local bigStep = true
     local function runHue()
-        lastHue = (lastHue + (bigStep and 137 or 53)) % 360
-        bigStep = not bigStep
+        lastHue = (lastHue + 53) % 360
         local r, g, b = HSLToRGB(lastHue / 360, 1, 0.5)
         return { r, g, b }
     end
@@ -432,8 +428,8 @@ RegisterConsoleCommand("rb_dump_keybinds", function()
     local separator = string.rep("=", longest + 7)
     for module, events in pairs(toPrint) do
         local strings = {}
-        table.insert(strings, separator)
         table.insert(strings, "Module: " .. module)
+        table.insert(strings, separator)
         for eventName, identifier in SortedPairs(events) do
             local padding = string.rep(" ", longest - #eventName)
             table.insert(strings, "  " .. eventName .. padding .. " : " .. identifier)
@@ -453,7 +449,7 @@ RegisterConsoleCommand("rb_inspect_keybind_subscriptions", function()
         if KeybindManager.Listeners[moduleName] then
             local moduleObj = KeybindManager.Modules[moduleName]
             local meetConditions = true
-            for _,cond in ipairs(moduleObj.Conditions) do
+            for _, cond in ipairs(moduleObj.Conditions) do
                 if not cond({}) then
                     print("  Module listener active, but condition is blocking input.")
                     meetConditions = false

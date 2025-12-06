@@ -433,13 +433,13 @@ function VisualTab:RenderPresetsCell(parent)
     end
 
     self.saveInputKeySub = SubscribeKeyInput({ Key = "RETURN" }, function()
-        if IsFocused(self.saveInput) and not self.saveButton.Disabled then
+        if ImguiHelpers.IsFocused(self.saveInput) and not self.saveButton.Disabled then
             self.saveButton:OnClick()
         end
     end)
 
     self.loadButton.OnClick = function()
-        local selectedName = GetCombo(self.loadCombo)
+        local selectedName = ImguiHelpers.GetCombo(self.loadCombo)
         if selectedName and selectedName ~= "" then
             self:LoadPreset(selectedName)
             --Info("Loaded VisualTab preset: " .. selectedName)
@@ -451,15 +451,15 @@ function VisualTab:RenderPresetsCell(parent)
     end
     self.saveInput:OnChange()
 
-    ApplyDangerButtonStyle(removeButton)
+    StyleHelpers.ApplyDangerButtonStyle(removeButton)
     removeButton.OnClick = function()
-        if not GetCombo(self.loadCombo) or GetCombo(self.loadCombo) == "" then
+        if not ImguiHelpers.GetCombo(self.loadCombo) or ImguiHelpers.GetCombo(self.loadCombo) == "" then
             return
         end
         ConfirmPopup:DangerConfirm(
-            GetLoca("Are you sure you want to remove") .. " '" .. GetCombo(self.loadCombo) .. "'?",
+            GetLoca("Are you sure you want to remove") .. " '" .. ImguiHelpers.GetCombo(self.loadCombo) .. "'?",
             function()
-                local selectedName = GetCombo(self.loadCombo)
+                local selectedName = ImguiHelpers.GetCombo(self.loadCombo)
                 if selectedName and selectedName ~= "" then
                     self:Remove(selectedName)
                     self.saveInput:OnChange()
@@ -522,7 +522,7 @@ function VisualTab:RenderPresetsCell(parent)
 end
 
 function VisualTab:RenderUtilsCell(parent)
-    local detachCell = StyleHelpers.AddRightAlignCell(parent)
+    local detachCell = ImguiElements.AddRightAlignCell(parent)
     local loadCell = parent
 
     local detachButton = detachCell:AddButton(GetLoca("Detach"))
@@ -542,7 +542,7 @@ function VisualTab:RenderUtilsCell(parent)
     end
 
     if not self.parent then
-        ApplyInfoButtonStyle(detachButton)
+        StyleHelpers.ApplyInfoButtonStyle(detachButton)
         detachButton.Label = GetLoca("Refresh")
         detachButton.OnClick = detachButton.OnRightClick
     end
@@ -751,7 +751,7 @@ function VisualTab:DetermineOverrideCharacterParameters()
     end
     if cca then
         
-        local ccaPresetgroup = StyleHelpers.AddTree(self.attachmentsHeader, "Character Creation Material Presets")
+        local ccaPresetgroup = ImguiElements.AddTree(self.attachmentsHeader, "Character Creation Material Presets")
 
         local allColors = {
             SkinColor = cca.SkinColor,
@@ -923,7 +923,7 @@ function VisualTab:RenderAttachmentEditors()
             displayName = gr2FileName
         end
 
-        local attachNode = StyleHelpers.AddTree(self.attachmentsHeader, displayName .. "##" .. tostring(attIndex), false)
+        local attachNode = ImguiElements.AddTree(self.attachmentsHeader, displayName .. "##" .. tostring(attIndex), false)
         attachNode:AddTreeIcon(RB_ICONS.Box, IMAGESIZE.ROW).Tint = HexToRGBA("FFB98634")
         
         local gr2Text = attachNode:AddHint("Model: " .. gr2FileName)
@@ -1054,11 +1054,11 @@ function VisualTab:RenderObjectEditor()
         --- @type ExtuiTreeParent
         local parentTree = self.materialHeader
         if meshName:find("LOD") then
-            lodTree = lodTree or StyleHelpers.AddTree(self.materialHeader, "LODs", false)
+            lodTree = lodTree or ImguiElements.AddTree(self.materialHeader, "LODs", false)
             parentTree = lodTree
         end
 
-        local materialNode = StyleHelpers.AddTree(parentTree, meshName .. "##" .. tostring(descIndex), false)
+        local materialNode = ImguiElements.AddTree(parentTree, meshName .. "##" .. tostring(descIndex), false)
         materialNode:AddTreeIcon(RB_ICONS.Bounding_Box, IMAGESIZE.ROW).Tint = HexToRGBA("FF268B39")
 
         local function getliveMat()
@@ -1160,7 +1160,7 @@ function VisualTab:RenderEffectEditor()
             effectNameCnt[component.TypeName] = (effectNameCnt[component.TypeName] or 0) + 1
             local cnt = effectNameCnt[component.TypeName]
             local nodeName = GetLoca("Light") .. (cnt ~= 1 and " (" .. cnt .. ")" or "")
-            newTree = StyleHelpers.AddTree(self.effectHeader, nodeName, false)
+            newTree = ImguiElements.AddTree(self.effectHeader, nodeName, false)
             newTree.OnRightClick = function()
                 self.SelectedEffectComponent = "Light::" .. tostring(compIndex)
                 self.effectContextPopup:Open()
@@ -1174,7 +1174,7 @@ function VisualTab:RenderEffectEditor()
             effectNameCnt[component.TypeName] = (effectNameCnt[component.TypeName] or 0) + 1
             local cnt = effectNameCnt[component.TypeName]
             local nodeName = GetLoca("Particle System") .. (cnt ~= 1 and " (" .. cnt .. ")" or "")
-            newTree = StyleHelpers.AddTree(self.effectHeader, nodeName, false)
+            newTree = ImguiElements.AddTree(self.effectHeader, nodeName, false)
             newTree.OnRightClick = function()
                 self.SelectedEffectComponent = "ParticleSystem::" .. tostring(compIndex)
                 self.effectContextPopup:Open()
@@ -1197,7 +1197,7 @@ function VisualTab:RenderEffectTimelineEditor()
 
     local timeline = effectObj.Timeline
 
-    local timelineTree = StyleHelpers.AddTree(self.effectHeader, GetLoca("Timeline"), false)
+    local timelineTree = ImguiElements.AddTree(self.effectHeader, GetLoca("Timeline"), false)
 
     local playPauseButton = timelineTree:AddButton(timeline.IsPaused and GetLoca("Paused") or GetLoca("Playing"))
     playPauseButton.OnClick = function()
@@ -1218,7 +1218,7 @@ function VisualTab:RenderEffectTimelineEditor()
 
 
     --local phaseCnt = #entity.Effect.Timeline.Header.Phases or 0
-    --[[local phaseSlider = StyleHelpers.AddSliderWithStep(timelineTree, GetLoca("Set Phases"), timeline.PhaseIndex, 1, math.max(1, phaseCnt), 1, true)
+    --[[local phaseSlider = ImguiElementsAddSliderWithStep(timelineTree, GetLoca("Set Phases"), timeline.PhaseIndex, 1, math.max(1, phaseCnt), 1, true)
     phaseSlider.UserData.DisableRightClickSet = true
     phaseSlider.OnChange = function()
         local entity = self:GetEntity(self.guid)
@@ -1229,7 +1229,7 @@ function VisualTab:RenderEffectTimelineEditor()
         --entity.Effect.Timeline.JumpToPhase = phaseSlider.Value[1]
     end
 
-    local timeSlider = StyleHelpers.AddSliderWithStep(timelineTree, GetLoca("Set Time"), timeline.TimePlayed, 0, timeline.Duration, 0.1, false)
+    local timeSlider = ImguiElementsAddSliderWithStep(timelineTree, GetLoca("Set Time"), timeline.TimePlayed, 0, timeline.Duration, 0.1, false)
 
     timeSlider.UserData.DisableRightClickSet = true
     timeSlider.OnChange = function()
@@ -1241,7 +1241,7 @@ function VisualTab:RenderEffectTimelineEditor()
     end]]
 
     row:AddCell():AddText(GetLoca("Playing Speed") .. ":")
-    local playSpeedSlider = StyleHelpers.AddSliderWithStep(row:AddCell(), GetLoca("Set Play Speed"), timeline.PlayingSpeed, 0.1, 5.0, 0.1, false)
+    local playSpeedSlider = ImguiElements.AddSliderWithStep(row:AddCell(), GetLoca("Set Play Speed"), timeline.PlayingSpeed, 0.1, 5.0, 0.1, false)
     playSpeedSlider.OnChange = function()
         local entity = self:GetEntity(self.guid) --[[@as EntityHandle]]
         if not entity.Effect or not entity.Effect.Timeline then
@@ -1300,13 +1300,13 @@ function VisualTab:RenderEffectComponentEditor(parent, key, getComp, renderInfo)
         end,
         BitMask = function(tree, propName, propInfo)
             if propInfo.EnumName then
-                propInfo.Options = StyleHelpers.CreateRadioButtonOptionFromBitmask(propInfo.EnumName)
+                propInfo.Options = ImguiHelpers.CreateRadioButtonOptionFromBitmask(propInfo.EnumName)
             end
             self:RenderEffectComponentBitmaskRadioButtons(tree, getComp, key, propName, propInfo)
         end,
         Enum = function(tree, propName, propInfo)
             if propInfo.EnumName then
-                propInfo.Options = StyleHelpers.CreateRadioButtonOptionFromEnum(propInfo.EnumName)
+                propInfo.Options = ImguiHelpers.CreateRadioButtonOptionFromEnum(propInfo.EnumName)
             end
             self:RenderEffectComponentEnumRadioButtons(tree, getComp, key, propName, propInfo)
         end,
@@ -1333,7 +1333,7 @@ function VisualTab:RenderEffectComponentEditor(parent, key, getComp, renderInfo)
         local propInfo = propMap[propType][propName]
         local groupName = propInfo.Group or "Default"
         if not groupTrees[groupName] then
-            groupTrees[groupName] = StyleHelpers.AddTree(parent, groupName)
+            groupTrees[groupName] = ImguiElements.AddTree(parent, groupName)
             parent:AddSeparator():SetStyle("ItemSpacing", 0, 10)
         end
 
@@ -1347,7 +1347,7 @@ function VisualTab:RenderEffectComponentEditor(parent, key, getComp, renderInfo)
 
             local groupName = propInfo.Group or "Default"
             if not groupTrees[groupName] then
-                groupTrees[groupName] = StyleHelpers.AddTree(parent, groupName)
+                groupTrees[groupName] = ImguiElements.AddTree(parent, groupName)
                 parent:AddSeparator():SetStyle("ItemSpacing", 0, 10)
             end
 
@@ -1403,7 +1403,7 @@ function VisualTab:RenderEffectComponentSliders(panel, getComp, key, componentNa
         end
     end
 
-    local updateMethod = StyleHelpers.AddNumberSliders(panel, compDisplayName, getMethod, saveChanged, { IsInt = isInt, Range = range, OnReset = onReset, ResetValue = initValue, IsColor = valueInfo.IsColor })
+    local updateMethod = ImguiElements.AddNumberSliders(panel, compDisplayName, getMethod, saveChanged, { IsInt = isInt, Range = range, OnReset = onReset, ResetValue = initValue, IsColor = valueInfo.IsColor })
 
     self.resetFuncs[key][componentName] = function()
         applyMethod(self.resetParams[key][componentName])
@@ -1469,7 +1469,7 @@ function VisualTab:RenderEffectComponentBitmaskRadioButtons(panel, getComp, key,
     local titleCell = row:AddCell()
     local radioCell = row:AddCell()
     local title = titleCell:AddBulletText(displayName)
-    local radioGroup = StyleHelpers.AddBitmaskRadioButtons(radioCell, options, initValue)
+    local radioGroup = ImguiElements.AddBitmaskRadioButtons(radioCell, options, initValue)
 
     local saveChanged = function(value)
         local comp = getComp()
@@ -1526,7 +1526,7 @@ function VisualTab:RenderEffectComponentEnumRadioButtons(panel, getComp, key, co
     local titleCell = row:AddCell()
     local radioCell = row:AddCell()
     local title = titleCell:AddBulletText(displayName)
-    local radioGroup = StyleHelpers.AddEnumRadioButtons(radioCell, options, initValue)
+    local radioGroup = ImguiElements.AddEnumRadioButtons(radioCell, options, initValue)
 
     local saveChanged = function(value)
         local comp = getComp()
@@ -2282,7 +2282,7 @@ function VisualTab:LoadPreset(name)
     end
 
     if self.loadCombo then
-        SetCombo(self.loadCombo, name)
+        ImguiHelpers.SetCombo(self.loadCombo, name)
     end
 
     if IsPartyMember(self.guid) then

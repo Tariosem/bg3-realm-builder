@@ -37,7 +37,7 @@ end
 function MaterialTab:Render(parent)
     local sourceFileName = self.ParentNodeName
     parent = parent or self.Parent
-    local parentNode = StyleHelpers.AddTree(self.Parent, sourceFileName, false)
+    local parentNode = ImguiElements.AddTree(self.Parent, sourceFileName, false)
     parentNode:AddTreeIcon(RB_ICONS.Mask, IMAGESIZE.ROW).Tint = HexToRGBA("FFAC3232")
     parentNode.AllowItemOverlap = true
     self.ParentNode = parentNode
@@ -317,7 +317,7 @@ function MaterialTab:RenderNumberProperty(node, propertyName, vecValue)
 
     if #vecValue >= 3 then
         colorPicker = node:AddColorEdit("##" .. self.MaterialName .. propertyName)
-        local resetButton = StyleHelpers.AddResetButton(node, true)
+        local resetButton = ImguiElements.AddResetButton(node, true)
         resetButton.OnClick = function(sel)
             self:ResetValue(propertyName)
 
@@ -373,7 +373,7 @@ function MaterialTab:RenderNumberProperty(node, propertyName, vecValue)
             range.max = 100
             range.step = 0.1
         end
-        local slider = StyleHelpers.AddSliderWithStep(node, propertyName .. "##" .. self.MaterialName .. i,
+        local slider = ImguiElements.AddSliderWithStep(node, propertyName .. "##" .. self.MaterialName .. i,
             vecValue[i], range.min, range.max, range.step, isIndex)
         slider.ItemWidth = 400 * SCALE_FACTOR
 
@@ -467,7 +467,7 @@ function MaterialTab:RenderTextProperty(node, propertyName, propertyValue, prope
             return
         end
 
-        local editSourceFilePopup = StyleHelpers.RenderTexturePopup(node, function()
+        local editSourceFilePopup = ImguiElements.AddTexturePopup(node, function()
             return self:GetParameter(propertyName)
         end, function(newValue)
             self:SetParameter(propertyName, newValue, propertyType)
@@ -479,7 +479,7 @@ function MaterialTab:RenderTextProperty(node, propertyName, propertyValue, prope
         end
     end
 
-    local resetButton = StyleHelpers.AddResetButton(node, true)
+    local resetButton = ImguiElements.AddResetButton(node, true)
     resetButton.OnClick = function(sel)
         self:ResetValue(propertyName)
         local newValue = self:GetParameter(propertyName)
@@ -726,7 +726,7 @@ end
 function MaterialMixerTab:RenderNumberProperty(node, propertyName, propertyValue, propRow)
     MaterialTab.RenderNumberProperty(self, node, propertyName, propertyValue, propRow)
 
-    local removeBtn = StyleHelpers.AddMiddleAlignedImageButton(node, RB_ICONS.X_Square, true) --[[@as ExtuiImageButton ]]
+    local removeBtn = ImguiElements.AddMiddleAlignedImageButton(node, RB_ICONS.X_Square, true) --[[@as ExtuiImageButton ]]
     removeBtn.OnClick = function(sel)
         self.ParamNodeRefs[propertyName].UserData.OnDestroy()
         self.ParametersSetProxy:RemoveParameter(propertyName)
@@ -738,7 +738,7 @@ end
 function MaterialMixerTab:RenderTextProperty(node, propertyName, propertyValue, propertyType, propRow)
     MaterialTab.RenderTextProperty(self, node, propertyName, propertyValue, propertyType)
 
-    local removeBtn = StyleHelpers.AddMiddleAlignedImageButton(node, RB_ICONS.X_Square, true) --[[@as ExtuiImageButton ]]
+    local removeBtn = ImguiElements.AddMiddleAlignedImageButton(node, RB_ICONS.X_Square, true) --[[@as ExtuiImageButton ]]
     removeBtn.OnClick = function(sel)
         self.ParamNodeRefs[propertyName].UserData.OnDestroy()
         self.ParametersSetProxy:RemoveParameter(propertyName)

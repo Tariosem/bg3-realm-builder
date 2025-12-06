@@ -68,6 +68,8 @@ end
 
 local lsattrNode = LSXHelpers.AttrNode
 
+--- @param path string
+--- @return string
 function LSXHelpers.GetPathAfterData(path)
     return path:match("Data[\\/](.*)") or path
 end

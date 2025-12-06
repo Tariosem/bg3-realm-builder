@@ -210,7 +210,7 @@ function KeybindMenu:RenderEvent(row, moduleName, eventName, module, registry)
     eventCell:AddText(eventName)--:SetColor("Text", HexToRGBA("#FFFFFF"))
 
     if registry.Description then
-        local desc = StyleHelpers.AddIndent(eventCell):AddText(registry.Description)
+        local desc = ImguiElements.AddIndent(eventCell):AddText(registry.Description)
         desc.TextWrapPos = 900
 
         desc:SetColor("Text", HexToRGBA("#CCCCCC"))
@@ -246,7 +246,7 @@ function KeybindMenu:RenderEvent(row, moduleName, eventName, module, registry)
         end)
     end
 
-    StyleHelpers.AddResetButton(resetCell, false).OnClick = function()
+    ImguiElements.AddResetButton(resetCell, false).OnClick = function()
         local defaultKeybind = initKeybind or {}
         module:Rebind(eventName, defaultKeybind.Key, defaultKeybind.Modifiers)
         keyButton.Label = getPresentation(module:GetKeyByEvent(eventName))

@@ -1,13 +1,14 @@
 GLOBAL_DEBUG_WINDOW = Ext.IMGUI.NewWindow("Realm_Builder_DebugWindow")
 GLOBAL_DEBUG_WINDOW.Closeable = true
---GLOBAL_DEBUG_WINDOW.Open = Ext.Debug.IsDeveloperMode()
+GLOBAL_DEBUG_WINDOW.Open = false
 
 local debugWindowRegistery = {}
 
 RegisterOnSessionLoaded(function ()
-    for title,renderFunc in pairs(debugWindowRegistery) do
-        renderFunc(StyleHelpers.AddTree(GLOBAL_DEBUG_WINDOW, title))
+    for title,renderFunc in SortedPairs(debugWindowRegistery) do
+        renderFunc(ImguiElements.AddTree(GLOBAL_DEBUG_WINDOW, title))
     end
+    GLOBAL_DEBUG_WINDOW.Open = Ext.Debug.IsDeveloperMode()
 end)
 
 ---@param title string
@@ -78,21 +79,21 @@ if false and GLOBAL_DEBUG_WINDOW then
     local funcCombo = header:AddCombo("Function")
     funcCombo.Options = {"RaycastClosest", "RaycastAll"}
     funcCombo.OnChange = function (ev)
-        configurableIntersect.Function = GetCombo(ev)
+        configurableIntersect.Function = ImguiHelpers.GetCombo(ev)
     end
 
     --- @type RadioButtonOption[]
-    local options = StyleHelpers.CreateRadioButtonOptionFromEnum("PhysicsGroupFlags")
+    local options = ImguiHelpers.CreateRadioButtonOptionFromEnum("PhysicsGroupFlags")
 
     local separator = header:AddSeparatorText("Include Groups")
-    local includeGroup = StyleHelpers.AddBitmaskRadioButtons(header, options, configurableIntersect.PhysicsGroupFlags)
+    local includeGroup = ImguiElements.AddBitmaskRadioButtons(header, options, configurableIntersect.PhysicsGroupFlags)
 
     includeGroup.OnChange = function (radioBtn, value)
         configurableIntersect.PhysicsGroupFlags = value
     end
 
     local excludeSeparator = header:AddSeparatorText("Exclude Groups")
-    local excludeGroup = StyleHelpers.AddBitmaskRadioButtons(header, options, configurableIntersect.PhysicsGroupFlagsExclude)
+    local excludeGroup = ImguiElements.AddBitmaskRadioButtons(header, options, configurableIntersect.PhysicsGroupFlagsExclude)
 
     excludeGroup.OnChange = function (radioBtn, value)
         configurableIntersect.PhysicsGroupFlagsExclude = value
@@ -225,8 +226,123 @@ end
 RegisterOnSessionLoaded(Realm_Builder_Population, 0)
 
 
-RegisterConsoleCommand("rb_open_the_bloody_gates", function()
+RegisterConsoleCommand("rb_open", function()
     if GLOBAL_DEBUG_WINDOW then
         GLOBAL_DEBUG_WINDOW.Open = true
     end
 end, "Opens the Realm Builder debug window.")
+
+--- some random stuff Other mods already did
+--- just putting it here for my own convenience
+if Ext.Debug.IsDeveloperMode() then
+    RegisterDebugWindow("Random", function (panel)
+        
+        --- PM Extra Data Editor
+        local pmTree = ImguiElements.AddTree(panel, "PhotoMode ExtraData")
+        local pmEDField = {
+            "PhotoModeCameraMovementSpeed",
+            "PhotoModeCameraRotationSpeed"
+        }
+        for i, string in pairs(pmEDField) do
+            if string:find("PhotoMode") then
+                local getter = function ()
+                    return Ext.Stats.GetStatsManager().ExtraData[string]
+                end
+                local setter = function (val)
+                    Ext.Stats.GetStatsManager().ExtraData[string] = val
+                end
+                ImguiElements.AddEditorByGetter(pmTree, string, getter, setter)
+            end
+        end
+
+        --#region Photo Mode Camera Proxy
+        --- @class PhotoModeCameraProxy : RB_MovableProxy
+        --- @field Entity EntityHandle
+        local PhotoModeCameraProxy = _Class("PhotoModeCameraProxy", MovableProxy)
+
+        function PhotoModeCameraProxy:__init()
+            local entity = Ext.Entity.GetAllEntitiesWithComponent("PhotoModeCameraTransform")[1]
+            if not entity then
+                self.IsValid = function() return false end
+                return
+            end
+            self.Entity = entity
+            self.StickTransform = self:GetTransform()
+            local id
+            local marker = nil
+            NetChannel.CallOsiris:RequestToServer({
+                Function = "CreateAt",
+                Args = {
+                    MARKER_ITEM.SpotLight,
+                    self.StickTransform.Translate[1],
+                    self.StickTransform.Translate[2],
+                    self.StickTransform.Translate[3],
+                    0,
+                    0,
+                    ""
+                }
+            }, function (response)
+                marker = response[1]
+            end)
+            id = Ext.Events.Tick:Subscribe(function (e)
+                if not self:IsValid() then
+                    --- @diagnostic disable-next-line
+                    NetChannel.Delete:SendToServer({Guid = marker})
+                    Ext.Events.Tick:Unsubscribe(id)
+                    return
+                end
+                self.Entity.PhotoModeCameraTransform.Transform = self.StickTransform
+                if marker then
+                    NetChannel.SetTransform:SendToServer({
+                        Guid = marker,
+                        Transforms = {
+                            [marker] = self.StickTransform
+                        }
+                    })
+                    return
+                end
+            end)
+        end
+
+        function PhotoModeCameraProxy:GetTransform()
+            local comp = self.Entity.PhotoModeCameraTransform
+            if not comp then
+                return nil
+            end
+            return {
+                Translate = Vec3.new(comp.Transform.Translate),
+                RotationQuat = Quat.new(comp.Transform.RotationQuat),
+                Scale = Vec3.new(1,1,1)
+            }
+        end
+
+        function PhotoModeCameraProxy:SetTransform(transform)
+            local comp = self.Entity.PhotoModeCameraTransform
+            if not comp then
+                return
+            end
+            if transform.Translate then
+                comp.Transform.Translate = transform.Translate
+            end
+            if transform.RotationQuat then
+                comp.Transform.RotationQuat = transform.RotationQuat
+            end
+            transform.Scale = {1,1,1}
+            self.StickTransform = transform
+        end
+
+        function PhotoModeCameraProxy:IsValid()
+            return self.Entity and self.Entity.PhotoModeCameraTransform ~= nil
+        end
+
+    
+        local controlPMBtn = panel:AddButton("Control Photo Mode Camera")
+        controlPMBtn.OnClick = function ()
+            local proxy = PhotoModeCameraProxy.new()
+            RB_GLOBALS.TransformEditor:Select({proxy})
+        end
+
+        --#endregion
+    end)
+
+end

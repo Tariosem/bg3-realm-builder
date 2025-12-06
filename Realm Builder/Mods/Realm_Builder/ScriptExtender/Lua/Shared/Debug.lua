@@ -1,4 +1,4 @@
-RB_DEBUG_LEVEL = Ext.Debug.IsDeveloperMode() and 5 or 3
+RB_DEBUG_LEVEL = Ext.Debug.IsDeveloperMode() and 4 or 3
 
 RB_ENABLE_LOGGER = false
 

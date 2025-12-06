@@ -141,7 +141,7 @@ function Notification:BuildContent()
     
     if self.ClickToDismiss then
         local clicked = false
-        TraverseAllChildren(panel, function(child)
+        for i, child in ImguiHelpers.TraverseAllChildren(panel) do
             local childOnClick = child.OnClick or function() end
             child.OnClick = function()
                 childOnClick(child)
@@ -150,7 +150,7 @@ function Notification:BuildContent()
                     clicked = true
                 end
             end
-        end)       
+        end
     end
 
     if self.AutoResize == false then

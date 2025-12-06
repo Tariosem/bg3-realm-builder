@@ -248,12 +248,12 @@ function ConfirmPopup:QuickConfirm(message, onConfirm, onCancel, timeoutSeconds)
     
     local confirmButton = popupInstance._getCurrentConfirmButton and popupInstance._getCurrentConfirmButton() or nil
     if confirmButton then
-        ApplyConfirmButtonStyle(confirmButton)
+        StyleHelpers.ApplyConfirmButtonStyle(confirmButton)
     end
 
     local cancelButton = popupInstance._getCurrentCancelButton and popupInstance._getCurrentCancelButton() or nil
     if cancelButton then
-        ApplyDangerButtonStyle(cancelButton)
+        StyleHelpers.ApplyDangerButtonStyle(cancelButton)
     end
 
     return popupInstance
@@ -279,7 +279,7 @@ function ConfirmPopup:DangerConfirm(message, onConfirm, onCancel, confirmText, c
     
     local deleteButton = popupInstance._getCurrentConfirmButton and popupInstance._getCurrentConfirmButton() or nil
     if deleteButton then
-        ApplyDangerButtonStyle(deleteButton)
+        StyleHelpers.ApplyDangerButtonStyle(deleteButton)
     end
 
     return popupInstance
@@ -294,7 +294,7 @@ function ConfirmPopup:Popup(message)
 
     local okButton = popupInstance._getCurrentCancelButton and popupInstance._getCurrentCancelButton() or nil
     if okButton then
-        ApplyConfirmButtonStyle(okButton)
+        StyleHelpers.ApplyConfirmButtonStyle(okButton)
     end
 
     return popupInstance

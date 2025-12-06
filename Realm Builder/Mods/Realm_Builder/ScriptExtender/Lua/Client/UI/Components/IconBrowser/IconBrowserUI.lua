@@ -163,11 +163,11 @@ function IconBrowser:RenderFileMenu()
         self:LoadChanges()
     end
 
-    SetAlphaByBool(self.fileAutoSave, self.AutoSave)
+    StyleHelpers.SetAlphaByBool(self.fileAutoSave, self.AutoSave)
 
     self.fileAutoSave.OnClick = function()
         self.AutoSave = not self.AutoSave
-        SetAlphaByBool(self.fileAutoSave, self.AutoSave)
+        StyleHelpers.SetAlphaByBool(self.fileAutoSave, self.AutoSave)
         local config = self.GetConfig and self:GetConfig() or {}
         config.autoSave = self.AutoSave
         self.fileAutoSave.Label = GetLoca("Auto Save") .. (self.AutoSave and " (On)" or " (Off)")
@@ -181,10 +181,10 @@ function IconBrowser:RenderUiConfigMenu()
     local cellsPadding = self.cellsPadding
     local iconWidth = self.iconWidth
     self.saveToConfig = self.uiParamMenu:AddButton(GetLoca("Save To Config"))
-    local iconSizeSlider = SafeAddSliderInt(self.uiParamMenu, GetLoca("Image Size"), iconWidth, 20, 200)
-    local browserWidthSlider = SafeAddSliderInt(self.uiParamMenu, GetLoca("Image Per Row"), imagePerRow, 2, 20)
-    local browserHeightSlider = SafeAddSliderInt(self.uiParamMenu, GetLoca("Image Per Column"), imagePerCol, 4, 30)
-    local cellsPaddingSlider = SafeAddSliderInt(self.uiParamMenu, GetLoca("Image Padding"), cellsPadding[1], 0, 20)
+    local iconSizeSlider = ImguiHelpers.SafeAddSliderInt(self.uiParamMenu, GetLoca("Image Size"), iconWidth, 20, 200)
+    local browserWidthSlider = ImguiHelpers.SafeAddSliderInt(self.uiParamMenu, GetLoca("Image Per Row"), imagePerRow, 2, 20)
+    local browserHeightSlider = ImguiHelpers.SafeAddSliderInt(self.uiParamMenu, GetLoca("Image Per Column"), imagePerCol, 4, 30)
+    local cellsPaddingSlider = ImguiHelpers.SafeAddSliderInt(self.uiParamMenu, GetLoca("Image Padding"), cellsPadding[1], 0, 20)
     cellsPaddingSlider.Components = 2
     cellsPaddingSlider.Value = ToVec4Int(cellsPadding[1], cellsPadding[2])
     local iconButtonBgColroEdit = self.uiParamMenu:AddColorEdit(GetLoca("Button Background Color"))
@@ -364,7 +364,7 @@ function IconBrowser:RenderSearchOptionsMenu()
     self.searchButtonContainer = self.optionRow:AddCell()
 
     self.searchButton = self.searchButtonContainer:AddButton(GetLoca("Search"))
-    ApplyConfirmButtonStyle(self.searchButton)
+    StyleHelpers.ApplyConfirmButtonStyle(self.searchButton)
     self.searchButton.OnClick = function()
         self:Search()
     end
@@ -445,7 +445,7 @@ function IconBrowser:RenderMiscMenu()
     iconToNameButton.Label = updateIconToNameText()
     iconToNameButton.OnClick = function()
         if self.disableIcon then
-            SetImguiDisabled(iconToNameButton, true)
+            ImguiHelpers.SetImguiDisabled(iconToNameButton, true)
             return
         end
         self.iconToName = not self.iconToName
@@ -460,7 +460,7 @@ function IconBrowser:RenderMiscMenu()
         self:RenderPage()
     end
     if self.disableIcon then
-        SetImguiDisabled(iconToNameButton, true)
+        ImguiHelpers.SetImguiDisabled(iconToNameButton, true)
     end
 end
 
@@ -657,10 +657,10 @@ function IconBrowser:UpdatePageCnt()
         self.currentPage = oldCurrentPage
     else
         self.currentPage = 1
-        SetImguiDisabled(self.previousButton, true)
-        SetImguiDisabled(self.firstButton, true)
-        SetImguiDisabled(self.nextButton, false)
-        SetImguiDisabled(self.lastButton, false)
+        ImguiHelpers.SetImguiDisabled(self.previousButton, true)
+        ImguiHelpers.SetImguiDisabled(self.firstButton, true)
+        ImguiHelpers.SetImguiDisabled(self.nextButton, false)
+        ImguiHelpers.SetImguiDisabled(self.lastButton, false)
     end
 
     if self.currentPage > self.allPages then
@@ -683,23 +683,23 @@ function IconBrowser:SetPage(page)
         self.pageInput.Value = ToVec4Int(self.currentPage)
     end
     if self.currentPage == 1 then
-        SetImguiDisabled(self.previousButton, true)
-        SetImguiDisabled(self.firstButton, true)
+        ImguiHelpers.SetImguiDisabled(self.previousButton, true)
+        ImguiHelpers.SetImguiDisabled(self.firstButton, true)
     end
 
     if self.currentPage == self.allPages then
-        SetImguiDisabled(self.nextButton, true)
-        SetImguiDisabled(self.lastButton, true)
+        ImguiHelpers.SetImguiDisabled(self.nextButton, true)
+        ImguiHelpers.SetImguiDisabled(self.lastButton, true)
     end
 
     if self.currentPage > 1 then
-        SetImguiDisabled(self.previousButton, false)
-        SetImguiDisabled(self.firstButton, false)
+        ImguiHelpers.SetImguiDisabled(self.previousButton, false)
+        ImguiHelpers.SetImguiDisabled(self.firstButton, false)
     end
 
     if self.currentPage < self.allPages then
-        SetImguiDisabled(self.nextButton, false)
-        SetImguiDisabled(self.lastButton, false)
+        ImguiHelpers.SetImguiDisabled(self.nextButton, false)
+        ImguiHelpers.SetImguiDisabled(self.lastButton, false)
     end
     self:RenderPage()
 end
@@ -719,7 +719,7 @@ function IconBrowser:RenderPage()
             self.__killRenderingThread()
             self.__killRenderingThread = nil
         end
-        DestroyAllChildren(self.iconsContainer)
+        ImguiHelpers.DestroyAllChildren(self.iconsContainer)
         self.iconsContainer:Destroy()
         self.iconsContainer = nil
         self.iconsImage = {}
@@ -1019,7 +1019,7 @@ function IconBrowser:Destroy()
     end
 
     if self.panel then
-        DestroyAllChildren(self.panel)
+        ImguiHelpers.DestroyAllChildren(self.panel)
         DeleteWindow(self.panel)
         self.panel = nil
     end
@@ -1029,7 +1029,7 @@ end
 
 function IconBrowser:Focus()
     if self.panel then
-        FocusWindow(self.panel)
+        ImguiHelpers.FocusWindow(self.panel)
     end
 end
 

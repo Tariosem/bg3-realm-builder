@@ -48,30 +48,6 @@ setmetatable(LHCS, {
 --- @type {X: Vec3, Y: Vec3, Z: Vec3}
 GLOBAL_COORDINATE = LHCS
 
---- make orthonormal basis from a normal vector
----@param n Vec3
----@return number[] u
----@return number[] v
----@return number[] n
-function MakeOrthonormalBasis(n)
-    local a
-    if n[1] < 0.9 then
-        a = GLOBAL_COORDINATE.X
-    else
-        a = GLOBAL_COORDINATE.Y
-    end
-    local u = Ext.Math.Cross(a, n)
-    if Ext.Math.Length(u) < 0.001 then
-        a = GLOBAL_COORDINATE.Y
-        u = Ext.Math.Cross(a, n)
-    end
-    u = Ext.Math.Normalize(u)
-
-    local v = Ext.Math.Cross(n, u)
-
-    return u, v, n
-end
-
 ---@param quat vec4
 ---@param axis "X"|"Y"|"Z"
 ---@return vec4 Flipped
@@ -227,7 +203,6 @@ function SaveLocalRelativePosOffset(childUuid, parentUuid)
        not pqx or not pqy or not pqz or not pqw then
         return nil
     end
-
 
     local delta = Ext.Math.Sub(childPos, parentPos)
     local parentRotInv = Ext.Math.QuatInverse({pqx, pqy, pqz, pqw})

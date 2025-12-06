@@ -25,10 +25,14 @@ function Commands.SetTransform(proxies, transform, notRecordHistory)
 
     local function doTransform(isReset)
         for _, proxy in pairs(proxies) do
+            if not proxy:IsValid() then
+                goto continue
+            end
             local targetTransform = isReset and undoTransforms[proxy] or redoTransforms[proxy]
             if targetTransform then
                 proxy:SetTransform(targetTransform)
             end
+            ::continue::
         end
     end
 

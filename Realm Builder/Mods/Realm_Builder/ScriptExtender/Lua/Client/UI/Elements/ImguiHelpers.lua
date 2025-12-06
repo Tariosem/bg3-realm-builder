@@ -1,0 +1,180 @@
+--- @class ImguiHelpers
+--- @field SafeAddSliderInt fun(parent: ExtuiTreeParent|ExtuiStyledRenderable, label: string, default: number, min: number, max: number): ExtuiSliderInt
+--- @field GetCombo fun(Combo: ExtuiCombo): string
+--- @field SetCombo fun(Combo: ExtuiCombo, Value: string, ifNotFoundAdd?: boolean, noTrigger?: boolean)
+--- @field FocusWindow fun(window: any)
+--- @field IsFocused fun(extui: ExtuiStyledRenderable): boolean
+--- @field SetImguiDisabled fun(extui: ExtuiStyledRenderable, disabled: boolean)
+--- @field DestroyAllChildren fun(parent: ExtuiTreeParent)
+--- @field TraverseAllChildren fun(parent: ExtuiTreeParent): fun(): (integer?, ExtuiStyledRenderable?)
+--- @field CreateRadioButtonOptionFromEnum fun(enumType: string): RadioButtonOption[]
+--- @field CreateRadioButtonOptionFromBitmask fun(enumType: string): RadioButtonOption[]
+--- @field SetupImageButton fun(arrowImage: ExtuiImageButton)
+ImguiHelpers = ImguiHelpers or {}
+
+---@param parent ExtuiTreeParent|ExtuiStyledRenderable
+---@param label string
+---@param default number
+---@param min number
+---@param max number
+---@return ExtuiSliderInt
+function ImguiHelpers.SafeAddSliderInt(parent, label, default, min, max)
+    --- @diagnostic disable-next-line
+    return parent:AddSliderInt(label or "", math.floor(default or 0), math.floor(min or 0), math.floor(max or 100))
+end
+
+--- @param arrowImage ExtuiImageButton
+function ImguiHelpers.SetupImageButton(arrowImage)
+    StyleHelpers.ClearAllBorders(arrowImage)
+    arrowImage.Tint = arrowImage.Tint or { 1, 1, 1, 1 }
+    arrowImage.OnHoverEnter = function()
+        arrowImage.Tint = { arrowImage.Tint[1], arrowImage.Tint[2], arrowImage.Tint[3], arrowImage.Tint[4] * 0.8 }
+    end
+    arrowImage.OnHoverLeave = function()
+        arrowImage.Tint = { arrowImage.Tint[1], arrowImage.Tint[2], arrowImage.Tint[3], arrowImage.Tint[4] / 0.8 }
+    end
+    arrowImage:SetColor("Button", { 0, 0, 0, 0 })
+    arrowImage:SetColor("ButtonHovered", { 0, 0, 0, 0 })
+    arrowImage:SetColor("ButtonActive", { 0, 0, 0, 0 })
+end
+
+
+function ImguiHelpers.GetCombo(Combo)
+    return Combo.Options[Combo.SelectedIndex + 1]
+end
+
+---@param Combo ExtuiCombo
+---@param Value string
+---@param ifNotFoundAdd? boolean
+---@param noTrigger? boolean
+function ImguiHelpers.SetCombo(Combo, Value, ifNotFoundAdd, noTrigger)
+    for i, v in pairs(Combo.Options) do
+        if v == Value then
+            -- So the combo index start from 0 but lua table index start from 1. ???
+            Combo.SelectedIndex = i - 1
+            return
+        end
+    end
+    if ifNotFoundAdd then
+        table.insert(Combo.Options, Value)
+        Combo.SelectedIndex = #Combo.Options - 1
+    end
+
+    if not noTrigger and Combo.OnChange then
+        Combo:OnChange()
+    end
+end
+
+---@param window any
+function ImguiHelpers.FocusWindow(window)
+    if not IsWindowValid(window) then return end
+
+    window:SetCollapsed(false)
+    window:SetFocus()
+    window.Open = true
+end
+
+--- @param extui ExtuiStyledRenderable
+--- @return boolean
+function ImguiHelpers.IsFocused(extui)
+    if not extui then return false end
+    return (extui.StatusFlags & Ext.Enums.GuiItemStatusFlags.Focused) ~= 0
+end
+
+--- @param extui ExtuiStyledRenderable
+--- @param alpha number?
+local function DisableAndSetAlpha(extui, alpha)
+    if not extui then return end
+    extui.Disabled = true
+    extui:SetStyle("Alpha", alpha or 0.6)
+end
+
+local function EnableAndSetAlpha(extui)
+    if not extui then return end
+    extui.Disabled = false
+    extui:SetStyle("Alpha", 1)
+end
+
+function ImguiHelpers.SetImguiDisabled(extui, disabled)
+    if disabled then
+        DisableAndSetAlpha(extui)
+    else
+        EnableAndSetAlpha(extui)
+    end
+end
+
+function ImguiHelpers.DestroyAllChildren(parent)
+    if not parent then return end
+    if not parent.Children then
+        parent:Destroy()
+        return
+    end
+    for _, child in ipairs(parent.Children) do
+        if child.Destroy then
+            child:Destroy()
+        end
+    end
+end
+
+--- @param parent ExtuiTreeParent
+--- @return fun(): (integer?, ExtuiStyledRenderable?)
+function ImguiHelpers.TraverseAllChildren(parent)
+    local children = parent.Children
+
+    local iterator = 1
+
+    return function ()
+        local child = children[iterator]
+        if child then
+            iterator = iterator + 1
+            return iterator, child
+        end
+        return nil
+    end
+end
+
+--- @param enumType string
+--- @return RadioButtonOption[]
+function ImguiHelpers.CreateRadioButtonOptionFromEnum(enumType)
+    local enum = Ext.Enums[enumType]
+    if not enum then
+        Warning("Enum type " .. enumType .. " not found!")
+        return {}
+    end
+
+    local options = {}
+    for name, value in pairs(enum) do
+        if type(name) == "string" then
+            table.insert(options, {
+                Label = name,
+                Value = value.Value
+            })
+        end
+    end
+    table.sort(options, function(a, b)
+        return a.Value < b.Value
+    end)
+    return options
+end
+
+function ImguiHelpers.CreateRadioButtonOptionFromBitmask(enumType)
+    local enum = Ext.Enums[enumType]
+    if not enum then
+        Warning("Enum type " .. enumType .. " not found!")
+        return {}
+    end
+
+    local options = {}
+    for name, value in pairs(enum) do
+        if type(name) == "string" then
+            table.insert(options, {
+                Label = name,
+                Value = value.__Value
+            })
+        end
+    end
+    table.sort(options, function(a, b)
+        return a.Value < b.Value
+    end)
+    return options
+end

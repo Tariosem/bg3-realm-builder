@@ -1,5 +1,6 @@
 local allNearbyComboRefs = {}
 
+--- simply to make select nearby entity easier
 --- @class NearbyCombo
 --- @field parent ExtuiTreeParent
 --- @field combo ExtuiCombo
@@ -41,7 +42,7 @@ NearbyCombo.__newindex = function (t, k, v)
         if t.combo and t.combo.UserData and t.combo.UserData.ImageReservedSpace then
             local reserved = t.combo.UserData.ImageReservedSpace
             reserved.Visible = not v
-            DestroyAllChildren(reserved)
+            ImguiHelpers.DestroyAllChildren(reserved)
         end
     else
         rawset(t, k, v)
@@ -101,7 +102,7 @@ function NearbyCombo:Render()
 end
 
 function NearbyCombo:GetSelected()
-    local displayName = GetCombo(self.combo)
+    local displayName = ImguiHelpers.GetCombo(self.combo)
     return GetGuidFromDisplayName(displayName), displayName
 end
 
@@ -114,7 +115,7 @@ function NearbyCombo:SetSelected(guid)
     local name = GetDisplayNameFromGuid(guid)
     if not name then return end
     self.Selected = guid
-    SetCombo(self.combo, name, nil, true)
+    ImguiHelpers.SetCombo(self.combo, name, nil, true)
     if self.combo then
         self:UpdateImage()
     end
@@ -163,7 +164,7 @@ end
 
 function NearbyCombo:SetupComboEvents()
     self.combo.OnChange = function (cmb)
-        local name = GetCombo(cmb)
+        local name = ImguiHelpers.GetCombo(cmb)
         local guid = GetGuidFromDisplayName(name)
         if not guid then Warning("NearbyCombo: No guid found for display name: " .. tostring(name)) return end
         if self.OnChange then
@@ -234,7 +235,7 @@ function NearbyCombo:RenderSelectionTable(parent)
     local configButton = right:AddImageButton("", RB_ICONS.Gear, IMAGESIZE.FRAME)
     configButton:SetColor("Button", {0,0,0,0})
     local sortButton = right:AddSelectable("Sort by DisplayName")
-    local refreshBtn = StyleHelpers.AddResetButton(right, true)
+    local refreshBtn = ImguiElements.AddResetButton(right, true)
     refreshBtn.OnClick = function (btn)
         UpdateNearbyMap({CGetPosition(CGetHostCharacter())}, self.Radius)
         self:UpdateOptions()
@@ -268,7 +269,7 @@ function NearbyCombo:RenderSelectionTable(parent)
     end
 
     configPopup:AddText(GetLoca("Scan Radius"))
-    local radiusSlider = StyleHelpers.AddSliderWithStep(configPopup, "Radius", self.Radius, 1, 64, 1)
+    local radiusSlider = ImguiElements.AddSliderWithStep(configPopup, "Radius", self.Radius, 1, 64, 1)
 
     radiusSlider.OnChange = function (sld)
         self.Radius = sld.Value[1]
@@ -285,7 +286,7 @@ function NearbyCombo:UpdateImage()
     if not self.Selected or not self.combo or not self.combo.UserData then return end
     local reserved = self.combo.UserData.ImageReservedSpace
     if reserved then
-        DestroyAllChildren(reserved)
+        ImguiHelpers.DestroyAllChildren(reserved)
         reserved:AddImage(GetIcon(self.Selected), IMAGESIZE.FRAME)
     end
 end
@@ -326,7 +327,7 @@ function NearbyCombo:RenderIcons()
             imageBtn:Tooltip():AddText(displayName)
             imageBtn.OnClick = function ()
                 if self.combo then
-                    SetCombo(self.combo, entry.DisplayName, nil, true)
+                    ImguiHelpers.SetCombo(self.combo, entry.DisplayName, nil, true)
                     self.Selected = entry.Guid
                     self:UpdateImage()
                 end

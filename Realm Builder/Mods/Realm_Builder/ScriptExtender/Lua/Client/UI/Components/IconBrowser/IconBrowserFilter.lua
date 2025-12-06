@@ -129,7 +129,7 @@ function IconBrowser:RenderTagsFilter()
     self.tagsPopup = self.tagsFilterMenu --[[@as ExtuiTreeParent]]
     local topTable, leftCe, rightCe = self.tagsFilterTopTable, nil, nil
     if not topTable then
-        topTable, leftCe, rightCe = AddTwoColTable(self.tagsPopup, "TagsTopTable")
+        topTable, leftCe, rightCe = ImguiElements.AddTwoColTable(self.tagsPopup, "TagsTopTable")
         self.tagsFilterTopTable = topTable
     end
     if not topTable.UserData then
@@ -226,7 +226,7 @@ function IconBrowser:RenderTagsFilter()
                 local liveParent = self.tagsParentElements[parent]
                 local liveInput = liveParent.UserData and liveParent.UserData.RenameInput
 
-                if IsFocused(liveInput) then
+                if ImguiHelpers.IsFocused(liveInput) then
                     updateParentName(liveInput.Text)
                 end
             end)
@@ -390,7 +390,7 @@ function IconBrowser:RenderTagsFilter()
 
         selection.SameLine = hasIcon
         if self.excludeTags[currentTag] then
-            SetAlphaByBool(selection, false)
+            StyleHelpers.SetAlphaByBool(selection, false)
             if tagIcon then
                 tagIcon.Tint = { 1, 1, 1, 0.5 }
                 tagIcon.Disabled = true
@@ -412,7 +412,7 @@ function IconBrowser:RenderTagsFilter()
 
         local excludeHandler = function()
             self.excludeTags[currentTag] = true
-            SetAlphaByBool(selection, false)
+            StyleHelpers.SetAlphaByBool(selection, false)
             if tagIcon then
                 tagIcon.Tint = { 1, 1, 1, 0.5 }
             end
@@ -428,7 +428,7 @@ function IconBrowser:RenderTagsFilter()
 
         local unexcludeHandler = function()
             self.excludeTags[currentTag] = nil
-            SetAlphaByBool(selection, true)
+            StyleHelpers.SetAlphaByBool(selection, true)
             if tagIcon then
                 tagIcon.Tint = { 1, 1, 1, 1 }
             end
@@ -549,7 +549,7 @@ function IconBrowser:AddGroupFilter()
 
         local function ExcludeHandler()
             self.excludeGroups[group] = true
-            SetAlphaByBool(selection, false)
+            StyleHelpers.SetAlphaByBool(selection, false)
         end
 
         local function IncludeHandler()
@@ -559,7 +559,7 @@ function IconBrowser:AddGroupFilter()
 
         local function unexcludeHandler()
             self.excludeGroups[group] = nil
-            SetAlphaByBool(selection, true)
+            StyleHelpers.SetAlphaByBool(selection, true)
         end
 
         local function unincludeHandler()

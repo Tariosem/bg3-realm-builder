@@ -137,8 +137,8 @@ function OutlinerMenu:RenderMenu()
         )
     end
 
-    self.bruteForceDeleteAllButton = AddMenuButton(self.debugMenu, GetLoca("Deletes all props, can't undo"), bfDeleteAllOpe, self.isWindow)
-    ApplyDangerSelectableStyle(self.bruteForceDeleteAllButton)
+    self.bruteForceDeleteAllButton = ImguiElements.AddMenuButton(self.debugMenu, GetLoca("Deletes all props, can't undo"), bfDeleteAllOpe, self.isWindow)
+    StyleHelpers.ApplyDangerSelectableStyle(self.bruteForceDeleteAllButton)
 end
 
 local eyeSlashUV = RB_ICON_UV01[RB_ICONS.Eye_Slash]
@@ -165,7 +165,7 @@ local function setupEyeHover(image, hidden)
     image:SetColor("Button", ToVec4(0))
     image:SetColor("ButtonHovered", ToVec4(0))
     image:SetColor("ButtonActive", ToVec4(0))
-    ClearAllBorders(image)
+    StyleHelpers.ClearAllBorders(image)
 end
 
 
@@ -1080,7 +1080,7 @@ function OutlinerMenu:FocusTab(guid, doDetach)
     if entityTab and entityTab.isValid then
         entityTab.isAttach = not doDetach
         if entityTab.isWindow then
-            FocusWindow(entityTab.panel)
+            ImguiHelpers.FocusWindow(entityTab.panel)
         else
             entityTab:Refresh()
         end
@@ -1095,11 +1095,11 @@ function OutlinerMenu:FocusEntityVisualTab(guid)
     end
 
     if entityTab.visualTab.isWindow and entityTab.visualTab.isVisible then
-        FocusWindow(entityTab.visualTab.panel)
+        ImguiHelpers.FocusWindow(entityTab.visualTab.panel)
     else
         entityTab.visualTab.isAttach = false
         entityTab.visualTab:Refresh()
-        FocusWindow(entityTab.visualTab.panel)
+        ImguiHelpers.FocusWindow(entityTab.visualTab.panel)
     end
     return true
 end

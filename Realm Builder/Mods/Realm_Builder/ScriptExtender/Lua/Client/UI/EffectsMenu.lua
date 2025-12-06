@@ -1,6 +1,6 @@
----@diagnostic disable: param-type-mismatch
-EFFECTSMENU_WIDTH = 1000 * SCALE_FACTOR
-EFFECTSMENU_HEIGHT = 1200 * SCALE_FACTOR
+----@diagnostic disable: param-type-mismatch
+local EFFECTSMENU_WIDTH = 1000 * SCALE_FACTOR
+local EFFECTSMENU_HEIGHT = 1200 * SCALE_FACTOR
 
 EffectsMenu = _Class("EffectsMenu")
 
@@ -30,7 +30,7 @@ function EffectsMenu:Render()
         self.isWindow = false
     else
         self.panel = RegisterWindow("generic", GetLoca("Effects"), "Effects Menu", self)
-        self.panel:SetSize({EFFECTSMENU_WIDTH, EFFECTSMENU_HEIGHT})
+        self.panel:SetSize({ EFFECTSMENU_WIDTH, EFFECTSMENU_HEIGHT })
         self.isWindow = true
     end
 
@@ -69,6 +69,7 @@ function EffectsMenu:Render()
         self.fileMenu = self.mainMenu:AddMenu(GetLoca("File"))
         self.debugMenu = self.mainMenu:AddMenu(GetLoca("Debug"))
     else
+
         local menuTable = self.panel:AddTable("EffectsMenuMainMenuTable", 6)
         local menuRow = menuTable:AddRow()
         local fileCell = menuRow:AddCell()
@@ -81,28 +82,38 @@ function EffectsMenu:Render()
         self.debugMenu = debugCell:AddPopup("DebugMenu")
 
 
-        fileOpenBtn.OnClick = function(e) self.fileMenu:Open(); fileOpenBtn.Selected = false; end
-        debugOpenBtn.OnClick = function(e) self.debugMenu:Open(); debugOpenBtn.Selected = false; end
+        fileOpenBtn.OnClick = function(e)
+            --- @diagnostic disable-next-line
+            self.fileMenu:Open()
+            fileOpenBtn.Selected = false
+        end
+        debugOpenBtn.OnClick = function(e)
+            --- @diagnostic disable-next-line
+            self.debugMenu:Open()
+            debugOpenBtn.Selected = false
+        end
     end
 
-    local saveButton = AddMenuButton(self.fileMenu, GetLoca("Save Custom Effects"), saveOpe, self.isWindow)
-    local loadButton = AddMenuButton(self.fileMenu, GetLoca("Load Custom Effects"), loadOpe, self.isWindow)
+    local saveButton = ImguiElements.AddMenuButton(self.fileMenu, GetLoca("Save Custom Effects"), saveOpe, self.isWindow)
+    local loadButton = ImguiElements.AddMenuButton(self.fileMenu, GetLoca("Load Custom Effects"), loadOpe, self.isWindow)
     local autoSaveButton
-    autoSaveButton = AddMenuButton(self.fileMenu, GetLoca("Auto Save") .. (self.autoSave and "(On)" or "(Off)"), function()
-        autoSaveOpe()
-        autoSaveButton.Label = GetLoca("Auto Save") .. (self.autoSave and "(On)" or "(Off)")
-        SetAlphaByBool(autoSaveButton, self.autoSave)
-        SaveConfig("EffectsMenu")
-    end, self.isWindow)
-    SetAlphaByBool(autoSaveButton, self.autoSave)
-    local clearAllButton = AddMenuButton(self.fileMenu, GetLoca("Clear All"), clearAllOpe, self.isWindow)
+    autoSaveButton = ImguiElements.AddMenuButton(self.fileMenu, GetLoca("Auto Save") .. (self.autoSave and "(On)" or "(Off)"),
+        function()
+            autoSaveOpe()
+            autoSaveButton.Label = GetLoca("Auto Save") .. (self.autoSave and "(On)" or "(Off)")
+            StyleHelpers.SetAlphaByBool(autoSaveButton, self.autoSave)
+            SaveConfig("EffectsMenu")
+        end, self.isWindow)
+    StyleHelpers.SetAlphaByBool(autoSaveButton, self.autoSave)
+    local clearAllButton = ImguiElements.AddMenuButton(self.fileMenu, GetLoca("Clear All"), clearAllOpe, self.isWindow)
 
-    local bruteForceDeleteAllButton = AddMenuButton(self.debugMenu, GetLoca("Stop all effects"), stopAllOpe, self.isWindow)
-    ApplyDangerSelectableStyle(bruteForceDeleteAllButton)
-    ApplyDangerSelectableStyle(clearAllButton)
+    local bruteForceDeleteAllButton = ImguiElements.AddMenuButton(self.debugMenu, GetLoca("Stop all effects"), stopAllOpe,
+        self.isWindow)
+    StyleHelpers.ApplyDangerSelectableStyle(bruteForceDeleteAllButton)
+    StyleHelpers.ApplyDangerSelectableStyle(clearAllButton)
 
     if detachCell then
-        local detachButton = AddSelectableButton(detachCell, GetLoca("Detach"), function()
+        local detachButton = ImguiElements.AddSelectableButton(detachCell, GetLoca("Detach"), function()
             if not self.parent then return end
             self.isAttach = not self.isAttach
             self:Refresh()
@@ -118,8 +129,9 @@ function EffectsMenu:Render()
         end
     end
 
-    
-    local collapsingTable = AddCollapsingTable(self.panel, nil, "Filters", { CollapseDirection = "Right", HoverToExpand = false, Collapsed = true })
+
+    local collapsingTable = ImguiElements.AddCollapsingTable(self.panel, nil, "Filters",
+        { CollapseDirection = "Right", HoverToExpand = false, Collapsed = true })
     self.customEffectsCollapsingTable = collapsingTable
     local customEffectsContainer = collapsingTable.MainArea
     local optionsContainer = collapsingTable.SideBar
@@ -129,12 +141,10 @@ function EffectsMenu:Render()
 
     self:RenderCustomEffects()
 
-    
+
     local searchCell = optionsContainer:AddChildWindow("SearchOptions")
 
     searchCell:AddText("This part is not implemented yet").TextWrapPos = collapsingTable.SideBarWidth + 80
-
-    
 end
 
 function EffectsMenu:RenderCustomEffects()
@@ -165,7 +175,7 @@ function EffectsMenu:RenderCustomEffects()
     local images = {}
     local titleCell = self.customEffectsCollapsingTable.TitleCell
     local configButton = titleCell:AddImageButton("ConfigButton", RB_ICONS.Gear, IMAGESIZE.SMALL)
-    configButton:SetColor("Button", {0,0,0,0})
+    configButton:SetColor("Button", { 0, 0, 0, 0 })
     self.customEffectsConfigButton = configButton
     local title = titleCell:AddSeparatorText("Custom Effects")
     self.customEffectsTitle = title
@@ -176,17 +186,18 @@ function EffectsMenu:RenderCustomEffects()
     self.customEffectsConfigPopup = configPopup
 
     local function renderConfig()
-        local columnsSlider = SafeAddSliderInt(configPopup, GetLoca("Columns"), self.customEffectsCols or 4, 1, 20)
+        local columnsSlider = ImguiHelpers.SafeAddSliderInt(configPopup, GetLoca("Columns"), self.customEffectsCols or 4, 1, 20)
         columnsSlider.OnChange = function()
             self.customEffectsCols = columnsSlider.Value[1]
             customEffectsTable.Columns = self.customEffectsCols
         end
 
-        local imageSizeSlider = SafeAddSliderInt(configPopup, GetLoca("Icon Size"), self.customEffectsImageSize or (64 * SCALE_FACTOR) , 16, 256)
+        local imageSizeSlider = ImguiHelpers.SafeAddSliderInt(configPopup, GetLoca("Icon Size"),
+            self.customEffectsImageSize or (64 * SCALE_FACTOR), 16, 256)
         imageSizeSlider.OnChange = function()
             imageSize = imageSizeSlider.Value[1]
             for _, img in pairs(images) do
-                img.Image.Size = {imageSize, imageSize}
+                img.Image.Size = { imageSize, imageSize }
             end
             self.customEffectsImageSize = imageSize
         end
@@ -211,16 +222,17 @@ function EffectsMenu:RenderCustomEffects()
             return a > b
         end
     end)
-    
+
     for i, displayName in pairs(sortedNames) do
         local customEffect = self.customEffects[displayName]
         if not customEffect then goto continue end
         local effectCell = customEffectsRow:AddCell()
         local effectButton = effectCell:AddImageButton(customEffect.DisplayName, customEffect.Icon)
         local effectNameText = effectCell:AddText(customEffect.DisplayName)
-        effectButton.Image.Size = {imageSize, imageSize}
+        effectButton.Image.Size = { imageSize, imageSize }
         table.insert(images, effectButton)
-        local effectButtonTooltipText = effectButton:Tooltip():AddText(customEffect.Description or customEffect.DisplayName)
+        local effectButtonTooltipText = effectButton:Tooltip():AddText(customEffect.Description or
+        customEffect.DisplayName)
         local tab = self.customEffectsTabs[displayName] or nil
 
         local function effectButtonOnClick() end
@@ -239,7 +251,7 @@ function EffectsMenu:RenderCustomEffects()
             tab.displayName = newName
             effectButton:Destroy()
             effectButton = effectCell:AddImageButton(tab.displayName, tab.icon, ToVec2(imageSize))
-            effectButton:Tooltip():AddText(tab.description or tab.displayName)
+            effectButton:Tooltip():AddText(tab.description or tab.displayName or "")
             effectButton.OnClick = effectButtonOnClick
             effectNameText:Destroy()
             effectNameText = effectCell:AddText(tab.displayName)
@@ -254,12 +266,13 @@ function EffectsMenu:RenderCustomEffects()
             end
         end
 
-        effectButtonOnClick = function ()
+        effectButtonOnClick = function()
             if tab then
                 --_P("[EffectsMenu] Tab for custom effect " .. customEffect.DisplayName .. " already exists, selecting it.")
                 tab:Focus()
             else
-                tab = CustomEffectTab:Add(displayName, self.panel, customEffect.DisplayName, self.customEffects, customEffect.StatsType)
+                tab = CustomEffectTab:Add(displayName, self.panel, customEffect.DisplayName, self.customEffects,
+                    customEffect.StatsType)
                 if tab then
                     self.customEffectsTabs[displayName] = tab
                     tab.OnChange = effectTabOnChange
@@ -276,19 +289,19 @@ function EffectsMenu:RenderCustomEffects()
         else
             --Error("[EffectsMenu] Failed to create tab for custom effect " .. customEffect.DisplayName)
         end
-        
+
         effectButton.OnClick = effectButtonOnClick
 
         ::continue::
     end
 
     --- Create
-    
+
     local createEffectCell = customEffectsRow:AddCell()
 
     local createEffectButton = createEffectCell:AddImageButton("CreateCustomEffect", RB_ICONS.Plus_Square)
     table.insert(images, createEffectButton)
-    createEffectButton.Image.Size = {imageSize, imageSize}
+    createEffectButton.Image.Size = { imageSize, imageSize }
     createEffectButton:Tooltip():AddText(GetLoca("Create a new blank effect"))
 
     local createPopup = createEffectCell:AddPopup("createPopup")
@@ -396,7 +409,7 @@ function EffectsMenu:Save(diaplayName)
         toSave[diaplayName] = self.customEffects[diaplayName]
     end
 
-    
+
     for name, effect in pairs(toSave) do
         if not effect then goto continue end
         local filePath = GetCustomEffectPath(effect.DisplayName)
@@ -518,7 +531,6 @@ function EffectsMenu:Add(parent)
 end
 
 function EffectsMenu:Collapsed()
-
     if self.customEffectsWindow then
         self.customEffectsWindow:Destroy()
         self.customEffectsWindow = nil

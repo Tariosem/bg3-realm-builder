@@ -93,7 +93,7 @@ function TreeList:Render()
     self.listWindow.NoResize = false
 
     local _, screenHeight = GetScreenSize()
-    local sliderHeight = SafeAddSliderInt(self.panel, "##windowHeight", 800 * SCALE_FACTOR, screenHeight, 200)
+    local sliderHeight = ImguiHelpers.SafeAddSliderInt(self.panel, "##windowHeight", 800 * SCALE_FACTOR, screenHeight, 200)
     sliderHeight:SetColor("Text", {0,0,0,0})
     sliderHeight.SameLine = true
     sliderHeight.Vertical = true
@@ -139,7 +139,7 @@ end
 function TreeList:RenderTopBar()
     self.OtherPanel = self.panel:AddTree("Others")
     self:RenderCustomTopBar(self.OtherPanel)
-    local rightA, leftA, topbar = StyleHelpers.AddRightAlignCell(self.panel)
+    local rightA, leftA, topbar = ImguiElements.AddRightAlignCell(self.panel)
 
     self.topBar = topbar
     local searchInput = leftA:AddInputText("") --[[@as ExtuiInputText]]
@@ -158,8 +158,8 @@ function TreeList:RenderTopBar()
     openSettingsBtn.OnClick = function()
         settingPopup:Open()
     end
-    StyleHelpers.SetupImageButton(openSettingsBtn)
-    --local alignedTable = StyleHelpers.AddAlignedTable(self.panel)
+    ImguiHelpers.SetupImageButton(openSettingsBtn)
+    --local alignedTable = ImguiElements.AddAlignedTable(self.panel)
     
 
 end
@@ -412,7 +412,7 @@ function TreeList:RenderList()
                     arrowReserved.IDContext = "TreeList" .. self.label .. "ArrowReserved" .. tostring(key)
                     local icon = self.collapsedTree[key] and RB_ICONS.Tree_Collapsed or RB_ICONS.Tree_Expanded
                     local arrowImage = arrowReserved:AddImageButton("##" .. key .. "ArrowBtn", icon, IMAGESIZE.ROW)
-                    StyleHelpers.SetupImageButton(arrowImage)
+                    ImguiHelpers.SetupImageButton(arrowImage)
                     ele = self:RenderTree(key, leftCell, fixedCell)
                     ele.SameLine = true
                     self.arrowRefs[key] = arrowReserved
@@ -719,10 +719,10 @@ function TreeList:SetUpTree(tree, key)
     local userLabel = tree.Label
     local toggleLabel = function()
         local reserved = self.arrowRefs[key]
-        DestroyAllChildren(reserved)
+        ImguiHelpers.DestroyAllChildren(reserved)
         local icon = self.collapsedTree[key] and RB_ICONS.Tree_Collapsed or RB_ICONS.Tree_Expanded
         local arrowImage = reserved:AddImageButton("##" .. key .. "ArrowBtn", icon, IMAGESIZE.ROW)
-        StyleHelpers.SetupImageButton(arrowImage)
+        ImguiHelpers.SetupImageButton(arrowImage)
     end
 
 
@@ -882,7 +882,7 @@ function TreeList:SetupRenameInput(key, userLabel)
 
     Timer:After(1000, function (timerID)
         local focusTimer = Timer:EveryFrame(function (timerID)
-            local ok, focused = pcall(IsFocused, input)
+            local ok, focused = pcall(ImguiHelpers.IsFocused, input)
             if not ok then
                 pcall(rerender)
                 return UNSUBSCRIBE_SYMBOL
@@ -896,7 +896,7 @@ function TreeList:SetupRenameInput(key, userLabel)
     end)
 
     local enterSub = SubscribeKeyInput({ Key = "RETURN" }, function (e)
-        local ok, focused = pcall(IsFocused, input)
+        local ok, focused = pcall(ImguiHelpers.IsFocused, input)
         if not ok then return UNSUBSCRIBE_SYMBOL end
 
         if focused and input then

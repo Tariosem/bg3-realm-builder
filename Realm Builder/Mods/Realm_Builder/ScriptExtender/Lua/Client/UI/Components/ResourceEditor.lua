@@ -122,7 +122,7 @@ function ResourceEditor:Render()
     end
 
     self.ModfiedResource = {}
-    local root = StyleHelpers.AddTree(window, self.ResourceType, true)
+    local root = ImguiElements.AddTree(window, self.ResourceType, true)
     updateUIState = self:RenderEditor(root, self.ResourceType, function(returnModified)
             if returnModified then
                 return self.ModfiedResource
@@ -139,7 +139,7 @@ function ResourceEditor:Render()
 end
 
 function ResourceEditor:RenderArrayEditor(parent, label, objGetter, objSetter)
-    local tree = StyleHelpers.AddTree(parent, label, true)
+    local tree = ImguiElements.AddTree(parent, label, true)
 
     local tab = tree:AddTable(label .. "Table", 1)
     local row = tab:AddRow()
@@ -246,7 +246,7 @@ function ResourceEditor:RenderEditor(parent, label, objGetter, objSetter)
                 }
             end
 
-            updateFunc = StyleHelpers.AddNumberSliders(parent, field, getter, setter,
+            updateFunc = ImguiElements.AddNumberSliders(parent, field, getter, setter,
                 { IsColor = isColor, Range = range, IsInt = isInt })
         elseif type(initValue) == "boolean" then
             local function getter()
@@ -257,7 +257,7 @@ function ResourceEditor:RenderEditor(parent, label, objGetter, objSetter)
                 objSetter(field, value)
             end
 
-            local alignedTable = StyleHelpers.AddAlignedTable(parent)
+            local alignedTable = ImguiElements.AddAlignedTable(parent)
             local checkBox = alignedTable:AddCheckbox(field, initValue)
             checkBox.OnChange = function()
                 setter(checkBox.Checked)
@@ -278,7 +278,7 @@ function ResourceEditor:RenderEditor(parent, label, objGetter, objSetter)
                 objSetter(field, value)
             end
 
-            local alignedTable = StyleHelpers.AddAlignedTable(parent)
+            local alignedTable = ImguiElements.AddAlignedTable(parent)
             local input = alignedTable:AddInputText(field, initValue)
             local isUuid = IsUuidIncludingNull(initValue)
             input.AutoSelectAll = true
@@ -412,7 +412,7 @@ RegisterDebugWindow("Realm Builder Atmosphere Editor", function(panel)
             end)
         end
         combo.OnChange = function(cmb)
-            local selectedName = GetCombo(cmb)
+            local selectedName = ImguiHelpers.GetCombo(cmb)
             local resUuid = nameMap[selectedName]
             local editor = cachedResourceEditors[resUuid]
             if not editor then

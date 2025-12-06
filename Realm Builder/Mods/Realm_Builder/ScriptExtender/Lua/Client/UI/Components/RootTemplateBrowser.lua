@@ -62,7 +62,7 @@ function RootTemplateBrowser:RenderIcon(entry, cell)
                 Icon = entry.Icon,
                 TemplateId = entry.TemplateId,
             }
-            StyleHelpers.AddReadOnlyAttrTable(popup, attrs)
+            ImguiElements.AddReadOnlyAttrTable(popup, attrs)
         end
         popup:Open()
     end

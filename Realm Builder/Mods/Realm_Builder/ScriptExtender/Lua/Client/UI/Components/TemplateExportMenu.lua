@@ -50,7 +50,7 @@ function TemplateExportMenu:Render()
     local exportButton = exportCell:AddButton("Export")
 
     local childWin = panel:AddChildWindow("Export Options")
-    local refreshExportPanel = RenderExportSettingPanel(childWin:AddCollapsingHeader("Export Setting"), exportSettings)
+    local refreshExportPanel = ImguiElements.RenderExportSettingPanel(childWin:AddCollapsingHeader("Export Setting"), exportSettings)
 
     local function isExportable()
         refreshExportPanel()
@@ -62,31 +62,31 @@ function TemplateExportMenu:Render()
     local exportTT = nil
     exportButton.OnHoverEnter = function(btn)
         if not isExportable() then
-            ApplyWarningButtonStyle(btn)
-            SetWarningBorder(btn)
+            StyleHelpers.ApplyWarningButtonStyle(btn)
+            StyleHelpers.SetWarningBorder(btn)
             GuiAnim.PulseBorder(btn, 2)
             if exportTT then
                 exportTT:Destroy()
                 exportTT = nil
             end
-            ApplyWarningTooltipStyle(btn:Tooltip())
+            StyleHelpers.ApplyWarningTooltipStyle(btn:Tooltip())
             exportTT = btn:Tooltip():AddText("Please fill in all required export settings before exporting.")
             return
         end
 
-        ApplyOkButtonStyle(btn)
-        ClearWarningBorder(btn)
+        StyleHelpers.ApplyOkButtonStyle(btn)
+        StyleHelpers.ClearWarningBorder(btn)
         if exportTT then
             exportTT:Destroy()
             exportTT = nil
         end
-        ApplyOkTooltipStyle(btn:Tooltip())
+        StyleHelpers.ApplyOkTooltipStyle(btn:Tooltip())
         exportTT = btn:Tooltip():AddText("Export templates to mod folder.")
     end
 
     exportButton.OnClick = function(btn)
         if not isExportable() then
-            SetWarningBorder(btn)
+            StyleHelpers.SetWarningBorder(btn)
             GuiAnim.PulseBorder(btn, 2)
             return
         end
@@ -151,14 +151,14 @@ function TemplateExportMenu:RenderExportEntities(panel)
                 self:ClearVisualizations()
             end)
             if not self.isValid then return end
-            SetImguiDisabled(visualizeAllBtn, false)
+            ImguiHelpers.SetImguiDisabled(visualizeAllBtn, false)
         end
 
         thread = coroutine.create(spawnFunc)
-        SetImguiDisabled(visualizeAllBtn, true)
+        ImguiHelpers.SetImguiDisabled(visualizeAllBtn, true)
         local suc, msg = coroutine.resume(thread)
         if not suc then
-            SetImguiDisabled(visualizeAllBtn, false)
+            ImguiHelpers.SetImguiDisabled(visualizeAllBtn, false)
             Error("Failed to visualize all export entries: " .. tostring(msg))
         end
     end
@@ -191,7 +191,7 @@ function TemplateExportMenu:RenderExportEntities(panel)
 
     for _, templateType in ipairs(allTemplateTypes) do
         local cell = row:AddCell()
-        local templateSelectable = StyleHelpers.AddTree(cell, string.upper(templateType))
+        local templateSelectable = ImguiElements.AddTree(cell, string.upper(templateType))
         templateSelectable.OnExpand = function()
             renderTemplateTypes(templateType)
             templateSelectable.OnExpand = function () end
@@ -209,7 +209,7 @@ function TemplateExportMenu:RenderTemplateEntry(cell, entData)
         Warning("[TemplateExportMenu] Failed to get template object for template ID: " .. tostring(entData.TemplateId))
         return nil
     end
-    local header = StyleHelpers.AddTree(cell, entData.DisplayName or templateObj.Name or entData.TemplateId)
+    local header = ImguiElements.AddTree(cell, entData.DisplayName or templateObj.Name or entData.TemplateId)
     header:AddTreeIcon(entData.DisplayIcon, IMAGESIZE.SMALL)
     local attrTable = header:AddTable("Attributes", 2)
     header.SameLine = true
@@ -403,13 +403,13 @@ function TemplateExportMenu:RenderTemplateEntry(cell, entData)
                         end
                         cached[attrName] = newValue
                     end
-                    local resetBtn = StyleHelpers.AddResetButton(attrValueCell, true)
+                    local resetBtn = ImguiElements.AddResetButton(attrValueCell, true)
                     resetBtn.OnClick = function()
                         slider.Value = ToVec4(defaultValue)
                         cached[attrName] = defaultValue
                     end
                 else
-                    local slider = StyleHelpers.AddSliderWithStep(attrValueCell, "##" .. attrName .. entData.Guid, defaultValue, 0, 120, 1)
+                    local slider = ImguiElements.AddSliderWithStep(attrValueCell, "##" .. attrName .. entData.Guid, defaultValue, 0, 120, 1)
                     slider.OnChange = function(sld)
                         cached[attrName] = sld.Value[1]
                     end
@@ -427,7 +427,7 @@ function TemplateExportMenu:RenderTemplateEntry(cell, entData)
         self:VisualizeExportEntry(entData.Guid)
     end
     header.OnRightClick = function()
-        SetImguiDisabled(header, not header.Disabled)
+        ImguiHelpers.SetImguiDisabled(header, not header.Disabled)
         header:SetOpen(not header.Disabled)
         attrTable.Visible = not header.Disabled
 

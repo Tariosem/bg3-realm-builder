@@ -206,12 +206,10 @@ function TransformEditor:HandleGizmo()
             pivotPos = latestProxy:GetWorldTranslate() or Vec3.new(GetHostPosition())
         else
             local validCount = 0
-            for _,proxy in pairs(self.Target or {}) do
-                if proxy:IsValid() then
-                    local pos = proxy:GetWorldTranslate() or Vec3.new(0,0,0)
-                    sumPos = sumPos + pos
-                    validCount = validCount + 1
-                end
+            for _,proxy in self:SafeTraverseTarget() do
+                local pos = proxy:GetWorldTranslate() or Vec3.new(0,0,0)
+                sumPos = sumPos + pos
+                validCount = validCount + 1
             end
         
             if validCount == 0 then
@@ -441,7 +439,15 @@ function TransformEditor:MakeAxisLineVisualization(gizmo, ray, color, index)
     end)
 end
 
-
+function TransformEditor:SafeTraverseTarget()
+    for i=#self.Target or {}, 1, -1 do
+        local proxy = self.Target[i]
+        if not proxy:IsValid() then
+            table.remove(self.Target, i)
+        end
+    end
+    return pairs(self.Target or {})
+end
 
 function TransformEditor:SetupGizmo()
     if not self.Gizmo then
@@ -564,7 +570,7 @@ function TransformEditor:SetupGizmo()
             delta = rot:Inverse():Rotate(delta)
         end
         
-        for _,proxy in pairs(self.Target or {}) do
+        for _,proxy in self:SafeTraverseTarget() do
             local startTransform = proxy:GetSavedTransform()
             local finalDelta = Vec3.new(delta)
             if self.Space == "Local" then
@@ -590,7 +596,7 @@ function TransformEditor:SetupGizmo()
             cameraMatrix = Matrix.new(Ext.Math.QuatToMat4({GetCameraRotation()}))
         end
 
-        for _, proxy in pairs(self.Target or {}) do
+        for _, proxy in self:SafeTraverseTarget() do
             local startTransform = proxy:GetSavedTransform()
             local baseScale = startTransform.Scale or {1,1,1}
 
@@ -638,6 +644,7 @@ function TransformEditor:SetupGizmo()
                 local newTransform = ScaleAroundPivot(pivotPos, startTransform, newScale)
                 proxy:SetTransform(newTransform)
             end
+            ::continue::
         end
     end
 
@@ -660,16 +667,17 @@ function TransformEditor:SetupGizmo()
 
         if not (individualPivotMode[self.PivotMode] or individualOriention[self.Space]) then
             local pivotPos, _ = gizmo:GetPickerTransform()
-            for _, proxy in pairs(self.Target or {}) do
+            for _, proxy in self:SafeTraverseTarget() do
                 local startTransform = proxy:GetSavedTransform()
                 local newTransform = RotateAroundPivot(pivotPos, startTransform, deltaAxis, deltaAngle)
 
                 proxy:SetTransform(newTransform)
+                ::continue::
             end
             return
         end
 
-        for _, proxy in pairs(self.Target or {}) do
+        for _, proxy in self:SafeTraverseTarget() do
             local startTransform = proxy:GetSavedTransform()
             local curRot = Quat.new(startTransform.RotationQuat) or Quat.Identity()
             local newRot = nil
@@ -697,6 +705,7 @@ function TransformEditor:SetupGizmo()
             newRot = Quat.new(Ext.Math.QuatMul(deltaQuat, curRot))
 
             proxy:SetWorldRotation(newRot)
+            ::continue::
         end
     end
 
@@ -709,7 +718,7 @@ function TransformEditor:SetupGizmo()
             gizmo.Visualizer:HideGizmo(v)
         end
         if isCancelled then 
-            for _,proxy in pairs(self.Target or {}) do
+            for _,proxy in self:SafeTraverseTarget() do
                 proxy:RestoreTransform()
             end
             self.IsDragging = false
@@ -736,14 +745,22 @@ function TransformEditor:SetupGizmo()
             HistoryManager:PushCommand({
                 Undo = function()
                     for _,proxy in pairs(changed) do
+                        if not proxy:IsValid() then
+                            goto continue
+                        end
                         local startTransform = undoTransforms[proxy]
                         proxy:SetTransform(startTransform)
+                        ::continue::
                     end
                 end,
                 Redo = function()
                     for _,proxy in pairs(changed) do
+                        if not proxy:IsValid() then
+                            goto continue
+                        end
                         local endTransform = redoTransforms[proxy]
                         proxy:SetTransform(endTransform)
+                        ::continue::
                     end
                 end,
                 Description = "Set Transform"

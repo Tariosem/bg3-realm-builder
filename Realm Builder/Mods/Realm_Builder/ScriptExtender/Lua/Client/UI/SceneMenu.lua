@@ -66,7 +66,7 @@ function SceneMenu:Render()
     local tryLoadButton = r1:AddButton(GetLoca("Load"))
 
     local presetNameInputKeySub = SubscribeKeyInput({ Key = "RETURN" }, function()
-        if saveButton and IsFocused(presetNameInput) then
+        if saveButton and ImguiHelpers.IsFocused(presetNameInput) then
             saveButton.OnClick()
         end
     end)
@@ -150,7 +150,7 @@ function SceneMenu:Render()
         end
     end
 
-    local collapsingTable = AddCollapsingTable(self.panel, nil, "Presets", { SideBarWidth = 100 * SCALE_FACTOR, MainAreaTitleAlign = 0.45})
+    local collapsingTable = ImguiElements.AddCollapsingTable(self.panel, nil, "Presets", { SideBarWidth = 100 * SCALE_FACTOR, MainAreaTitleAlign = 0.45})
     if collapsingTable then
         self.previewWindow = collapsingTable.MainArea
     else
@@ -176,10 +176,10 @@ function SceneMenu:Render()
     end
 
     self.previewImageSize = 64 * SCALE_FACTOR
-    self.previewImageSizeSlider = SafeAddSliderInt(previewConfigPopup, "Icon Size", self.previewImageSize, 32, 256)
+    self.previewImageSizeSlider = ImguiHelpers.SafeAddSliderInt(previewConfigPopup, "Icon Size", self.previewImageSize, 32, 256)
 
     self.cellsPadding = { 5 * SCALE_FACTOR, 5 * SCALE_FACTOR }
-    self.cellsPaddingSlider = SafeAddSliderInt(previewConfigPopup, "Cell Padding", 1, 0, 20 * SCALE_FACTOR)
+    self.cellsPaddingSlider = ImguiHelpers.SafeAddSliderInt(previewConfigPopup, "Cell Padding", 1, 0, 20 * SCALE_FACTOR)
     self.cellsPaddingSlider.Components = 2
     self.cellsPaddingSlider.Value = ToVec4Int(self.cellsPadding[1], self.cellsPadding[2])
 
@@ -525,7 +525,7 @@ function SceneMenu:RenderSidebarSelection()
         local previewBtn = row:AddCell():AddSelectable(GetLoca("Preview"))
         local loadBtn = row:AddCell():AddSelectable(GetLoca("Spawn"))
         local deleteBtn = row:AddCell():AddSelectable(GetLoca("Delete"))
-        ApplyDangerSelectableStyle(deleteBtn)
+        StyleHelpers.ApplyDangerSelectableStyle(deleteBtn)
 
         deleteBtn.OnClick = function()
             ConfirmPopup:DangerConfirm(
@@ -639,7 +639,7 @@ function SceneMenu:RenderPresetInfo(name)
     local previewBtn = titlePopup:AddSelectable(GetLoca("Preview"))
     local loadBtn = titlePopup:AddSelectable(GetLoca("Spawn"))
     local deleteBtn = titlePopup:AddSelectable(GetLoca("Delete"))
-    ApplyDangerSelectableStyle(deleteBtn)
+    StyleHelpers.ApplyDangerSelectableStyle(deleteBtn)
 
     loadBtn.OnClick = function()
         self:LoadPreset(name)
@@ -687,7 +687,7 @@ function SceneMenu:RenderPresetInfo(name)
     presetDescInput.Hint = GetLoca("Enter a description here...")
     local confirmInputBtn = inputCell:AddButton("<")
     confirmInputBtn.IDContext = "ConfirmPresetDesc"
-    ApplyInfoButtonStyle(confirmInputBtn)
+    StyleHelpers.ApplyInfoButtonStyle(confirmInputBtn)
     confirmInputBtn.SameLine = true
     confirmInputBtn.OnClick = function()
         self.presets[name].Description = presetDescInput.Text
@@ -701,7 +701,7 @@ function SceneMenu:RenderPresetInfo(name)
         self:SaveToFile(name)
     end
     local descInputKeyLisener = SubscribeKeyInput({ Key = "RETURN" }, function()
-        if self.presetInfoWindow and IsFocused(presetDescInput) then
+        if self.presetInfoWindow and ImguiHelpers.IsFocused(presetDescInput) then
             confirmInputBtn.OnClick()
         end
     end)
@@ -711,7 +711,7 @@ function SceneMenu:RenderPresetInfo(name)
     if presetData.ModList ~= nil and next(presetData.ModList) ~= nil then
         local modInfoWarningButton = modInfoCell:AddButton(GetLoca("Mod Info"))
         modInfoWarningButton.SameLine = true
-        ApplyConfirmButtonStyle(modInfoWarningButton)
+        StyleHelpers.ApplyConfirmButtonStyle(modInfoWarningButton)
         
         local modlist = presetData.ModList
         modInfoWarningButton:Tooltip():AddText(GetLoca("This preset depends on the following mods:"))
@@ -744,7 +744,7 @@ function SceneMenu:RenderPresetInfo(name)
             if not Ext.Mod.IsModLoaded(modId) then
                 modText:SetColor("Text", CONFIG.Misc.DangerButtonHoveredColor)
                 modText.Label = modText.Label .. " (Missing!)"
-                ApplyDangerButtonStyle(modInfoWarningButton)
+                StyleHelpers.ApplyDangerButtonStyle(modInfoWarningButton)
             end
         end
     end

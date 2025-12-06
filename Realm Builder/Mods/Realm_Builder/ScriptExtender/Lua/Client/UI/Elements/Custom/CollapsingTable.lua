@@ -27,7 +27,7 @@
 --- @param parent ExtuiTreeParent
 --- @param table ExtuiTable
 --- @return ExtuiPopup
-function RenderCollapseingTableConfig(parent, table)
+local function RenderCollapseingTableConfig(parent, table)
     local panel = parent:AddPopup("Config")
     panel.IDContext = table.IDContext .. "_ConfigPopup"
 
@@ -35,12 +35,12 @@ function RenderCollapseingTableConfig(parent, table)
 
     local collapseTimeSlider = panel:AddSlider(GetLoca("Collapse Time (s)"), (ud.CollapseTime or 600) / 1000, 0.1, 5)
     local expandTimeSlider = panel:AddSlider(GetLoca("Expand Time (s)"), (ud.ExpandTime or 400) / 1000, 0.1, 5)
-    local sidebarWidthSlider = SafeAddSliderInt(panel, GetLoca("Sidebar Width"),
+    local sidebarWidthSlider = ImguiHelpers.SafeAddSliderInt(panel, GetLoca("Sidebar Width"),
         ud.SideBarWidth or math.floor(200 * SCALE_FACTOR), 100, 800)
-    local animationFPSSlider = SafeAddSliderInt(panel, GetLoca("Animation FPS"), ud.AnimationFPS or 90, 10, 144)
+    local animationFPSSlider = ImguiHelpers.SafeAddSliderInt(panel, GetLoca("Animation FPS"), ud.AnimationFPS or 90, 10, 144)
     local hoverToExpandCheckbox = panel:AddCheckbox(GetLoca("Hover to Expand"))
     local disableOuterCollapseCheckbox = panel:AddCheckbox(GetLoca("Disable Outer Collapse"))
-    local autoCollapseSlider = SafeAddSliderInt(panel, GetLoca("Auto Collapse (s, 0 to disable)"),
+    local autoCollapseSlider = ImguiHelpers.SafeAddSliderInt(panel, GetLoca("Auto Collapse (s, 0 to disable)"),
         (ud.AutoCollapse or 0) / 1000, 0, 60)
     local collapseTypeCombo = panel:AddCombo("Collapse Easing Type")
     local expandTypeCombo = panel:AddCombo("Expand Easing Type")
@@ -48,8 +48,8 @@ function RenderCollapseingTableConfig(parent, table)
     collapseTypeCombo.Options = GetAllEasings()
     expandTypeCombo.Options = GetAllEasings()
 
-    SetCombo(collapseTypeCombo, ud.CollapseType or "EaseInCubic")
-    SetCombo(expandTypeCombo, ud.ExpandType or "EaseOutCubic")
+    ImguiHelpers.SetCombo(collapseTypeCombo, ud.CollapseType or "EaseInCubic")
+    ImguiHelpers.SetCombo(expandTypeCombo, ud.ExpandType or "EaseOutCubic")
 
     collapseTimeSlider.OnChange = function()
         local newValue = FormatDecimal(collapseTimeSlider.Value[1], 1)
@@ -97,14 +97,14 @@ function RenderCollapseingTableConfig(parent, table)
     end
 
     collapseTypeCombo.OnChange = function()
-        local val = GetCombo(collapseTypeCombo)
+        local val = ImguiHelpers.GetCombo(collapseTypeCombo)
         if val and val ~= "" then
             ud.CollapseType = val
         end
     end
 
     expandTypeCombo.OnChange = function()
-        local val = GetCombo(expandTypeCombo)
+        local val = ImguiHelpers.GetCombo(expandTypeCombo)
         if val and val ~= "" then
             ud.ExpandType = val
         end
@@ -118,7 +118,7 @@ end
 --- @param sideBarTitle string?
 --- @param opts CollapsingTableStyle?
 --- @return CollapsingTableStyle
-function AddCollapsingTable(parent, mainAreaTitle, sideBarTitle, opts)
+function ImguiElements.AddCollapsingTable(parent, mainAreaTitle, sideBarTitle, opts)
     local IDContext = Uuid_v4()
     local cT = parent:AddTable(IDContext .. "_Table", 2)
     local row = cT:AddRow()

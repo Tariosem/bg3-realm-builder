@@ -309,7 +309,7 @@ function ItemBrowser:RenderInfoPopup(popup, entry)
     if infoFields.Mod == "" then infoFields.Mod = nil end
     if infoFields.ModAuthor == "" then infoFields.ModAuthor = nil end
 
-    StyleHelpers.AddReadOnlyAttrTable(popup, infoFields)
+    ImguiElements.AddReadOnlyAttrTable(popup, infoFields)
 
     popup.UserData.InfoRendered = true
 end
@@ -474,7 +474,7 @@ function ItemBrowser:RenderItemSpawnTab(popup, iconImage, entry)
         end
     end
 
-    ApplyConfirmButtonStyle(spawnButton)
+    StyleHelpers.ApplyConfirmButtonStyle(spawnButton)
     spawnButton.OnClick = function() spawnHandle(false) end
 
     if not entry.CanBePickedUp then return iconImage end
@@ -487,7 +487,7 @@ function ItemBrowser:RenderItemSpawnTab(popup, iconImage, entry)
     warningImage.ImageData.Size = { 32 * SCALE_FACTOR, 32 * SCALE_FACTOR }
     warningImage:Tooltip():AddText(GetLoca("Items added to your inventory will not be monitored by this mod."))
     warningImage:Tooltip():AddText(GetLoca("Not all items can be added to the inventory."))
-    ApplyConfirmButtonStyle(cheatButton)
+    StyleHelpers.ApplyConfirmButtonStyle(cheatButton)
     cheatButton.OnClick = function()
         if not countInput then return end
         local captureValue = math.floor(countInput.Value[1])

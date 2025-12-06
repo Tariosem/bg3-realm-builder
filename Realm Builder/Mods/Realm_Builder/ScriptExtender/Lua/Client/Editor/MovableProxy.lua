@@ -1,3 +1,4 @@
+--- REMEMBER TO IMPLEMENT "SetTransform" AND "__getTransform" AND "IsValid" IN DERIVED CLASSES
 --- @class RB_MovableProxy
 --- @field StoredTransform Transform
 --- @field SetWorldTranslate fun(self: RB_MovableProxy, position: Vec3)
@@ -255,10 +256,18 @@ function RenderableMovableProxy:__init(instanceFunc)
 end
 
 function RenderableMovableProxy:GetTransform()
+    local rend = self:Instance()
+    if not rend then
+        return {
+            Translate = Vec3.new(0,0,0),
+            RotationQuat = Quat.new(0,0,0,1),
+            Scale = Vec3.new(1,1,1)
+        }
+    end
     return {
-        Translate = Vec3.new(self:Instance().WorldTransform.Translate),
-        RotationQuat = Quat.new(self:Instance().WorldTransform.RotationQuat),
-        Scale = Vec3.new(self:Instance().WorldTransform.Scale)
+        Translate = Vec3.new(rend.WorldTransform.Translate),
+        RotationQuat = Quat.new(rend.WorldTransform.RotationQuat),
+        Scale = Vec3.new(rend.WorldTransform.Scale)
     }
 end
 

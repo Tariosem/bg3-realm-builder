@@ -82,7 +82,7 @@ function EffectTab:Render()
 end
 
 function EffectTab:RenderProfile()
-    StyleHelpers.AddReadOnlyAttrTable(self.IdsContainer, {
+    ImguiElements.AddReadOnlyAttrTable(self.IdsContainer, {
         [GetLoca("DisplayName")] = self.displayName,
         [GetLoca("Icon")] = self.icon,
         [GetLoca("Uuid")] = self.guid,
@@ -93,7 +93,7 @@ end
 function EffectTab:RenderEffectsTab()
     self.effectsInfoTab = self.uniTabBar:AddTabItem(GetLoca("Effects"))
 
-    local topTree = StyleHelpers.AddTree(self.effectsInfoTab, GetLoca("General"))
+    local topTree = ImguiElements.AddTree(self.effectsInfoTab, GetLoca("General"))
     topTree.Framed = true
 
     self.selectionHeader = topTree:AddTree(GetLoca("Caster and Target"))
@@ -116,7 +116,7 @@ function EffectTab:RenderEffects()
 
     self.effectsTimelineWin = self.effectsInfoTab:AddChildWindow("EffectsTimeline")
 
-    self.effectsRoot = StyleHelpers.AddTree(self.effectsTimelineWin, GetLoca("Effects List"))
+    self.effectsRoot = ImguiElements.AddTree(self.effectsTimelineWin, GetLoca("Effects List"))
     self.effectsRoot:DestroyChildren()
 
     self.effectsInfos = {}
@@ -153,7 +153,7 @@ function EffectTab:RenderEffects()
             self:PlayEffect(effectTree)
         end
 
-        StyleHelpers.AddReadOnlyAttrTable(effectTree, {
+        ImguiElements.AddReadOnlyAttrTable(effectTree, {
             [GetLoca("Fx Name")] = effectTree.UserData.FxName,
             [GetLoca("Name")] = effectTree.UserData.TemplateName,
             [GetLoca("Source Bone")] = effectTree.UserData.SourceBone,
@@ -175,7 +175,7 @@ function EffectTab:RenderControlPanel(parent)
     self.repeatDelay = self.repeatDelay or 1000
     local repeatPlayButton = parent:AddButton(GetLoca("Timed Repeat"))
     parent:AddText("Repeat Interval (s)")
-    local repeatDelaySlider = StyleHelpers.AddSliderWithStep(parent, nil, self.repeatDelay / 1000, 0.1, 60, 0.1)
+    local repeatDelaySlider = ImguiElements.AddSliderWithStep(parent, nil, self.repeatDelay / 1000, 0.1, 60, 0.1)
     
 
     local stopAllButton = parent:AddButton(GetLoca("Stop All"))
@@ -422,7 +422,7 @@ end
 
 function EffectTab:Focus()
     if self.isWindow then
-        FocusWindow(self.panel)
+        ImguiHelpers.FocusWindow(self.panel)
     else
         self.panel.SetSelected = true
         Timer:After(100, function()

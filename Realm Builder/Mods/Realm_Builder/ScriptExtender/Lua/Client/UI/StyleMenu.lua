@@ -127,7 +127,7 @@ function StyleMenu:RenderColorPickers()
         bgColorPicker.OnChange()
     end
 
-    local colorsHeader = StyleHelpers.AddTree(self.panel, GetLoca("Colors"))
+    local colorsHeader = ImguiElements.AddTree(self.panel, GetLoca("Colors"))
     colorsHeader.Framed = true
 
     local colorPickers = {}
@@ -168,7 +168,7 @@ function StyleMenu:RenderColorPickers()
     for _,obj in ipairs(colorsArray) do
         local category = obj.Value
         if not colorTrees[category] then
-            colorTrees[category] = StyleHelpers.AddTree(colorsHeader, category)
+            colorTrees[category] = ImguiElements.AddTree(colorsHeader, category)
         end
     end
 
@@ -252,7 +252,7 @@ function StyleMenu:RenderStyleSliders()
     local baseBorderSlider = self.panel:AddSlider(GetLoca("Base Border"), CONFIG.Theme.Style.BaseBorder, 0, 5)
     basePaddingSlider.Visible = false
 
-    local styleVarHeader = StyleHelpers.AddTree(self.panel, GetLoca("Style Variables"))
+    local styleVarHeader = ImguiElements.AddTree(self.panel, GetLoca("Style Variables"))
     styleVarHeader.Framed = true
 
     local styleVarSlider = {}
@@ -333,7 +333,7 @@ function StyleMenu:RenderStyleSliders()
     for _,obj in ipairs(varsArray) do
         local category = obj.Value
         if not styleVarTrees[category] then
-            styleVarTrees[category] = StyleHelpers.AddTree(styleVarHeader, category)
+            styleVarTrees[category] = ImguiElements.AddTree(styleVarHeader, category)
         end
     end
 

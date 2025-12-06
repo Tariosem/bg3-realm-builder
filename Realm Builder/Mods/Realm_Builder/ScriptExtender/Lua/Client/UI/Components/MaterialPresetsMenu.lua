@@ -96,7 +96,7 @@ end
 ---@param notRenderImport boolean?
 ---@param onExportComplete function?
 function MaterialPresetsMenu:SetupWorkspace(parent, ccaModPack, notRenderImport, onExportComplete)
-    local infoTab = AddCollapsingTable(parent, nil, nil, { SideBarWidth = 400 * SCALE_FACTOR })
+    local infoTab = ImguiElements.AddCollapsingTable(parent, nil, nil, { SideBarWidth = 400 * SCALE_FACTOR })
 
     onExportComplete = onExportComplete or function() end
 
@@ -137,13 +137,13 @@ function MaterialPresetsMenu:SetupWorkspace(parent, ccaModPack, notRenderImport,
                 if presetHeaders[folderName] then
                     local header = presetHeaders[folderName]
                     GuiAnim.Vibrate(header)
-                    SetWarningBorder(header)
+                    StyleHelpers.SetWarningBorder(header)
                     GuiAnim.PulseBorder(header, 2)
                 end
                 return false, "folder '" .. folderName .. "' has no export type defined"
             else
                 if presetHeaders[folderName] then
-                    ClearWarningBorder(presetHeaders[folderName])
+                    StyleHelpers.ClearWarningBorder(presetHeaders[folderName])
                 end
             end
         end
@@ -161,7 +161,7 @@ function MaterialPresetsMenu:SetupWorkspace(parent, ccaModPack, notRenderImport,
 
     local function rerenderFolders() end
 
-    local refreshExport = RenderExportSettingPanel(exportCell, modPack)
+    local refreshExport = ImguiElements.RenderExportSettingPanel(exportCell, modPack)
 
     local refreshImport = function() end
     if not notRenderImport then
@@ -254,14 +254,14 @@ function MaterialPresetsMenu:SetupWorkspace(parent, ccaModPack, notRenderImport,
         local exportable, reason = checkIfExportable()
         if not exportable then
             refreshExport()
-            ApplyWarningTooltipStyle(exportTooltip)
+            StyleHelpers.ApplyWarningTooltipStyle(exportTooltip)
             exportTT.Label = "Cannot export material presets: " .. reason
-            ApplyWarningButtonStyle(exportBtn)
+            StyleHelpers.ApplyWarningButtonStyle(exportBtn)
         else
-            ApplyOkTooltipStyle(exportTooltip)
+            StyleHelpers.ApplyOkTooltipStyle(exportTooltip)
             exportTT.Label =
             "Click: Export material presets to Realm_Builder/CC_Mods/\nRight Click: Save Cache for Importing Later"
-            ApplyOkButtonStyle(exportBtn)
+            StyleHelpers.ApplyOkButtonStyle(exportBtn)
         end
     end
 
@@ -335,7 +335,7 @@ function MaterialPresetsMenu:RenderFolderPanel(presetTab, presetHeaders, exportS
         local newFolderCell = newFolderRow:AddCell()
         local createFolderBtn = newFolderCell:AddImageButton("##CreateMaterialPresetFolderBtn", RB_ICONS.Plus_Square,
             IMAGESIZE.ROW)
-        StyleHelpers.SetupImageButton(createFolderBtn)
+        ImguiHelpers.SetupImageButton(createFolderBtn)
         createFolderBtn.OnClick = function()
             local folderName = "merged"
             local suffix = 1
@@ -374,10 +374,10 @@ function MaterialPresetsMenu:RenderFolderRow(presetTab, folderName, openedFolder
 
     folderColorBox:SetStyle("FrameBorderSize", 2)
     if folderDef.ExportType then
-        ClearWarningBorder(presetHeaders[folderName])
+        StyleHelpers.ClearWarningBorder(presetHeaders[folderName])
         setRowColor(folderRow, exportColor)
     else
-        SetWarningBorder(presetHeaders[folderName])
+        StyleHelpers.SetWarningBorder(presetHeaders[folderName])
         setRowColor(folderRow, disabledColor)
     end
 
@@ -409,7 +409,7 @@ function MaterialPresetsMenu:RenderFolderRow(presetTab, folderName, openedFolder
     folderHeader.SameLine = true
 
     local folderManagePopup = folderCell:AddPopup("MaterialPresetFolderManagePopup_" .. folderName)
-    local folderTable = StyleHelpers.AddIndent(folderCell):AddTable("FolderTable_" .. folderName, 3)
+    local folderTable = ImguiElements.AddIndent(folderCell):AddTable("FolderTable_" .. folderName, 3)
     folderTable.Visible = openedFolders[folderName] or false
     folderTable.UserData = {}
     folderTable.UserData.Header = folderHeader
@@ -450,7 +450,7 @@ function MaterialPresetsMenu:RenderFolderRow(presetTab, folderName, openedFolder
             folderHeader.Label = makeFolderDisplay(openedFolders[folderName], folderName, folderDef.ExportType)
             if folderDef.ExportType then
                 --setRowColor(folderRow, exportColor)
-                ClearWarningBorder(presetHeaders[newName])
+                StyleHelpers.ClearWarningBorder(presetHeaders[newName])
             end
         end,
     }
@@ -605,7 +605,7 @@ function MaterialPresetsMenu:RenderImportSection(parent, exportSettings, onImpor
         local selectRow = selectTable:AddRow()
 
         local importBtnCell = selectRow:AddCell()
-        local importBtn = AddSelectableButton(importBtnCell,
+        local importBtn = ImguiElements.AddSelectableButton(importBtnCell,
             "Import##ImportCCAModVersionBtn_" .. modName .. "_" .. version, function()
                 import(modName, version)
             end)
@@ -616,7 +616,7 @@ function MaterialPresetsMenu:RenderImportSection(parent, exportSettings, onImpor
             HexToRGBA("FFFFFFFF"))
 
         local deleteBtnCell = selectRow:AddCell()
-        local deleteBtn = AddSelectableButton(deleteBtnCell,
+        local deleteBtn = ImguiElements.AddSelectableButton(deleteBtnCell,
             "Delete##DeleteCCAModVersionBtn_" .. modName .. "_" .. version, function()
                 if not self.cachedMods[modName] then return end
                 self.cachedMods[modName].Versions[version] = nil
@@ -624,10 +624,10 @@ function MaterialPresetsMenu:RenderImportSection(parent, exportSettings, onImpor
                 self:SaveModCacheRef()
                 refreshCached()
             end)
-        ApplyDangerSelectableStyle(deleteBtn)
+        StyleHelpers.ApplyDangerSelectableStyle(deleteBtn)
 
         local openInAnotherEditorBtnCell = selectRow:AddCell()
-        local openInAnotherEditorBtn = AddSelectableButton(openInAnotherEditorBtnCell,
+        local openInAnotherEditorBtn = ImguiElements.AddSelectableButton(openInAnotherEditorBtnCell,
             "Open in Another Editor##OpenInCCACCMVersionBtn_" .. modName .. "_" .. version, function()
                 local ccaModPack = self:ImportFromFile(modName, version)
                 if not ccaModPack then
@@ -655,7 +655,7 @@ function MaterialPresetsMenu:RenderImportSection(parent, exportSettings, onImpor
     end
 
     function refreshCached()
-        DestroyAllChildren(parent)
+        ImguiHelpers.DestroyAllChildren(parent)
         local cache = nil
         cache = self.cachedMods
 
@@ -678,7 +678,7 @@ function MaterialPresetsMenu:RenderImportSection(parent, exportSettings, onImpor
             local versions = cache[modName].Versions
             local modNameSel = parent:AddSelectable((openedTrees[modName] and "[-]" or "[+]") ..
                 modName .. "##ImportCCAMod_" .. modName) --[[@as ExtuiSelectable]]
-            local group = StyleHelpers.AddIndent(parent:AddGroup("ImportCCAModGroup_" .. modName))
+            local group = ImguiElements.AddIndent(parent:AddGroup("ImportCCAModGroup_" .. modName))
             group.Visible = openedTrees[modName] or false
 
             modNameSel.OnClick = function()
@@ -749,7 +749,7 @@ function MaterialPresetsMenu:RenderFolderManagePopup(popup, folderName, folderSe
     end
 
     confirmBtn.SameLine = true
-    ApplyInfoButtonStyle(confirmBtn)
+    StyleHelpers.ApplyInfoButtonStyle(confirmBtn)
     renameInput.Hint = "Folder Name..."
     renameInput.Text = folderName
 
@@ -759,13 +759,13 @@ function MaterialPresetsMenu:RenderFolderManagePopup(popup, folderName, folderSe
     renameInput.OnChange = function()
         local newName = ValidateFolderName(renameInput.Text)
         if not IsValidFolderName(newName) then
-            SetWarningBorder(renameInput)
+            StyleHelpers.SetWarningBorder(renameInput)
             GuiAnim.PulseBorder(renameInput, 2)
             return
         end
 
         if exportSettings.Folders[newName] and newName ~= folderName then
-            SetWarningBorder(renameInput)
+            StyleHelpers.SetWarningBorder(renameInput)
             GuiAnim.PulseBorder(renameInput, 2)
 
             warnText.Visible = true
@@ -777,7 +777,7 @@ function MaterialPresetsMenu:RenderFolderManagePopup(popup, folderName, folderSe
             return
         end
 
-        ClearWarningBorder(renameInput)
+        StyleHelpers.ClearWarningBorder(renameInput)
     end
 
     local function rename() end
@@ -789,14 +789,14 @@ function MaterialPresetsMenu:RenderFolderManagePopup(popup, folderName, folderSe
         if newName == folderName then return end
 
         if not IsValidFolderName(newName) then
-            SetWarningBorder(renameInput)
+            StyleHelpers.SetWarningBorder(renameInput)
             GuiAnim.PulseBorder(renameInput, 2)
             return
         end
 
         newName = newName:gsub("%s", "_")
         if exportSettings.Folders[newName] then
-            SetWarningBorder(renameInput)
+            StyleHelpers.SetWarningBorder(renameInput)
             GuiAnim.PulseBorder(renameInput, 2)
             warnText.Visible = true
             Timer:After(1000, function(timerID)
@@ -820,7 +820,7 @@ function MaterialPresetsMenu:RenderFolderManagePopup(popup, folderName, folderSe
         renameInput.Text = newName
     end
 
-    ApplyDangerButtonStyle(deleteBtn)
+    StyleHelpers.ApplyDangerButtonStyle(deleteBtn)
     deleteBtn.OnClick = function()
         folderSel.UserData.Delete()
     end
@@ -933,7 +933,7 @@ function MaterialPresetsMenu:RenderExportPresetRow(parentTab, obj, uuid, onDelet
             obj.DisplayName = nameInput.Text
         end
     end
-    ClearWarningBorder(nameInput)
+    StyleHelpers.ClearWarningBorder(nameInput)
 
     colorBox.OnChange = function()
         obj.UIColor = colorBox.Color
@@ -1012,7 +1012,7 @@ function MaterialPresetsMenu:RenderExportPresetRow(parentTab, obj, uuid, onDelet
         onDelete()
         row:Destroy()
     end)
-    ApplyDangerSelectableStyle(deleteBtn)
+    StyleHelpers.ApplyDangerSelectableStyle(deleteBtn)
 
     local openMatMixerBtn = selectTable:AddItem("Material Mixer ##" .. obj.DisplayName, function(sel)
         local materialMixer = MaterialMixerTab.new(obj.Parameters)
@@ -1525,7 +1525,7 @@ function MaterialPresetsMenu:RenderPresetColorBox(preset, parent)
 end
 
 function MaterialPresetsMenu:RenderCCPresetList(presetName, parent)
-    local cT = AddCollapsingTable(parent, nil, "Recent", { CollapseDirection = "Right" })
+    local cT = ImguiElements.AddCollapsingTable(parent, nil, "Recent", { CollapseDirection = "Right" })
     cT.Table.BordersInnerV = true
 
     local mainList = cT.MainArea

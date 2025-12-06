@@ -140,7 +140,7 @@ end
 local function createPresetParameterNodes(matRes, parameters)
     local paramNodes = {} --[[@as XMLNode[] ]]
     for i, params in pairs(parameters) do
-        if i == 5 then break end -- Texture2DParameters and VirtualTextureParameters are not supported in presets
+        if i >= 5 then break end -- Texture2DParameters and VirtualTextureParameters are not supported in presets
         for paramName, value in pairs(params) do
             local node = XMLNode.new("node", { id = ParamTypeToField[i] })
             local attrs = createPresetParamAttrNodes(paramName, value)
@@ -164,8 +164,6 @@ end
 ---@return XMLNode
 function ResourceHelpers.BuildMaterialPresetResourceNode(parameters, uuid, internalName)
     local root = XMLNode.new("node", { id = "Resource" })
-
-    --- material preset doesn't support texture parameters
 
     local baseAttr = {
         lsattrNode("ID", LSValueType.FixedString, uuid),
@@ -227,7 +225,7 @@ end
 local function buildMaterialOverrideNodes(matOv, overrideMaterialPresets, modfiedParams)
     local materialOverridesNode = XMLNode.new("node", { id = "MaterialOverrides", })
     materialOverridesNode:AppendChild(LSXHelpers.AttrNode("MaterialResource", "FixedString", matOv.MaterialResource))
-    
+
     local matOverridesChildren = materialOverridesNode:AppendChild(LSXHelpers.ChildrenNode())
 
     local matPresetsNode = matOverridesChildren:AppendChild(XMLNode.new("node", { id = "MaterialPresets", }))
@@ -287,7 +285,8 @@ end
 --- @param modfiedParams RB_ParameterSet? Additional modified parameters to set on the resource
 --- @param overrideVisuals table<string, string>? Map of Slot to VisualResource UUID overrides
 --- @return XMLNode?
-function ResourceHelpers.BuildCharacterVisualResource(srcUuid, uuid, internalName, overrideMaterialPresets, modfiedParams, overrideVisuals)
+function ResourceHelpers.BuildCharacterVisualResource(srcUuid, uuid, internalName, overrideMaterialPresets, modfiedParams,
+                                                      overrideVisuals)
     local src = Ext.Resource.Get(srcUuid, "CharacterVisual") --[[@as ResourceCharacterVisualResource]]
     if not src then
         Error("Could not find source CharacterVisual resource with UUID '" .. tostring(srcUuid) .. "'.")
@@ -318,7 +317,7 @@ function ResourceHelpers.BuildCharacterVisualResource(srcUuid, uuid, internalNam
     )
     childrenNode:AppendChild(matOvNode)
 
-    -- Materials    
+    -- Materials
     for mapKey, mat in pairs(srcSet.Materials) do
         local matNode = buildMaterialNode(mat, mapKey)
         childrenNode:AppendChild(matNode)
@@ -328,7 +327,8 @@ function ResourceHelpers.BuildCharacterVisualResource(srcUuid, uuid, internalNam
     local realMatOverridesNode = childrenNode:AppendChild(XMLNode.new("node", { id = "RealMaterialOverrides", }))
     local realMatOverridesChildren = nil
     for mapKey, mapValue in pairs(srcSet.RealMaterialOverrides) do
-        realMatOverridesChildren = realMatOverridesChildren or realMatOverridesNode:AppendChild(LSXHelpers.ChildrenNode())
+        realMatOverridesChildren = realMatOverridesChildren or
+        realMatOverridesNode:AppendChild(LSXHelpers.ChildrenNode())
         local overrideNode = XMLNode.new("node", { id = "Object", key = "MapKey", })
         overrideNode:AppendChild(LSXHelpers.AttrNode("MapKey", "FixedString", mapKey))
         overrideNode:AppendChild(LSXHelpers.AttrNode("MapValue", "FixedString", mapValue))

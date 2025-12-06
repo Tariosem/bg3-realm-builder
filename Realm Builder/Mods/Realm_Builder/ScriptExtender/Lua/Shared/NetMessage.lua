@@ -1,3 +1,4 @@
+--- mostly server -> client channels
 NetChannel = NetChannel or {}
 
 --- @class SetVisualTransformChannel : NetChannel
