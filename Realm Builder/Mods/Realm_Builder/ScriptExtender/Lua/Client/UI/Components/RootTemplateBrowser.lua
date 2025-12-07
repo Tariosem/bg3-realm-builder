@@ -62,6 +62,7 @@ function RootTemplateBrowser:RenderIcon(entry, cell)
                 TemplateName = entry.TemplateName,
                 Icon = entry.Icon,
                 TemplateId = entry.TemplateId,
+                SourceFile = entry.SourceFile,
             }
             ImguiElements.AddReadOnlyAttrTable(popup, attrs)
         end
@@ -80,7 +81,8 @@ function RootTemplateBrowser:RenderIcon(entry, cell)
                 local spawnPos = {CGetPosition(selected)}
                 local spawnRot = {CGetRotation(selected)}
                 if not spawnPos or not spawnRot then return end
-                Commands.SpawnCommand(entry.TemplateId, { Position=spawnPos, Rotation=spawnRot })
+                local spawnId = entry.TemplateId or entry.Uuid
+                Commands.SpawnCommand(spawnId, { Position=spawnPos, Rotation=spawnRot })
             end)
 
             if self.AddOtherContextItems then

@@ -219,10 +219,7 @@ function RealmBuilderMainMenu:Render()
         end
         local visualBrowser = RB_VisualManager:SetupVisualBrowser()
         self.browsers.visual = visualBrowser
-        self.browsers.visual.iconTooltipName = "SourceFile"
-        self.browsers.visual.TooltipChangeLogic = function()
-        end
-        self.browsers.visual:CreateCachedSort("SourceFile")
+        self.browsers.visual:CreateCachedSort("DisplayName")
         Debug("Visual Browser initialized.")
     end)
 

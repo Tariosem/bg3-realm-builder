@@ -2,15 +2,7 @@
 --- @field SaveToConfig fun(self:EffectBrowser)
 EffectBrowser = _Class("EffectBrowser", IconBrowser)
 
-function EffectBrowser:TooltipChangeLogic()
-    if self.iconTooltipName == "DisplayName" then
-        self.iconTooltipName = "TemplateName"
-        self.tooltipName.Label = GetLoca("Tooltip Name: Template Name")
-    elseif self.iconTooltipName == "TemplateName" then
-        self.iconTooltipName = "DisplayName"
-        self.tooltipName.Label = GetLoca("Tooltip Name: Display Name")
-    end
-end
+EffectBrowser.tooltipNameOptions = {"DisplayName", "TemplateName", "Uuid"}
 
 local function previewEffect(guid, entry)
         local effectsData = {}

@@ -254,8 +254,8 @@ function Commands.DuplicateCommand(targets, path)
         end
         push(function()
             spawn()
-        end)
-    end, #toDuplicate)
+        end, #toDuplicate)
+    end)
 
     local function selectAndPushCommand()
         local proxies = {}

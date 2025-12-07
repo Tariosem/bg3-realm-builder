@@ -1,16 +1,11 @@
 --- @class ItemBrowser : IconBrowser
 ItemBrowser = _Class("ItemBrowser", IconBrowser)
 
-function ItemBrowser:TooltipChangeLogic()
-    if self.iconTooltipName == "DisplayName" then
-        self.iconTooltipName = "TemplateName"
-        self.tooltipName.Label = GetLoca("Tooltip Name: Template Name")
-    elseif self.iconTooltipName == "TemplateName" then
-        self.iconTooltipName = "StatsName"
-        self.tooltipName.Label = GetLoca("Tooltip Name: Stats Name")
-    else
-        self.iconTooltipName = "DisplayName"
-        self.tooltipName.Label = GetLoca("Tooltip Name: Display Name")
+ItemBrowser.tooltipNameOptions = {"DisplayName", "TemplateName", "StatsName"}
+
+function ItemBrowser:OnSelectChange(guid)
+    if self.dataManager:CheckHostValidEquipmentVisual(guid) then
+        self:AddTagsFilter()
     end
 end
 

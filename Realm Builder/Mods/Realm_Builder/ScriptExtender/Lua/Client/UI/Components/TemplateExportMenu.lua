@@ -237,6 +237,16 @@ function TemplateExportMenu:RenderTemplateEntry(cell, entData)
         Level = true,
     }
 
+    local sceneryAttrs = {
+        AllowCameraMovement = true,
+        WalkOn = true,
+        WalkThrough = true,
+        CanClimbOn = true,
+        CanShootThrough = true,
+        CanSeeThrough = true,
+        IsBlocker = true,
+    }
+
     local attrOrder = {
         "TemplateType",
         "TemplateId",
@@ -328,6 +338,22 @@ function TemplateExportMenu:RenderTemplateEntry(cell, entData)
             end
 
             ::continue::
+        end
+
+        if entData.TemplateType == 'scenery' then
+            for k, v in pairs(sceneryAttrs) do
+                local attrRow = attrTable:AddRow()
+                local keyCell = attrRow:AddCell()
+                local valueCell = attrRow:AddCell()
+
+                keyCell:AddText(k .. ":")
+
+                local cB = valueCell:AddCheckbox("##" .. k .. entData.Guid)
+                cB.Checked = entData[k] or false
+                cB.OnChange = function(cb)
+                    entData[k] = cb.Checked
+                end
+            end
         end
 
         if entData.TemplateType == "character" then
@@ -654,9 +680,11 @@ function TemplateExportMenu:__export(exportSettings, progressCallback)
 
     --- map of original material id -> generated material id -> param set
     local matIdToParams = {} --[[@type table<string, table<string, RB_ParameterSet>> ]]
+    local templateToVisual = {} -- origin template -> generated rootTemplateId ->  linkId -> materialId
     for guid, entData in pairs(toBuildCustomVisuals) do
         local overrideVisualID = Uuid_v4()
         local internalName = intenalNameMap[guid]
+
         if entData.TemplateType == "character" then
             -- for character, simply build material preset and apply to character visual
             local presetUuid = Uuid_v4()
@@ -688,6 +716,8 @@ function TemplateExportMenu:__export(exportSettings, progressCallback)
             saveFile(visualPath, bank:Stringify({ AutoFindRoot = true }))
 
             entData.OverrideVisualUuid = overrideVisualID
+        
+
         elseif entData.TemplateType == "item" or entData.TemplateType == "scenery" then
             --- for item and scenery, we need to build visual with material overrides and root template
             local vres = Ext.Resource.Get(entData.OriginalVisualUuid, "Visual") --[[@as ResourceVisualResource ]]
@@ -699,6 +729,7 @@ function TemplateExportMenu:__export(exportSettings, progressCallback)
                 local matResToBuild = {} --[[@type table<string, { OriginalMatId: string, Params: RB_ParameterSet }>> ]]
                 for _,objDesc in pairs(vres.Objects or {}) do
                     local linkId = objDesc.ObjectID
+                    linkIdToMatId[linkId] = objDesc.MaterialID -- default to original material id
                     local paramSet = overrideLinkIdToParams[linkId]
                     if paramSet then -- we have override params for this link id
                         local existingOriMatIdToParams = matIdToParams[objDesc.MaterialID]
@@ -731,6 +762,7 @@ function TemplateExportMenu:__export(exportSettings, progressCallback)
                             }
                             linkIdToMatId[linkId] = generated
                         end
+
                     end
                 end
 
@@ -745,6 +777,24 @@ function TemplateExportMenu:__export(exportSettings, progressCallback)
                     if not matResource then
                         throwError("Failed to build item material override resource for original material " .. oriMat)
                     return
+                end
+
+                if templateToVisual[entData.TemplateId] then
+                    for customTemplate, linkIdToMat in pairs(templateToVisual[entData.TemplateId]) do
+                        local match = true
+                        for linkId, matId in pairs(linkIdToMatId) do
+                            if linkIdToMat[linkId] ~= matId then
+                                match = false
+                                break
+                            end
+                        end
+                        if match then
+                            -- reuse existing template
+                            entData.TemplateId = customTemplate
+                            overrideVisualID = entData.OverrideVisualUuid
+                            goto continue
+                        end
+                    end
                 end
 
                 local matPath = RealmPath.GetItemPresetPath(modInternalName, overrideMatId)
@@ -772,6 +822,8 @@ function TemplateExportMenu:__export(exportSettings, progressCallback)
 
                 --- set override template id
                 entData.TemplateId = overrideTemplateInternalName .. "_" .. overrideTemplateID
+                templateToVisual[entData.TemplateId] = templateToVisual[entData.TemplateId] or {}
+                templateToVisual[entData.TemplateId][entData.TemplateId] = linkIdToMatId
             else
                 Warning("Failed to get original visual resource for entity " .. entData.DisplayName ..
                     " with visual UUID " .. tostring(entData.OriginalVisualUuid))
@@ -780,6 +832,7 @@ function TemplateExportMenu:__export(exportSettings, progressCallback)
             
         end
         entData.OverrideVisualUuid = overrideVisualID
+        ::continue::
         advance("Exporting custom visual for " .. entData.DisplayName .. "...")
     end
 

@@ -139,3 +139,27 @@ NetChannel.SetLighting = Ext.Net.CreateChannel(ModuleUUID, "SetLighting")
 --- @class SetResourceChannel : NetChannel
 --- @field SendToServer fun(channel:self , data: {ResourceType:ResourceBankType, ResourceUUID:string, Data:any})
 NetChannel.SetResource = Ext.Net.CreateChannel(ModuleUUID, "SetResource")
+
+NetChannel.VisualOverride = Ext.Net.CreateChannel(ModuleUUID, "VisualOverride")
+
+if Ext.IsServer() then
+    NetChannel.VisualOverride:SetRequestHandler(function (data, userID)
+        local func = data.Function
+        local args = data.Args
+
+        local entity = Ext.Entity.Get(args[1]) --[[@as EntityHandle]]
+        local name = entity and entity.DisplayName.Name:Get() or "Unknown"
+        if func == "AddCustomVisualOverride" then
+            local entityId = args[1]
+            local visualId = args[2]
+            Osi.AddCustomVisualOverride(entityId, visualId)
+            Debug("Added custom visual override " .. visualId .. " to " .. entityId .. " (" .. name .. ")")
+        elseif func == "RemoveCustomVisualOvirride" then
+            local entityId = args[1]
+            local visualId = args[2]
+            Osi.RemoveCustomVisualOvirride(entityId, visualId)
+            Debug("Removed custom visual override " .. visualId .. " from " .. entityId .. " (" .. name .. ")")
+        end
+        entity:Replicate("CharacterCreationAppearance")
+    end)
+end

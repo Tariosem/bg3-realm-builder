@@ -759,15 +759,19 @@ function TransformGizmo:SetupDragging()
         elseif self.ActiveMode == "Translate" then
             delta = delta --[[@as Vec3 ]]
             self:OnDragTranslate(delta)
-            NetChannel.SetTransform:SendToServer({
-                Guid = self.SavedGizmos.Translate,
-                Transforms = {
-                    [self.SavedGizmos.Translate] = {
-                        Translate = pickerPos + delta,
-                        RotationQuat = pickerRot,
+            if self.SavedGizmos.Translate == nil then
+                Warning("Gizmo:SetupDragging: No saved gizmo for Translate")
+            else
+                NetChannel.SetTransform:SendToServer({
+                    Guid = self.SavedGizmos.Translate,
+                    Transforms = {
+                        [self.SavedGizmos.Translate] = {
+                            Translate = pickerPos + delta,
+                            RotationQuat = pickerRot,
+                        }
                     }
-                }
-            })
+                })
+            end
         elseif self.ActiveMode == "Scale" then
             delta = delta --[[@as Vec3 ]]
             self.Visualizer.ScaleMultiplier = delta

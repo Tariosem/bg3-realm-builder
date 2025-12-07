@@ -6,7 +6,9 @@
 --- @field browserOptions ExtuiTable
 --- @field dataManager ManagerBase
 --- @field iconsImage table<string, ExtuiImageButton|ExtuiStyledRenderable>
+--- @field tooltipNameOptions string[]
 --- @field CreateCachedSort fun(self:IconBrowser, field:string)
+--- @field OnSelectChange fun(self:IconBrowser, guid:GUIDSTRING)
 --- @field Toggle fun(self:IconBrowser)
 --- @field Close fun(self:IconBrowser)
 --- @field RenderPage fun(self:IconBrowser)
@@ -424,7 +426,13 @@ function IconBrowser:RenderMiscMenu()
 
     self.tooltipName.OnClick = function()
         local changed = self.iconTooltipName
-        self:TooltipChangeLogic()
+        local curIndex = table.find(self.tooltipNameOptions, self.iconTooltipName) or 1
+
+        local nextIndex = (curIndex % #self.tooltipNameOptions) + 1
+        self.iconTooltipName = self.tooltipNameOptions[nextIndex]
+        if not self.iconTooltipName then
+            self.iconTooltipName = self.tooltipNameOptions[1]
+        end
         if changed ~= self.iconTooltipName then
             self.tooltipName.Label = GetLoca("Tooltip Name") .. ": " .. self.iconTooltipName
             self:RenderIcons()
@@ -480,16 +488,13 @@ function IconBrowser:RenderBrowserBase()
 
     local browserComboCell = pageButtonsRow:AddCell()
     local browserCombo = NearbyCombo.new(browserComboCell)
-    self.browserCombo = browserCombo -- TODO NearbyCombo
 
     browserCombo.ExcludeCamera = true
     browserCombo.SameLine = true
-    browserCombo.OnChange = function (sel, guid, displayName)
+    browserCombo.OnChange = function(sel, guid, displayName)
         self.selectedGuid = guid
-        if self.dataManager.CheckHostValidEquipmentVisual then
-            if self.dataManager:CheckHostValidEquipmentVisual(guid) then
-                self:AddTagsFilter()
-            end
+        if self.OnSelectChange then
+            self:OnSelectChange(guid)
         end
     end
     
@@ -507,16 +512,6 @@ function IconBrowser:RenderBrowserBase()
     self.iconsBrowser = self.browser:AddChildWindow("Icons Browser")
 
     self:Search()
-end
-
-function IconBrowser:TooltipChangeLogic()
-    if self.iconTooltipName == "DisplayName" then
-        self.iconTooltipName = "TemplateName"
-        self.tooltipName.Label = GetLoca("Tooltip Name: Template Name")
-    elseif self.iconTooltipName == "TemplateName" then
-        self.iconTooltipName = "DisplayName"
-        self.tooltipName.Label = GetLoca("Tooltip Name: Display Name")
-    end
 end
 
 function IconBrowser:CreateCachedSort(field)

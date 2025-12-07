@@ -143,6 +143,38 @@ function ManagerBase:AddTagToData(uuid, tag)
     end
 end
 
+function ManagerBase:ClearTag(tagName)
+    if self.tagMap and self.tagMap[tagName] then
+        for uuid, _ in pairs(self.tagMap[tagName]) do
+            self:RemoveTagFromData(uuid, tagName)
+        end
+    end
+end
+
+function ManagerBase:AddTagToDataNonCustomization(uuid, tag)
+    if self.tagTree and self.tagTree:Find(tag) and not self.tagTree:IsLeaf(tag) then
+        ConfirmPopup:Popup(string.format(GetLoca("The name '%s' is already used as a category. Please choose a different name for the tag."), tag))
+        Debug(string.format("[ManagerBase] Cannot add tag '%s' to UUID '%s' because it is a category in the tag hierarchy.", tag, uuid))
+        return
+    end
+
+    if not uuid or uuid == "" then
+        return
+    end
+
+    if self:HasTagInData(uuid, tag) then
+        return
+    end
+
+    if not self.Data[uuid] then
+        return
+    end
+
+    self.tagCount[tag] = (self.tagCount[tag] or 0) + 1
+    self.tagMap[tag] = self.tagMap[tag] or {}
+    self.tagMap[tag][uuid] = true
+end
+
 function ManagerBase:HasTagInData(uuid, tag)
     if not uuid or uuid == "" then
         return false
