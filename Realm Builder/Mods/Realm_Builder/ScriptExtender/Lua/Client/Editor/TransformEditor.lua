@@ -83,7 +83,7 @@ local individualPivotMode = {
     Individual = true,
 }
 
-local selectionMaxSize = 100
+local selectionMaxSize = 50
 
 --- @param selection RB_MovableProxy[]
 function TransformEditor:Select(selection, notRecordHistory)
@@ -150,6 +150,7 @@ function TransformEditor:AddTarget(proxy)
         table.insert(newSelection, v)
     end
     table.insert(newSelection, proxy)
+    simpleUnique(newSelection)
     self:Select(newSelection)
 end
 
@@ -565,7 +566,7 @@ function TransformEditor:SetupGizmo()
                     rot = Quat.new(transform.RotationQuat)
                 elseif self.Space == "Parent" then
                     local parent = proxy:GetParent()
-                    if parent and EntityExists(parent) then
+                    if parent and parent:IsValid() then
                         rot = Quat.new(parent:GetSavedTransform().RotationQuat)
                     else
                         rot = Quat.Identity()
@@ -598,7 +599,7 @@ function TransformEditor:SetupGizmo()
                 finalDelta = Ext.Math.QuatRotate(startTransform.RotationQuat, delta)
             elseif self.Space == "Parent" then
                 local parent = proxy:GetParent()
-                if parent and EntityExists(parent) then
+                if parent and parent:IsValid() then
                     local parentRot = parent:GetSavedTransform().RotationQuat
                     finalDelta = Ext.Math.QuatRotate(parentRot, delta)
                 else
@@ -716,7 +717,7 @@ function TransformEditor:SetupGizmo()
                 axis = Ext.Math.QuatRotate(curRot, axis)
             elseif self.Space == "Parent" then
                 local parent = proxy:GetParent()
-                if parent and EntityExists(parent) then
+                if parent and parent:IsValid() then
                     local parentRot = parent:GetSavedTransform().RotationQuat
                     axis = Ext.Math.QuatRotate(parentRot, axis)
                 else

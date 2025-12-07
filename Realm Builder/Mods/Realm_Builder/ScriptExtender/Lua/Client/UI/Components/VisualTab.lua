@@ -118,7 +118,14 @@ function VisualTab:GetVisual()
     return VisualHelpers.GetEntityVisual(self.guid)
 end
 
+--- @param entity EntityHandle
+--- @param uuid GUIDSTRING?
+--- @param displayName string?
 function VisualTab.CreateByEntity(entity, uuid, displayName)
+    if entity.Scenery then
+        displayName = entity.Visual and entity.Visual.Visual and GetLastPath(entity.Visual.Visual.VisualResource.SourceFile) or "Unknown Scenery"
+        uuid = entity.Scenery.Uuid
+    end
 
     --- @diagnostic disable-next-line
     local obj = VisualTab.new(uuid, displayName, nil, nil, entity)

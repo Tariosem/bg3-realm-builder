@@ -1050,6 +1050,7 @@ function IconBrowser:Toggle()
 
     self.panel.Open = not self.panel.Open
     if self.panel.Open then
+        self.panel:SetCollapsed(false)
     elseif self.panel.OnClose then
         self.panel:OnClose()
     end

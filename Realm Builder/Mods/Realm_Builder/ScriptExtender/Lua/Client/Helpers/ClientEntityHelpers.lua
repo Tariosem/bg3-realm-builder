@@ -34,6 +34,10 @@ function GetIcon(guid)
         return specialGuids[guid]
     end
 
+    if SceneryRegistry[guid] then
+        return RB_ICONS.Scenery
+    end
+
     if IsCamera(guid) then
         return specialGuids[CameraSymbol]
     end

@@ -603,7 +603,6 @@ function GetNearbyCharactersAndItems(pos, radius)
     local nearbyEntities = {}
 
     for _, entity in pairs(Ext.Entity.GetEntitiesAroundPosition(pos, radius)) do
-        if not (entity.IsCharacter or entity.IsItem) then goto continue end
         local guid = HandleToUuid(entity)
         if IsGizmo(guid) then goto continue end
         if not guid then goto continue end

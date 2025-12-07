@@ -24,7 +24,7 @@ function TransformToolbar:RegisterKeyInputEvents()
         local entity = GetPickingEntity()
 
         if entity and entity.Scenery and not self.Ignore["Scenery"] then
-            RB_GLOBALS.TransformEditor:Select({ SceneryMovableProxy.new(entity.Scenery) })
+            RB_GLOBALS.TransformEditor:Select({ MovableProxy.CreateByGuid(entity.Scenery.Uuid) })
             return
         end
 
@@ -953,6 +953,7 @@ function TransformToolbar:CreateNearbyPopup()
         local contextPopup = panel:AddPopup("NearbyEntitiesContextMenu")
         local contextMenu = ImguiElements.AddContextMenu(contextPopup)
         local localNearbyCombo = NearbyCombo.new(panel, true)
+        localNearbyCombo.EnableScenery = true
         localNearbyCombo:RenderSelectionTable(panel)
         local selected = nil
         localNearbyCombo.ExcludeCamera = true
@@ -963,6 +964,7 @@ function TransformToolbar:CreateNearbyPopup()
                 Label = "Open Entity Tab",
                 OnClick = function(selectable)
                     if not selected or selected == "" then return end
+                    if not EntityExists(selected) then return end
                     local entityTab = EntityTab.new(selected, nil, nil, nil)
                     entityTab:Render()
                 end
@@ -971,6 +973,12 @@ function TransformToolbar:CreateNearbyPopup()
                 Label = "Open Visual Tab",
                 OnClick = function(selectable)
                     if not selected or selected == "" then return end
+                    if SceneryRegistry[selected] then
+                        local entity = SceneryRegistry[selected]
+                        local visualTab = VisualTab.CreateByEntity(entity)
+                        visualTab:Refresh()
+                        return
+                    end
                     local visualTab = VisualTab.new(selected, GetName(selected), nil, nil)
                     visualTab.isAttach = false
                     visualTab:Refresh()
@@ -980,7 +988,9 @@ function TransformToolbar:CreateNearbyPopup()
                 Label = "Set Target",
                 OnClick = function(selectable)
                     if not selected or selected == "" then return end
-                    local proxy = MovableProxy.CreateByGuid(selected)
+                    local proxy = nil
+                    proxy = MovableProxy.CreateByGuid(selected)
+                    if not proxy then return end
                     RB_GLOBALS.TransformEditor:Select({ proxy })
                 end,
                 Hint = "S",

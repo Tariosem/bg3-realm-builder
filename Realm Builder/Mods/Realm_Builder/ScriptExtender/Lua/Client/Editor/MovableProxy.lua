@@ -314,7 +314,7 @@ local movabelCache = {}
 
 local function clearCache()
     for guid,_ in pairs(movabelCache) do
-        if not EntityExists(guid) then
+        if not EntityExists(guid) and not SceneryRegistry[guid] then
             movabelCache[guid] = nil
         end
     end
@@ -333,6 +333,8 @@ function MovableProxy.CreateByGuid(guid)
         proxy = CharacterMovableProxy.new(guid)
     elseif CIsItem(guid) then
         proxy = ItemMovableProxy.new(guid)
+    elseif SceneryRegistry[guid] then
+        proxy = SceneryMovableProxy.new(SceneryRegistry[guid].Scenery)
     else
         proxy = ItemMovableProxy.new(guid)
     end

@@ -122,6 +122,7 @@ function NearbyCombo:SetSelected(guid)
 end
 
 function NearbyCombo:UpdateOptions()
+    UpdateNearbyMap(nil, self.Radius)
     local opts = GetAllNearbyEntries()
     if not opts then opts = {} end
     table.sort(opts, function(a,b)
@@ -147,7 +148,10 @@ function NearbyCombo:UpdateOptions()
     end
     self.ExcludeEntries = self.ExcludeEntries or {}
     for i=#opts,1,-1 do
-        if self.ExcludeEntries[opts[i].Guid] then
+        local entry = opts[i]
+        if self.ExcludeEntries[entry.Guid] then
+            table.remove(opts, i)
+        elseif not self.EnableScenery and entry.IsScenery then
             table.remove(opts, i)
         end
     end
@@ -239,7 +243,6 @@ function NearbyCombo:RenderSelectionTable(parent)
     local sortButton = right:AddSelectable("Sort by DisplayName")
     local refreshBtn = ImguiElements.AddResetButton(right, true)
     refreshBtn.OnClick = function (btn)
-        UpdateNearbyMap({CGetPosition(CGetHostCharacter())}, self.Radius)
         self:UpdateOptions()
         self:RenderIcons()
     end
@@ -269,12 +272,23 @@ function NearbyCombo:RenderSelectionTable(parent)
     configButton.OnClick = function (btn)
         configPopup:Open()
     end
-
-    configPopup:AddText(GetLoca("Scan Radius"))
-    local radiusSlider = ImguiElements.AddSliderWithStep(configPopup, "Radius", self.Radius, 1, 64, 1)
+    local aligedTable = ImguiElements.AddAlignedTable(configPopup)
+    local radiusSlider = aligedTable:AddSliderWithStep("Radius", self.Radius, 1, 64, 1, false)
 
     radiusSlider.OnChange = function (sld)
         self.Radius = sld.Value[1]
+    end
+
+    if self.EnableScenery then
+        local populateScenery = aligedTable:AddButton("Populate Scenery")
+        populateScenery.Label = GetLoca("Populate Scenery")
+        populateScenery.IDContext = configPopup.IDContext .. "PopulateScenery"
+        populateScenery.OnClick = function (chk)
+            PopulateSceneryNearby(nil,self.Radius, function ()
+                self:UpdateOptions()
+                self:RenderIcons()
+            end)
+        end
     end
 
     local iconTable = parent:AddTable("", calcCols(#self.Options))
@@ -296,9 +310,6 @@ end
 function NearbyCombo:RenderIcons()
     if not self.IconContainer then return end
 
-    for _,cell in pairs(self.cellRefs) do
-        cell:Destroy()
-    end
     self.cellRefs = {}
     for _,row in pairs(self.rowsRefs) do
         row:Destroy()
@@ -307,14 +318,29 @@ function NearbyCombo:RenderIcons()
     local table = self.IconContainer
     local characterRow = table:AddRow()
     local itemsRow = table:AddRow()
+    local sceneryRow = table:AddRow()
     table.Columns = calcCols(#self.Options)
 
-    self.rowsRefs = {characterRow, itemsRow}
+    self.rowsRefs = {characterRow, itemsRow, sceneryRow}
+    for _,row in ipairs(self.rowsRefs) do
+        row.Visible = false
+    end
     for _,entry in ipairs(self.Options) do
         local icon = GetIcon(entry.Guid)
         local displayName = entry.DisplayName
 
-        local cell = IsCamera(entry.Guid) and characterRow:AddCell() or CIsCharacter(entry.Guid) and characterRow:AddCell() or itemsRow:AddCell()
+        local row = nil
+        if IsCamera(entry.Guid) or CIsCharacter(entry.Guid) then
+            row = characterRow
+        elseif CIsItem(entry.Guid) then
+            row = itemsRow
+        elseif entry.Entity and entry.Entity.Scenery then
+            row = sceneryRow
+        else
+            row = itemsRow
+        end
+        row.Visible = true
+        local cell = row:AddCell()
         self.cellRefs[displayName] = cell
         cell.IDContext = "Cell" .. entry.Guid
 

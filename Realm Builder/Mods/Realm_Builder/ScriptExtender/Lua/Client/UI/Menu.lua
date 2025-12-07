@@ -98,6 +98,7 @@ function RealmBuilderMainMenu:RenderBrowserMenu()
             end
         end
         targetBrowser:Toggle()
+        
     end
 
     local browserMenu = RegisterWindow("generic", "Browser Menu", "Browser Menu")
