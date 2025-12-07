@@ -224,6 +224,14 @@ function RBPrintPurple(text, opts)
     GradientPrint(text, "#6254FD", "#D6B4FF", "perceptual", opts)
 end
 
+function RBPrintBlue(text, opts)
+    GradientPrint(text, "#6395FF", "#A3CFFF", "perceptual", opts)
+end
+
+function RBPrintGreen(text, opts)
+    GradientPrint(text, "#00FF7F", "#AAFFCC", "perceptual", opts)
+end
+
 function RBPrintYellow(text, opts)
     GradientPrint(text, "#FFD700", "#FFFFDC", "perceptual", opts)
 end

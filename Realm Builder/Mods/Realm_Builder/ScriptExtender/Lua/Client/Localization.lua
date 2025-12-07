@@ -69,6 +69,6 @@ local function ExportUnseenStrings()
     return suc
 end
 
-RegisterConsoleCommand("rb_export_unseen_strings", function()
+RegisterConsoleCommand("rb_export_loca", function(command, args)
     ExportUnseenStrings()
-end, "Exports unseen localization strings to a XML file.")
+end, "Exports unseen localization strings to a XML file and a Lua mapping file.")

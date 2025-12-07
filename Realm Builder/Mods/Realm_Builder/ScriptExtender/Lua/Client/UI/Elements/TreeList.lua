@@ -1,7 +1,12 @@
+--- @class TreeListSortCache
+--- @field TypeOrder integer
+--- @field Key any
+
 --- @class TreeList
 --- @field parent ExtuiTreeParent
 --- @field panel ExtuiTreeParent
 --- @field selectedItems table<any, boolean>
+--- @field SortCache table<any, TreeListSortCache>
 --- @field itemRefs table<any, ExtuiSelectable>
 --- @field nodeRefs table<any, ExtuiTableCell>
 --- @field arrowRefs table<any, ExtuiImageButton>
@@ -19,7 +24,6 @@
 --- @field RenderTree fun(self:TreeList, key:any, node:ExtuiTableCell, fixedCell:ExtuiTableCell):ExtuiSelectable
 --- @field SetUpLeaf fun(self:TreeList, selectable:ExtuiSelectable, key:any, item:any)
 --- @field SetUpTree fun(self:TreeList, tree:ExtuiSelectable, key:any, item:any)
---- @field RenderOrder fun(aKey:any, bKey:any):boolean
 --- @field FilterFunc fun(self:TreeList, key:any, keyword:string):boolean
 --- @field ShowAndShowPath fun(self:TreeList, key:any)
 --- @field ClearSelection fun(self:TreeList)
@@ -168,13 +172,6 @@ end
 --- return true to show the item
 function TreeList:FilterFunc(key, keyword)
     return true
-end
-
---- @param aKey any
---- @param bKey any
---- @return boolean
-function TreeList.RenderOrder(aKey, bKey)
-    return tostring(aKey) < tostring(bKey)
 end
 
 function TreeList:Hide(keyword)
@@ -328,8 +325,6 @@ function TreeList:RenderList()
     })
     local itemCnt = 1
 
-
-
     --- @param key any
     --- @return unknown
     local depthIndent = function(key)
@@ -351,9 +346,11 @@ function TreeList:RenderList()
                 local ok, err = coroutine.resume(thread)
                 if not ok then
                     Error("Error resuming TreeList render coroutine: " .. tostring(err))
+                    self.panel.Disabled = false
                 end
             else
                 Error("TreeList render coroutine is no longer suspended!")
+                self.panel.Disabled = false
             end
         end)
         coroutine.yield()
@@ -362,14 +359,37 @@ function TreeList:RenderList()
     local function collectChildren(key)
         local collector = {}
         local node = self.tree:Find(key)
-        for childKey,_ in pairs(node or {}) do
+        --local now = Ext.Timer.MonotonicTime()
+        local profileKey = "TreeList_SortChildren" .. tostring(key)
+        Ext.Utils.ProfileBegin(profileKey)
+        for childKey,_ in SortedPairs(node, function (a, b)
+            local aObj = self.SortCache[a]
+            local bObj = self.SortCache[b]
+
+            if not aObj or not bObj then
+                return tostring(a) < tostring(b)
+            end
+
+            if aObj.TypeOrder ~= bObj.TypeOrder then
+                return aObj.TypeOrder < bObj.TypeOrder
+            end
+
+            return tostring(aObj.Key) < tostring(bObj.Key)
+        end) do
             table.insert(collector, childKey)
         end
-        table.sort(collector, self.RenderOrder)
+        Ext.Utils.ProfileEnd(profileKey)
+        --Debug("Sorted " .. tostring(#collector) .. " children of " .. tostring(key) .. " in " .. tostring(Ext.Timer.MonotonicTime() - now) .. " ms")
         return collector
     end
 
     local renderFunc = function()
+        self.panel.Disabled = true
+        self.hoveringKey = nil
+        self.SortCache = self.SortCache or {}
+        self:UpdateSortCache()
+        --Debug("Updated TreeList sort cache in " .. tostring(Ext.Timer.MonotonicTime() - now) .. " ms")
+        yieldThread()
         local stack = {}
         local rootChildren = collectChildren(TreeTable.GetRootKey())
         for i = #rootChildren, 1, -1 do
@@ -377,12 +397,16 @@ function TreeList:RenderList()
         end
 
         if #stack == 0 then
+            self.panel.Disabled = false
             self.rootTable.Visible = false
             return
         end
         self.rootTable.Visible = true
         while #stack > 0 do
-            if outerSuspended then return end
+            if outerSuspended then 
+                self.panel.Disabled = false
+                return
+            end
             local item = table.remove(stack)
             local key, depth = item.key, item.depth
             local node = self.tree:Find(key)
@@ -430,8 +454,8 @@ function TreeList:RenderList()
                 self.indexRefs[key] = itemCnt
                 self.indexRefsReverse[itemCnt] = key
                 itemCnt = itemCnt + 1
-                yieldThread()
             end
+            yieldThread()
         end
 
         for key,ele in pairs(self.itemRefs) do
@@ -448,7 +472,9 @@ function TreeList:RenderList()
         end
 
         self:IterativeShow(TreeTable.GetRootKey())
+        self:OnRenderComplete()
         self.__killRenderThread = nil
+        self.panel.Disabled = false
     end
 
     thread = coroutine.create(renderFunc)
@@ -459,6 +485,7 @@ function TreeList:RenderList()
     local ok, err = coroutine.resume(thread)
     if not ok then
         Error("Error starting TreeList render coroutine: " .. tostring(err))
+        self.panel.Disabled = false
     end
 end
 

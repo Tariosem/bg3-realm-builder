@@ -98,12 +98,11 @@ function EntityStore:SetupServerListeners()
                 table.insert(list, entity.Guid)
             end
         end
-        Debug(string.format("Added %d new entities from server in %.2f ms", #list, (Ext.Timer.MonotonicTime() - now)))
         now = Ext.Timer.MonotonicTime()
         if RBMenu then
             RBMenu:NewEntityAdded(list)
         end
-        Debug(string.format("Notified UI of %d new entities in %.2f ms", #list, (Ext.Timer.MonotonicTime() - now)))
+        --Debug(string.format("Notified UI of %d new entities in %.2f ms", #list, (Ext.Timer.MonotonicTime() - now)))
     end)
 
 
@@ -179,7 +178,6 @@ function EntityStore:SubscribeToBindChanges(guid, callback)
         subs[guid] = nil
     end
 
-
     return { Unsubscribe = unsub, ID = sub }
 end
 ---@param guid string
@@ -233,7 +231,7 @@ function EntityStore:GetStoredData(guid)
         return nil
     end
 
-    local entity = Ext.Entity.Get(guid)
+    local entity = Ext.Entity.Get(guid) --[[@as EntityHandle]]
     local data = EntityDatas[guid]
     if entity then
         data.CanInteract = entity.CanInteract and true or false
@@ -243,7 +241,7 @@ function EntityStore:GetStoredData(guid)
         data.CanBeLooted = entity.CanBeLooted and true or false
         data.Position = { CGetPosition(guid) }
         data.Rotation = { CGetRotation(guid) }
-        data.Path = self.Tree:GetPath(guid, true)
+        data.Path = self.Tree:GetPath(guid, true, true)
         
         if CIsCharacter(guid) then
             data.Gravity = nil
@@ -268,6 +266,7 @@ function EntityStore:GetStoredDatas(guids)
     return results
 end
 
+---@return table<GUIDSTRING, EntityData>
 function EntityStore:GetAllStored()
     return DeepCopy(EntityDatas)
 end

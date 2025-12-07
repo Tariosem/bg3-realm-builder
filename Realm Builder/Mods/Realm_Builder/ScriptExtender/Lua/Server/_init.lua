@@ -6,16 +6,7 @@ RequireFiles("Server/", {
     "BindManager",
 })
 
-EM = EffectsManager:init("EffectsManager") --[[@as EffectsManager]]
-
-BM = BindManager
-
-DebugUuid = nil
-
-function OnSessionLoaded()
-end
-
-Ext.Events.SessionLoaded:Subscribe(OnSessionLoaded)
+RB_EffectManager = EffectsManager:init("EffectsManager") --[[@as EffectsManager]]
 
 RequireFiles("Server/", {
     "ServerListeners",

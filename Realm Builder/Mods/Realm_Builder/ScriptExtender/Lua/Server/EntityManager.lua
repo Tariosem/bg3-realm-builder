@@ -241,11 +241,11 @@ function EntityManager:CreateAt(templateId, x, y, z, rx, ry, rz, w)
 
     local newProp = Osi.CreateAt(spawnTemplate, x, y, z, tempoFlag, 0, "") --[[@as string]]
     if not newProp then
-        Error("Failed to create prop with TemplateId: " .. tostring(templateId))
+        Error("Failed to create Entity from TemplateId: " .. tostring(templateId))
         return nil
     end
     local templateType = templateObj and templateObj.TemplateType or "Visual"
-    Debug(debugText:format(tostring(templateType), x, y, z, tostring(templateId), tostring(newProp)))
+    --Debug(debugText:format(tostring(templateType), x, y, z, tostring(templateId), tostring(newProp)))
 
     OsirisHelpers.Propify(newProp)
     RB_FlagHelpers.SetFlag(newProp, "IsSpawned")
@@ -350,7 +350,6 @@ function EntityManager:AddEntity(guid)
 
     self.SavedEntities[guid] = propData
     self:StoreGuid(guid)
-    --Info("Prop added with guid: " .. tostring(guid))
 
     return guid
 end
@@ -436,7 +435,6 @@ function EntityManager:FreeEntity(guids)
             self.SavedEntities[guid] = nil
 
             NetChannel.Entities.Deleted:Broadcast({guid})
-            Info("Prop freed with guid: " .. tostring(guid))
         end
     end
 
@@ -450,17 +448,14 @@ function EntityManager:GetAllEntitiesForClients()
         if item then
             table.insert(items, item[1])
         else
-            Warning("Prop not found for guid: " .. tostring(prop.Guid))
         end
     end
-    --Info("Generated JSON for UI with " .. tostring(#jsonProps) .. " props")
     return items
 end
 
 function EntityManager:GetEntityForClients(guid)
     local entityData = self.SavedEntities[guid]
     if not entityData then
-        Error("Prop not found for guid: " .. tostring(guid))
         return nil
     end
     local entity = Ext.Entity.Get(guid) --[[@as EntityHandle]]

@@ -112,7 +112,7 @@ function NearbyCombo:SetSelected(guid)
         self.combo.SelectedIndex = -1
         return
     end
-    local name = GetDisplayNameFromGuid(guid)
+    local name = GetName(guid)
     if not name then return end
     self.Selected = guid
     ImguiHelpers.SetCombo(self.combo, name, nil, true)
@@ -152,23 +152,25 @@ function NearbyCombo:UpdateOptions()
         end
     end
     self.Options = opts
+    self.IndexToUuid = {}
     local displayNameList = {}
-    for _,entry in pairs(opts) do
+    for i,entry in pairs(opts) do
+        self.IndexToUuid[i] = entry.Guid
         table.insert(displayNameList, entry.DisplayName)
     end
     if self.combo then
         self.combo.Options = displayNameList
-        self:SetSelected(GetName(self.Selected))
+        self:SetSelected(self.Selected)
     end
 end
 
 function NearbyCombo:SetupComboEvents()
     self.combo.OnChange = function (cmb)
-        local name = ImguiHelpers.GetCombo(cmb)
-        local guid = GetGuidFromDisplayName(name)
-        if not guid then Warning("NearbyCombo: No guid found for display name: " .. tostring(name)) return end
+        local index = cmb.SelectedIndex + 1 -- lua start from 1
+        local guid = self.IndexToUuid[index]
+        if not guid then Warning("NearbyCombo: No guid found for index " .. tostring(index)) return end
         if self.OnChange then
-            self:OnChange(guid, name)
+            self:OnChange(guid, cmb.Options[index])
         end
         self.Selected = guid
         self:UpdateImage()

@@ -61,35 +61,11 @@ NetChannel.Spawn:SetRequestHandler(function(data, userID)
     return spawnHandler(data)
 end)
 
-NetChannel.Duplicate:SetRequestHandler(function(data, user)
-    local guids = NormalizeGuidList(data.Guid)
-    local newGuids = {}
-    local guidToTemplateId = {}
-    for _, guid in pairs(guids) do
-        local template = Osi.GetTemplate(guid) --[[@as string]]
-        local pos = { CGetPosition(guid) }
-        --- @diagnostic disable-next-line
-        local newGuid = EntityManager:CreateAt(template, pos[1], pos[2], pos[3], CGetRotation(guid))
-        if not newGuid then
-            Warning("Failed to duplicate entity: " .. tostring(guid))
-            goto continue
-        end
-        --- @diagnostic disable-next-line
-        guidToTemplateId[guid] = template
-        table.insert(newGuids, newGuid)
-        ::continue::
-    end
-
-    NetChannel.Entities.Added:Broadcast({ Entities = EntityManager:GetEntities(newGuids) })
-
-    return { GuidToTemplateId = guidToTemplateId, NewGuids = newGuids }
-end)
-
 local deleteHandler = function(data)
     local guids = NormalizeGuidList(data.Guid)
     local toCache = {}
     for _, guid in pairs(guids) do
-        if EntityManager.SavedEntities[guid] then
+        if RB_FlagHelpers.HasFlag(guid, "IsSpawned") then
             table.insert(toCache, guid)
         else
             Osi.RequestDelete(guid)
@@ -418,18 +394,18 @@ NetChannel.UpdateDummies:SetHandler(function(data, userID)
 end)
 
 NetChannel.PlayEffect:SetHandler(function(data, userID)
-    EM:PlayEffects(data)
+    RB_EffectManager:PlayEffects(data)
 end)
 
 NetChannel.StopEffect:SetHandler(function(data, userID)
     if data.Type == "All" then
-        EM:StopAllEffects()
+        RB_EffectManager:StopAllEffects()
     elseif data.Type == "FxName" then
-        EM:StopEffectByFxName(data.FxName)
+        RB_EffectManager:StopEffectByFxName(data.FxName)
     elseif data.Type == "Object" then
-        EM:StopEffectByObject(data.Object)
+        RB_EffectManager:StopEffectByObject(data.Object)
     elseif data.Type == "Both" then
-        EM:StopEffectByComb(data.FxName, data.Object)
+        RB_EffectManager:StopEffectByComb(data.FxName, data.Object)
     end
 end)
 
@@ -437,22 +413,21 @@ NetChannel.CreateStat:SetHandler(function(data, userID)
     data.DisplayName = data.DisplayName .. tostring(userID)
 
     if data.Type == "StatusData" then
-        EM:PlayStatus(data)
+        RB_EffectManager:PlayStatus(data)
     elseif data.Type == "SpellData" then
-        EM:PlaySpell(data)
+        RB_EffectManager:PlaySpell(data)
     end
 end)
 
-
 NetChannel.StopStatus:SetHandler(function(data, userID)
     if data.Type == "All" then
-        EM:RemoveAllStatuses()
+        RB_EffectManager:RemoveAllStatuses()
         return
     end
 
     data.DisplayName = data.DisplayName .. tostring(userID)
 
-    EM:RemoveStatus(data)
+    RB_EffectManager:RemoveStatus(data)
 end)
 
 

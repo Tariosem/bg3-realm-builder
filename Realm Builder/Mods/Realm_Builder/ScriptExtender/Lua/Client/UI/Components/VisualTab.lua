@@ -211,7 +211,7 @@ function VisualTab:Render(retryCnt)
         return
     end
 
-    self.displayName = self.displayName or GetDisplayNameFromGuid(self.guid)
+    self.displayName = self.displayName or GetName(self.guid)
 
     if self.parent and self.isAttach then
         self:OnAttach()

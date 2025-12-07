@@ -1,3 +1,8 @@
+local Debug = Debug or print
+local Error = Error or print
+local Warning = Warning or print
+local RealmPath = RealmPath or {}
+
 --- @enum LSValueType
 LSValueType = {
     TranslatedString = "TranslatedString",

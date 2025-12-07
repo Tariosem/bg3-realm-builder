@@ -4,6 +4,7 @@ RequireFiles("Client/Editor/", {
     "Gizmo",
     "HistoryManager",
     "Commands",
+    "SpawnPipeline",
     "MovableProxy",
     "TransformEditor",
     "TransformOperator",

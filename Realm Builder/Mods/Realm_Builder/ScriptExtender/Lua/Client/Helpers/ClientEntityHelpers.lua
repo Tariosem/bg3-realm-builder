@@ -45,6 +45,10 @@ function GetIcon(guid)
         return CheckIcon(icon, defaultIcon)
     end
 
+    if not IsUuid(guid) then
+        return defaultIcon
+    end
+
     local entity = UuidToHandle(guid)
     -- Hijack easycheat and focus addon icons for characters XD
     if CIsCharacter(guid) then
@@ -88,8 +92,13 @@ end
 ---@param guid GUIDSTRING
 ---@return string
 function GetName(guid)
-    if GetDisplayNameFromGuid(guid) then
-        return GetDisplayNameFromGuid(guid) or "Unknown"
+    local outlineName = EntityStore:GetPropNameFromGuid(guid)
+    if outlineName then
+        return outlineName
+    end
+
+    if not IsUuid(guid) then
+        return "Unknown"
     end
 
     local entity = Ext.Entity.Get(guid)

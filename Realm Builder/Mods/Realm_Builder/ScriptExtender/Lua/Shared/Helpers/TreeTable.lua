@@ -25,6 +25,7 @@
 --- @field GetParent fun(self:TreeTable, key:any):any|nil
 --- @field GetParentKey fun(self:TreeTable, key:any):any|nil
 --- @field BuildAncestorCache fun(self:TreeTable)
+--- @field GetAllKeys fun(self:TreeTable):any[]
 --- @field _LCA fun(self:TreeTable, key1:any, key2:any):any|nil
 --- @field _LCA_Binary fun(self:TreeTable, key1:any, key2:any):any|nil
 --- @field FindLCA fun(self:TreeTable, keys:any[]):any|nil
@@ -209,7 +210,6 @@ function TreeTable:AddPath(path)
     end
 
     local currentParent = ROOT
-
     for _, segment in ipairs(path) do
         if segment == currentParent and segment ~= ROOT then
             return false
@@ -396,15 +396,15 @@ function TreeTable:GetPath(key, excludeSelf, excludeRoot)
             Debug("Cycle detected when getting path for key '" .. tostring(key) .. "'. Aborting.")
             return {}
         end
+        if excludeRoot and currentKey == ROOT then
+            break
+        end
         table.insert(path, 1, currentKey)
         visited[currentKey] = true
         currentKey = self._parentRefs[currentKey]
     end
     if excludeSelf then
         table.remove(path)
-    end
-    if excludeRoot and path[1] == ROOT then
-        table.remove(path, 1)
     end
     return path
 end
@@ -944,6 +944,32 @@ function TreeTable:SaveAllLeaves()
         leaves[key] = self._nodeRefs[key]
     end
     return leaves
+end
+
+function TreeTable:GetAllKeys()
+    local keys = {}
+    for key, _ in pairs(self._nodeRefs) do
+        table.insert(keys, key)
+    end
+    return keys
+end
+
+function TreeTable:GetAllLeafKeys()
+    local keys = {}
+    for key, _ in pairs(self._leafRefs) do
+        table.insert(keys, key)
+    end
+    return keys
+end
+
+function TreeTable:GetAllTreeKeys()
+    local keys = {}
+    for key, node in pairs(self._nodeRefs) do
+        if type(node) == "table" and not self._leafRefs[key] then
+            table.insert(keys, key)
+        end
+    end
+    return keys
 end
 
 --- return a copy of the internal table

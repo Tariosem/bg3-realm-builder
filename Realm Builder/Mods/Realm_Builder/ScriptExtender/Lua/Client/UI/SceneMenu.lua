@@ -255,7 +255,7 @@ function SceneMenu:SavePreset(name, overwrite, candiates)
         local entity = Ext.Entity.Get(guid)
         if not entity then goto continue end
         local levelName = entity.Level and entity.Level.LevelName or _C().Level.LevelName
-        entInfo.DisplayName = GetDisplayNameFromGuid(guid) or entInfo.DisplayName or "Unknown"
+        entInfo.DisplayName = GetName(guid) or entInfo.DisplayName or "Unknown"
 
         entInfo.Group = entInfo.Group and entInfo.Group ~= "" and entInfo.Group or name
 

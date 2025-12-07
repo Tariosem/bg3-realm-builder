@@ -39,6 +39,25 @@ function Matrix:Abs() return Matrix.new(AbsMatrix(self)) end
 function Matrix:Transpose() return Matrix.new(Ext.Math.Transpose(self)) end
 function Matrix:Determinant() return Ext.Math.Determinant(self) end
 function Matrix:Inverse() return Matrix.new(Ext.Math.Inverse(self)) end
+function Matrix:GetRow(row)
+    local cols = math.sqrt(#self)
+    local result = {}
+    for j = 1, cols do
+        local idx = (row - 1) * cols + j
+        table.insert(result, self[idx])
+    end
+    return result
+end
+
+function Matrix:GetColumn(col)
+    local rows = math.sqrt(#self)
+    local result = {}
+    for i = 1, rows do
+        local idx = (i - 1) * rows + col
+        table.insert(result, self[idx])
+    end
+    return Vec3.new(result)
+end
 
 function Matrix.__mul(a, b)
     local t = type(b)

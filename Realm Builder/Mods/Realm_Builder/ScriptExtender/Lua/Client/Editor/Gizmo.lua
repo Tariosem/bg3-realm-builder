@@ -151,7 +151,7 @@ function TransformGizmo:SetupListeners()
     self:StopListeners()
 
     self:SetupActionSubscriptions()
-    self:SetupIdelTimers()
+    self:SetupIdleTimers()
 end
 
 function TransformGizmo:SetupActionSubscriptions()
@@ -258,7 +258,7 @@ function TransformGizmo:SetupActionSubscriptions()
     end)
 end
 
-function TransformGizmo:SetupIdelTimers()
+function TransformGizmo:SetupIdleTimers()
     local lastRay = nil
     
     self.Timers["DetectHover"] = Timer:EveryFrame(function(timerID)

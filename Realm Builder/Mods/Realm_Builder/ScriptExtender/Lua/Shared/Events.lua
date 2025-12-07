@@ -67,6 +67,12 @@ local commonCommands = {}
 local CommandChannel = Ext.Net.CreateChannel(ModuleUUID, "SyncCommands") --[[@as NetChannel]]
 
 CommandChannel:SetHandler(function(data, user)
+    if data.Request then
+        CommandChannel:SendToClient({
+            Commands = serverCommands,
+        }, user)
+        return
+    end
     local commands = data.Commands
     if Ext.IsServer() then
         clientCommands = commands
@@ -108,6 +114,9 @@ Ext.Events.SessionLoaded:Subscribe(function (e)
         CommandChannel:SendToServer({
             Commands = clientCommands,
         })
+        CommandChannel:SendToServer({
+            Request = true,
+        })
     end
 end)
 
@@ -119,24 +128,26 @@ Ext.RegisterConsoleCommand("rb_help", function(cmd, args)
         return
     end
 
-    print("Realm Builder Console Commands:")
+    RBPrintPurple("Realm Builder Console Commands:")
 
-    print("\n------- Common Commands -------")
+    RBPrintPurple("\n------- Common Context -------")
     local index = 1
     for command, cmdData in SortedPairs(commonCommands) do
-        print(string.format("%d. %s", index, command))
+        RBPrintPurple(string.format("%d. %s", index, command))
         index = index + 1
     end
-    print("\n------- Server Context -------")
+
+    RBPrintGreen("\n------- Server Context -------")
     index = 1
     for command, cmdData in SortedPairs(serverCommands) do
-        print(string.format("%d. %s", index, command))
+        RBPrintGreen(string.format("%d. %s", index, command))
         index = index + 1
     end
-    print("\n------- Client Context -------")
+
+    RBPrintBlue("\n------- Client Context -------")
     index = 1
     for command, cmdData in SortedPairs(clientCommands) do
-        print(string.format("%d. %s", index, command))
+        RBPrintBlue(string.format("%d. %s", index, command))
         index = index + 1
     end
 

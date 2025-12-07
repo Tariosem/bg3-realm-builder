@@ -358,3 +358,13 @@ function BindManager:ClearAllBinds()
         BindInfos = {},
     })
 end
+
+RegisterConsoleCommand("rb_dump_binds", function()
+    Debug("Current Bind Tree:")
+    RainbowDumpTable(BindManager.BindTree._table)
+end)
+
+RegisterConsoleCommand("rb_clear_binds", function()
+    BindManager:ClearAllBinds()
+    Debug("All binds cleared.")
+end)

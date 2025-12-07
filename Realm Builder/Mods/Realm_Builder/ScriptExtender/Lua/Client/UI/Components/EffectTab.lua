@@ -19,8 +19,7 @@ function EffectTab:__init(uuid, parent, displayName)
     self.templateName = templateData and templateData.TemplateName or "Unknown"
 
     self.scanPropOnly = true
-    self.defaultObject = {}
-    self.defaultTarget = {}
+    self.pickerTarget = {}
     self.effects = {}
     self.repeatDelay = 1000
     self.repeatTimer = nil
@@ -274,7 +273,8 @@ function EffectTab:CreatePicker(fieldName, labelText, parent)
 
     uiTable.SameLine = true
 
-    self[fieldName] = self[fieldName] or {}
+    self.pickerTarget[fieldName] = self.pickerTarget[fieldName] or {}
+    local groupObj = self.pickerTarget[fieldName]
 
     local row = uiTable:AddRow()
 
@@ -299,15 +299,15 @@ function EffectTab:CreatePicker(fieldName, labelText, parent)
         end
         selectedRow = selectedTable:AddRow()
         local cell = selectedRow:AddCell()
-        if self[fieldName] and #self[fieldName] > 0 then
+        groupObj = self.pickerTarget[fieldName] or {}
+        if groupObj and #groupObj > 0 then
             defaultNames.Label = "> "
-            for i, name in ipairs(self[fieldName]) do
+            for i, guid in ipairs(groupObj) do
                 if i > 1 then
                     cell:AddText(", ").SameLine = true
                 end
-                local guid = GetGuidFromDisplayName(name)
                 local tempImage = cell:AddImage(GetIcon(guid), IMAGESIZE.ROW)
-                local tempText = cell:AddText(name)
+                local tempText = cell:AddText(GetName(guid) or "")
                 if i > 1  and i % 4 ~= 0 then
                     tempImage.SameLine = true
                 end
@@ -318,17 +318,15 @@ function EffectTab:CreatePicker(fieldName, labelText, parent)
         end
     end
 
-    combo.OnChange = function(text, guid, displayName)
+    combo.OnChange = function(text, guid)
         if not guid or guid == "" then
             return
         end
-        if not displayName or displayName == "" then
-            return
+        if not self.pickerTarget[fieldName] then
+            self.pickerTarget[fieldName] = {}
         end
-        if not self[fieldName] then
-            self[fieldName] = {}
-        end
-        ToggleEntry(self[fieldName], displayName)
+        groupObj = self.pickerTarget[fieldName]
+        ToggleEntry(groupObj, guid)
 
         updateTextContent()
         self:OnChange()
@@ -347,22 +345,16 @@ end
 
 function EffectTab:GetSelectedGuids(field)
     local guids = {}
-    for _, name in ipairs(self[field] or {}) do
-        local guid = GetGuidFromDisplayName(name)
-        if guid then
-            table.insert(guids, guid)
-        end
+    for _, guid in ipairs(self.pickerTarget[field] or {}) do
+        table.insert(guids, guid)
     end
     return guids
 end
 
 function EffectTab:GetSelectedObjects()
     local guids = {}
-    for _,name in ipairs(self.defaultObject) do
-        local guid = GetGuidFromDisplayName(name)
-        if guid then
-            table.insert(guids, guid)
-        end
+    for _,guid in ipairs(self.pickerTarget.defaultObject) do
+        table.insert(guids, guid)
     end
     if guids == nil or #guids == 0 then
         guids = {CGetHostCharacter()}
@@ -372,11 +364,8 @@ end
 
 function EffectTab:GetSelectedTargets()
     local guids = {}
-    for _,name in ipairs(self.defaultTarget) do
-        local guid = GetGuidFromDisplayName(name)
-        if guid then
-            table.insert(guids, guid)
-        end
+    for _,guid in ipairs(self.pickerTarget.defaultTarget) do
+        table.insert(guids, guid)
     end
     if guids == nil or #guids == 0 then
         guids = {CGetHostCharacter()}

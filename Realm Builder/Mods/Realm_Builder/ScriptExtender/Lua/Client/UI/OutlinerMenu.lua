@@ -353,6 +353,9 @@ function OutlinerMenu:RenderTreeList()
         return treeSelectable
     end
 
+    treeList.OnRenderComplete = function ()
+    end
+
     treeList.FilterFunc = function(sel, key, keywords)
         local words = SplitBySpace(keywords)
         local propData = EntityStore:GetStoredData(key)
@@ -372,21 +375,22 @@ function OutlinerMenu:RenderTreeList()
         return false
     end
 
-    treeList.RenderOrder = function(aKey, bKey)
-        if aKey == bKey then return false end
-        if not aKey or not bKey then return false end
-        
-        local aName = tree:IsLeaf(aKey) and (EntityStore:GetStoredData(aKey) and EntityStore:GetStoredData(aKey).DisplayName or aKey) or aKey
-        local bName = tree:IsLeaf(bKey) and (EntityStore:GetStoredData(bKey) and EntityStore:GetStoredData(bKey).DisplayName or bKey) or bKey
-
-        --- always prefer trees over leaves
-        if not tree:IsLeaf(aKey) and tree:IsLeaf(bKey) then
-            return true
-        elseif tree:IsLeaf(aKey) and not tree:IsLeaf(bKey) then
-            return false
+    treeList.UpdateSortCache = function (sel)
+        for key, ent in pairs(EntityStore:GetAllStored()) do
+            local name = ent.DisplayName and ent.DisplayName or key
+            sel.SortCache[key] = {
+                TypeOrder = 1,
+                Key = name
+            }
         end
-
-        return string.lower(aName) < string.lower(bName)
+        for _,key in pairs(treeList.tree:GetAllTreeKeys()) do
+            if not sel.SortCache[key] then
+                sel.SortCache[key] = {
+                    TypeOrder = 0,
+                    Key = key
+                }
+            end
+        end
     end
 
     treeList.OnRenameInput = function(sel, key, newName, selectable)

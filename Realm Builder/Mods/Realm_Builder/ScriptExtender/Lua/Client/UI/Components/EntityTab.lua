@@ -65,7 +65,7 @@ function EntityTab:Render()
 
     self.panel = nil
 
-    self.displayName = GetDisplayNameFromGuid(self.guid) or self.displayName
+    self.displayName = GetName(self.guid) or self.displayName
 
     if self.parent and self.isAttach then
         self.panel = self.parent:AddChildWindow(self.guid)
