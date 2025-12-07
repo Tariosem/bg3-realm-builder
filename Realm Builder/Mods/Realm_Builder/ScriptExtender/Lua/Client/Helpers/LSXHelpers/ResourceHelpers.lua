@@ -348,19 +348,22 @@ function ResourceHelpers.BuildCharacterVisualResource(srcUuid, uuid, internalNam
 end
 
 --- copy a Visual resource and modify it
----@param srcUuid string
+---@param srcUuid string|ResourceVisualResource
 ---@param uuid string
 ---@param internalName string
----@param overrideObjectMat table<string, string> materialID -> overrideMaterialID
+---@param overrideObjectMat table<string, string> linkId - > material uuid
 ---@return XMLNode
 function ResourceHelpers.BuildVisualResource(srcUuid, uuid, internalName, overrideObjectMat)
-    local src = Ext.Resource.Get(srcUuid, "Visual") --[[@as ResourceVisualResource]]
+    local src = srcUuid
+    if type(srcUuid) == "string" then
+        src = Ext.Resource.Get(srcUuid, "Visual") --[[@as ResourceVisualResource]]
+    end
 
     local resourceNode = XMLNode.new("node", { id = "Resource", })
 
     local attributes = {
         lsattrNode("ID", "FixedString", uuid),
-        lsattrNode("Name", "LSString", internalName .. "_" .. uuid),
+        lsattrNode("Name", "LSString", internalName),
         lsattrNode("SourceFile", "LSString", LSXHelpers.GetPathAfterData(src.SourceFile or "")),
         lsattrNode("AttachBone", "FixedString", src.AttachBone),
         lsattrNode("BlueprintInstanceResourceID", "FixedString", src.BlueprintInstanceResourceID),
@@ -398,11 +401,28 @@ function ResourceHelpers.BuildVisualResource(srcUuid, uuid, internalName, overri
     end
 
     -- Objects
+    local nonLods = {}
     for _, obj in pairs(src.Objects) do
+        local linkId = obj.ObjectID
+        local baseMatId = obj.MaterialID
         local objNode = childrenNode:AppendChild(XMLNode.new("node", { id = "Objects", }))
-        objNode:AppendChild(lsattrNode("ObjectID", "FixedString", obj.ObjectID))
+        objNode:AppendChild(lsattrNode("ObjectID", "FixedString", linkId))
         objNode:AppendChild(lsattrNode("LOD", "uint8", obj.LOD))
-        local matId = overrideObjectMat[obj.MaterialID] or obj.MaterialID
+        local overrideMatId = overrideObjectMat[linkId]
+        local matId = overrideMatId or obj.MaterialID
+
+        if obj.LOD == 0 then
+            nonLods[TrimTail(linkId, 2)] = baseMatId -- remove .cnt suffix for matching
+        elseif not overrideMatId then
+            -- if this is a LOD object and no override is specified, try to find matching non-LOD material
+            for otherLinkId, otherMatId in pairs(nonLods) do
+                if StartWith(linkId, otherLinkId) then -- simple prefix match
+                    matId = otherMatId
+                    break
+                end
+            end
+        end
+
         objNode:AppendChild(lsattrNode("MaterialID", "FixedString", matId))
     end
 

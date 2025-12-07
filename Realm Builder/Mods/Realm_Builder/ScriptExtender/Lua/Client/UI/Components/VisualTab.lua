@@ -785,7 +785,7 @@ function VisualTab:DetermineOverrideCharacterParameters()
             local paramName = additionalChoicesHandle[i]
             params[1] = {}
             if i == 3 then
-                num = num * 0.4
+                num = num * 0.4 -- don't know why but this seams to be more accurate
             end
             params[1][paramName] = num
             mergeParameterSets(overrideCharacterParams, params)
@@ -1054,6 +1054,7 @@ function VisualTab:RenderObjectEditor()
         local material = renderable.ActiveMaterial --[[@as AppliedMaterial]]
 
         local meshName = renderable.Model and renderable.Model.Name or "Unknown Mesh"
+        local linkId = renderable.Model and renderable.Model.LinkId or -1
         if meshName == "" then
             meshName = "Unknown Mesh"
         end
@@ -1086,11 +1087,11 @@ function VisualTab:RenderObjectEditor()
 
         --- @return MaterialParameters|nil
 
-        local keyName = meshName .. "::" .. tostring(descIndex)
+        local keyName = linkId .. "::" .. tostring(descIndex)
         self:RenderTransformSliders(materialNode, descIndex, nil, keyName)
         local materialEditor = self.Materials[keyName] or
             MaterialTab.new(materialNode, material.MaterialName, getliveMat, getliveParams) --[[@as MaterialTab]]
-        materialEditor.IsObject = true
+        materialEditor.LinkId = linkId
         materialEditor.Parent = materialNode
         materialEditor.Editor.Instance = getliveMat
         materialEditor.Editor.ParamsSrc = getliveParams
@@ -2439,16 +2440,16 @@ function VisualTab:ExportModifiedMaterialParams()
     return exportedParams
 end
 
---- @alias RB_ObjectEdit table<string, RB_ParameterSet> materialName -> parameter set
+--- @alias RB_ObjectEdit table<string, RB_ParameterSet> linkId -> parameter set
 
 --- @return RB_ObjectEdit?
 function VisualTab:ExportObjectEdit()
     local objEdit = {}
 
     for key, mat in FilteredPairs(self.Materials, function(k, v)
-        return v.IsObject and v:HasChanges() and not objEdit[v.MaterialName]
+        return v.LinkId and v:HasChanges()
     end) do
-        objEdit[mat.MaterialName] = mat:ExportChanges()
+        objEdit[mat.LinkId] = mat:ExportChanges()
     end
 
     if not next(objEdit) then

@@ -1,5 +1,6 @@
 --- @class RootTemplateBrowser : IconBrowser
 --- @field DataManager ManagerBase
+--- @field AddOtherContextItems fun(self:RootTemplateBrowser, contextMenu:RB_ContextMenu, entry:RB_Scenery)
 --- @field new fun(dataManager:ManagerBase, title:string):RootTemplateBrowser
 RootTemplateBrowser = _Class("RootTemplateBrowser", IconBrowser)
 
@@ -81,6 +82,10 @@ function RootTemplateBrowser:RenderIcon(entry, cell)
                 if not spawnPos or not spawnRot then return end
                 Commands.SpawnCommand(entry.TemplateId, { Position=spawnPos, Rotation=spawnRot })
             end)
+
+            if self.AddOtherContextItems then
+                self:AddOtherContextItems(actTab, entry)
+            end
         end
         rPopup:Open()
     end

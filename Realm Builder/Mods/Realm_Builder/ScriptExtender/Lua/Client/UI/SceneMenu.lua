@@ -30,7 +30,7 @@ end
 --- @class SceneMenu
 --- @field panel ExtuiTabItem
 --- @field SavePreset fun(self: SceneMenu, name: string, overwrite: boolean?, candiates: GUIDSTRING[]?)
---- @field presets table<string, SceneData>
+--- @field sceneDatas table<string, SceneData>
 --- @field Add fun(parent: ExtuiTabBar):SceneMenu
 SceneMenu = _Class("PresetMenu")
 
@@ -38,7 +38,7 @@ function SceneMenu:__init(parent)
     self.panel = nil
     self.parent = parent
 
-    self.presets = ClientPresetData
+    self.sceneDatas = ClientPresetData
     self.currentPreset = nil
 
     self.visibleOnly = true
@@ -238,9 +238,9 @@ function SceneMenu:SavePreset(name, overwrite, candiates)
         return
     end
 
-    if self.presets[name] and not overwrite then
+    if self.sceneDatas[name] and not overwrite then
         ConfirmPopup:QuickConfirm(
-            string.format(GetLoca("A preset with name : '%s' already exists. Overwrite?"), name),
+            string.format(GetLoca("A scene with name : '%s' already exists. Overwrite?"), name),
             function()
                 self:SavePreset(name, true, candiates)
             end,
@@ -315,7 +315,7 @@ function SceneMenu:SavePreset(name, overwrite, candiates)
 
     local tree = { [lca] = DeepCopy(EntityStore.Tree:Find(lca)) }
 
-    self.presets[name] = {
+    self.sceneDatas[name] = {
         PresetType = self.isRelative and "Relative" or "Absolute",
         Name = name,
         Level = _C().Level.LevelName,
@@ -336,7 +336,7 @@ function SceneMenu:GetUniqueName(baseName)
 
     while true do
         local exists = false
-        for presetName, preset in ipairs(self.presets) do
+        for presetName, preset in ipairs(self.sceneDatas) do
             if presetName == name then
                 exists = true
                 break
@@ -354,7 +354,7 @@ end
 
 function SceneMenu:GetAllPresetNames()
     local names = {}
-    for name,_ in pairs(self.presets) do
+    for name,_ in pairs(self.sceneDatas) do
         table.insert(names, name)
     end
     table.sort(names, function(a, b) return a < b end)
@@ -362,7 +362,7 @@ function SceneMenu:GetAllPresetNames()
 end
 
 function SceneMenu:CheckModList(name)
-    for modId, modName in pairs(self.presets[name].ModList or {}) do
+    for modId, modName in pairs(self.sceneDatas[name].ModList or {}) do
         if not Ext.Mod.IsModLoaded(modId) then
             local presentInfo = modName and modName ~= "" and modName or modId
             ConfirmPopup:QuickConfirm(
@@ -378,7 +378,7 @@ function SceneMenu:CheckModList(name)
 end
 
 function SceneMenu:LoadPreset(name, isPreview, force)
-    if not self.presets[name] then
+    if not self.sceneDatas[name] then
         return nil
     end
     local modAllLoaded = force and true or self:CheckModList(name)
@@ -386,9 +386,9 @@ function SceneMenu:LoadPreset(name, isPreview, force)
         return nil
     end
 
-    if self.presets[name].PresetType == "Absolute" and self.presets[name].Level ~= _C().Level.LevelName and not force then
+    if self.sceneDatas[name].PresetType == "Absolute" and self.sceneDatas[name].Level ~= _C().Level.LevelName and not force then
         ConfirmPopup:Popup(
-            string.format(GetLoca("This preset was saved in level '%s'. You are currently in level '%s'."), self.presets[name].Level, _C().Level.LevelName))
+            string.format(GetLoca("This preset was saved in level '%s'. You are currently in level '%s'."), self.sceneDatas[name].Level, _C().Level.LevelName))
         return nil
     end
 
@@ -397,10 +397,10 @@ function SceneMenu:LoadPreset(name, isPreview, force)
         parentObj = CGetHostCharacter()
     end
 
-    local data = DeepCopy(self.presets[name])
-    if data == self.presets[name] then
+    local data = DeepCopy(self.sceneDatas[name])
+    if data == self.sceneDatas[name] then
         Debug("SceneMenu:LoadPreset: DeepCopy failed, using original data.")
-        data = DeepCopy(self.presets[name])
+        data = DeepCopy(self.sceneDatas[name])
     end
     if isPreview then
         data.SpawnType = "Preview"
@@ -413,11 +413,11 @@ function SceneMenu:LoadPreset(name, isPreview, force)
 end
 
 function SceneMenu:DeletePreset(name)
-    if not self.presets[name] then
+    if not self.sceneDatas[name] then
         Warning("Preset not found: " .. name)
         return false
     end
-    self.presets[name] = nil
+    self.sceneDatas[name] = nil
     self:SaveToFile(name)
 
     self.collapsingTable.OnWidthChange = nil
@@ -451,14 +451,14 @@ function SceneMenu:ClearSidebarHighlights()
         return
     end
     for name, btn in pairs(self.presetSideBarButtons) do
-        btn.Highlight = self.presets[name].Highlight or false
+        btn.Highlight = self.sceneDatas[name].Highlight or false
         btn.Selected = false
     end
 end
 
 function SceneMenu:SetupContextMenu()
     if self.presetContextMenu then
-        self.highLightPicker.Color = self.presets[self.selectedPreset].HighlightColor or {1,1,1,1}
+        self.highLightPicker.Color = self.sceneDatas[self.selectedPreset].HighlightColor or {1,1,1,1}
         self.presetContextMenu:Open()
         return
     end
@@ -486,7 +486,7 @@ function SceneMenu:SetupContextMenu()
             Label = GetLoca("Highlight"),
             OnClick = function ()
                 if not self.selectedPreset then return end
-                self.presets[self.selectedPreset].Highlight = not self.presets[self.selectedPreset].Highlight
+                self.sceneDatas[self.selectedPreset].Highlight = not self.sceneDatas[self.selectedPreset].Highlight
                 self:SaveToFile(self.selectedPreset)
                 self:RenderSidebarSelection()
             end,
@@ -515,29 +515,29 @@ function SceneMenu:SetupContextMenu()
     local highLightPicker = cm:AddMenu(GetLoca("Highlight Color")):AddColorEdit(GetLoca("Select Highlight Color"))
     self.highLightPicker = highLightPicker
     if self.selectedPreset then
-        highLightPicker.Color = self.presets[self.selectedPreset].HighlightColor or {1,1,1,1}
+        highLightPicker.Color = self.sceneDatas[self.selectedPreset].HighlightColor or {1,1,1,1}
     else
         highLightPicker.Color = {1,1,1,1}
     end
     highLightPicker.OnChange = function(colorPicker)
         local name = self.selectedPreset
         if not self.selectedPreset then return end
-        self.presets[self.selectedPreset].HighlightColor = highLightPicker.Color
-        self.presets[name].HighlightColor = colorPicker.Color
+        self.sceneDatas[self.selectedPreset].HighlightColor = highLightPicker.Color
+        self.sceneDatas[name].HighlightColor = colorPicker.Color
         local btn = self.presetSideBarButtons[name]
         if btn then
-            btn:SetColor("Header", AdjustColor(self.presets[name].HighlightColor, -0.05))
-            btn:SetColor("HeaderHovered", self.presets[name].HighlightColor)
+            btn:SetColor("Header", AdjustColor(self.sceneDatas[name].HighlightColor, -0.05))
+            btn:SetColor("HeaderHovered", self.sceneDatas[name].HighlightColor)
         end
         if self.presentingPreset == name and self.presetInfoWindow then
             self.previewTable.BordersOuter = true
             --self.previewTable.RowBg = true
             --self.previewTable:SetColor("TableRowBg", AdjustColor(self.presets[name].HighlightColor, -0.1, -0.1, -0.6))
-            self.previewTable:SetColor("TableBorderStrong", self.presets[name].HighlightColor)
+            self.previewTable:SetColor("TableBorderStrong", self.sceneDatas[name].HighlightColor)
             local title = self.presetInfoWindow.UserData and self.presetInfoWindow.UserData.Title
             if title then
-                title:SetColor("Header", AdjustColor(self.presets[name].HighlightColor, -0.05))
-                title:SetColor("HeaderHovered", self.presets[name].HighlightColor)
+                title:SetColor("Header", AdjustColor(self.sceneDatas[name].HighlightColor, -0.05))
+                title:SetColor("HeaderHovered", self.sceneDatas[name].HighlightColor)
             end
         end
         self:SaveToFile(name)
@@ -573,19 +573,19 @@ function SceneMenu:RenderSidebarSelection()
     for _, name in ipairs(allPresets) do
         local cell = tempRow:AddCell()
         local button = cell:AddSelectable(name)
-        self.presetsDescText[name] = button:Tooltip():AddText(self.presets[name].Description or "")
+        self.presetsDescText[name] = button:Tooltip():AddText(self.sceneDatas[name].Description or "")
         if self.presetsDescText[name].Label == "" then
             button:Tooltip():SetStyle("Alpha", 0)
         else
             button:Tooltip():SetStyle("Alpha", 1)
         end
 
-        if self.presets[name].Highlight then
+        if self.sceneDatas[name].Highlight then
             button.Highlight = true
         end
-        if self.presets[name].HighlightColor then
-            button:SetColor("Header", AdjustColor(self.presets[name].HighlightColor, -0.05))
-            button:SetColor("HeaderHovered", self.presets[name].HighlightColor)
+        if self.sceneDatas[name].HighlightColor then
+            button:SetColor("Header", AdjustColor(self.sceneDatas[name].HighlightColor, -0.05))
+            button:SetColor("HeaderHovered", self.sceneDatas[name].HighlightColor)
         end
 
         button.OnClick = function()
@@ -617,7 +617,7 @@ function SceneMenu:RenderPresetInfo(name)
         self.presetInfoWindow = nil
     end
 
-    if not name or name == "" or not self.presets[name] then
+    if not name or name == "" or not self.sceneDatas[name] then
         self.presentingPreset = nil
         return
     end
@@ -634,7 +634,7 @@ function SceneMenu:RenderPresetInfo(name)
     --- @type ExtuiWindowBase
     self.presetInfoWindow = self.previewCell:AddChildWindow("name" .. "presetInfo")
 
-    local presetData = self.presets[name]
+    local presetData = self.sceneDatas[name]
 
     local title = self.presetInfoWindow:AddSelectable(name)
     title.Selected = true
@@ -675,7 +675,7 @@ function SceneMenu:RenderPresetInfo(name)
     StyleHelpers.ApplyInfoButtonStyle(confirmInputBtn)
     confirmInputBtn.SameLine = true
     confirmInputBtn.OnClick = function()
-        self.presets[name].Description = presetDescInput.Text
+        self.sceneDatas[name].Description = presetDescInput.Text
         if self.presetsDescText[name] and presetDescInput ~= "" then
             self.presetSideBarButtons[name]:Tooltip():SetStyle("Alpha", 1)
             self.presetsDescText[name].Label = presetDescInput.Text
@@ -817,7 +817,7 @@ function SceneMenu:RenderPresetObjectInfo(parent, entInfo, presetName, presetTyp
     local canInteract = entInfo.CanInteract and GetLoca("Yes") or GetLoca("No")
     local movable = entInfo.Movable and GetLoca("Yes") or GetLoca("No")
     local visualPreset = entInfo.VisualPreset or ""
-    local presetData = self.presets[presetName] or {}
+    local presetData = self.sceneDatas[presetName] or {}
 
     local tagsText = ""
     if #tags > 0 then
@@ -979,7 +979,7 @@ function SceneMenu:SaveToFile(presetName)
     local refFilePath = GetPresetReferencePath()
     local refData = {}
 
-    for name, preset in pairs(self.presets) do
+    for name, preset in pairs(self.sceneDatas) do
         if preset.Name and preset.Name ~= "" then
             refData[name] = {}
         end
@@ -989,7 +989,7 @@ function SceneMenu:SaveToFile(presetName)
 
     if presetName then
         local presetFilePath = GetPresetPath(presetName)
-        local presetData = self.presets[presetName]
+        local presetData = self.sceneDatas[presetName]
         if presetData then
             Ext.IO.SaveFile(presetFilePath, Ext.Json.Stringify(presetData))
         end
@@ -1000,20 +1000,20 @@ function SceneMenu:LoadFromFile()
     local refFilePath = GetPresetReferencePath()
     local refData = Ext.IO.LoadFile(refFilePath)
     if refData then
-        self.presets = Ext.Json.Parse(refData) or {}
+        self.sceneDatas = Ext.Json.Parse(refData) or {}
     else
-        self.presets = {}
+        self.sceneDatas = {}
     end
 
-    for name,_ in pairs(self.presets) do
+    for name,_ in pairs(self.sceneDatas) do
         local presetFilePath = GetPresetPath(name)
         local presetFile = Ext.IO.LoadFile(presetFilePath)
         if presetFile then
             local presetData = Ext.Json.Parse(presetFile)
-            self.presets[name] = presetData or nil
+            self.sceneDatas[name] = presetData or nil
         else
             Warning("PresetManager: Preset file not found for " .. name)
-            self.presets[name] = nil
+            self.sceneDatas[name] = nil
         end
     end
     
@@ -1035,7 +1035,7 @@ function SceneMenu:TryToLoadFile(presetName)
     end
 
     local function savePreset()
-        self.presets[presetName] = Ext.Json.Parse(presetFile) or {}
+        self.sceneDatas[presetName] = Ext.Json.Parse(presetFile) or {}
         local refFilePath = GetPresetReferencePath()
         local refData = {}
         local refFile = Ext.IO.LoadFile(refFilePath)
@@ -1049,7 +1049,7 @@ function SceneMenu:TryToLoadFile(presetName)
         self:RenderSidebarSelection()
     end
 
-    if self.presets[presetName] then
+    if self.sceneDatas[presetName] then
         ConfirmPopup:QuickConfirm(
             string.format(GetLoca("A preset with name : '%s' already exists. Overwrite?"), presetName),
             function()

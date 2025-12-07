@@ -80,6 +80,51 @@ ParamTypeToLSValueType = {
     [6] = "FixedString",
 }
 
+MaterialParamUtils = {}
+
+--- @param paramSetA RB_ParameterSet
+--- @param paramSetB RB_ParameterSet
+function MaterialParamUtils.SameParamSet(paramSetA, paramSetB)
+    if #paramSetA ~= #paramSetB then
+        return false
+    end
+    for typeRef, paramsA in pairs(paramSetA) do
+        local paramsB = paramSetB[typeRef]
+        if not paramsB then
+            return false
+        end
+
+        for paramName, valueA in pairs(paramsA) do
+            local valueB = paramsB[paramName]
+            if not valueB then
+                return false
+            end
+
+            if type(valueA) ~= type(valueB) then
+                return false
+            end
+
+            if type(valueA) == "table" then
+                if #valueA ~= #valueB then
+                    return false
+                end
+
+                for i = 1, #valueA do
+                    if valueA[i] ~= valueB[i] then
+                        return false
+                    end
+                end
+            else
+                if valueA ~= valueB then
+                    return false
+                end
+            end
+        end
+    end
+
+    return true
+end
+
 ---@param materialName string
 ---@return MaterialProxy? mp
 function MaterialProxy.new(materialName)

@@ -320,6 +320,7 @@ end
 --- @param gizmo TransformGizmo
 --- @param pointTransform Transform
 --- @param index integer
+--- @
 function TransformEditor:MakePointVisualization(gizmo, pointTransform, index)
     if self.PointVisualizations and self.PointVisualizations[index] then
         local pointGuid = self.PointVisualizations[index]

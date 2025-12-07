@@ -988,6 +988,7 @@ function OutlinerMenu:SetupCollectionSelectablePopup(openKey)
         {
             Label = GetLoca("Save as Prefab"),
             OnClick = saveAsPrefab,
+            Warning = "Won't save visual changes, only the original templates are saved.",
         },
         {
             Label = GetLoca("Export Collection"),

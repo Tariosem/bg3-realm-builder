@@ -35,11 +35,13 @@ local KEYBIND_EVENT_RENDER_ORDER = {
         "ShowSelection",
         "ApplyGravity",
         "FreezeGravity",
+        "OpenNearbyPopup",
     },
     TransformEditor = {
-        "TranslateMode",
-        "RotateMode",
-        "ScaleMode",
+        "CycleMode",
+        "Grab",
+        "Rotate",
+        "Scale",
         "FollowTarget",
     },
     BindUtility = {

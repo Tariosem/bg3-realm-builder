@@ -68,10 +68,11 @@ end
 
 local lsattrNode = LSXHelpers.AttrNode
 
+--E:/SteamLibrary/steamapps/common/Baldurs Gate 3/Data/Generated/Public/EnchantedThreads/Assets/EnchantedThreads_Overskirt_Normal_Merged__NM.DDS
 --- @param path string
 --- @return string
 function LSXHelpers.GetPathAfterData(path)
-    return path:match("Data[\\/](.*)") or path
+    return path:match("Baldurs Gate 3/Data/(.+)") or path
 end
 
 function LSXHelpers.BuildLayerListNode(levelName)

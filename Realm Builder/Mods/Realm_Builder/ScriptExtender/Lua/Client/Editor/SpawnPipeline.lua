@@ -1,11 +1,12 @@
 --- workaround for spawning scenery
---- delay on server side doesn't seam to work
+--- @type ({func:fun(), cnt:number})[]
 local spawnQueue = {}
 local maxSpawningAtOnce = 500
 local spawningCnt = 0
 local isResuming = false
 local spawnPipeline
 
+--[[
 NetChannel.Spawn:SetHandler(function(data, userID)
     Timer:Ticks(30, function(timerID)
         NetChannel.Spawn:SendToServer({
@@ -13,6 +14,7 @@ NetChannel.Spawn:SetHandler(function(data, userID)
         })
     end)
 end)
+]]
 
 local function safeResume(co)
     if isResuming then
@@ -26,7 +28,7 @@ local function safeResume(co)
 
     local ok, err = coroutine.resume(co)
     if not ok then
-        Error("Error resuming spawn pipeline: " .. tostring(err))
+        Error(debug.traceback(co, "Error resuming spawn pipeline: " .. tostring(err)))
     end
 end
 
@@ -41,7 +43,6 @@ local function reviveSpawnPipeline()
                 local spawnObj = table.remove(spawnQueue, 1)
                 local spawnFunc = spawnObj.func
                 local spawnCnt = spawnObj.cnt or 1
-                spawningCnt = spawningCnt + spawnCnt
                 spawnFunc()
                 spawningCnt = spawningCnt - spawnCnt
             end
@@ -67,14 +68,18 @@ local function waitFor30TicksAndResume()
 end
 
 local exceedNotif = Notification.new("Spawn Queue Full")
-exceedNotif.Pivot = {0.7, 0}
+exceedNotif.Pivot = { 0.7, 0 }
 local function push(func, cnt)
     if cnt + spawningCnt > maxSpawningAtOnce then
-        exceedNotif:Show("Spawn Queue Full", "The spawn queue has reached its maximum capacity of " .. tostring(maxSpawningAtOnce) .. " spawning operations.\n Please wait for existing operations to complete before adding more.", 5.0)
+        exceedNotif:Show("Spawn Queue Full",
+            "The spawn queue has reached its maximum capacity of " ..
+            tostring(maxSpawningAtOnce) ..
+            " spawning operations.\n Please wait for existing operations to complete before adding more.")
         Warning("Try again later, too many spawning operations in the queue.")
         return
     end
-    table.insert(spawnQueue, {func = func, cnt = cnt or 1})
+    spawningCnt = spawningCnt + (cnt or 1)
+    table.insert(spawnQueue, { func = func, cnt = cnt or 1 })
     if coroutine.status(spawnPipeline) == "suspended" then
         safeResume(spawnPipeline)
     else

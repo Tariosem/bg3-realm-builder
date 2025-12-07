@@ -7,6 +7,7 @@
 --- @field Separator boolean?
 --- @field DontClosePopups boolean?
 --- @field Danger boolean?
+--- @field Warning string?
 
 --- @class RB_ContextMenu : ExtuiTable
 --- @field hotKeySubs table<string, RBSubscription>
@@ -89,6 +90,12 @@ function ContextMenuClass:AddContext(context, isFocus)
 
         if item.Danger then
             StyleHelpers.ApplyDangerSelectableStyle(selectable)
+        end
+
+        if item.Warning then
+            local tooltip = selectable:Tooltip()
+            StyleHelpers.ApplyWarningTooitipStyle(tooltip)
+            tooltip:AddText(item.Warning).TextWrapPos = 900 * SCALE_FACTOR
         end
 
         if item.DontClosePopups then

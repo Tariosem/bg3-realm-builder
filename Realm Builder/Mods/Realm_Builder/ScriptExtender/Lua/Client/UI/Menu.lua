@@ -217,10 +217,10 @@ function RealmBuilderMainMenu:Render()
         if not RB_VisualManager or not RB_VisualManager.populated then
             return
         end
-        self.browsers.visual = RootTemplateBrowser.new(RB_VisualManager, "Visual - Browser")
+        local visualBrowser = RB_VisualManager:SetupVisualBrowser()
+        self.browsers.visual = visualBrowser
         self.browsers.visual.iconTooltipName = "SourceFile"
         self.browsers.visual.TooltipChangeLogic = function()
-        
         end
         self.browsers.visual:CreateCachedSort("SourceFile")
         Debug("Visual Browser initialized.")

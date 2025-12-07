@@ -464,6 +464,10 @@ function IconBrowser:RenderMiscMenu()
     end
 end
 
+function IconBrowser:GetSelected()
+    return self.selectedGuid or CGetHostCharacter()
+end
+
 function IconBrowser:RenderBrowserBase()
     self.browser = self.panel:AddChildWindow("Browser")
 

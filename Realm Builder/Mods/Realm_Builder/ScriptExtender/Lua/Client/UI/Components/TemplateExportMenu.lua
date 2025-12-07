@@ -234,6 +234,7 @@ function TemplateExportMenu:RenderTemplateEntry(cell, entData)
         VisualObjectMaterialOverride = true,
         ExcludeFromExport = true,
         DisplayIcon = true,
+        Level = true,
     }
 
     local attrOrder = {
@@ -482,6 +483,23 @@ function TemplateExportMenu:ClearVisualizations()
     })
 end
 
+local function throwExportError(message, exportSettings, progressCallback, co)
+    local stack = co and debug.traceback(co, message) or debug.traceback(message)
+    Error(stack)
+    progressCallback(-1, message)
+    local time = GetFormatTime()
+    local suc = Ext.IO.SaveFile(RealmPath.GetMapModLogPath(time),
+        Ext.Json.Stringify({
+            Time = Ext.Timer.ClockTime(),
+            Message = message,
+            ModPack = exportSettings,
+            Stack = stack,
+        }, { Beautify = true, StringifyInternalTypes = true }))
+    if not suc then
+        Warning("Failed to save export error log file at " .. RealmPath.GetMapModLogPath(time))
+    end
+end
+
 function TemplateExportMenu:ExportToMod(exportSettings, progressCallback)
     local co = coroutine.create(function()
         self:__export(exportSettings, progressCallback)
@@ -489,21 +507,7 @@ function TemplateExportMenu:ExportToMod(exportSettings, progressCallback)
 
     local suc, msg = coroutine.resume(co)
     if not suc then
-        msg = tostring(msg)
-        progressCallback(-1, msg)
-        local traceStack = debug.traceback(co, msg)
-        Error(traceStack)
-        progressCallback(-1, tostring(msg))
-        local time = GetFormatTime()
-        local errorLog = {
-            Time = Ext.Timer.ClockTime(),
-            Error = msg,
-            Stack = debug.traceback(co, ""),
-            ModPack = exportSettings,
-        }
-        Ext.IO.SaveFile(RealmPath.GetMapModLogPath(time),
-            Ext.Json.Stringify(errorLog, { Beautify = true, StringifyInternalTypes = true }))
-        
+        throwExportError("Export failed: " .. tostring(msg), exportSettings, progressCallback, co)
     end
 end
 
@@ -550,18 +554,7 @@ function TemplateExportMenu:__export(exportSettings, progressCallback)
 
     local function throwError(message)
         Error(debug.traceback(message))
-        progressCallback(-1, message)
-        local time = GetFormatTime()
-        suc = Ext.IO.SaveFile(RealmPath.GetMapModLogPath(time),
-            Ext.Json.Stringify({
-                Time = Ext.Timer.ClockTime(),
-                Message = message,
-                ModPack = exportSettings,
-                Stack = debug.traceback()
-            }, { Beautify = true, StringifyInternalTypes = true }))
-        if not suc then
-            Warning("Failed to save export error log file at " .. RealmPath.GetMapModLogPath(time))
-        end
+        throwExportError(message, exportSettings, progressCallback)
     end
 
     local function yield()
@@ -659,10 +652,13 @@ function TemplateExportMenu:__export(exportSettings, progressCallback)
         intenalNameMap[guid] = modInternalName .. "_" .. baseName .. "_" .. PadNumber(templateNameCnt[baseName], 3) 
     end
 
+    --- map of original material id -> generated material id -> param set
+    local matIdToParams = {} --[[@type table<string, table<string, RB_ParameterSet>> ]]
     for guid, entData in pairs(toBuildCustomVisuals) do
         local overrideVisualID = Uuid_v4()
         local internalName = intenalNameMap[guid]
         if entData.TemplateType == "character" then
+            -- for character, simply build material preset and apply to character visual
             local presetUuid = Uuid_v4()
             local presetInternalName = internalName .. "_CharacterPreset_" .. presetUuid
 
@@ -693,47 +689,95 @@ function TemplateExportMenu:__export(exportSettings, progressCallback)
 
             entData.OverrideVisualUuid = overrideVisualID
         elseif entData.TemplateType == "item" or entData.TemplateType == "scenery" then
-            local matOverrideMap = {}
+            --- for item and scenery, we need to build visual with material overrides and root template
+            local vres = Ext.Resource.Get(entData.OriginalVisualUuid, "Visual") --[[@as ResourceVisualResource ]]
+            if vres then
+                --- map of object link id -> override params
+                local overrideLinkIdToParams = entData.VisualObjectMaterialOverride or {}
+                
+                local linkIdToMatId = {} -- map of object link id -> material id (original or generated)
+                local matResToBuild = {} --[[@type table<string, { OriginalMatId: string, Params: RB_ParameterSet }>> ]]
+                for _,objDesc in pairs(vres.Objects or {}) do
+                    local linkId = objDesc.ObjectID
+                    local paramSet = overrideLinkIdToParams[linkId]
+                    if paramSet then -- we have override params for this link id
+                        local existingOriMatIdToParams = matIdToParams[objDesc.MaterialID]
+                    
+                        local generated = nil
+                        if existingOriMatIdToParams then
+                            --- check if existing generated material params match
+                            --- if match, reuse existing generated material id
+                            for generatedId, otherParamSet in pairs(existingOriMatIdToParams) do
+                                if MaterialParamUtils.SameParamSet(otherParamSet, paramSet) then
+                                    generated = generatedId
+                                    break
+                                end
+                                yield()
+                            end
+                        else
+                            matIdToParams[objDesc.MaterialID] = {}
+                            existingOriMatIdToParams = matIdToParams[objDesc.MaterialID]
+                        end
+                        if generated then
+                            --- reuse existing
+                            linkIdToMatId[linkId] = generated
+                        else
+                            --- create new
+                            generated = Uuid_v4()
+                            existingOriMatIdToParams[generated] = paramSet
+                            matResToBuild[generated] = {
+                                OriginalMatId = objDesc.MaterialID,
+                                Params = paramSet,
+                            }
+                            linkIdToMatId[linkId] = generated
+                        end
+                    end
+                end
 
-            --- build material resource we need
-            for oriMat, overrideParams in pairs(entData.VisualObjectMaterialOverride or {}) do
-                local overrideMat = Uuid_v4()
-                matOverrideMap[oriMat] = overrideMat
-                local matInternalName = internalName .. "_MatOverride_" .. overrideMat
-                local matBank = LSXHelpers.BuildMaterialBank()
-                local matResource = ResourceHelpers.BuildMaterialResource(oriMat, overrideMat, overrideParams,
-                    matInternalName)
-                matBank:AppendChild(matResource)
-                if not matResource then
-                    throwError("Failed to build item material override resource for original material " .. oriMat)
+                for overrideMatId, matData in pairs(matResToBuild) do
+                    local oriMat = matData.OriginalMatId
+                    local overrideParams = matData.Params
+                    local matInternalName = internalName .. "_MatOverride_" .. overrideMatId
+                    local matBank = LSXHelpers.BuildMaterialBank()
+                    local matResource = ResourceHelpers.BuildMaterialResource(oriMat, overrideMatId, overrideParams,
+                        matInternalName)
+                    matBank:AppendChild(matResource)
+                    if not matResource then
+                        throwError("Failed to build item material override resource for original material " .. oriMat)
                     return
                 end
 
-                local matPath = RealmPath.GetItemPresetPath(modInternalName, overrideMat)
-                saveFile(matPath, matBank:Stringify({ AutoFindRoot = true }))
+                local matPath = RealmPath.GetItemPresetPath(modInternalName, overrideMatId)
+                    saveFile(matPath, matBank:Stringify({ AutoFindRoot = true }))
+                end
+
+                --- build visual resource
+                local visualInternalName = internalName .. "_ItemVisual_" .. overrideVisualID
+                local visualBank = LSXHelpers.BuildVisualBank()
+                local visual = ResourceHelpers.BuildVisualResource(vres, overrideVisualID,
+                    visualInternalName, linkIdToMatId)
+                visualBank:AppendChild(visual)
+                local visualPath = RealmPath.GetItemVisualPath(modInternalName, overrideVisualID)
+                saveFile(visualPath, visualBank:Stringify({ AutoFindRoot = true }))
+
+                --- build root template with visual override
+                local overrideTemplateID = Uuid_v4()
+                local overrideTemplateInternalName = internalName .. "_VisualTemplate"
+                local rootTemplate = LSXHelpers.BuildRootTemplate(entData.TemplateId, overrideTemplateID,
+                    overrideTemplateInternalName, { VisualTemplate = overrideVisualID })
+
+                local overrideTemplatePath = RealmPath.GetRootTemplatePath(modInternalName, overrideTemplateID)
+                --- @diagnostic disable-next-line
+                saveFile(overrideTemplatePath, rootTemplate:Stringify({ AutoFindRoot = true }))
+
+                --- set override template id
+                entData.TemplateId = overrideTemplateInternalName .. "_" .. overrideTemplateID
+            else
+                Warning("Failed to get original visual resource for entity " .. entData.DisplayName ..
+                    " with visual UUID " .. tostring(entData.OriginalVisualUuid))
             end
 
-            --- build visual resource
-            local visualInternalName = internalName .. "_ItemVisual_" .. overrideVisualID
-            local visualBank = LSXHelpers.BuildVisualBank()
-            local visual = ResourceHelpers.BuildVisualResource(entData.OriginalVisualUuid, overrideVisualID,
-                visualInternalName, matOverrideMap)
-            visualBank:AppendChild(visual)
-            local visualPath = RealmPath.GetItemVisualPath(modInternalName, overrideVisualID)
-            saveFile(visualPath, visualBank:Stringify({ AutoFindRoot = true }))
-
-            --- build root template with visual override
-            local overrideTemplateID = Uuid_v4()
-            local overrideTemplateInternalName = internalName .. "_VisualTemplate"
-            local rootTemplate = LSXHelpers.BuildRootTemplate(entData.TemplateId, overrideTemplateID,
-                overrideTemplateInternalName, { VisualTemplate = overrideVisualID })
-
-            local overrideTemplatePath = RealmPath.GetRootTemplatePath(modInternalName, overrideTemplateID)
-            --- @diagnostic disable-next-line
-            saveFile(overrideTemplatePath, rootTemplate:Stringify({ AutoFindRoot = true }))
-
-            --- set override template id
-            entData.TemplateId = overrideTemplateInternalName .. "_" .. overrideTemplateID
+            
         end
         entData.OverrideVisualUuid = overrideVisualID
         advance("Exporting custom visual for " .. entData.DisplayName .. "...")

@@ -134,6 +134,7 @@ function StyleMenu:RenderColorPickers()
 
     local colorTrees = {}
 
+    --- @type GuiColorCategory[]
     local colorOrder = {
         "Color.Text",
         "Color.Background",
@@ -147,6 +148,7 @@ function StyleMenu:RenderColorPickers()
         "Color.Tab",
         "Color.Separator",
         "Color.Plot",
+        --- @diagnostic disable-next-line
         "Color.Other"
     }
 
@@ -259,6 +261,7 @@ function StyleMenu:RenderStyleSliders()
 
     local styleVarTrees = {}
 
+    --- @type GuiStyleVarCategory[]
     local styleVarOrder = {
         "Var.Global",
         "Var.Window",
@@ -271,6 +274,7 @@ function StyleMenu:RenderStyleSliders()
         "Var.Layout",
         "Var.Align",
         "Var.Table",
+        --- @diagnostic disable-next-line
         "Var.Other"
     }
 

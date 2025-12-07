@@ -13,7 +13,8 @@ local function ClearNearbyMap(pos, radius)
         else
             local newEntry = {
                 Guid = guid,
-                DisplayName = entry.Visual and entry.Visual.Visual and GetLastPath(entry.Visual.Visual.VisualResource.SourceFile),
+                DisplayName = entry.Visual and entry.Visual.Visual and
+                GetLastPath(entry.Visual.Visual.VisualResource.SourceFile),
                 Entity = entry,
                 Distance = newDis,
                 IsScenery = true,
@@ -27,20 +28,19 @@ end
 ---@param radius number?
 function UpdateNearbyMap(pos, radius)
     if not pos then
-        pos = {CGetPosition(CGetHostCharacter())}
+        pos = { CGetPosition(CGetHostCharacter()) }
     end
     radius = radius or 18
     ClearNearbyMap(pos, radius)
 
     if #pos ~= 3 then
-        Error("Failed To Get Host's Position")
         return
     end
 
     local entries = GetNearbyCharactersAndItems(pos, radius)
     if not entries or #entries == 0 then return end
 
-    for _,entry in pairs(entries) do
+    for _, entry in pairs(entries) do
         local guid = entry.Guid
         local displayName = GetName(guid)
         entry.DisplayName = displayName
@@ -50,13 +50,13 @@ function UpdateNearbyMap(pos, radius)
 end
 
 function PopulateSceneryNearby(pos, radius, onComplete)
-    pos = pos or {CGetPosition(CGetHostCharacter())}
+    pos = pos or { CGetPosition(CGetHostCharacter()) }
     radius = radius or 18
     local thread
     local lastYieldTime = Ext.Timer.MicrosecTime()
-    thread = coroutine.create(function ()
+    thread = coroutine.create(function()
         local entities = Ext.Entity.GetAllEntitiesWithComponent("Scenery")
-        for _,entity in pairs(entities) do
+        for _, entity in pairs(entities) do
             local guid = entity.Scenery.Uuid
             local entityPos = entity.Transform and entity.Transform.Transform and entity.Transform.Transform.Translate
             if not entityPos then
@@ -69,7 +69,8 @@ function PopulateSceneryNearby(pos, radius, onComplete)
             if SceneryRegistry[guid] then
                 goto continue
             end
-            local displayName = entity.Visual and entity.Visual.Visual and GetLastPath(entity.Visual.Visual.VisualResource.SourceFile)
+            local displayName = entity.Visual and entity.Visual.Visual and
+            GetLastPath(entity.Visual.Visual.VisualResource.SourceFile)
             local entry = {
                 Guid = guid,
                 DisplayName = displayName,
@@ -81,8 +82,8 @@ function PopulateSceneryNearby(pos, radius, onComplete)
             SceneryRegistry[guid] = entity
             if Ext.Timer.MicrosecTime() - lastYieldTime > 1 then
                 lastYieldTime = Ext.Timer.MicrosecTime()
-                Ext.OnNextTick(function ()
-                    local ok,err = coroutine.resume(thread)
+                Ext.OnNextTick(function()
+                    local ok, err = coroutine.resume(thread)
                     if not ok then
                         Error("PopulateSceneryNearby Error: " .. err)
                         Error(debug.traceback(thread, err))
@@ -97,7 +98,7 @@ function PopulateSceneryNearby(pos, radius, onComplete)
         end
     end)
 
-    local ok,err = coroutine.resume(thread)
+    local ok, err = coroutine.resume(thread)
     if not ok then
         Error("PopulateSceneryNearby Error: " .. err)
         Error(debug.traceback(thread, err))

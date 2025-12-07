@@ -1,5 +1,11 @@
 --- @class VisualResourceManager : ManagerBase
+--- @field SetupVisualBrowser fun(self):RootTemplateBrowser
 VisualResourceManager = _Class("VisualResourceManager", ManagerBase)
+
+--- @class RB_Visual
+--- @field SourceFile string
+--- @field Uuid GUIDSTRING
+--- @field TemplateId GUIDSTRING -- for forward compatibility
 
 --- @param resId GUIDSTRING
 function VisualResourceManager:AddResource(resId)
@@ -9,6 +15,13 @@ function VisualResourceManager:AddResource(resId)
         Uuid = resId,
         TemplateId = resId,
     }
+
+    if res.Slot and res.Slot ~= "" then 
+        self:AddTagToData(resId, res.Slot)
+    end
+    if res.SkeletonSlot and res.SkeletonSlot ~= "" then 
+        self:AddTagToData(resId, res.SkeletonSlot)
+    end
 end
 
 function VisualResourceManager:PopulateAllVisualResources()
@@ -21,6 +34,37 @@ function VisualResourceManager:PopulateAllVisualResources()
     self.populated = true
     local elapsed = Ext.Timer.MonotonicTime() - now
     RBPrintPurple("[Realm Builder] Populated " .. #visualResources .. " visual resources in " .. string.format("%.2f", elapsed) .. " ms.")
+end
+
+function VisualResourceManager:SetupVisualBrowser()
+    local visualBrowser = RootTemplateBrowser.new(self, "Visual - Browser")
+    visualBrowser.AddOtherContextItems = function(bro, menu, item)
+        local res = item --[[@as RB_Visual]]
+        menu:AddItem("Add Custom Visual Override", function()
+            NetChannel.CallOsiris:RequestToServer({
+                Function = "AddCustomVisualOverride",
+                Args = {
+                    bro:GetSelected(),
+                    res.Uuid,
+                }
+            }, function (response)
+                
+            end)
+        end)
+
+        menu:AddItem("Remove Custom Visual Override", function()
+            NetChannel.CallOsiris:RequestToServer({
+                Function = "RemoveCustomVisualOvirride",
+                Args = {
+                    bro:GetSelected(),
+                    res.Uuid,
+                }
+            }, function (response)
+                
+            end)
+        end)
+    end
+    return visualBrowser
 end
 
 if Ext.Debug.IsDeveloperMode() then
@@ -43,7 +87,7 @@ RegisterConsoleCommand("rb_enable_visual_manager", function ()
     RB_VisualManager:PopulateAllVisualResources()
 
     if RBMenu and RBMenu.browsers and not RBMenu.browsers.visual then
-        RBMenu.browsers.visual = RootTemplateBrowser.new(RB_VisualManager, "Visual - Browser")
+        RBMenu.browsers.visual = RB_VisualManager:SetupVisualBrowser()
         RBMenu.browsers.visual.iconTooltipName = "SourceFile"
         RBMenu.browsers.visual.TooltipChangeLogic = function()
         

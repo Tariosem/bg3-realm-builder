@@ -374,11 +374,12 @@ function TreeList:RenderList()
                 return aObj.TypeOrder < bObj.TypeOrder
             end
 
-            return tostring(aObj.Key) < tostring(bObj.Key)
+            return aObj.Key < bObj.Key
         end) do
             table.insert(collector, childKey)
         end
         Ext.Utils.ProfileEnd(profileKey)
+        yieldThread()
         --Debug("Sorted " .. tostring(#collector) .. " children of " .. tostring(key) .. " in " .. tostring(Ext.Timer.MonotonicTime() - now) .. " ms")
         return collector
     end

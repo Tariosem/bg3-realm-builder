@@ -24,6 +24,10 @@ function TransformToolbar:RegisterKeyInputEvents()
         local entity = GetPickingEntity()
 
         if entity and entity.Scenery and not self.Ignore["Scenery"] then
+            guid = entity.Scenery.Uuid
+            if not SceneryRegistry[guid] then
+                SceneryRegistry[guid] = entity
+            end
             RB_GLOBALS.TransformEditor:Select({ MovableProxy.CreateByGuid(entity.Scenery.Uuid) })
             return
         end
