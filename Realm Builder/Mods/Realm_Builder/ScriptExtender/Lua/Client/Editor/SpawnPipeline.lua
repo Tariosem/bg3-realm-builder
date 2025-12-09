@@ -131,7 +131,7 @@ local function spawnPrefab(prefabObj, entInfo)
             childEntInfo.Rotation = prefabObj.ChildrenTransforms[i].RotationQuat or { 0, 0, 0, 1 }
 
             -- Calculate relative position/rotation
-            local pos, rot = GetLocalRelativeTransform(pivotTransform, childEntInfo.Position, childEntInfo.Rotation)
+            local pos, rot = MathHelpers.GetLocalRelativeTransform(pivotTransform, childEntInfo.Position, childEntInfo.Rotation)
             if not pos or not rot then
                 Warning("[spawnPrefab] Failed to calculate relative transform for prefab child.")
                 pos = pivotTransform.Translate
@@ -164,14 +164,14 @@ end
 ---@param template string
 ---@param entInfo EntityData|nil
 function Commands.SpawnCommand(template, entInfo)
-    entInfo = entInfo and DeepCopy(entInfo) or {}
+    entInfo = entInfo and RBUtils.DeepCopy(entInfo) or {}
     local packedData = {
         TemplateId = template,
         EntInfo = entInfo
     }
     local spawnedGuid = nil
 
-    local templateObj = Ext.Template.GetTemplate(TakeTailTemplate(template))
+    local templateObj = Ext.Template.GetTemplate(EntityHelpers.TakeTailTemplate(template))
     local isVisual = Ext.Resource.Get(template, "Visual")
     if not templateObj and not isVisual then
         Warning("[SpawnCommand] Template not found: " .. tostring(template))
@@ -183,7 +183,7 @@ function Commands.SpawnCommand(template, entInfo)
         return
     end
     if isVisual then
-        packedData.EntInfo.DisplayName = GetLastPath(isVisual.SourceFile)
+        packedData.EntInfo.DisplayName = RBStringUtils.GetLastPath(isVisual.SourceFile)
     end
 
     push(function()
@@ -225,11 +225,11 @@ function Commands.DuplicateCommand(targets, path)
         local stored = EntityStore:GetStoredData(guid)
         if stored then
             templateMap[guid] = stored.TemplateId
-            local templateObj = Ext.Template.GetTemplate(TakeTailTemplate(stored.TemplateId))
+            local templateObj = Ext.Template.GetTemplate(EntityHelpers.TakeTailTemplate(stored.TemplateId))
             if not templateObj or (templateObj.TemplateType ~= "item" and templateObj.TemplateType ~= "character") then
                 nonItemNonCharacter[guid] = true
             end
-            originStats[guid] = DeepCopy(stored)
+            originStats[guid] = RBUtils.DeepCopy(stored)
             originStats[guid].DisplayName = nil
             if path then
                 originStats[guid].Path = path
@@ -295,7 +295,7 @@ function Commands.DuplicateCommand(targets, path)
                 EntInfo = entData
             }, function(response)
                 table.insert(spawnedDuplications, response.Guid)
-                if #spawnedDuplications == CountMap(templateMap) then
+                if #spawnedDuplications == RBTableUtils.CountMap(templateMap) then
                     selectAndPushCommand()
                 end
             end)
@@ -341,7 +341,7 @@ function Commands.SpawnPreset(data)
         local pos, rot = entData.Position, entData.Rotation or Quat.Identity()
         if data.PresetType == "Relative" then
             --- @diagnostic disable-next-line
-            pos, rot = GetLocalRelativeTransform(pivotTransform, pos, rot)
+            pos, rot = MathHelpers.GetLocalRelativeTransform(pivotTransform, pos, rot)
             if not pos or not rot then
                 Warning("[SpawnPreset] Failed to calculate relative transform.")
                 return
@@ -369,17 +369,17 @@ function Commands.SpawnPreset(data)
         }, function(response)
             local newGuid = response.Guid
             table.insert(spawnedGuids, newGuid)
-            if #spawnedGuids == CountMap(data.Spawned) then
+            if #spawnedGuids == RBTableUtils.CountMap(data.Spawned) then
                 pushCommand()
             end
         end)
 
-        local templateObj = Ext.Template.GetTemplate(TakeTailTemplate(entData.TemplateId))
+        local templateObj = Ext.Template.GetTemplate(EntityHelpers.TakeTailTemplate(entData.TemplateId))
         if not templateObj or (templateObj.TemplateType ~= "item" and templateObj.TemplateType ~= "character") then
             -- Wait to make template overwirte work properly
             waitFor30TicksAndResume()
         end
     end
 
-    push(threadFunc, CountMap(data.Spawned))
+    push(threadFunc, RBTableUtils.CountMap(data.Spawned))
 end

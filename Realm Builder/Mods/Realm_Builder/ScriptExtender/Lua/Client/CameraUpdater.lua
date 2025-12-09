@@ -7,8 +7,8 @@ local lastPos = {0,0,0}
 local lastRot = {0,0,0,1}
 
 local function getAndPostCameraData()
-    local cx, cy, cz = GetCameraPosition()
-    local cp, cyaw, cr, cw = GetCameraRotation()
+    local cx, cy, cz = CameraHelpers.GetCameraPosition()
+    local cp, cyaw, cr, cw = CameraHelpers.GetCameraRotation()
 
     if cx == lastPos[1] and cy == lastPos[2] and cz == lastPos[3]
     and cp == lastRot[1] and cyaw == lastRot[2] and cr == lastRot[3] and cw == lastRot[4] then
@@ -37,7 +37,7 @@ local function CameraBind(guid)
 
     local data = {
         Guid = guid,
-        Parent = CameraSymbol,
+        Parent = CAMERA_SYMBOL,
     }
 
     NetChannel.Bind:SendToServer(data)

@@ -18,8 +18,8 @@ function TextureResourceManager:PopulateTextureResource(id)
     if not res then return nil end
 
     local s = LSXHelpers.GetPathAfterData(res.SourceFile or "")
-    local fileName = GetLastPath(s)
-    local paths = SplitByString(s, "/")
+    local fileName = RBStringUtils.GetLastPath(s)
+    local paths = RBStringUtils.SplitByString(s, "/")
 
     local trieNode = self.CachedTextureTrie
     for i=1, #paths do
@@ -54,7 +54,7 @@ end
 
 --- @param path string
 function TextureResourceManager:GetTextureResourceByPath(path)
-    local paths = SplitByString(path, "/")
+    local paths = RBStringUtils.SplitByString(path, "/")
     if #paths == 0 then return nil end
     local fileName = paths[#paths]
     local trieNode = self.CachedTextureTrie
@@ -75,7 +75,7 @@ end
 --- @param pathPrefix string
 --- @return {Path:string, ResourceUUID:string, SourceFile:string}[], boolean exceedFlag
 function TextureResourceManager:GetAllTextureResourceUnderPath(pathPrefix, precise)
-    local paths = SplitByString(pathPrefix, "/")
+    local paths = RBStringUtils.SplitByString(pathPrefix, "/")
     local searchCriteria = nil
     if pathPrefix:sub(-1) ~= "/" then
         -- If the path does not end with a slash, we assume it's a file name
@@ -153,6 +153,6 @@ function TextureResourceManager:HasVirtualTextureResource(id)
     return self.VirtualTextureResources[id] ~= nil
 end
 
-RegisterOnSessionLoaded(function ()
+EventsSubscriber.RegisterOnSessionLoaded(function ()
     TextureResourceManager:PopulateAllTextureResources()
 end)

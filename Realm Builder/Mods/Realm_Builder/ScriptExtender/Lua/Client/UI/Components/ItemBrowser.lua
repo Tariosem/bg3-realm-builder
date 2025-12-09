@@ -45,7 +45,7 @@ function ItemBrowser:RenderIcon(entry, cell)
 
         if rarityColor and rarityColor[4] ~= 0 then
             iconImage:SetStyle("FrameBorderSize", 3 * SCALE_FACTOR)
-            iconImage:SetColor("Border", AdjustColor(rarityColor, 0.2, 0.2))
+            iconImage:SetColor("Border", ColorUtils.AdjustColor(rarityColor, 0.2, 0.2))
         end
     else
         local image = cell:AddImage(entry.Icon, { self.iconWidth, self.iconWidth })
@@ -102,7 +102,7 @@ function ItemBrowser:RenderIcon(entry, cell)
                 local descText = iconTooltip:AddText(desc)
                 descText.TextWrapPos = self.browserWidth
                 descText.Font = "Tiny"
-                descText:SetColor("Text", HexToRGBA("FF939393"))
+                descText:SetColor("Text", ColorUtils.HexToRGBA("FF939393"))
             end
         end
 
@@ -115,7 +115,7 @@ function ItemBrowser:RenderIcon(entry, cell)
     iconImage.OnClick = function()
         if not popup then
             popup = cell:AddPopup("IconPopup")
-            popup.IDContext = entry.Uuid .. "Popup" .. Uuid_v4()
+            popup.IDContext = entry.Uuid .. "Popup" .. RBUtils.Uuid_v4()
         end
         self:RenderInfoPopup(popup, entry)
         popup:Open()
@@ -125,7 +125,7 @@ function ItemBrowser:RenderIcon(entry, cell)
         self:RenderAttrPopup(iconImage, cell, entry, function()
             if not popup then
                 popup = cell:AddPopup("IconPopup")
-                popup.IDContext = entry.Uuid .. "Popup" .. Uuid_v4()
+                popup.IDContext = entry.Uuid .. "Popup" .. RBUtils.Uuid_v4()
             end
             return popup
         end)
@@ -137,7 +137,7 @@ end
 --- @param entry RB_Item
 function ItemBrowser:SetupTemplatePreview(entry)
     Timer:Ticks(20, function(timerID)
-        local spawnPos, spawnRot = GetPickingHitPosAndRot()
+        local spawnPos, spawnRot = PickingUtils.GetPickingHitPosAndRot()
         if not spawnPos or not spawnRot then return end
         Commands.SpawnCommand(entry.TemplateId, { Position=spawnPos, Rotation=spawnRot })
     end)
@@ -158,13 +158,13 @@ function ItemBrowser:SetupTemplatePreview(entry)
         local row = midAlighTab:AddRow()
         local _, midCell, _ = row:AddCell(), row:AddCell(), row:AddCell()
         local icon = CheckIcon(entry.Icon or "Item_Unknown")
-        local image = midCell:AddImage(icon, ToVec2(64 * SCALE_FACTOR))
+        local image = midCell:AddImage(icon, RBUtils.ToVec2(64 * SCALE_FACTOR))
         midCell:AddText(GetLoca(entry.DisplayName) or "Unknown").SameLine = true
 
         panel:AddText(GetLoca("Left click to spawn the item at the previewed location.")).Font = "Tiny"
         panel:AddText(GetLoca("Scroll mouse wheel to rotate the item.")).Font = "Tiny"
         local caution = panel:AddText(GetLoca("Press ESCAPE or BACKSPACE to cancel the preview."))
-        caution:SetColor("Text", HexToRGBA("FFFFFFFF"))
+        caution:SetColor("Text", ColorUtils.HexToRGBA("FFFFFFFF"))
         caution.Font = "Large"
     end)
 
@@ -175,7 +175,7 @@ function ItemBrowser:SetupTemplatePreview(entry)
     local cancelSub = nil
     local rotationOffset = Quat.new(0, 0, 0, 1)
 
-    local startPos, startRot = GetPickingHitPosAndRot()
+    local startPos, startRot = PickingUtils.GetPickingHitPosAndRot()
 
     NetChannel.SpawnPreview:RequestToServer({
         TemplateId = entry.TemplateId,
@@ -196,44 +196,44 @@ function ItemBrowser:SetupTemplatePreview(entry)
 
             local hitPos, hitRot = nil, nil
 
-            local hitOnPreview = GetPickingGuid() == previewItem
+            local hitOnPreview = PickingUtils.GetPickingGuid() == previewItem
             if hitOnPreview then
                 local mouseRay = ScreenToWorldRay()
                 if not mouseRay then return end
-                local planeNormal = Quat.new({ CGetRotation(previewItem) }):Rotate(GLOBAL_COORDINATE.Y)
+                local planeNormal = Quat.new({ RBGetRotation(previewItem) }):Rotate(GLOBAL_COORDINATE.Y)
 
-                local hit = mouseRay:IntersectPlane({ CGetPosition(previewItem) }, planeNormal)
+                local hit = mouseRay:IntersectPlane({ RBGetPosition(previewItem) }, planeNormal)
 
                 if not hit then return end
                 hitPos = hit.Position
             else
-                hitPos, hitRot = GetPickingHitPosAndRot()
+                hitPos, hitRot = PickingUtils.GetPickingHitPosAndRot()
             end
 
 
             if not hitPos then hitPos = startPos or Vec3.new(0, 0, 0) end
             if not hitRot then
                 if dirtyRotation then
-                    hitRot = DeepCopy(dirtyRotation)
+                    hitRot = RBUtils.DeepCopy(dirtyRotation)
                     dirtyRotation = nil
                 else
-                    hitRot = { CGetRotation(previewItem) }
+                    hitRot = { RBGetRotation(previewItem) }
                 end
             end
 
             if not hitOnPreview or rotatedirty then
                 hitRot = Ext.Math.QuatMul(hitRot, rotationOffset)
-                dirtyRotation = DeepCopy(hitRot)
+                dirtyRotation = RBUtils.DeepCopy(hitRot)
                 rotatedirty = false
             end
 
-            local selectedGuid = self.selectedGuid or CGetHostCharacter()
+            local selectedGuid = self.selectedGuid or RBGetHostCharacter()
 
             hitPos = Vec3.new(hitPos)
             hitRot = Quat.new(hitRot)
 
-            hitPos:Sanitize({ CGetPosition(selectedGuid) })
-            hitRot:Sanitize({ CGetRotation(selectedGuid) })
+            hitPos:Sanitize({ RBGetPosition(selectedGuid) })
+            hitRot:Sanitize({ RBGetRotation(selectedGuid) })
 
             NetChannel.SetTransform:SendToServer({
                 Guid = previewItem,
@@ -246,7 +246,7 @@ function ItemBrowser:SetupTemplatePreview(entry)
             })
         end)
 
-        mouseButtonSub = SubscribeMouseInput({}, function(e)
+        mouseButtonSub = InputEvents.SubscribeMouseInput({}, function(e)
             if not previewItem then return UNSUBSCRIBE_SYMBOL end
             if not e.Pressed and e.Clicks > 0 then return end
 
@@ -254,15 +254,15 @@ function ItemBrowser:SetupTemplatePreview(entry)
                 local data = {
                     TemplateId = entry.TemplateId,
                     EntInfo = {
-                        Position = { CGetPosition(previewItem) },
-                        Rotation = { CGetRotation(previewItem) }
+                        Position = { RBGetPosition(previewItem) },
+                        Rotation = { RBGetRotation(previewItem) }
                     }
                 }
                 Commands.SpawnCommand(entry.TemplateId, data.EntInfo)
             end
         end)
 
-        mouseWheelSub = SubscribeMouseWheel({}, function(e)
+        mouseWheelSub = InputEvents.SubscribeMouseWheel({}, function(e)
             if not previewItem then return UNSUBSCRIBE_SYMBOL end
             if e.ScrollY == 0 then return end
 
@@ -272,7 +272,7 @@ function ItemBrowser:SetupTemplatePreview(entry)
             rotatedirty = true
         end)
 
-        cancelSub = SubscribeKeyInput({}, function(e)
+        cancelSub = InputEvents.SubscribeKeyInput({}, function(e)
             if not previewItem then
                 NetChannel.Delete:SendToServer({ Guid = previewItem })
                 return UNSUBSCRIBE_SYMBOL
@@ -316,7 +316,7 @@ function ItemBrowser:RenderAttrPopup(iconImage, cell, entry, getPopupFunc)
     local function addAttrTitle(text)
         if not attributePopup then return end
         local title = attributePopup:AddText(text)
-        title:SetColor("Text", HexToRGBA("FFFFA743"))
+        title:SetColor("Text", ColorUtils.HexToRGBA("FFFFA743"))
         attributePopup:AddSeparator()
         return title
     end
@@ -326,7 +326,7 @@ function ItemBrowser:RenderAttrPopup(iconImage, cell, entry, getPopupFunc)
         local tab = attributePopup:AddDummy(20, 10)
         local title = attributePopup:AddText(text)
         title.SameLine = true
-        title:SetColor("Text", HexToRGBA("FF6B7B7B"))
+        title:SetColor("Text", ColorUtils.HexToRGBA("FF6B7B7B"))
         return title
     end
 
@@ -368,7 +368,7 @@ function ItemBrowser:RenderAttrPopup(iconImage, cell, entry, getPopupFunc)
         if entry.ArmorClass and entry.ArmorClass ~= 0 then
             addAttrTitle("Armor Class : ")
             local armorText = attributePopup:AddText(tostring(entry.ArmorClass))
-            armorText:SetColor("Text", HexToRGBA("FFD1C4A9"))
+            armorText:SetColor("Text", ColorUtils.HexToRGBA("FFD1C4A9"))
             attributePopup:AddSeparator()
             armorText.SameLine = true
         end
@@ -441,7 +441,7 @@ end
 function ItemBrowser:RenderItemSpawnTab(popup, iconImage, entry)
     local spawnTab = popup
     local spawnButton = spawnTab:AddButton(GetLoca("Spawn"))
-    local target = self.selectedGuid or CGetHostCharacter()
+    local target = self.selectedGuid or RBGetHostCharacter()
 
     local function spawnHandle(isPreview)
         if isPreview then
@@ -449,8 +449,8 @@ function ItemBrowser:RenderItemSpawnTab(popup, iconImage, entry)
                 TemplateId = entry.TemplateId,
                 Type = "Preview",
                 EntInfo = {
-                    Position = { CGetPosition(target) },
-                    Rotation = { CGetRotation(target) }
+                    Position = { RBGetPosition(target) },
+                    Rotation = { RBGetRotation(target) }
                 }
             }
 
@@ -461,8 +461,8 @@ function ItemBrowser:RenderItemSpawnTab(popup, iconImage, entry)
                 TemplateId = entry.TemplateId,
                 Type = "Spawn",
                 EntInfo = {
-                    Position = { CGetPosition(target) },
-                    Rotation = { CGetRotation(target) }
+                    Position = { RBGetPosition(target) },
+                    Rotation = { RBGetRotation(target) }
                 }
             }
             Commands.SpawnCommand(entry.TemplateId, data.EntInfo)
@@ -494,7 +494,7 @@ function ItemBrowser:RenderItemSpawnTab(popup, iconImage, entry)
                     Guid = entry.Uuid,
                     TemplateId = entry.TemplateId,
                     Count = captureValue,
-                    Target = self.selectedGuid or CGetHostCharacter(),
+                    Target = self.selectedGuid or RBGetHostCharacter(),
                 }
 
                 NetChannel.AddItem:SendToServer(data)
@@ -523,7 +523,7 @@ function ItemBrowser:RenderItemSpawnTab(popup, iconImage, entry)
 
     local checkValue = function()
         if countInput.Value[1] <= 1 then
-            countInput.Value = ToVec4(1)
+            countInput.Value = RBUtils.ToVec4(1)
             decre5Button.Disabled = true
             decreButton.Disabled = true
         else
@@ -533,24 +533,24 @@ function ItemBrowser:RenderItemSpawnTab(popup, iconImage, entry)
     end
 
     decre5Button.OnClick = function()
-        countInput.Value = ToVec4(countInput.Value[1] - 5)
+        countInput.Value = RBUtils.ToVec4(countInput.Value[1] - 5)
         checkValue()
     end
     decreButton.OnClick = function()
-        countInput.Value = ToVec4(countInput.Value[1] - 1)
+        countInput.Value = RBUtils.ToVec4(countInput.Value[1] - 1)
         checkValue()
     end
-    countInput.Value = ToVec4(1)
+    countInput.Value = RBUtils.ToVec4(1)
     checkValue()
     countInput.OnChange = function()
         checkValue()
     end
     increButton.OnClick = function()
-        countInput.Value = ToVec4(countInput.Value[1] + 1)
+        countInput.Value = RBUtils.ToVec4(countInput.Value[1] + 1)
         checkValue()
     end
     incre5Button.OnClick = function()
-        countInput.Value = ToVec4(countInput.Value[1] + 5)
+        countInput.Value = RBUtils.ToVec4(countInput.Value[1] + 5)
         checkValue()
     end
 end

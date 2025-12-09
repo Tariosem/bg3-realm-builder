@@ -52,15 +52,15 @@ local function RenderCollapseingTableConfig(parent, table)
     ImguiHelpers.SetCombo(expandTypeCombo, ud.ExpandType or "EaseOutCubic")
 
     collapseTimeSlider.OnChange = function()
-        local newValue = FormatDecimal(collapseTimeSlider.Value[1], 1)
+        local newValue = RBStringUtils.FormatDecimal(collapseTimeSlider.Value[1], 1)
         ud.CollapseTime = newValue * 1000
-        collapseTimeSlider.Value = ToVec4(newValue)
+        collapseTimeSlider.Value = RBUtils.ToVec4(newValue)
     end
 
     expandTimeSlider.OnChange = function()
-        local newValue = FormatDecimal(expandTimeSlider.Value[1], 1)
+        local newValue = RBStringUtils.FormatDecimal(expandTimeSlider.Value[1], 1)
         ud.ExpandTime = newValue * 1000
-        expandTimeSlider.Value = ToVec4(newValue)
+        expandTimeSlider.Value = RBUtils.ToVec4(newValue)
     end
 
     sidebarWidthSlider.OnChange = function()
@@ -119,7 +119,7 @@ end
 --- @param opts CollapsingTableStyle?
 --- @return CollapsingTableStyle
 function ImguiElements.AddCollapsingTable(parent, mainAreaTitle, sideBarTitle, opts)
-    local IDContext = Uuid_v4()
+    local IDContext = RBUtils.Uuid_v4()
     local cT = parent:AddTable(IDContext .. "_Table", 2)
     local row = cT:AddRow()
     local tableCells = { row:AddCell(), row:AddCell() }

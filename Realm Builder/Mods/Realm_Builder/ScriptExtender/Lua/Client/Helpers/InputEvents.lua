@@ -1,7 +1,15 @@
+--- @class InputEvents
+--- @field SubscribeKeyInput fun(key:EclLuaKeyInputEvent?, callback:fun(e:EclLuaKeyInputEvent):any):RBSubscription
+--- @field SubscribeMouseInput fun(key:EclLuaMouseButtonEvent?, callback:fun(e:EclLuaMouseButtonEvent):any):RBSubscription
+--- @field SubscribeMouseWheel fun(key:EclLuaMouseWheelEvent?, callback:fun(e:EclLuaMouseWheelEvent):any):RBSubscription
+--- @field SubscribeKeyAndMouse fun(callback:fun(e:SimplifiedInputEvent):any, filterKey:Keybinding?):RBSubscription
+--- @field SetupInputEnterCallback fun(input:ExtuiInputText, callback:fun(input:string)):RBSubscription
+InputEvents = InputEvents or {}
+
 ---@param key EclLuaKeyInputEvent?
 ---@param callback fun(e:EclLuaKeyInputEvent): any
 ---@return RBSubscription
-function SubscribeKeyInput(key, callback)
+function InputEvents.SubscribeKeyInput(key, callback)
     key = key or {}
     local SubscribeStartTime = Ext.Timer.MonotonicTime()
     local lastCallTime = 0
@@ -43,7 +51,7 @@ end
 ---@param key EclLuaMouseButtonEvent?
 ---@param callback fun(e:EclLuaMouseButtonEvent): any
 ---@return RBSubscription
-function SubscribeMouseInput(key, callback)
+function InputEvents.SubscribeMouseInput(key, callback)
     key = key or {}
     local SubscribeStartTime = Ext.Timer.MonotonicTime()
     local lastCallTime = 0
@@ -83,7 +91,7 @@ end
 ---@param key EclLuaMouseWheelEvent?
 ---@param callback fun(e:EclLuaMouseWheelEvent): any
 ---@return RBSubscription
-function SubscribeMouseWheel(key, callback)
+function InputEvents.SubscribeMouseWheel(key, callback)
     key = key or {}
     local SubscribeStartTime = Ext.Timer.MonotonicTime()
     local id = 0
@@ -142,7 +150,7 @@ end
 --- @param callback fun(e: SimplifiedInputEvent): any
 --- @param filterKey Keybinding?
 --- @return RBSubscription
-function SubscribeKeyAndMouse(callback, filterKey)
+function InputEvents.SubscribeKeyAndMouse(callback, filterKey)
     local isCalling = false
     local subs = {}
     local lastModifiers = {}
@@ -168,7 +176,7 @@ function SubscribeKeyAndMouse(callback, filterKey)
     subs.KeyInput = Ext.Events.KeyInput:Subscribe(function(e)
         if isCalling then return end
         isCalling = true
-        local modifs = LightCToArray(e.Modifiers)
+        local modifs = RBUtils.LightCToArray(e.Modifiers)
         excludeModfiers(modifs)
         local event = {
             Event = e.Event,
@@ -218,10 +226,10 @@ end
 ---@param input ExtuiInputText
 ---@param callback fun(input:string)
 ---@return RBSubscription sub
-function SetupInputEnterCallback(input, callback)
+function InputEvents.SetupInputEnterCallback(input, callback)
     local sub = nil
 
-    sub = SubscribeKeyInput({}, function (e)
+    sub = InputEvents.SubscribeKeyInput({}, function (e)
         local ok, focused = pcall(ImguiHelpers.IsFocused, input)
         if not ok then
             Warning("[SetupInputEnterCallback] Failed to check focus state of input, unsubscribing key input listener.")

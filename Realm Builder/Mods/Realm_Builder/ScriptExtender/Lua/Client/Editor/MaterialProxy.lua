@@ -406,7 +406,7 @@ function ParametersSetProxy:Update(paramSet)
         paramSet.VirtualTextureParameters,
     }) do
         if typeRef > 4 then valueField = "ID" end
-        for _, param in FilteredPairs(paramList or {}, function(_, a)
+        for _, param in RBUtils.FilteredPairs(paramList or {}, function(_, a)
             return not self.TypeRefs[a.ParameterName] -- only new parameters
         end) do
             local paramName = param.ParameterName

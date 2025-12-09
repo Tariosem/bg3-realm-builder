@@ -1,5 +1,5 @@
 NetChannel.SetVisualTransform:SetHandler(function (data)
-    local toSet = NormalizeGuidList(data.Guid)
+    local toSet = RBUtils.NormalizeGuidList(data.Guid)
     if not data.Transforms or type(data.Transforms) ~= "table" then
         Warning("SetVisualTransform: No Transforms provided")
         return

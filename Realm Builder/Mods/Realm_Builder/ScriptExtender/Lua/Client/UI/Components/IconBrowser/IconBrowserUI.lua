@@ -17,7 +17,7 @@ IconBrowser = _Class("IconBrowser")
 
 --- @class IconsBrowser
 function IconBrowser:__init(dataManager, DisplayName)
-    local screenWidth, screenHeight = GetScreenSize()
+    local screenWidth, screenHeight = UIHelpers.GetScreenSize()
     self.displayName = DisplayName or "Icons"
     self.dataManager = dataManager
     self.searchData = dataManager.Data or {}
@@ -60,14 +60,14 @@ function IconBrowser:__init(dataManager, DisplayName)
 end
 
 function IconBrowser:Render()
-    local screenWidth, screenHeight = GetScreenSize()
+    local screenWidth, screenHeight = UIHelpers.GetScreenSize()
     if self.lastPosition[1] + self.lastSize[1] > screenWidth then
         self.lastPosition[1] = math.max(0, screenWidth - self.lastSize[1])
     end
     if self.lastPosition[2] + self.lastSize[2] > screenHeight then
         self.lastPosition[2] = math.max(0, screenHeight - self.lastSize[2])
     end
-    self.panel = RegisterWindow("generic", self.displayName, "Browser", self, self.lastPosition, self.lastSize)
+    self.panel = WindowManager.RegisterWindow("generic", self.displayName, "Browser", self, self.lastPosition, self.lastSize)
     self.panel.Closeable = true
 
     self.browserOptions = self.panel:AddTable("Icons Browser", 6)
@@ -105,7 +105,7 @@ function IconBrowser:SetupInputSubs()
         end
     end
 
-    self.pageKeySub = SubscribeKeyInput({}, function(e)
+    self.pageKeySub = InputEvents.SubscribeKeyInput({}, function(e)
         return pageKeyHandle(e)
     end)
 
@@ -116,7 +116,7 @@ function IconBrowser:SetupInputSubs()
 
         self:Search()
     end--)
-    self.quickFavoriteKeySub = SubscribeKeyInput({ Key = "F" }, function(e)
+    self.quickFavoriteKeySub = InputEvents.SubscribeKeyInput({ Key = "F" }, function(e)
         if not self.isValid then return UNSUBSCRIBE_SYMBOL end
 
         if self.panel.Open == false then return end
@@ -188,7 +188,7 @@ function IconBrowser:RenderUiConfigMenu()
     local browserHeightSlider = ImguiHelpers.SafeAddSliderInt(self.uiParamMenu, GetLoca("Image Per Column"), imagePerCol, 4, 30)
     local cellsPaddingSlider = ImguiHelpers.SafeAddSliderInt(self.uiParamMenu, GetLoca("Image Padding"), cellsPadding[1], 0, 20)
     cellsPaddingSlider.Components = 2
-    cellsPaddingSlider.Value = ToVec4Int(cellsPadding[1], cellsPadding[2])
+    cellsPaddingSlider.Value = RBUtils.ToVec4Int(cellsPadding[1], cellsPadding[2])
     local iconButtonBgColroEdit = self.uiParamMenu:AddColorEdit(GetLoca("Button Background Color"))
     iconButtonBgColroEdit.Color = self.iconButtonBgColor or { 0, 0, 0, 0.6 }
 
@@ -200,7 +200,7 @@ function IconBrowser:RenderUiConfigMenu()
 
     local function clampSize(width, height)
         local lastPos = self.panel.LastPosition
-        local screenWidth, screenHeight = GetScreenSize()
+        local screenWidth, screenHeight = UIHelpers.GetScreenSize()
         local maxWidth = screenWidth - lastPos[1]
         local maxHeight = screenHeight - lastPos[2]
         width = math.min(width, maxWidth)
@@ -473,7 +473,7 @@ function IconBrowser:RenderMiscMenu()
 end
 
 function IconBrowser:GetSelected()
-    return self.selectedGuid or CGetHostCharacter()
+    return self.selectedGuid or RBGetHostCharacter()
 end
 
 function IconBrowser:RenderBrowserBase()
@@ -584,12 +584,12 @@ function IconBrowser:RenderIcons()
 
     self.pageInput.IDContext = "PageInput"
     self.pageInput.ItemWidth = 75 * SCALE_FACTOR
-    self.pageInput.Value = ToVec4Int(self.currentPage)
+    self.pageInput.Value = RBUtils.ToVec4Int(self.currentPage)
 
     self.allPageInput.IDContext = "AllPageInput"
     self.allPageInput.ItemWidth = 75 * SCALE_FACTOR
     self.allPageInput.ReadOnly = true
-    self.allPageInput.Value = ToVec4Int(self.allPages)
+    self.allPageInput.Value = RBUtils.ToVec4Int(self.allPages)
 
     self.previousButton.SameLine = true
     self.pageInput.SameLine = true
@@ -615,15 +615,15 @@ function IconBrowser:RenderIcons()
             self:SetPage(page)
         elseif page and page < 1 then
             self:SetPage(1)
-            text.Value = ToVec4Int(1)
+            text.Value = RBUtils.ToVec4Int(1)
         elseif page and page > self.allPages then
             self:SetPage(self.allPages)
-            text.Value = ToVec4Int(self.allPages)
+            text.Value = RBUtils.ToVec4Int(self.allPages)
         end
     end
 
     self.pageInput.OnRightClick = function(text)
-        text.Value = ToVec4Int(self.currentPage)
+        text.Value = RBUtils.ToVec4Int(self.currentPage)
     end
 
     self.previousButton.OnClick = function()
@@ -667,7 +667,7 @@ function IconBrowser:UpdatePageCnt()
     end
 
     if self.pageInput.Value[1] ~= self.currentPage then
-        self.pageInput.Value = ToVec4Int(self.currentPage)
+        self.pageInput.Value = RBUtils.ToVec4Int(self.currentPage)
     end
 end
 
@@ -679,7 +679,7 @@ function IconBrowser:SetPage(page)
     end
     self.currentPage = page
     if tonumber(self.pageInput.Value[1]) ~= self.currentPage then
-        self.pageInput.Value = ToVec4Int(self.currentPage)
+        self.pageInput.Value = RBUtils.ToVec4Int(self.currentPage)
     end
     if self.currentPage == 1 then
         ImguiHelpers.SetImguiDisabled(self.previousButton, true)
@@ -708,7 +708,7 @@ function IconBrowser:RenderPage()
 
     self:UpdatePageCnt()
 
-    self.allPageInput.Value = ToVec4Int(self.allPages)
+    self.allPageInput.Value = RBUtils.ToVec4Int(self.allPages)
 
     local fromIndex = (self.currentPage - 1) * self.imagePerPage + 1
     local toIndex = math.min(fromIndex + self.imagePerPage - 1, #self.uuidsSorted)
@@ -817,7 +817,7 @@ function IconBrowser:RenderCustomizationTab(popup, entry)
         end
     end
 
-    local noteDebounceFunc = Debounce(1000, function(text)
+    local noteDebounceFunc = RBUtils.Debounce(1000, function(text)
         self.tempDisableSearch = true
 
         custom = self.dataManager.customizationData[entry.Uuid] or {}
@@ -843,7 +843,7 @@ function IconBrowser:RenderCustomizationTab(popup, entry)
 
     local computeSizeAndSet = function()
         local newText = noteInput.Text
-        local splitted = SplitByString(newText, "\n")
+        local splitted = RBStringUtils.SplitByString(newText, "\n")
         local longest = 0
         for _, line in ipairs(splitted) do
             if #line > longest then
@@ -868,7 +868,7 @@ function IconBrowser:RenderCustomizationTab(popup, entry)
 
     groupInput.Text = custom.Group or ""
 
-    groupInput.OnChange = Debounce(1000, function(text)
+    groupInput.OnChange = RBUtils.Debounce(1000, function(text)
         self.tempDisableSearch = true
         local newGroup = text.Text
 
@@ -910,7 +910,7 @@ function IconBrowser:RenderCustomizationTab(popup, entry)
     local function updateTags()
         custom = self.dataManager.customizationData[entry.Uuid] 
         local tags = custom and custom.Tags or {}
-        tags = DeepCopy(tags)
+        tags = RBUtils.DeepCopy(tags)
         for _, tag in ipairs(tags) do
             if not tag or tag == "" then
                 table.remove(tags, _)
@@ -983,7 +983,7 @@ function IconBrowser:Destroy()
     end
 
     if self.tagsFilterMenu then
-        DeleteWindow(self.tagsFilterMenu)
+        WindowManager.DeleteWindow(self.tagsFilterMenu)
         self.tagsFilterMenu = nil
     end
 
@@ -1019,7 +1019,7 @@ function IconBrowser:Destroy()
 
     if self.panel then
         ImguiHelpers.DestroyAllChildren(self.panel)
-        DeleteWindow(self.panel)
+        WindowManager.DeleteWindow(self.panel)
         self.panel = nil
     end
 

@@ -57,7 +57,7 @@ function GetVisualPresetData(templateName, presetName)
     return templateData[presetName]
 end
 
-RegisterOnSessionLoaded(function()
+EventsSubscriber.RegisterOnSessionLoaded(function()
     --local now = Ext.Utils.MonotonicTime()
     LoadVisualPresetData()
     ClearOriginalVisualData()
@@ -123,7 +123,7 @@ end
 --- @param displayName string?
 function VisualTab.CreateByEntity(entity, uuid, displayName)
     if entity.Scenery then
-        displayName = entity.Visual and entity.Visual.Visual and GetLastPath(entity.Visual.Visual.VisualResource.SourceFile) or "Unknown Scenery"
+        displayName = entity.Visual and entity.Visual.Visual and RBStringUtils.GetLastPath(entity.Visual.Visual.VisualResource.SourceFile) or "Unknown Scenery"
         uuid = entity.Scenery.Uuid
     end
 
@@ -166,7 +166,7 @@ function VisualTab:__init(guid, displayName, parent, templateName)
         NetChannel.GetTemplate:RequestToServer({ Guid = self.guid }, function(response)
             if response.GuidToTemplateId and response.GuidToTemplateId[self.guid] then
                 self.templateId = response.GuidToTemplateId[self.guid]
-                local getTemplateName = TrimTail(response.GuidToTemplateId[self.guid], 37)
+                local getTemplateName = RBStringUtils.TrimTail(response.GuidToTemplateId[self.guid], 37)
                 self.templateName = getTemplateName
                 self:SetupTemplate()
                 self:Refresh()
@@ -183,7 +183,7 @@ end
 function VisualTab:SetupTemplate()
     local stored = EntityStore:GetStoredData(self.guid)
     self.templateId = self.templateId or (stored and stored.TemplateId) or nil
-    self.templateName = self.templateName or (stored and TrimTail(stored.TemplateId, 37)) or "Unknown"
+    self.templateName = self.templateName or (stored and RBStringUtils.TrimTail(stored.TemplateId, 37)) or "Unknown"
     local templateName = self.templateName or "Unknown"
 
     if self.tooltipTemplate then
@@ -225,7 +225,7 @@ function VisualTab:Render(retryCnt)
         self.panel = self.parent:AddTabItem(GetLoca("Visual"))
         self.isWindow = false
     else
-        self.panel = RegisterWindow(self.guid, self.displayName .. " - Visual Editor", "VisualTab", self, self.lastPosition,
+        self.panel = WindowManager.RegisterWindow(self.guid, self.displayName .. " - Visual Editor", "VisualTab", self, self.lastPosition,
             self.lastSize or { VISUALTAB_WIDTH, VISUALTAB_HEIGHT })
         self.isWindow = true
         self:OnDetach()
@@ -326,7 +326,7 @@ function VisualTab:RenderMaterialContextPopup()
         local keyName = self.SelectedMaterial
         local matTab = self.Materials[keyName]
         if not matTab then return end
-        local uuid = Uuid_v4()
+        local uuid = RBUtils.Uuid_v4()
         local finalPath = "Realm_Builder/Materials/" .. uuid .. ".lsx"
         local save = ResourceHelpers.BuildMaterialResource(matTab.Editor.Material, uuid, matTab.Editor.Parameters, matTab.ParentNodeName:gsub("%.[lL][sS][fF]$", ""))
         if save then
@@ -350,7 +350,7 @@ function VisualTab:RenderMaterialContextPopup()
         if not matTab then return end
 
         local save = LSXHelpers.BuildMaterialPresetBank()
-        local uuid = Uuid_v4()
+        local uuid = RBUtils.Uuid_v4()
         local preset = ResourceHelpers.BuildMaterialPresetResourceNode(matTab.Editor.Parameters, uuid, matTab.ParentNodeName:gsub("%.[lL][sS][fF]$", "") .. "_Preset")
         save:AppendChild(preset)
         local finalPath = "Realm_Builder/Materials/" .. uuid .. ".lsx"
@@ -439,7 +439,7 @@ function VisualTab:RenderPresetsCell(parent)
         self.saveInput:OnChange()
     end
 
-    self.saveInputKeySub = SubscribeKeyInput({ Key = "RETURN" }, function()
+    self.saveInputKeySub = InputEvents.SubscribeKeyInput({ Key = "RETURN" }, function()
         if ImguiHelpers.IsFocused(self.saveInput) and not self.saveButton.Disabled then
             self.saveButton:OnClick()
         end
@@ -496,7 +496,7 @@ function VisualTab:RenderPresetsCell(parent)
 
     resetAllButton.OnClick = function(_)
         Timer:Ticks(10, function()
-            local isChara = CIsCharacter(self.guid)
+            local isChara = EntityHelpers.IsCharacter(self.guid)
 
             for key, matTab in pairs(self.Materials) do
                 matTab.Editor:ClearParameters()
@@ -810,7 +810,7 @@ function VisualTab:DetermineOverrideCharacterParameters()
         for _, colorIndex in ipairs(colorOrder) do
             local colorType = colorIndex
             local resUuid = allColors[colorType]
-            if not IsUuid(resUuid) then goto continue end
+            if not RBUtils.IsUuid(resUuid) then goto continue end
             local res = Ext.StaticData.Get(resUuid, colorTypes[colorType]) --[[@as ResourceCharacterCreationColor]]
             if not res then goto continue end
             local matPresetRes = MaterialPresetProxy.new(res.MaterialPresetUUID)
@@ -871,7 +871,7 @@ function VisualTab:DetermineOverrideCharacterParameters()
 
         for _, visualResource in pairs(visualSet.Slots) do
             local vres = Ext.Resource.Get(visualResource.VisualResource, "Visual") --[[@as ResourceVisualResource]]
-            if vres.HairPresetResourceId and IsUuid(vres.HairPresetResourceId) then
+            if vres.HairPresetResourceId and RBUtils.IsUuid(vres.HairPresetResourceId) then
                 local matPresetRes = MaterialPresetProxy.new(vres.HairPresetResourceId)
                 if matPresetRes then
                     for ptype, params in pairs(matPresetRes.Parameters) do
@@ -911,7 +911,7 @@ function VisualTab:RenderAttachmentEditors()
     if not visual then return end
 
     local overrideCharacterParams = {}
-    if CIsCharacter(self.guid) then
+    if EntityHelpers.IsCharacter(self.guid) then
         overrideCharacterParams = self:DetermineOverrideCharacterParameters()
     end
 
@@ -922,7 +922,7 @@ function VisualTab:RenderAttachmentEditors()
         local vres = attach.Visual.VisualResource
         if not vres then goto continue end
         local source = vres and vres.SourceFile or "Unknown Model"
-        local gr2FileName = GetLastPath(source)
+        local gr2FileName = RBStringUtils.GetLastPath(source)
 
         local displayName = vres.Slot
 
@@ -931,10 +931,10 @@ function VisualTab:RenderAttachmentEditors()
         end
 
         local attachNode = ImguiElements.AddTree(self.attachmentsHeader, displayName .. "##" .. tostring(attIndex), false)
-        attachNode:AddTreeIcon(RB_ICONS.Box, IMAGESIZE.ROW).Tint = HexToRGBA("FFB98634")
+        attachNode:AddTreeIcon(RB_ICONS.Box, IMAGESIZE.ROW).Tint = ColorUtils.HexToRGBA("FFB98634")
         
         local gr2Text = attachNode:AddHint("Model: " .. gr2FileName)
-        gr2Text:SetColor("Text", HexToRGBA("FF6D6D6D"))
+        gr2Text:SetColor("Text", ColorUtils.HexToRGBA("FF6D6D6D"))
         gr2Text.SameLine = true
         gr2Text.Font = "Tiny"
         local lodNode = nil
@@ -948,7 +948,7 @@ function VisualTab:RenderAttachmentEditors()
             end
 
             local objNode = parentNode:AddTree(modelName .. "##" .. tostring(attIndex) .. "::" .. tostring(descIndex), false)
-            objNode:AddTreeIcon(RB_ICONS.Bounding_Box, IMAGESIZE.ROW).Tint = HexToRGBA("FF27B040")
+            objNode:AddTreeIcon(RB_ICONS.Bounding_Box, IMAGESIZE.ROW).Tint = ColorUtils.HexToRGBA("FF27B040")
 
 
             local matName = obj.Renderable.ActiveMaterial.Material.Name
@@ -1010,7 +1010,7 @@ function VisualTab:RenderAttachmentEditors()
 end
 
 function VisualTab:RenderObjectSection()
-    if next(LightCToArray(self:GetEntity(self.guid).Visual.Visual.ObjectDescs)) == nil then
+    if next(RBUtils.LightCToArray(self:GetEntity(self.guid).Visual.Visual.ObjectDescs)) == nil then
         return
     end
 
@@ -1067,7 +1067,7 @@ function VisualTab:RenderObjectEditor()
         end
 
         local materialNode = ImguiElements.AddTree(parentTree, meshName .. "##" .. tostring(descIndex), false)
-        materialNode:AddTreeIcon(RB_ICONS.Bounding_Box, IMAGESIZE.ROW).Tint = HexToRGBA("FF268B39")
+        materialNode:AddTreeIcon(RB_ICONS.Bounding_Box, IMAGESIZE.ROW).Tint = ColorUtils.HexToRGBA("FF268B39")
 
         local function getliveMat()
             local visual = self:GetVisual(self.guid)
@@ -1589,7 +1589,7 @@ function VisualTab:SetupEffectContextMenu()
         local modfiedParams = self.Effects[compKey]
         if not modfiedParams then return end
 
-        local parsedKey = SplitByString(compKey, "::")
+        local parsedKey = RBStringUtils.SplitByString(compKey, "::")
         local compIndex = tonumber(parsedKey[2])
         if not compIndex then return end
         local selectedComp = VisualHelpers.GetEffectComponent(self.guid, compIndex)
@@ -1601,7 +1601,7 @@ function VisualTab:SetupEffectContextMenu()
             return
         end
 
-        for otIdx, comp in FilteredPairs(entity.Effect.Timeline.Components, function(idx, comp)
+        for otIdx, comp in RBUtils.FilteredPairs(entity.Effect.Timeline.Components, function(idx, comp)
             return comp.TypeName == compType and (idx ~= compIndex)
         end) do
             local otherKey = compType .. "::" .. tostring(otIdx)
@@ -1902,7 +1902,7 @@ function VisualTab:RenderLightComponent(node, component, compIndex)
             if not property or not property.Frames then return nil end
 
             local lc = property.Frames[1] and property.Frames[1].Color or {}
-            return LightCToArray(lc)
+            return RBUtils.LightCToArray(lc)
         end
     end
 
@@ -2012,7 +2012,7 @@ function VisualTab:RenderTransformSliders(parent, descIndex, attachIndex, keyNam
 end
 
 function VisualTab:Add(guid, displayName, parent, templateName)
-    if not EntityExists(guid) then
+    if not EntityHelpers.EntityExists(guid) then
         Error("VisualTab:Add - Entity with GUID " .. guid .. " does not exist.")
         return nil
     end
@@ -2078,7 +2078,7 @@ function VisualTab:Save(name, overwrite)
         end
 
         local currentScale = VisualHelpers.GetRenderableScale(self.guid, objStart.DescIndex, objStart.AttachIndex)
-        if EqualArrays(currentScale, objStart.Scale) == false then
+        if RBTableUtils.EqualArrays(currentScale, objStart.Scale) == false then
             localTransforms[key] = {
                 Scale = currentScale
             }
@@ -2090,7 +2090,7 @@ function VisualTab:Save(name, overwrite)
     oriFile[saveName] = {
         Name = saveName,
         TemplateName = templateName,
-        Effects = DeepCopy(self.Effects),
+        Effects = RBUtils.DeepCopy(self.Effects),
         Materials = Mats,
         Transforms = localTransforms,
     }
@@ -2113,8 +2113,8 @@ function VisualTab:Save(name, overwrite)
 
     --Info("Saved VisualTab preset as '" .. saveName .. "' for template: " .. templateId)
     self.currentPreset = saveName
-    self.savedPresets[saveName] = DeepCopy(oriFile[saveName])
-    if IsPartyMember(self.guid) then
+    self.savedPresets[saveName] = RBUtils.DeepCopy(oriFile[saveName])
+    if EntityHelpers.IsPartyMember(self.guid) then
 
     else
         EntityStore[self.guid].VisualPreset = saveName
@@ -2128,7 +2128,7 @@ end
 function VisualTab:ExportPreset()
     local presetData = {
         Materials = {},
-        Effects = DeepCopy(self.Effects),
+        Effects = RBUtils.DeepCopy(self.Effects),
         Transforms = {},
     }
 
@@ -2147,7 +2147,7 @@ function VisualTab:ExportPreset()
         end
         local objStart = self.resetParams[key]
         local currentScale = VisualHelpers.GetRenderableScale(self.guid, objStart.DescIndex, objStart.AttachIndex)
-        if EqualArrays(currentScale, objStart.Scale) == false then
+        if RBTableUtils.EqualArrays(currentScale, objStart.Scale) == false then
             presetData.Transforms[key] = {
                 Scale = currentScale
             }
@@ -2280,8 +2280,8 @@ function VisualTab:LoadPreset(name)
 
     VisualHelpers.ApplyVisualParams(self.guid, preset)
     self.currentPreset = name
-    self.Effects = DeepCopy(preset.Effects) or {}
-    self.LocalTransforms = DeepCopy(preset.Transforms) or {}
+    self.Effects = RBUtils.DeepCopy(preset.Effects) or {}
+    self.LocalTransforms = RBUtils.DeepCopy(preset.Transforms) or {}
 
     for key, matParams in pairs(preset.Materials or {}) do
         if self.Materials[key] then
@@ -2294,7 +2294,7 @@ function VisualTab:LoadPreset(name)
         ImguiHelpers.SetCombo(self.loadCombo, name)
     end
 
-    if IsPartyMember(self.guid) then
+    if EntityHelpers.IsPartyMember(self.guid) then
 
     else
         EntityStore[self.guid].VisualPreset = name
@@ -2361,7 +2361,7 @@ function VisualTab:Collapsed()
 
     if self.panel then
         if self.isWindow then
-            DeleteWindow(self.panel)
+            WindowManager.DeleteWindow(self.panel)
             self.panel = nil
         else
             self.panel:Destroy()
@@ -2447,7 +2447,7 @@ end
 function VisualTab:ExportObjectEdit()
     local objEdit = {}
 
-    for key, mat in FilteredPairs(self.Materials, function(k, v)
+    for key, mat in RBUtils.FilteredPairs(self.Materials, function(k, v)
         return v.LinkId and v:HasChanges()
     end) do
         objEdit[mat.LinkId] = mat:ExportChanges()

@@ -272,7 +272,13 @@ local BoneName = {
     Tail8_endBone = "Tail8_endBone",
 }
 
-function FindBestMatchBone(input)
+--- @class BoneHelpers
+--- @field FindBestMatchBone fun(input:string): (string|nil, table<string>)
+--- @field IsBone fun(name:string): boolean
+--- @field ParseBoneList fun(bonestr:string, dontFindMatch:boolean?): string
+BoneHelpers = BoneHelpers or {}
+
+function BoneHelpers.FindBestMatchBone(input)
     if not input or type(input) ~= "string" or input == "" then
         return nil, {}
     end
@@ -283,7 +289,7 @@ function FindBestMatchBone(input)
 
     ---
 
-    local cleanInput = ToLowerAlphaOnly(input)
+    local cleanInput = RBStringUtils.ToLowerAlphaOnly(input)
     
     local aliasMatch = BoneAlias[cleanInput]
     if aliasMatch then
@@ -316,7 +322,7 @@ function FindBestMatchBone(input)
     local scores = {}
     for _, name in ipairs(uniqueCandidates) do
         local lname = name:lower()
-        local dist = Levenshtein(input, lname)
+        local dist = RBStringUtils.Levenshtein(input, lname)
 
         table.insert(scores, {name = name, score = dist})
     end
@@ -341,11 +347,11 @@ function FindBestMatchBone(input)
     return best, topMatches
 end
 
-function IsBone(name)
-    return BoneName[name]
+function BoneHelpers.IsBone(name)
+    return BoneName[name] ~= nil
 end
 
-function ParseBoneList(bonestr, dontFindMatch)
+function BoneHelpers.ParseBoneList(bonestr, dontFindMatch)
     if not bonestr or type(bonestr) ~= "string" or bonestr == "" then
         return ""
     end
@@ -355,7 +361,7 @@ function ParseBoneList(bonestr, dontFindMatch)
     for bone in bonestr:gmatch("([^,]+)") do
         local trimmedBone = bone:match("^%s*(.-)%s*$")
         if trimmedBone ~= "" and not dontFindMatch then
-            local bestMatch = FindBestMatchBone(trimmedBone)
+            local bestMatch = BoneHelpers.FindBestMatchBone(trimmedBone)
             if bestMatch then
                 table.insert(results, bestMatch)
             end

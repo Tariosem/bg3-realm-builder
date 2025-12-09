@@ -1,3 +1,3 @@
-RequireFiles("Client/Keybind/", {
+RBUtils.RequireFiles("Client/Keybind/", {
     "KeybindManager",
 })

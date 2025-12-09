@@ -46,7 +46,7 @@ function OutlinerMenu:NewEntityAdded(guids)
 end
 
 function OutlinerMenu:EntityDeleted(guids)
-    local list = NormalizeGuidList(guids)
+    local list = RBUtils.NormalizeGuidList(guids)
     for _, guid in ipairs(list) do
         if guid ~= nil and guid ~= "" then
             if self.entityTabs[guid] then
@@ -64,7 +64,7 @@ function OutlinerMenu:Render()
         self.panel = self.parent:AddTabItem(GetLoca("Outliner"))
         self.isWindow = false
     else
-        self.panel = RegisterWindow("generic", "Outliner", "Outliner", self)
+        self.panel = WindowManager.RegisterWindow("generic", "Outliner", "Outliner", self)
         self.panel.Closeable = true
         self.panel.OnClose = function()
             self:ToggleDetach()
@@ -161,9 +161,9 @@ local function setupEyeHover(image, hidden)
         end
         image.Tint = {0.5,0.5,0.5,1}
     end
-    image:SetColor("Button", ToVec4(0))
-    image:SetColor("ButtonHovered", ToVec4(0))
-    image:SetColor("ButtonActive", ToVec4(0))
+    image:SetColor("Button", RBUtils.ToVec4(0))
+    image:SetColor("ButtonHovered", RBUtils.ToVec4(0))
+    image:SetColor("ButtonActive", RBUtils.ToVec4(0))
     StyleHelpers.ClearAllBorders(image)
 end
 
@@ -208,7 +208,7 @@ function OutlinerMenu:RenderTreeList()
     
         self.imageRefs[key] = image
         image.Tint = propData.IconTintColor or {1,1,1,1}
-        image:SetColor("Button", ToVec4(0))
+        image:SetColor("Button", RBUtils.ToVec4(0))
         image.OnClick = function()
             RB_GLOBALS.TransformEditor:Select({MovableProxy.CreateByGuid(propData.Guid)})
         end
@@ -357,7 +357,7 @@ function OutlinerMenu:RenderTreeList()
     end
 
     treeList.FilterFunc = function(sel, key, keywords)
-        local words = SplitBySpace(keywords)
+        local words = RBStringUtils.SplitBySpace(keywords)
         local propData = EntityStore:GetStoredData(key)
         if not propData then
             if not tree:IsLeaf(key) then
@@ -831,7 +831,7 @@ function OutlinerMenu:SetupSelectablePopup()
         return self.propTreeList and (self.propTreeList.hoveringKey ~= nil and true or false) or false
     end
 
-    contextMenu:AddContext(context, isFocus)
+    contextMenu:AddItems(context, isFocus)
 end
 
 function OutlinerMenu:SetupCollectionSelectablePopup(openKey)
@@ -910,19 +910,19 @@ function OutlinerMenu:SetupCollectionSelectablePopup(openKey)
         }
         for guid,_ in pairs(childs) do
             local storedData = EntityStore:GetStoredData(guid)
-            if not storedData or not Ext.Template.GetTemplate(TakeTailTemplate(storedData.TemplateId)) then
+            if not storedData or not Ext.Template.GetTemplate(EntityHelpers.TakeTailTemplate(storedData.TemplateId)) then
                 --Warning("Invalid TemplateId for guid: " .. guid .. ", skipping...")
                 goto continue
             else
                 table.insert(childArr, guid)
                 table.insert(childTemplateArr, storedData.TemplateId)
             end
-            local pos = Vec3.new(CGetPosition(guid))
+            local pos = Vec3.new(RBGetPosition(guid))
             pivtoTransform.Translate = pivtoTransform.Translate + pos
             table.insert(childWorldTransforms, {
                 Translate = pos,
-                RotationQuat = {CGetRotation(guid)},
-                Scale = {CGetScale(guid)},
+                RotationQuat = {RBGetRotation(guid)},
+                Scale = {RBGetScale(guid)},
             })
             ::continue::
         end
@@ -936,12 +936,12 @@ function OutlinerMenu:SetupCollectionSelectablePopup(openKey)
         pivtoTransform.Translate = pivtoTransform.Translate / #childArr
         for i, guid in ipairs(childArr) do
             local childPos, childRot, childScale = childWorldTransforms[i].Translate, childWorldTransforms[i].RotationQuat, childWorldTransforms[i].Scale
-            local relativeTransform = SaveLocalRelativeTransform(pivtoTransform, childPos, childRot, childScale)
+            local relativeTransform = MathHelpers.SaveLocalRelativeTransform(pivtoTransform, childPos, childRot, childScale)
             childRelativeTransforms[i] = relativeTransform
         end
 
-        local generated = Uuid_v4()
-        local internalName = ValidateFolderName(treeKey)
+        local generated = RBUtils.Uuid_v4()
+        local internalName = RBUtils.ValidateFolderName(treeKey)
 
         local xmlNode = LSXHelpers.BuildPrefabTemplate(generated, internalName, childTemplateArr, childRelativeTransforms)
 
@@ -1008,7 +1008,7 @@ function OutlinerMenu:SetupCollectionSelectablePopup(openKey)
         return hovering and not tree:IsLeaf(hovering)
     end
 
-    contextMenu:AddContext(context, focusFunc)
+    contextMenu:AddItems(context, focusFunc)
 end
 
 function OutlinerMenu:RenderMainArea()
@@ -1141,7 +1141,7 @@ function OutlinerMenu:Collapse()
     end
 
     if self.isWindow and self.panel then
-        DeleteWindow(self.panel)
+        WindowManager.DeleteWindow(self.panel)
         self.panel = nil
         self.isVisible = false
     elseif self.panel then

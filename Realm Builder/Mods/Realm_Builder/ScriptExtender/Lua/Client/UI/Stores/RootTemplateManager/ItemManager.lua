@@ -42,7 +42,7 @@ function ItemManager:CheckHostValidEquipmentVisual(guid)
     local entity = guid and UuidToHandle(guid) or _C()
     self.lastPartyMember = guid
     if not entity then return false end
-    if not IsPartyMember(entity) then return false end
+    if not EntityHelpers.IsPartyMember(entity) then return false end
 
     local raceUuid = entity.GameObjectVisual.RootTemplateId
     local cTemplate = Ext.Template.GetRootTemplate(raceUuid)

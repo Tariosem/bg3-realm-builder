@@ -89,7 +89,7 @@ RB_PROP_BIND_VISUALIZATION_FX_RED = "3e3032d5-dd5c-a9e1-a77c-64273e97a7ce"  -- V
 
 
 --- @type table<RB_Icons, {U1:number,U2:number,V1:number,V2:number}>
-RB_ICON_UV = {}
+local RB_ICON_UV = {}
 RB_ICON_UV[RB_ICONS.Eye] = {
     U1 = 0.12524414,
     U2 = 0.24975586,
@@ -161,35 +161,36 @@ RARITY_COLORS = {
     Common = {0, 0, 0, 0},
     [""] = {0, 0, 0, 0},
     ["None"] = {0, 0, 0, 0},
-    Uncommon = HexToRGBA("FF194A1F"),
-    Rare = HexToRGBA("FF182A51"),
-    VeryRare = HexToRGBA("A48400FF"),
-    Legendary = HexToRGBA("FFCA911D"),
-    StoryItem = HexToRGBA("AA944300"),
+    Uncommon = ColorUtils.HexToRGBA("FF194A1F"),
+    Rare = ColorUtils.HexToRGBA("FF182A51"),
+    VeryRare = ColorUtils.HexToRGBA("A48400FF"),
+    Legendary = ColorUtils.HexToRGBA("FFCA911D"),
+    StoryItem = ColorUtils.HexToRGBA("AA944300"),
 }
 
 DAMAGE_TYPE_COLORS = {
-    Acid = HexToRGBA("FFD0F954"),
-    Cold = HexToRGBA("FF62D0FF"),
-    Fire = HexToRGBA("FFFF5C00"),
-    Force = HexToRGBA("FFDC2525"),
-    Lightning = HexToRGBA("FF5770FF"),
-    Necrotic = HexToRGBA("FF7CFC93"),
-    Poison = HexToRGBA("FF4E9331"),
-    Psychic = HexToRGBA("FFFFA0DF"),
-    Radiant = HexToRGBA("FFFFE680"),
-    Thunder = HexToRGBA("FFC758FF"),
-    Piercing = HexToRGBA("FFC8C8C8"),
-    Slashing = HexToRGBA("FFC8C8C8"),
-    Bludgeoning = HexToRGBA("FFC8C8C8"),
-    HitPoint = HexToRGBA("FF3DC3BA"),
+    Acid = ColorUtils.HexToRGBA("FFD0F954"),
+    Cold = ColorUtils.HexToRGBA("FF62D0FF"),
+    Fire = ColorUtils.HexToRGBA("FFFF5C00"),
+    Force = ColorUtils.HexToRGBA("FFDC2525"),
+    Lightning = ColorUtils.HexToRGBA("FF5770FF"),
+    Necrotic = ColorUtils.HexToRGBA("FF7CFC93"),
+    Poison = ColorUtils.HexToRGBA("FF4E9331"),
+    Psychic = ColorUtils.HexToRGBA("FFFFA0DF"),
+    Radiant = ColorUtils.HexToRGBA("FFFFE680"),
+    Thunder = ColorUtils.HexToRGBA("FFC758FF"),
+    Piercing = ColorUtils.HexToRGBA("FFC8C8C8"),
+    Slashing = ColorUtils.HexToRGBA("FFC8C8C8"),
+    Bludgeoning = ColorUtils.HexToRGBA("FFC8C8C8"),
+    HitPoint = ColorUtils.HexToRGBA("FF3DC3BA"),
 }
 
-HIGHLIGHT_COLOR = HexToRGBA("FFFED999")
-DEBUFF_COLOR = HexToRGBA("FFFF4C4C")
-BORDER_COLOR = HexToRGBA("FFFFA43C")
+UI_COLORS = {}
 
-SUBTITLE_COLOR = HexToRGBA("B7939393")
+UI_COLORS.HighLight = ColorUtils.HexToRGBA("FFFED999")
+UI_COLORS.Warning = ColorUtils.HexToRGBA("FFFF4C4C")
+UI_COLORS.Border = ColorUtils.HexToRGBA("FFFFA43C")
+UI_COLORS.Subtitle = ColorUtils.HexToRGBA("B7939393")
 
 for damageType,color in pairs(DAMAGE_TYPE_COLORS) do
     DAMAGE_TYPE_COLORS[damageType:lower()] = color

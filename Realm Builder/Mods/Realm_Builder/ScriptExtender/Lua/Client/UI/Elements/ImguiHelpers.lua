@@ -68,7 +68,7 @@ end
 
 ---@param window ExtuiWindow
 function ImguiHelpers.FocusWindow(window)
-    if not IsWindowValid(window) then return end
+    if not WindowManager.IsWindowValid(window) then return end
 
     window:SetCollapsed(false)
     window:SetFocus()

@@ -1,4 +1,4 @@
-RequireFiles("Shared/Helpers/Math/", {
+RBUtils.RequireFiles("Shared/Helpers/Math/", {
     "Vector",
     "Quat",
     "Matrix",

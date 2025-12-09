@@ -48,13 +48,13 @@ function CCAVBrowser:RenderIcon(entry, cell)
         disName = "Unknown"
     end
     local button = cell:AddButton(disName .. "##" ..entry.Uuid)
-    button:SetColor("Button", self.iconButtonBgColor or HexToRGBA("FF615238"))
+    button:SetColor("Button", self.iconButtonBgColor or ColorUtils.HexToRGBA("FF615238"))
     iconImage = button
 
     iconImage.OnClick = function()
         if not popup then
             popup = cell:AddPopup("Root Template Details")
-            popup.IDContext = entry.Uuid .. "Popup" .. Uuid_v4()
+            popup.IDContext = entry.Uuid .. "Popup" .. RBUtils.Uuid_v4()
             local attrs = {
                 Uuid = entry.Uuid,
                 TemplateName = entry.TemplateName,
@@ -71,7 +71,7 @@ function CCAVBrowser:RenderIcon(entry, cell)
     iconImage.OnRightClick = function()
         if not rPopup then
             rPopup = cell:AddPopup("Preview Template")
-            rPopup.IDContext = entry.Uuid .. "RPopup" .. Uuid_v4()
+            rPopup.IDContext = entry.Uuid .. "RPopup" .. RBUtils.Uuid_v4()
             self:RenderCustomizationTab(rPopup, entry)
             local actTab = ImguiElements.AddContextMenu(rPopup, "Actions")
             actTab:AddItem("Add Custom Visual Override", function()

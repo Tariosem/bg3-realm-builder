@@ -974,7 +974,7 @@ end
 
 --- return a copy of the internal table
 function TreeTable:ToTable()
-    return DeepCopy(self._table)
+    return RBUtils.DeepCopy(self._table)
 end
 
 function TreeTable:FromTable(tbl)

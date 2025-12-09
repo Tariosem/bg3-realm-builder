@@ -1,3 +1,5 @@
+EventsSubscriber = EventsSubscriber or {}
+
 local onSessionLoadedFuncs = {}
 local onStatsLoadedFuncs = {}
 
@@ -11,7 +13,7 @@ UNSUBSCRIBE_SYMBOL = {}
 --- priority: lower number = higher priority
 --- @param func function
 --- @param priority number|nil
-function RegisterOnSessionLoaded(func, priority)
+function EventsSubscriber.RegisterOnSessionLoaded(func, priority)
     priority = priority or 0
     table.insert(onSessionLoadedFuncs, {
         func = func,
@@ -25,7 +27,7 @@ end
 
 --- @param func function
 --- @param priority number|nil
-function RegisterOnStatsLoaded(func, priority)
+function EventsSubscriber.RegisterOnStatsLoaded(func, priority)
     priority = priority or 0
     table.insert(onStatsLoadedFuncs, {
         func = func,
@@ -132,21 +134,21 @@ Ext.RegisterConsoleCommand("rb_help", function(cmd, args)
 
     RBPrintPurple("\n------- Common Context -------")
     local index = 1
-    for command, cmdData in SortedPairs(commonCommands) do
+    for command, cmdData in RBUtils.SortedPairs(commonCommands) do
         RBPrintPurple(string.format("%d. %s", index, command))
         index = index + 1
     end
 
     RBPrintGreen("\n------- Server Context -------")
     index = 1
-    for command, cmdData in SortedPairs(serverCommands) do
+    for command, cmdData in RBUtils.SortedPairs(serverCommands) do
         RBPrintGreen(string.format("%d. %s", index, command))
         index = index + 1
     end
 
     RBPrintBlue("\n------- Client Context -------")
     index = 1
-    for command, cmdData in SortedPairs(clientCommands) do
+    for command, cmdData in RBUtils.SortedPairs(clientCommands) do
         RBPrintBlue(string.format("%d. %s", index, command))
         index = index + 1
     end

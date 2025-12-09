@@ -18,7 +18,7 @@ local DEFAULT_KEYBINDS = Ext.Require("Client/Keybind/DefaultKeybinds.lua")
 
 function KeybindManager:Enable(module)
     self:Disable(module)
-    self.Listeners[module] = SubscribeKeyAndMouse(function(e)
+    self.Listeners[module] = InputEvents.SubscribeKeyAndMouse(function(e)
         self:HandleInput(module, e)
     end)
 end
@@ -233,7 +233,7 @@ end
 
 function KeybindManager:RebindByInput(module, eventName, callback)
     self.rebinding = true
-    SubscribeKeyAndMouse(function(e)
+    InputEvents.SubscribeKeyAndMouse(function(e)
         if e.Event == "KeyUp" then
             self.rebinding = false
             if self:GetKeyByEvent(module, eventName) then
@@ -398,7 +398,7 @@ function KeybindManager:CreateModule(moduleName)
     return module
 end
 
-RegisterOnSessionLoaded(function()
+EventsSubscriber.RegisterOnSessionLoaded(function()
     KeybindManager:Load(DEFAULT_KEYBINDS)
     KeybindManager:LoadFromFile()
 end)
@@ -423,7 +423,7 @@ RegisterConsoleCommand("rb_dump_keybinds", function()
     local lastHue = 0
     local function runHue()
         lastHue = (lastHue + 53) % 360
-        local r, g, b = HSLToRGB(lastHue / 360, 1, 0.5)
+        local r, g, b = ColorUtils.HSLToRGB(lastHue / 360, 1, 0.5)
         return { r, g, b }
     end
 
@@ -432,7 +432,7 @@ RegisterConsoleCommand("rb_dump_keybinds", function()
         local strings = {}
         table.insert(strings, "Module: " .. module)
         table.insert(strings, separator)
-        for eventName, identifier in SortedPairs(events) do
+        for eventName, identifier in RBUtils.SortedPairs(events) do
             local padding = string.rep(" ", longest - #eventName)
             table.insert(strings, "  " .. eventName .. padding .. " : " .. identifier)
         end

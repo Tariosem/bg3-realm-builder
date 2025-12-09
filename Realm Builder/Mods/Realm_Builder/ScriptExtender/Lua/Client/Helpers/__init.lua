@@ -1,4 +1,4 @@
-RequireFiles("Client/Helpers/", {
+RBUtils.RequireFiles("Client/Helpers/", {
     "InputEvents",
     "ClientEntityHelpers",
     "CameraHelpers",

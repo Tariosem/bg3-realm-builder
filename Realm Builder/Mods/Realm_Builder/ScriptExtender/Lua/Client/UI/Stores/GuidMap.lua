@@ -8,9 +8,9 @@ local isInMirror = false
 local function postUpdateDummies()
     local dummiesInfo = {}
     local post = {}
-    for uuid, dummy in pairs(GetAllDummies()) do
+    for uuid, dummy in pairs(DummyHelpers.GetAllDummies()) do
         if #dummy:GetAllComponentNames() == 0 then
-            ClearDummyData()
+            DummyHelpers.ClearDummyData()
             Timer:Cancel(dummyUpdateTimer)
             dummyUpdateTimer = nil
             post.Deactive = true
@@ -33,15 +33,15 @@ Ext.Entity.OnCreate("Visual", function (entity)
         return
     end
 
-    if IsDummy(entity) then
+    if EntityHelpers.IsDummy(entity) then
         --_P("Found dummy")
-        local partyMembers = GetAllPartyMembers()
+        local partyMembers = EntityHelpers.GetAllPartyMembers()
         for _, member in ipairs(partyMembers) do
             local uuid = member --[[@as string]]
             local memberHandle = UuidToHandle(uuid)
-            if EqualArrays(memberHandle.Transform.Transform.Translate, entity.Transform.Transform.Translate) then
+            if RBTableUtils.EqualArrays(memberHandle.Transform.Transform.Translate, entity.Transform.Transform.Translate) then
                 Debug("Found dummy and coresponding party member : " .. memberHandle.DisplayName.Name:Get())
-                SetClientDummyEntity(uuid, entity)
+                DummyHelpers.SetClientDummyEntity(uuid, entity)
 
                 Timer:Ticks(10, function (timerID)
 
@@ -96,7 +96,7 @@ Ext.Entity.OnCreate("ClientCCDummyDefinition", function(entity)
         local name = entity.CCChangeAppearanceDefinition.Appearance.Name
         if not name then return end
 
-        local allPartyMembers = GetAllPartyMembers()
+        local allPartyMembers = EntityHelpers.GetAllPartyMembers()
         for _, uuid in pairs(allPartyMembers) do
             local handle = UuidToHandle(uuid)
             local displayName = handle.DisplayName.Name:Get()
@@ -139,7 +139,7 @@ local function mapTLDummies()
 
         if dummy then
             clientVisualDummies[owner.Uuid.EntityUuid] = dummy
-            SetClientDummyEntity(owner.Uuid.EntityUuid, dummy)
+            DummyHelpers.SetClientDummyEntity(owner.Uuid.EntityUuid, dummy)
             local displayNameComponent = owner.DisplayName
             Debug("Set TLPreview dummy for owner: " .. (displayNameComponent and displayNameComponent.Name:Get() or owner.Uuid.EntityUuid))
             local visualTab = VisualTab.FetchByGuid(owner.Uuid.EntityUuid)

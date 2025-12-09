@@ -64,7 +64,7 @@ function TreeList:__init(parent, label, tree)
 end
 
 function TreeList:SetupKeyListeners()
-    self.selectModeKeySub = SubscribeKeyInput({}, function(e)
+    self.selectModeKeySub = InputEvents.SubscribeKeyInput({}, function(e)
         if e.Repeat then return end
         if e.Key == "LCTRL" or e.Key == "RCTRL" then
             if e.Event == "KeyDown" then
@@ -97,13 +97,13 @@ function TreeList:Render()
     end)
     self.listWindow.NoResize = false
 
-    local _, screenHeight = GetScreenSize()
+    local _, screenHeight = UIHelpers.GetScreenSize()
     local sliderHeight = ImguiHelpers.SafeAddSliderInt(self.panel, "##windowHeight", 800 * SCALE_FACTOR, screenHeight, 200)
     sliderHeight:SetColor("Text", {0,0,0,0})
     sliderHeight.SameLine = true
     sliderHeight.Vertical = true
     sliderHeight.VerticalSize = {20, 800 * SCALE_FACTOR + 1}
-    sliderHeight.Value = ToVec4Int(800 * SCALE_FACTOR)
+    sliderHeight.Value = RBUtils.ToVec4Int(800 * SCALE_FACTOR)
     sliderHeight.OnChange = function(slider)
         local height = slider.Value[1]
         self.listWindow.Size = { -20, height + 1}
@@ -152,7 +152,7 @@ function TreeList:RenderTopBar()
 
     searchInput.Hint = "Search..."
     searchInput.Text = self.SearchKeyword or ""
-    searchInput.OnChange = Debounce(50, function()
+    searchInput.OnChange = RBUtils.Debounce(50, function()
         self.SearchKeyword = searchInput.Text
         self:Hide(searchInput.Text)
     end)
@@ -362,7 +362,7 @@ function TreeList:RenderList()
         --local now = Ext.Timer.MonotonicTime()
         local profileKey = "TreeList_SortChildren" .. tostring(key)
         Ext.Utils.ProfileBegin(profileKey)
-        for childKey,_ in SortedPairs(node, function (a, b)
+        for childKey,_ in RBUtils.SortedPairs(node, function (a, b)
             local aObj = self.SortCache[a]
             local bObj = self.SortCache[b]
 
@@ -919,7 +919,7 @@ function TreeList:SetupRenameInput(key, userLabel)
         end)
     end)
 
-    local enterSub = SubscribeKeyInput({ Key = "RETURN" }, function (e)
+    local enterSub = InputEvents.SubscribeKeyInput({ Key = "RETURN" }, function (e)
         local ok, focused = pcall(ImguiHelpers.IsFocused, input)
         if not ok then return UNSUBSCRIBE_SYMBOL end
 

@@ -10,7 +10,7 @@ local treeClosed = RB_ICON_UV01[treeClosedIcon]
 --- @field AddTree fun(self: RB_UI_Tree, label: string, isOpen: boolean?): RB_UI_Tree
 --- @field AddHint fun(self: RB_UI_Tree, hintText: string): ExtuiText
 --- @field AddTreeIcon fun(self: RB_UI_Tree, iconPath: string, iconSize?: Vec2): ExtuiImage
---- @field AddChild fun(self: RB_UI_Tree, child: RB_UI_Tree)
+--- @field AddChild fun(self: RB_UI_Tree, child: RB_UI_Tree) -- add a logical child tree, does not add to UI
 --- @field Destroy fun()
 --- @field DestroyChildren fun()
 --- @field ToggleAll fun(self: RB_UI_Tree)
@@ -28,7 +28,7 @@ function ImguiElements.AddTree(parent, label, open)
         return parent:AddTree(label, open) --[[@as RB_UI_Tree]]
     end
     label = label or "TreeGroup"
-    local uuid = Uuid_v4()
+    local uuid = RBUtils.Uuid_v4()
     local panelGroup = parent:AddGroup(label .. "##uuid_" .. uuid)
 
     local children = {}
@@ -72,14 +72,20 @@ function ImguiElements.AddTree(parent, label, open)
     end
 
     local toggleAll = function(sel, syncState)
+        syncState = syncState or { ExpandState = expandAll, Seen = {} }
         if syncState ~= nil then
-            expandAll = syncState
+            expandAll = syncState.ExpandState
         end
         for _, child in ipairs(children) do
-            if child.SetOpen then
-                child:SetOpen(expandAll)
-                child:ToggleAll(expandAll)
+            if syncState.Seen[child] then
+                goto continue
             end
+            if child.SetOpen then
+                syncState.Seen[child] = true
+                child:SetOpen(expandAll)
+                child:ToggleAll(syncState)
+            end
+            ::continue::
         end
         expandAll = not expandAll
     end
@@ -125,7 +131,7 @@ function ImguiElements.AddTree(parent, label, open)
         end,
         AddHint = function(_, hintText)
             local hint = headerGroup:AddText(hintText)
-            hint:SetColor("Text", HexToRGBA("FFAAAAAA"))
+            hint:SetColor("Text", ColorUtils.HexToRGBA("FFAAAAAA"))
             hint.SameLine = true
             hint.Font = "Tiny"
             return hint

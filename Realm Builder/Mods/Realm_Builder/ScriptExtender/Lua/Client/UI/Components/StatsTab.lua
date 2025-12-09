@@ -63,7 +63,7 @@ function StatsTab:_subclassChange()
 end
 
 function StatsTab:Add(uuid, parent, displayName, searchData, statsType)
-    local exist, tab = CheckWindowExists(uuid, "Custom Effect Tab")
+    local exist, tab = WindowManager.CheckWindowExists(uuid, "Custom Effect Tab")
     if exist then
         return tab
     end
@@ -100,7 +100,7 @@ function StatsTab:RenderEffects()
     end
 
     local tempArray = {}
-    for k,v in SortedPairs(effectTypes) do
+    for k,v in RBUtils.SortedPairs(effectTypes) do
         table.insert(tempArray, k)
     end
 
@@ -280,7 +280,7 @@ function StatsTab:RenderSingleEffectType(parent, effectType)
         end
         boneInput.OnRightClick = function()
             if boneInput.Text and boneInput.Text ~= "" then
-                local bestMatch = ParseBoneList(boneInput.Text)
+                local bestMatch = BoneHelpers.ParseBoneList(boneInput.Text)
                 boneInput.Text = bestMatch
                 effectTypeData[name].Bone = bestMatch
             end
@@ -472,7 +472,7 @@ function StatsTab:SetupEffectContextMenu()
         }
     }
 
-    contextMenu:AddContext(contextItems, function()
+    contextMenu:AddItems(contextItems, function()
         return self.isFocused
     end)
 
@@ -591,7 +591,7 @@ function StatsTab:Play()
         else
             for _,data in pairs(multiData) do
                 local bone = data.Bone
-                local bones = ParseBoneList(bone, true)
+                local bones = BoneHelpers.ParseBoneList(bone, true)
                 local newString = nil
                 if bones then
                     newString = data.TemplateName .. ":" .. bones .. ";"

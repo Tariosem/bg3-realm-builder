@@ -165,12 +165,12 @@ local uinqueAttrs = {
 --- @return XMLNode?, {Uuid:string, TemplateType:string, XMLNode:XMLNode}[]?
 function LSXHelpers.BuildTemplate(guid, entData, internalName, displayNameHandle)
     local curLevel = entData.LevelName
-    local pos = entData.Position or { CGetPosition(guid) }
-    local rot = entData.Rotation or { CGetRotation(guid) }
-    local scale = entData.Scale or ({ CGetScale(guid) })[1]
+    local pos = entData.Position or { RBGetPosition(guid) }
+    local rot = entData.Rotation or { RBGetRotation(guid) }
+    local scale = entData.Scale or ({ RBGetScale(guid) })[1]
 
     local templateType = entData.TemplateType
-    local templateUuid = TakeTailTemplate(entData.TemplateId)
+    local templateUuid = EntityHelpers.TakeTailTemplate(entData.TemplateId)
     local others = {}
 
     if not templateType then return end
@@ -229,7 +229,7 @@ function LSXHelpers.BuildTemplate(guid, entData, internalName, displayNameHandle
             return gameObjectNode, others
         end
 
-        local wanderTriggerUuid = Uuid_v4()
+        local wanderTriggerUuid = RBUtils.Uuid_v4()
         local wanderParams = entData.WanderConfig or {}
         local triggerName = internalName .. "_WanderTrigger"
         local anubisName = triggerName .. "_" .. wanderTriggerUuid -- name_uuid
@@ -253,7 +253,7 @@ function LSXHelpers.BuildTemplate(guid, entData, internalName, displayNameHandle
 end
 
 function LSXHelpers.BuildRootTemplate(srcUuid, uuid, internalName, override)
-    srcUuid = TakeTailTemplate(srcUuid)
+    srcUuid = EntityHelpers.TakeTailTemplate(srcUuid)
     override = override or {}
     local templateRegion = LSXHelpers.BuildTemplates()
     local gameObjectNode = templateRegion:AppendChild(XMLNode.new("node", { id = "GameObjects" }))
@@ -361,7 +361,7 @@ function LSXHelpers.BuildAndGenerateLocalization(existingNameToHandles, names)
     local toGen = {}
     local handleToString = {}
 
-    local stringToHandles = DeepCopy(existingNameToHandles)
+    local stringToHandles = RBUtils.DeepCopy(existingNameToHandles)
 
     for _, name in ipairs(names) do
         local handles = stringToHandles[name]
@@ -464,7 +464,7 @@ function LSXHelpers.BuildCCColorNode(displayName, internalName, uiColor, matPUui
         uiColor = { uiColor[1] or 1, uiColor[2] or 1, uiColor[3] or 1, uiColor[4] or 1 }
     end
 
-    local hex = RGBAToHex(uiColor[1], uiColor[2], uiColor[3], uiColor[4])
+    local hex = ColorUtils.RGBAToHex(uiColor[1], uiColor[2], uiColor[3], uiColor[4])
 
     local attrs = {
         lsattrNode("DisplayName", "TranslatedString", displayName, 1),
@@ -501,13 +501,13 @@ end
 ---@param description string
 ---@return XMLNode, XMLNode, XMLNode -- root, conflictNode, dependenciesNode
 function LSXHelpers.BuildModMeta(uuid, modName, internalName, author, version, description)
-    uuid = uuid or Uuid_v4()
+    uuid = uuid or RBUtils.Uuid_v4()
     modName = modName or "Unnamed Mod"
     author = author or "Unknown Author"
     version = version or { 1, 0, 0, 0 }
     description = description or ""
 
-    local version64 = ComputeVersion64(version[1], version[2], version[3], version[4]) --[[@as number|string]]
+    local version64 = RBUtils.ComputeVersion64(version[1], version[2], version[3], version[4]) --[[@as number|string]]
 
     local root = LSXHelpers.new()
     root:GetChild(1):SetAttribute("lslib_meta", nil)

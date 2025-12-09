@@ -45,9 +45,9 @@ function EffectTab:Render()
         self.isWindow = false
     else
         if self.isCustom then
-            self.panel = RegisterWindow(self.guid, self.displayName, self.windowType, self, self.lastPosition, self.lastSize)
+            self.panel = WindowManager.RegisterWindow(self.guid, self.displayName, self.windowType, self, self.lastPosition, self.lastSize)
         else 
-            self.panel = RegisterWindow(self.guid, self.displayName, self.windowType, self, self.lastPosition, self.lastSize)
+            self.panel = WindowManager.RegisterWindow(self.guid, self.displayName, self.windowType, self, self.lastPosition, self.lastSize)
 
             self.panel.OnClose = function()
                 self:Destroy()
@@ -326,7 +326,7 @@ function EffectTab:CreatePicker(fieldName, labelText, parent)
             self.pickerTarget[fieldName] = {}
         end
         groupObj = self.pickerTarget[fieldName]
-        ToggleEntry(groupObj, guid)
+        RBTableUtils.ToggleEntry(groupObj, guid)
 
         updateTextContent()
         self:OnChange()
@@ -357,7 +357,7 @@ function EffectTab:GetSelectedObjects()
         table.insert(guids, guid)
     end
     if guids == nil or #guids == 0 then
-        guids = {CGetHostCharacter()}
+        guids = {RBGetHostCharacter()}
     end
     return guids
 end
@@ -368,13 +368,13 @@ function EffectTab:GetSelectedTargets()
         table.insert(guids, guid)
     end
     if guids == nil or #guids == 0 then
-        guids = {CGetHostCharacter()}
+        guids = {RBGetHostCharacter()}
     end
     return guids
 end
 
 function EffectTab:Add(uuid, parent, displayName)
-    local exist, existTab = CheckWindowExists(uuid, "Effect Tab")
+    local exist, existTab = WindowManager.CheckWindowExists(uuid, "Effect Tab")
     if exist then
         if existTab then
             existTab:Focus()
@@ -459,7 +459,7 @@ function EffectTab:Collapsed()
     self.cachedTables = {}
     
     if self.isWindow then
-        DeleteWindow(self.panel)
+        WindowManager.DeleteWindow(self.panel)
         self.panel = nil
     else
         self.panel:Destroy()
@@ -514,7 +514,7 @@ end
 function EffectTab:RemoveTagFromData(tag)
     if self.isCustom then
         if self.Tags and table.find(self.Tags, tag) then
-            ToggleEntry(self.Tags, tag)
+            RBTableUtils.ToggleEntry(self.Tags, tag)
             if self.tagsInput then
                 self.tagsInput.Text = ""
             end
@@ -528,11 +528,11 @@ function EffectTab:PlayEffect(userdata)
     local targets = self:GetSelectedGuids("defaultTarget")
 
     if #objs == 0 then
-        objs = {CGetHostCharacter()}
+        objs = {RBGetHostCharacter()}
     end
 
     if #targets == 0 then
-        targets = {CGetHostCharacter()}
+        targets = {RBGetHostCharacter()}
     end
 
     local info = userdata.UserData
@@ -577,11 +577,11 @@ function EffectTab:Play()
     local targets = self:GetSelectedGuids("defaultTarget")
 
     if #objs == 0 then
-        objs = {CGetHostCharacter()}
+        objs = {RBGetHostCharacter()}
     end
 
     if #targets == 0 then
-        targets = {CGetHostCharacter()}
+        targets = {RBGetHostCharacter()}
     end
 
     local immediateEffects = {}

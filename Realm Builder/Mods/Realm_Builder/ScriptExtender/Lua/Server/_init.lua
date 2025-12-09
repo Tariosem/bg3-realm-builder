@@ -1,4 +1,4 @@
-RequireFiles("Server/", {
+RBUtils.RequireFiles("Server/", {
     "OsirisHelpers",
     "ServerEntityHelpers",
     "EntityManager",
@@ -8,7 +8,7 @@ RequireFiles("Server/", {
 
 RB_EffectManager = EffectsManager:init("EffectsManager") --[[@as EffectsManager]]
 
-RequireFiles("Server/", {
+RBUtils.RequireFiles("Server/", {
     "ServerListeners",
     "Subscribe",
 })

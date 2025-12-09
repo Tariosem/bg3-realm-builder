@@ -44,7 +44,7 @@ local function spawnHandler(data)
 
     if entInfo.VisualPreset then
         Timer:Ticks(30, function()
-            NetChannel.ApplyVisualPreset:Broadcast({ Guid= newGuid, TemplateName = TrimTail(template, 37), VisualPreset = entInfo.VisualPreset })
+            NetChannel.ApplyVisualPreset:Broadcast({ Guid= newGuid, TemplateName = RBStringUtils.TrimTail(template, 37), VisualPreset = entInfo.VisualPreset })
         end)
     end
 
@@ -62,7 +62,7 @@ NetChannel.Spawn:SetRequestHandler(function(data, userID)
 end)
 
 local deleteHandler = function(data)
-    local guids = NormalizeGuidList(data.Guid)
+    local guids = RBUtils.NormalizeGuidList(data.Guid)
     local toCache = {}
     for _, guid in pairs(guids) do
         if RB_FlagHelpers.HasFlag(guid, "IsSpawned") then
@@ -97,7 +97,7 @@ NetChannel.AddItem:SetHandler(function(data)
 end)
 
 NetChannel.GetTemplate:SetRequestHandler(function(data, userID)
-    local guid = NormalizeGuidList(data.Guid)
+    local guid = RBUtils.NormalizeGuidList(data.Guid)
 
     local map = {}
     for _, g in pairs(guid) do
@@ -160,7 +160,7 @@ NetChannel.ManageEntity:SetHandler(function(data, userID)
 end)
 
 local function setTransform(data)
-    local toSet = NormalizeGuidList(data.Guid)
+    local toSet = RBUtils.NormalizeGuidList(data.Guid)
     for _, guid in ipairs(toSet) do
         local transform = data.Transforms[guid]
         if not transform then goto continue end
@@ -194,7 +194,7 @@ NetChannel.SetTransform:SetRequestHandler(function(data, userID)
 end)
 
 NetChannel.TeleportTo:SetHandler(function(data, userID)
-    local toTeleport = NormalizeGuidList(data.Guid)
+    local toTeleport = RBUtils.NormalizeGuidList(data.Guid)
     for _, guid in ipairs(toTeleport) do
         local position = data.Position
         Osi.TeleportToPosition(guid, position[1], position[2], position[3])
@@ -206,7 +206,7 @@ NetChannel.TeleportTo:SetHandler(function(data, userID)
 end)
 
 NetChannel.Replicate:SetHandler(function(data, userID)
-    for _, guid in ipairs(NormalizeGuidList(data.Guid)) do
+    for _, guid in ipairs(RBUtils.NormalizeGuidList(data.Guid)) do
         local entity = Ext.Entity.Get(guid) --[[@as EntityHandle]]
         entity:Replicate(data.Field)
     end
@@ -283,7 +283,7 @@ NetChannel.Visualize:SetRequestHandler(function(data, userID)
 end)
 
 NetChannel.SetAttributes:SetHandler(function(data, userID)
-    local toSet = NormalizeGuidList(data.Guid)
+    local toSet = RBUtils.NormalizeGuidList(data.Guid)
     for _, guid in ipairs(toSet) do
         if data.Attributes then
             EntityManager:SetEntity(guid, data.Attributes or {})
@@ -299,9 +299,9 @@ NetChannel.Bind:SetHandler(function(data, userID)
         return
     end
 
-    local tobind = NormalizeGuidList(data.Guid)
+    local tobind = RBUtils.NormalizeGuidList(data.Guid)
 
-    if IsCamera(data.Parent) then data.Parent = data.Parent .. tostring(userID) end
+    if RBUtils.IsCamera(data.Parent) then data.Parent = data.Parent .. tostring(userID) end
 
     for _, guid in ipairs(tobind) do
         if data.Type == "Unbind" then
@@ -327,10 +327,10 @@ NetChannel.ManageGizmo:SetRequestHandler(function(data, userID)
     if data.Clear then
         local stack = gizmoUserStack[tostring(userID)] or {}
         if #stack == 0 then
-            stack = GetAllGizmos()
+            stack = EntityHelpers.GetAllGizmos()
         end
         if #stack == 0 then
-            stack = BF_GetAllGizmos()
+            stack = EntityHelpers.BF_GetAllGizmos()
         end
         for _, guid in ipairs(stack) do
             Osi.RequestDelete(guid)
@@ -371,28 +371,28 @@ NetChannel.ManageGizmo:SetRequestHandler(function(data, userID)
 end)
 
 NetChannel.UpdateCamera:SetHandler(function(data, userID)
-    userID = CameraSymbol .. tostring(userID)
+    userID = CAMERA_SYMBOL .. tostring(userID)
 
     if data.Deactive then
-        SetCameraPosition(userID, nil)
-        SetCameraRotation(userID, nil)
+        CameraHelpers.SetCameraPosition(userID, nil)
+        CameraHelpers.SetCameraRotation(userID, nil)
         return
     end
 
-    SetCameraPosition(userID, data.CameraPosition)
-    SetCameraRotation(userID, data.CameraRotation)
+    CameraHelpers.SetCameraPosition(userID, data.CameraPosition)
+    CameraHelpers.SetCameraRotation(userID, data.CameraRotation)
 end)
 
 NetChannel.UpdateDummies:SetHandler(function(data, userID)
     if data.Deactive then
-        ClearDummyData()
+        DummyHelpers.ClearDummyData()
         Debug("Clear server dummy data")
         return
     end
 
     for uuid, info in pairs(data.DummyInfos) do
-        SetDummyPosition(uuid, info.Position)
-        SetDummyRotation(uuid, info.Rotation)
+        DummyHelpers.SetDummyPosition(uuid, info.Position)
+        DummyHelpers.SetDummyRotation(uuid, info.Rotation)
     end
 end)
 
@@ -440,10 +440,10 @@ NetChannel.GetAtmosphere:SetRequestHandler(function(data, userID)
         return { Guid = "", ResourceUUIDs = {} }
     end
     local atmosphereUuid = trigger.ServerAtmosphereTrigger.CurrentAtmosphereResourceID
-    local allResources = LightCToArray(trigger.ServerAtmosphereTrigger.AtmosphereResourceIDs)
+    local allResources = RBUtils.LightCToArray(trigger.ServerAtmosphereTrigger.AtmosphereResourceIDs)
     for i = #allResources, 1, -1 do
         local resUUID = allResources[i]
-        if not IsUuid(resUUID) then
+        if not RBUtils.IsUuid(resUUID) then
             table.remove(allResources, i)
         end
     end
@@ -456,10 +456,10 @@ NetChannel.GetLighting:SetRequestHandler(function(data, userID)
         return { Guid = "", ResourceUUIDs = {} }
     end
     local lightingUuid = trigger.ServerLightingTrigger.CurrentLightingResourceID
-    local allResources = LightCToArray(trigger.ServerLightingTrigger.LightingResourceIDs)
+    local allResources = RBUtils.LightCToArray(trigger.ServerLightingTrigger.LightingResourceIDs)
     for i = #allResources, 1, -1 do
         local resUUID = allResources[i]
-        if not IsUuid(resUUID) then
+        if not RBUtils.IsUuid(resUUID) then
             table.remove(allResources, i)
         end
     end
@@ -616,7 +616,7 @@ NetChannel.GetServerEntity:SetRequestHandler(function(data, userID)
             result[k] = {}
             if data.Config.GetAll then
                 for key, value in pairs(entity[k]) do
-                    if IsSerializable(value) then
+                    if RBUtils.IsSerializable(value) then
                         result[k][key] = value
                         --elseif type(value) == "userdata" then
                         --    result[k][key] = DeepCopyAllSerializable(LightUserdataToTable(value))
@@ -624,7 +624,9 @@ NetChannel.GetServerEntity:SetRequestHandler(function(data, userID)
                 end
             else
                 for key, _ in pairs(v) do
-                    result[k][key] = DeepCopyAllSerializable(entity[k][key])
+                    if RBUtils.IsSerializable(entity[k][key]) then
+                        result[k][key] = entity[k][key]
+                    end 
                 end
             end
         end

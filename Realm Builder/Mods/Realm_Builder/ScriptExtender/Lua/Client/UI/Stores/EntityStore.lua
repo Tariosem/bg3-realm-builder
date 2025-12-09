@@ -133,7 +133,7 @@ function EntityStore:SetupServerListeners()
         for _, info in ipairs(data.BindInfos) do
             local guid = info.Guid
             local parent = info.BindParent
-            if IsCamera(parent) then parent = CameraSymbol end
+            if RBUtils.IsCamera(parent) then parent = CAMERA_SYMBOL end
             if not parent then BindDatas[guid] = nil goto continue end
             BindDatas[guid] = BindDatas[guid] or {}
             BindDatas[guid].BindParent = parent
@@ -240,11 +240,11 @@ function EntityStore:GetStoredData(guid)
         data.Gravity = not entity.GravityDisabled 
         data.Movable = entity.CanMove and true or false
         data.CanBeLooted = entity.CanBeLooted and true or false
-        data.Position = { CGetPosition(guid) }
-        data.Rotation = { CGetRotation(guid) }
+        data.Position = { RBGetPosition(guid) }
+        data.Rotation = { RBGetRotation(guid) }
         data.Path = self.Tree:GetPath(guid, true, true)
         
-        if CIsCharacter(guid) then
+        if EntityHelpers.IsCharacter(guid) then
             data.Gravity = nil
             data.CanBeLooted = nil
             data.Movable = nil
@@ -264,7 +264,7 @@ function EntityStore:GetStoredTemplateType(guid)
     if not data then
         return nil
     end
-    local template = Ext.Template.GetTemplate(TakeTailTemplate(data.TemplateId))
+    local template = Ext.Template.GetTemplate(EntityHelpers.TakeTailTemplate(data.TemplateId))
     if not template then
         return nil
     end
@@ -275,7 +275,7 @@ function EntityStore:GetStoredDatas(guids)
     local results = {}
     for _, guid in pairs(guids) do
         if EntityDatas[guid] then
-            results[guid] = DeepCopy(EntityDatas[guid])
+            results[guid] = RBUtils.DeepCopy(EntityDatas[guid])
         end
     end
     return results
@@ -283,7 +283,7 @@ end
 
 ---@return table<GUIDSTRING, EntityData>
 function EntityStore:GetAllStored()
-    return DeepCopy(EntityDatas)
+    return RBUtils.DeepCopy(EntityDatas)
 end
 
 function EntityStore:GetEntity(guid)
@@ -482,8 +482,8 @@ function EntityStore:GetExportCopy(guids)
         if EntityDatas[guid] then
             local entity = Ext.Entity.Get(guid)
             if not entity then goto continue end
-            local data = DeepCopy(self:GetStoredData(guid)) --[[@as EntityData]]
-            local template = Ext.Template.GetTemplate(TakeTailTemplate(data.TemplateId))
+            local data = RBUtils.DeepCopy(self:GetStoredData(guid)) --[[@as EntityData]]
+            local template = Ext.Template.GetTemplate(EntityHelpers.TakeTailTemplate(data.TemplateId))
             if not template then goto continue end
             data.TemplateType = template.TemplateType
 
@@ -494,9 +494,9 @@ function EntityStore:GetExportCopy(guids)
             results[guid] = data
             self:DeleteUselessExportAttributes(data)
 
-            data.Position = { CGetPosition(guid) }
-            data.Rotation = { CGetRotation(guid) }
-            data.Scale = { CGetScale(guid) }
+            data.Position = { RBGetPosition(guid) }
+            data.Rotation = { RBGetRotation(guid) }
+            data.Scale = { RBGetScale(guid) }
 
             local hasIcon = template.TemplateType == "character" or template.TemplateType == "item"
             data.Scale = math.min(data.Scale[1], data.Scale[2], data.Scale[3])

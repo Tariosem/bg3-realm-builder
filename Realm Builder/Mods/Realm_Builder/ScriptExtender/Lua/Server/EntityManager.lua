@@ -95,10 +95,10 @@ function EntityManager:StoreGuid(guid)
 end
 
 function EntityManager:DeleteEntities(guids)
-    guids = NormalizeGuidList(guids)
+    guids = RBUtils.NormalizeGuidList(guids)
     local modVar = getModVar()
     
-    for _, guid in FilteredPairs(guids, function(_,guid) return self.SavedEntities[guid] ~= nil end) do
+    for _, guid in RBUtils.FilteredPairs(guids, function(_,guid) return self.SavedEntities[guid] ~= nil end) do
         modVar.DeleteOnNextSession[guid] = true
         modVar.SavedEntities[guid] = nil
 
@@ -122,9 +122,9 @@ function EntityManager:DeleteEntities(guids)
 end
 
 function EntityManager:RestoreEntities(guids)
-    guids = NormalizeGuidList(guids)
+    guids = RBUtils.NormalizeGuidList(guids)
     local modVar = getModVar()
-    for _, guid in FilteredPairs(guids, function(_,guid) return modVar.DeleteOnNextSession[guid] == true end) do
+    for _, guid in RBUtils.FilteredPairs(guids, function(_,guid) return modVar.DeleteOnNextSession[guid] == true end) do
         modVar.DeleteOnNextSession[guid] = nil
         modVar.SavedEntities[guid] = true
 
@@ -178,7 +178,6 @@ end
 
 local debugText = 
 [[
-
     ===========================
     Create [%s] At (%.2f, %.2f, %.2f)
     TemplateId : %s
@@ -243,7 +242,7 @@ function EntityManager:CreateAt(templateId, x, y, z, rx, ry, rz, w)
     end
 
     local spawnTemplate = templateId --[[@as string?]]
-    local templateObj = Ext.Template.GetTemplate(TakeTailTemplate(templateId))
+    local templateObj = Ext.Template.GetTemplate(EntityHelpers.TakeTailTemplate(templateId))
     local tempoFlag = 0 --[[@as integer]]
     spawnTemplate, tempoFlag = self.TemplateTrick(templateObj, templateId)
     if not spawnTemplate then
@@ -276,7 +275,7 @@ function EntityManager:CreateAt(templateId, x, y, z, rx, ry, rz, w)
     self.SavedEntities[newProp] = propData
     self:StoreGuid(newProp)
 
-    local TemplateName = TrimTail(templateId, 37)
+    local TemplateName = RBStringUtils.TrimTail(templateId, 37)
     if TemplateName == "" then
         TemplateName = templateId
     end
@@ -388,7 +387,7 @@ function EntityManager:LoadFromModVar()
     end
 
     for guid, _ in pairs(modVar.SavedEntities) do
-        local templateId = TakeTailTemplate(Osi.GetTemplate(guid))
+        local templateId = EntityHelpers.TakeTailTemplate(Osi.GetTemplate(guid))
         if templateId == INVISIBLE_HELPER_SCENERY or templateId == INVISIBLE_HELPER_PREVIEW then
             Osi.RequestDelete(guid)
             Osi.RequestDeleteTemporary(guid)
@@ -421,7 +420,7 @@ function EntityManager:ScanForEntities()
     
     local allToBroadcast = {}
     for _, uuid in pairs(allEntities) do
-        if (RB_FlagHelpers.HasFlag(uuid, "IsSpawned") or CIsTaggedProp(uuid)) and not modVar.DeleteOnNextSession[uuid] and not self.SavedEntities[uuid] then
+        if (RB_FlagHelpers.HasFlag(uuid, "IsSpawned") or EntityHelpers.IsTaggedProp(uuid)) and not modVar.DeleteOnNextSession[uuid] and not self.SavedEntities[uuid] then
             self:AddEntity(uuid)
             table.insert(allToBroadcast, uuid)
             --NetChannel.Entities.Added:Broadcast({Entities = self:GetEntities({uuid})})
@@ -437,7 +436,7 @@ function EntityManager:DeleteAll()
 end
 
 function EntityManager:FreeEntity(guids)
-    local toFree = NormalizeGuidList(guids)
+    local toFree = RBUtils.NormalizeGuidList(guids)
 
     for _, guid in ipairs(toFree) do
         if not guid or not self.SavedEntities[guid] then
@@ -495,7 +494,7 @@ end
 --- @param guids GUIDSTRING|GUIDSTRING[]
 --- @return ServerEntityData[]
 function EntityManager:GetEntities(guids)
-    local list = NormalizeGuidList(guids)
+    local list = RBUtils.NormalizeGuidList(guids)
     local items = {}
     for _, guid in ipairs(list) do
         local entity = self:GetEntityForClients(guid)
@@ -515,7 +514,7 @@ function EntityManager:BF_DeleteAll()
     local broadcastData = {}
     for _, entity in pairs(allEntities) do
         local uuid = entity.Uuid.EntityUuid
-        if CIsTaggedProp(uuid) then
+        if EntityHelpers.IsTaggedProp(uuid) then
             Osi.ClearTag(uuid, RB_PROP_TAG)
             Osi.RequestDelete(uuid)
             Osi.RequestDeleteTemporary(uuid)

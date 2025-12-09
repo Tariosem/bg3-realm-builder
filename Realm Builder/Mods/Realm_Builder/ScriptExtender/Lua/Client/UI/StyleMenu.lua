@@ -20,7 +20,7 @@ function StyleMenu:Render()
         self.panel = self.parent:AddTabItem(GetLoca("Style"))
         self.isWindow = false
     else
-        self.panel = RegisterWindow("generic", GetLoca("Style"), "Menu", self, {STYLEMENU_WIDTH, STYLEMENU_HEIGHT})
+        self.panel = WindowManager.RegisterWindow("generic", GetLoca("Style"), "Menu", self, {STYLEMENU_WIDTH, STYLEMENU_HEIGHT})
         self.isWindow = true
     end
 
@@ -57,11 +57,11 @@ function StyleMenu:RenderSaveLoad()
         for name, func in pairs(self.saveFuncs) do
             func()
         end
-        SaveConfig("Theme")
+        Config.SaveConfig("Theme")
     end
 
     loadConfigButton.OnClick = function()
-        LoadConfig()
+        Config.LoadConfig()
         if self.reloadColors then
             self.reloadColors()
         end
@@ -76,7 +76,7 @@ function StyleMenu:RenderSaveLoad()
         self.saveFuncs = {}
         self.isAttach = not self.isAttach
         if self.isWindow then
-            DeleteWindow(self.panel)
+            WindowManager.DeleteWindow(self.panel)
             self.panel = nil
         else
             self.panel:Destroy()
@@ -92,7 +92,7 @@ function StyleMenu:RenderColorPickers()
 
     colorAutoReload.OnChange = function(c)
         CONFIG.Theme.Color.autoReload = c.Checked
-        SaveConfig("Theme")
+        Config.SaveConfig("Theme")
     end
 
     local accentColorPicker = self.panel:AddColorEdit(GetLoca("Accent Color"))
@@ -158,7 +158,7 @@ function StyleMenu:RenderColorPickers()
     end
 
     local colorsMap = GetAllGuiColorNames()
-    local colorsArray = MapToSortedArrayByFunc(colorsMap, function(a, b)
+    local colorsArray = RBTableUtils.MapToSortedArrayByFunc(colorsMap, function(a, b)
         local aIndex = colorOrderMap[a.Value] or (#colorOrder + 1)
         local bIndex = colorOrderMap[b.Value] or (#colorOrder + 1)
         if aIndex == bIndex then
@@ -183,7 +183,7 @@ function StyleMenu:RenderColorPickers()
         colorPicker.Color = CONFIG.Theme.Color[name] or {1, 1, 1, 1}
         colorPicker.OnChange = function(c)
             c = colorPicker
-            SetAllWindowsColor(name, c.Color)
+            WindowManager.SetAllWindowsColor(name, c.Color)
             c.UserData.Changed = true
         end
         self.saveFuncs[name] = function()
@@ -198,7 +198,7 @@ function StyleMenu:RenderColorPickers()
         local themeColor = accentColorPicker.Color
         local accent2Color = secondaryColorPicker.Color
         local bgColor = bgColorPicker.Color
-        local generatedColors = GenerateTheme(themeColor, accent2Color, bgColor) 
+        local generatedColors = ThemeHelpers.GenerateTheme(themeColor, accent2Color, bgColor) 
         for colorName, colorValue in pairs(generatedColors) do
             colorValue = {colorValue[1], colorValue[2], colorValue[3], colorValue[4] or c.Color[4]}
             local p = colorPickers[colorName]
@@ -246,7 +246,7 @@ function StyleMenu:RenderStyleSliders()
 
     styleAutoReload.OnChange = function(c)
         CONFIG.Theme.Style.autoReload = c.Checked
-        SaveConfig("Theme")
+        Config.SaveConfig("Theme")
     end
 
     local baseRoundingSlider = self.panel:AddSlider(GetLoca("Base Rounding"), CONFIG.Theme.Style.BaseRounding or 5, 0, 40)
@@ -295,7 +295,7 @@ function StyleMenu:RenderStyleSliders()
     end
 
     local varsMap = GetAllGuiStyleVarNames()
-    local varsArray = MapToSortedArrayByFunc(varsMap, function(a, b)
+    local varsArray = RBTableUtils.MapToSortedArrayByFunc(varsMap, function(a, b)
         local aIndex = styleVarOrderMap[a.Value] or (#styleVarOrder + 1)
         local bIndex = styleVarOrderMap[b.Value] or (#styleVarOrder + 1)
         if aIndex == bIndex then
@@ -363,7 +363,7 @@ function StyleMenu:RenderStyleSliders()
         slider.Components = componentsCnt
         slider.OnChange = function(s)
             s = slider
-            SetAllWindowsStyle(name, s.Value[1], s.Value[2])
+            WindowManager.SetAllWindowsStyle(name, s.Value[1], s.Value[2])
             s.UserData.Changed = true
         end
         self.saveFuncs[name] = function()
@@ -378,7 +378,7 @@ function StyleMenu:RenderStyleSliders()
         local baseRounding = baseRoundingSlider.Value[1]
         local basePadding = basePaddingSlider.Value[1]
         local baseBorder = baseBorderSlider.Value[1]
-        local styleVars = GenerateUIStyle(baseRounding, basePadding, baseBorder)
+        local styleVars = ThemeHelpers.GenerateUIStyle(baseRounding, basePadding, baseBorder)
         for name, value in pairs(styleVars) do
             local param1 = nil
             local param2 = nil

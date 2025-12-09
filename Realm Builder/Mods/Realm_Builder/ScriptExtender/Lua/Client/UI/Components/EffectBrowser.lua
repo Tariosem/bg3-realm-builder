@@ -23,7 +23,7 @@ local function previewEffect(guid, entry)
                 }
             }
             
-            local loopEffectData = DeepCopy(effectData)
+            local loopEffectData = RBUtils.DeepCopy(effectData)
             loopEffectData.Tags.PlayLoop = true
             loopEffectData.Duration = 5000
 
@@ -67,7 +67,7 @@ function EffectBrowser:RenderIcon(entry, cell)
     iconImage.OnClick = function()
         if not popup then
             popup = cell:AddPopup("IconPopup")
-            popup.IDContext = entry.Uuid .. "Popup" .. Uuid_v4()
+            popup.IDContext = entry.Uuid .. "Popup" .. RBUtils.Uuid_v4()
 
             local attrs = {
                 Uuid = entry.Uuid,
@@ -88,7 +88,7 @@ function EffectBrowser:RenderIcon(entry, cell)
     iconImage.OnHoverEnter = function ()
         if rPopup then return end
         rPopup = cell:AddPopup("SpawnPopup")
-        rPopup.IDContext = entry.Uuid .. "SpawnPopup" .. Uuid_v4()
+        rPopup.IDContext = entry.Uuid .. "SpawnPopup" .. RBUtils.Uuid_v4()
         
         self:RenderCustomizationTab(rPopup, entry)
         self:RenderPlayEffectPopup(function() return rPopup end, entry, iconImage)
@@ -97,7 +97,7 @@ function EffectBrowser:RenderIcon(entry, cell)
     iconImage.OnRightClick = function()
         if not rPopup then
             rPopup = cell:AddPopup("SpawnPopup")
-            rPopup.IDContext = entry.Uuid .. "SpawnPopup" .. Uuid_v4()
+            rPopup.IDContext = entry.Uuid .. "SpawnPopup" .. RBUtils.Uuid_v4()
             
             self:RenderCustomizationTab(rPopup, entry)
             self:RenderPlayEffectPopup(function() return rPopup end, entry, iconImage)
@@ -119,9 +119,9 @@ function EffectBrowser:RenderIcon(entry, cell)
 
     iconImage.OnDragEnd = function()
         Timer:Ticks(10, function (timerID)
-            local pick = GetPickingGuid()
+            local pick = PickingUtils.GetPickingGuid()
             if not pick or pick == "" then
-                pick = self.selectedGuid or CGetHostCharacter()
+                pick = self.selectedGuid or RBGetHostCharacter()
             end
             if pick and pick ~= "" then
                 previewEffect(pick, entry)
@@ -175,7 +175,7 @@ function EffectBrowser:RenderPlayEffectPopup(getPopupFunc, entry)
     StyleHelpers.ApplyInfoButtonStyle(infoButton)
 
     playEffectButton.OnClick = function()
-        previewEffect(self.selectedGuid or CGetHostCharacter(), entry)
+        previewEffect(self.selectedGuid or RBGetHostCharacter(), entry)
     end
 
     infoButton.OnClick = function()

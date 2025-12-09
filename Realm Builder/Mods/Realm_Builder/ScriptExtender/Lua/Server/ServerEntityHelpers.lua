@@ -2,7 +2,7 @@ function FindCurrentAtmosphereTrigger(pos, user)
     local allAtmosTriggers = Ext.Entity.GetAllEntitiesWithComponent("ServerAtmosphereTrigger")
     local player = Osi.GetHostCharacter() --[[@as GUIDSTRING]]
 
-    pos = pos or {CGetPosition(player)}
+    pos = pos or {RBGetPosition(player)}
 
     for i, trigger in ipairs(allAtmosTriggers) do
         local max = trigger.TriggerArea.Bounds.BoundsMax
@@ -21,7 +21,7 @@ function FindCurrentAtmosphereTrigger(pos, user)
             max[3] + triggerPos[3],
         }
 
-        if IsInBoundingBox(pos, worldMin, worldMax) then
+        if MathHelpers.IsInBoundingBox(pos, worldMin, worldMax) then
             return trigger
         end
     end
@@ -33,7 +33,7 @@ function FindCurrentLightingTrigger(pos, user)
     local allLightTriggers = Ext.Entity.GetAllEntitiesWithComponent("ServerLightingTrigger")
     local player = Osi.GetHostCharacter() --[[@as GUIDSTRING]]
 
-    pos = pos or {CGetPosition(player)}
+    pos = pos or {RBGetPosition(player)}
     for i, trigger in ipairs(allLightTriggers) do
         local max = trigger.TriggerArea.Bounds.BoundsMax
         local min = trigger.TriggerArea.Bounds.BoundsMin
@@ -51,7 +51,7 @@ function FindCurrentLightingTrigger(pos, user)
             max[3] + triggerPos[3],
         }
 
-        if IsInBoundingBox(pos, worldMin, worldMax) then
+        if MathHelpers.IsInBoundingBox(pos, worldMin, worldMax) then
             return trigger
         end
     end

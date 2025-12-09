@@ -1,4 +1,22 @@
-function RGBFloatToInt(r, g, b, a)
+--- @class ColorUtils
+--- @field HexToRGBA fun(hex:string):vec4
+--- @field HexToRGB fun(hex:string):vec3
+--- @field RGBAToHex fun(r:number, g:number, b:number, a?:number):string
+--- @field RGBFloatToInt fun(r:number, g:number, b:number, a?:number):number[]
+--- @field RGBIntToFloat fun(r:number, g:number, b:number, a?:number):number[]
+--- @field RGBToHSL fun(r:number, g:number, b:number): (number, number, number)
+--- @field HSLToRGB fun(h:number, s:number, l:number): (number, number, number)
+--- @field HSVtoRGB fun(h:number, s:number, v:number): (number, number, number)
+--- @field RGBtoHSV fun(r:number, g:number, b:number): (number, number, number)
+--- @field AdjustColor fun(color:vec4, dl?:number, ds?:number, da?:number):vec4
+--- @field InvertColor fun(color:vec4):vec4
+--- @field BlendColors fun(color1:vec4, color2:vec4, t:number):vec4
+--- @field CompareRGBA fun(color1:vec4, color2:vec4):boolean
+--- @field CompareRGBAByHSV fun(color1:vec4, color2:vec4):boolean
+--- @field GradientText fun(text:string, color1:vec4, color2:vec4, mode?:GradientMode, options:GradientOpts?):GradientResult
+ColorUtils = ColorUtils or {}
+
+function ColorUtils.RGBFloatToInt(r, g, b, a)
     return {
         math.floor(r * 255),
         math.floor(g * 255),
@@ -7,7 +25,7 @@ function RGBFloatToInt(r, g, b, a)
     }
 end
 
-function RGBIntToFloat(r, g, b, a)
+function ColorUtils.RGBIntToFloat(r, g, b, a)
     return {
         r / 255,
         g / 255,
@@ -17,7 +35,7 @@ function RGBIntToFloat(r, g, b, a)
 end
 
 local hexCache = {}
-function HexToRGBA(hex)
+function ColorUtils.HexToRGBA(hex)
     if hexCache[hex] then
         return hexCache[hex]
     end
@@ -44,12 +62,12 @@ function HexToRGBA(hex)
     return { r / 255, g / 255, b / 255, a / 255 }
 end
 
-function HexToRGB(hex)
-    local rgba = HexToRGBA(hex)
+function ColorUtils.HexToRGB(hex)
+    local rgba = ColorUtils.HexToRGBA(hex)
     return { rgba[1], rgba[2], rgba[3] }
 end
 
-function RGBAToHex(r, g, b, a)
+function ColorUtils.RGBAToHex(r, g, b, a)
     local function toHex(n)
         return string.format("%02X", math.floor(Ext.Math.Clamp(n * 255, 0, 255)))
     end
@@ -61,7 +79,7 @@ function RGBAToHex(r, g, b, a)
     end
 end
 
-function RGBToHSL(r, g, b)
+function ColorUtils.RGBToHSL(r, g, b)
     local maxc = math.max(r, g, b)
     local minc = math.min(r, g, b)
     local h, s, l
@@ -88,7 +106,7 @@ end
 --- @param s number
 --- @param l number
 --- @return number, number, number 0 - 1
-function HSLToRGB(h, s, l)
+function ColorUtils.HSLToRGB(h, s, l)
     local function hue2rgb(p, q, t)
         if t < 0 then t = t + 1 end
         if t > 1 then t = t - 1 end
@@ -114,7 +132,7 @@ end
 --- @param s number
 --- @param v number
 --- @return number, number, number
-function HSVtoRGB(h, s, v)
+function ColorUtils.HSVtoRGB(h, s, v)
     local r, g, b
     local i = math.floor(h * 6)
     local f = h * 6 - i
@@ -141,7 +159,7 @@ function HSVtoRGB(h, s, v)
     return r, g, b
 end
 
-function RGBtoHSV(r, g, b)
+function ColorUtils.RGBtoHSV(r, g, b)
     local max = math.max(r, g, b)
     local min = math.min(r, g, b)
     local h, s, v = 0, 0, max
@@ -168,17 +186,17 @@ end
 ---@param ds? number
 ---@param da? number
 ---@return vec4
-function AdjustColor(color, dl, ds, da)
+function ColorUtils.AdjustColor(color, dl, ds, da)
     local r, g, b, a = color[1], color[2], color[3], color[4] or 1
-    local h, s, l = RGBToHSL(r, g, b)
+    local h, s, l = ColorUtils.RGBToHSL(r, g, b)
     l = Ext.Math.Clamp(l + (dl or 0), 0, 1)
     s = Ext.Math.Clamp(s + (ds or 0), 0, 1)
     a = Ext.Math.Clamp(a + (da or 0), 0, 1)
-    local nr, ng, nb = HSLToRGB(h, s, l)
+    local nr, ng, nb = ColorUtils.HSLToRGB(h, s, l)
     return { nr, ng, nb, a }
 end
 
-function InvertColor(color)
+function ColorUtils.InvertColor(color)
     return { 1 - color[1], 1 - color[2], 1 - color[3], color[4] or 1 }
 end
 
@@ -187,7 +205,7 @@ end
 ---@param color2 vec4
 ---@param t number
 ---@return vec4
-function BlendColors(color1, color2, t)
+function ColorUtils.BlendColors(color1, color2, t)
     t = Ext.Math.Clamp(t, 0, 1)
     local r = color1[1] * (1 - t) + color2[1] * t
     local g = color1[2] * (1 - t) + color2[2] * t
@@ -196,7 +214,7 @@ function BlendColors(color1, color2, t)
     return { r, g, b, a }
 end
 
-function CompareRGBA(color1, color2)
+function ColorUtils.CompareRGBA(color1, color2)
     for i = 1, 4 do
         if (color1[i] or 1) < (color2[i] or 1) then
             return true
@@ -207,9 +225,9 @@ function CompareRGBA(color1, color2)
     return false
 end
 
-function CompareRGBAByHSV(color1, color2)
-    local h1, s1, v1 = RGBtoHSV(color1[1], color1[2], color1[3])
-    local h2, s2, v2 = RGBtoHSV(color2[1], color2[2], color2[3])
+function ColorUtils.CompareRGBAByHSV(color1, color2)
+    local h1, s1, v1 = ColorUtils.RGBtoHSV(color1[1], color1[2], color1[3])
+    local h2, s2, v2 = ColorUtils.RGBtoHSV(color2[1], color2[2], color2[3])
 
     if h1 ~= h2 then
         return h1 < h2
@@ -218,51 +236,56 @@ function CompareRGBAByHSV(color1, color2)
     elseif v1 ~= v2 then
         return v1 < v2
     else
-        return CompareRGBA(color1, color2)
+        return ColorUtils.CompareRGBA(color1, color2)
     end
 end
+
+--- @class ThemeHelpers
+--- @field GenerateTheme fun(accent:vec4, accent2:vec4?, bg:vec4):table<GuiColor, vec4>
+--- @field GenerateUIStyle fun(baseRounding:number, basePadding:number, baseBorder:number):table<GuiStyleVar, number|vec2>
+ThemeHelpers = ThemeHelpers or {}
 
 --- @param accent vec4
 --- @param accent2 vec4?
 --- @param bg vec4
 --- @return table<GuiColor, vec4>
-function GenerateTheme(accent, accent2, bg)
+function ThemeHelpers.GenerateTheme(accent, accent2, bg)
     local colors = {} --[[@as table<GuiColor, vec4> ]]
     accent2 = accent2 or accent
 
     ----------------------------------------------------
     -- Borders & Separators
     ----------------------------------------------------
-    colors["Border"]            = AdjustColor(accent, -0.2, -0.3)
-    colors["BorderShadow"]      = AdjustColor(colors["Border"], -0.3, 0, -0.5)
+    colors["Border"]            = ColorUtils.AdjustColor(accent, -0.2, -0.3)
+    colors["BorderShadow"]      = ColorUtils.AdjustColor(colors["Border"], -0.3, 0, -0.5)
     colors["Separator"]         = colors["Border"]
-    colors["SeparatorHovered"]  = AdjustColor(accent, 0.15, 0)
-    colors["SeparatorActive"]   = AdjustColor(accent, 0.15, 0)
+    colors["SeparatorHovered"]  = ColorUtils.AdjustColor(accent, 0.15, 0)
+    colors["SeparatorActive"]   = ColorUtils.AdjustColor(accent, 0.15, 0)
 
     ----------------------------------------------------
     -- Buttons
     ----------------------------------------------------
-    colors["Button"]            = AdjustColor(accent, -0.05, -0.1)
-    colors["ButtonHovered"]     = AdjustColor(colors["Button"], 0.1, 0)
-    colors["ButtonActive"]      = AdjustColor(colors["Button"], -0.1, 0)
-    colors["CheckMark"]         = AdjustColor(accent2, 0, -0.3)
+    colors["Button"]            = ColorUtils.AdjustColor(accent, -0.05, -0.1)
+    colors["ButtonHovered"]     = ColorUtils.AdjustColor(colors["Button"], 0.1, 0)
+    colors["ButtonActive"]      = ColorUtils.AdjustColor(colors["Button"], -0.1, 0)
+    colors["CheckMark"]         = ColorUtils.AdjustColor(accent2, 0, -0.3)
 
     ----------------------------------------------------
     -- Frames (Inputs, Sliders, etc.)
     ----------------------------------------------------
-    colors["FrameBg"]           = AdjustColor(bg, 0.05, 0)
-    colors["FrameBgHovered"]    = AdjustColor(accent, 0.1, 0)
-    colors["FrameBgActive"]     = AdjustColor(accent, -0.1, 0)
+    colors["FrameBg"]           = ColorUtils.AdjustColor(bg, 0.05, 0)
+    colors["FrameBgHovered"]    = ColorUtils.AdjustColor(accent, 0.1, 0)
+    colors["FrameBgActive"]     = ColorUtils.AdjustColor(accent, -0.1, 0)
     colors["SliderGrab"]        = accent
-    colors["SliderGrabActive"]  = AdjustColor(accent, -0.15, 0)
+    colors["SliderGrabActive"]  = ColorUtils.AdjustColor(accent, -0.15, 0)
 
     ----------------------------------------------------
     -- Headers & Menus
     ----------------------------------------------------
-    colors["Header"]           = AdjustColor(accent, -0.05, -0.15)
-    colors["HeaderHovered"]    = AdjustColor(colors["Header"], 0.15, 0)
-    colors["HeaderActive"]     = AdjustColor(colors["Header"], -0.15, 0)
-    colors["MenuBarBg"]        = AdjustColor(bg, 0.03, 0)
+    colors["Header"]           = ColorUtils.AdjustColor(accent, -0.05, -0.15)
+    colors["HeaderHovered"]    = ColorUtils.AdjustColor(colors["Header"], 0.15, 0)
+    colors["HeaderActive"]     = ColorUtils.AdjustColor(colors["Header"], -0.15, 0)
+    colors["MenuBarBg"]        = ColorUtils.AdjustColor(bg, 0.03, 0)
 
     ----------------------------------------------------
     -- Tabs
@@ -270,69 +293,69 @@ function GenerateTheme(accent, accent2, bg)
     colors["Tab"]                       = colors["HeaderActive"]
     colors["TabActive"]                 = colors["Header"]
     colors["TabHovered"]                = colors["HeaderHovered"]
-    colors["TabUnfocused"]              = AdjustColor(colors["Tab"], -0.05, 0)
-    colors["TabUnfocusedActive"]        = AdjustColor(colors["TabActive"], -0.05, 0)
-    colors["TabDimmedSelectedOverline"] = AdjustColor(accent, 0.05, -0.1)
+    colors["TabUnfocused"]              = ColorUtils.AdjustColor(colors["Tab"], -0.05, 0)
+    colors["TabUnfocusedActive"]        = ColorUtils.AdjustColor(colors["TabActive"], -0.05, 0)
+    colors["TabDimmedSelectedOverline"] = ColorUtils.AdjustColor(accent, 0.05, -0.1)
 
     ----------------------------------------------------
     -- Tables
     ----------------------------------------------------
     colors["TableHeaderBg"]    = colors["Header"]
     colors["TableRowBg"]       = bg
-    colors["TableRowBgAlt"]    = AdjustColor(bg, 0.05, 0)
+    colors["TableRowBgAlt"]    = ColorUtils.AdjustColor(bg, 0.05, 0)
     colors["TableBorderStrong"]= colors["Border"]
-    colors["TableBorderLight"] = AdjustColor(colors["Border"], 0.1, 0)
+    colors["TableBorderLight"] = ColorUtils.AdjustColor(colors["Border"], 0.1, 0)
 
     ----------------------------------------------------
     -- Scrollbars & Resize Grips
     ----------------------------------------------------
-    colors["ScrollbarBg"]          = AdjustColor(bg, -0.02, 0)
-    colors["ScrollbarGrab"]        = AdjustColor(accent, 0, -0.3)
-    colors["ScrollbarGrabHovered"] = AdjustColor(colors["ScrollbarGrab"], 0.1, 0)
-    colors["ScrollbarGrabActive"]  = AdjustColor(colors["ScrollbarGrab"], -0.1, 0)
-    colors["ResizeGrip"]           = AdjustColor(accent, 0.2, -0.2)
-    colors["ResizeGripHovered"]    = AdjustColor(accent, 0.1, 0)
-    colors["ResizeGripActive"]     = AdjustColor(accent, -0.1, 0)
+    colors["ScrollbarBg"]          = ColorUtils.AdjustColor(bg, -0.02, 0)
+    colors["ScrollbarGrab"]        = ColorUtils.AdjustColor(accent, 0, -0.3)
+    colors["ScrollbarGrabHovered"] = ColorUtils.AdjustColor(colors["ScrollbarGrab"], 0.1, 0)
+    colors["ScrollbarGrabActive"]  = ColorUtils.AdjustColor(colors["ScrollbarGrab"], -0.1, 0)
+    colors["ResizeGrip"]           = ColorUtils.AdjustColor(accent, 0.2, -0.2)
+    colors["ResizeGripHovered"]    = ColorUtils.AdjustColor(accent, 0.1, 0)
+    colors["ResizeGripActive"]     = ColorUtils.AdjustColor(accent, -0.1, 0)
 
     ----------------------------------------------------
     -- Navigation & Windows
     ----------------------------------------------------
     colors["NavHighlight"]          = accent2
-    colors["NavWindowingHighlight"] = AdjustColor(accent, 0, 0, -0.25)
-    colors["NavWindowingDimBg"]     = AdjustColor(bg, 0, 0, -0.65)
-    colors["ModalWindowDimBg"]      = AdjustColor(bg, 0, 0, -0.65)
-    colors["ChildBg"]               = AdjustColor(bg, 0.02, 0)
-    colors["PopupBg"]               = AdjustColor(bg, -0.05, 0)
+    colors["NavWindowingHighlight"] = ColorUtils.AdjustColor(accent, 0, 0, -0.25)
+    colors["NavWindowingDimBg"]     = ColorUtils.AdjustColor(bg, 0, 0, -0.65)
+    colors["ModalWindowDimBg"]      = ColorUtils.AdjustColor(bg, 0, 0, -0.65)
+    colors["ChildBg"]               = ColorUtils.AdjustColor(bg, 0.02, 0)
+    colors["PopupBg"]               = ColorUtils.AdjustColor(bg, -0.05, 0)
     colors["WindowBg"]              = bg
-    colors["TitleBg"]               = AdjustColor(bg, -0.1, 0)
-    colors["TitleBgActive"]         = AdjustColor(accent, 0, -0.2)
-    colors["TitleBgCollapsed"]      = AdjustColor(bg, -0.05, 0)
+    colors["TitleBg"]               = ColorUtils.AdjustColor(bg, -0.1, 0)
+    colors["TitleBgActive"]         = ColorUtils.AdjustColor(accent, 0, -0.2)
+    colors["TitleBgCollapsed"]      = ColorUtils.AdjustColor(bg, -0.05, 0)
 
     ----------------------------------------------------
     -- Text & Links
     ----------------------------------------------------
     colors["Text"]           = {1, 1, 1, 1}
-    colors["TextDisabled"]   = AdjustColor(colors["Text"], -0.2, -0.7)
-    colors["TextLink"]       = AdjustColor(accent2, 0.3)
-    colors["TextSelectedBg"] = AdjustColor(accent, 0, 0, -0.3)
+    colors["TextDisabled"]   = ColorUtils.AdjustColor(colors["Text"], -0.2, -0.7)
+    colors["TextLink"]       = ColorUtils.AdjustColor(accent2, 0.3)
+    colors["TextSelectedBg"] = ColorUtils.AdjustColor(accent, 0, 0, -0.3)
 
     ----------------------------------------------------
     -- Plots
     ----------------------------------------------------
-    colors["PlotLines"]            = AdjustColor(accent, 0.3, 0.15, -0.45)
-    colors["PlotLinesHovered"]     = AdjustColor(accent, 0.2, 0.08, -0.25)
-    colors["PlotHistogram"]        = AdjustColor(accent, 0.3, 0.15, -0.45)
-    colors["PlotHistogramHovered"] = AdjustColor(accent, 0.2, 0.08, -0.25)
+    colors["PlotLines"]            = ColorUtils.AdjustColor(accent, 0.3, 0.15, -0.45)
+    colors["PlotLinesHovered"]     = ColorUtils.AdjustColor(accent, 0.2, 0.08, -0.25)
+    colors["PlotHistogram"]        = ColorUtils.AdjustColor(accent, 0.3, 0.15, -0.45)
+    colors["PlotHistogramHovered"] = ColorUtils.AdjustColor(accent, 0.2, 0.08, -0.25)
 
     ----------------------------------------------------
     -- Misc
     ----------------------------------------------------
-    colors["DragDropTarget"] = AdjustColor(accent, 0.1, 0)
+    colors["DragDropTarget"] = ColorUtils.AdjustColor(accent, 0.1, 0)
 
     return colors
 end
 
-function GenerateUIStyle(baseRounding, basePadding, baseBorder)
+function ThemeHelpers.GenerateUIStyle(baseRounding, basePadding, baseBorder)
     local style                      = {}
 
     style["WindowRounding"]          = baseRounding
@@ -375,8 +398,8 @@ local GradientModes = {
     end,
 
     hsv = function(color1, color2, t)
-        local h1, s1, v1 = RGBtoHSV(color1[1], color1[2], color1[3])
-        local h2, s2, v2 = RGBtoHSV(color2[1], color2[2], color2[3])
+        local h1, s1, v1 = ColorUtils.RGBtoHSV(color1[1], color1[2], color1[3])
+        local h2, s2, v2 = ColorUtils.RGBtoHSV(color2[1], color2[2], color2[3])
         local a1, a2 = color1[4] or 1, color2[4] or 1
 
         local dh = h2 - h1
@@ -391,13 +414,13 @@ local GradientModes = {
         local v = v1 * (1 - t) + v2 * t
         local a = a1 * (1 - t) + a2 * t
 
-        local r, g, b = HSVtoRGB(h, s, v)
+        local r, g, b = ColorUtils.HSVtoRGB(h, s, v)
         return { r, g, b, a }
     end,
 
     hsl = function(color1, color2, t)
-        local h1, s1, l1 = RGBToHSL(color1[1], color1[2], color1[3])
-        local h2, s2, l2 = RGBToHSL(color2[1], color2[2], color2[3])
+        local h1, s1, l1 = ColorUtils.RGBToHSL(color1[1], color1[2], color1[3])
+        local h2, s2, l2 = ColorUtils.RGBToHSL(color2[1], color2[2], color2[3])
         local a1, a2 = color1[4] or 1, color2[4] or 1
 
         local dh = h2 - h1
@@ -412,7 +435,7 @@ local GradientModes = {
         local l = l1 * (1 - t) + l2 * t
         local a = a1 * (1 - t) + a2 * t
 
-        local r, g, b = HSLToRGB(h, s, l)
+        local r, g, b = ColorUtils.HSLToRGB(h, s, l)
         return { r, g, b, a }
     end,
 
@@ -443,7 +466,7 @@ local GradientModes = {
 
     rainbow = function(color1, color2, t)
         local hue = t
-        local r, g, b = HSVtoRGB(hue, 1.0, 1.0)
+        local r, g, b = ColorUtils.HSVtoRGB(hue, 1.0, 1.0)
         local a1, a2 = color1[4] or 1, color2[4] or 1
         local a = a1 * (1 - t) + a2 * t
         return { r, g, b, a }
@@ -465,13 +488,15 @@ local GradientModes = {
 --- @field RawText string
 --- @field Options GradientOpts
 
+--- @alias GradientMode 'rgb'|'hsv'|'sine'|'perceptual'|'rainbow'
+
 --- @param text string
 --- @param startColor string|table
 --- @param endColor string|table?
---- @param mode 'rgb'|'hsv'|'sine'|'perceptual'|'rainbow'
+--- @param mode GradientMode?
 --- @param options GradientOpts?
 --- @return GradientResult
-function GradientText(text, startColor, endColor, mode, options)
+function ColorUtils.GradientText(text, startColor, endColor, mode, options)
     if not text or text == "" then
         return {
             Segments = {},
@@ -480,12 +505,12 @@ function GradientText(text, startColor, endColor, mode, options)
         }
     end
 
-    mode = mode:lower() or "hsv"
+    mode = mode and mode:lower() or "hsv"
     options = options or {}
 
     local color1
     if type(startColor) == "string" then
-        color1 = HexToRGBA(startColor)
+        color1 = ColorUtils.HexToRGBA(startColor)
     else
         color1 = startColor
     end
@@ -493,7 +518,7 @@ function GradientText(text, startColor, endColor, mode, options)
     local color2 = color1
     if endColor then
         if type(endColor) == "string" then
-            color2 = HexToRGBA(endColor)
+            color2 = ColorUtils.HexToRGBA(endColor)
         else
             color2 = endColor
         end
@@ -586,7 +611,7 @@ function GradientText(text, startColor, endColor, mode, options)
                     lineOptions.Vertical = false
                     lineOptions.Cycles = options.LineCycles or 1
 
-                    local lineResult = GradientText(line, lineColor, lineColor, mode, lineOptions)
+                    local lineResult = ColorUtils.GradientText(line, lineColor, lineColor, mode, lineOptions)
                     for _, segment in ipairs(lineResult.Segments) do
                         table.insert(segments, segment)
                     end

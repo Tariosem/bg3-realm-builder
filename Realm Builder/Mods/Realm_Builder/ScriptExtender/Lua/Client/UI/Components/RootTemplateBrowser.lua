@@ -14,7 +14,7 @@ function RootTemplateBrowser:SubclassInit()
     self.lastSize = { self.browserWidth * 1.5, self.browserHeight * 1.5 }
     self.disableIcon = true
 
-    self.iconButtonBgColor = HexToRGBA("FF615238")
+    self.iconButtonBgColor = ColorUtils.HexToRGBA("FF615238")
 end
 
 --- @param entry RB_Scenery
@@ -47,14 +47,14 @@ function RootTemplateBrowser:RenderIcon(entry, cell)
             disName = "Unknown"
         end
         local button = cell:AddButton(disName .. "##" ..entry.Uuid)
-        button:SetColor("Button", self.iconButtonBgColor or HexToRGBA("FF615238"))
+        button:SetColor("Button", self.iconButtonBgColor or ColorUtils.HexToRGBA("FF615238"))
         iconImage = button
     end
 
     iconImage.OnClick = function()
         if not popup then
             popup = cell:AddPopup("Root Template Details")
-            popup.IDContext = entry.Uuid .. "Popup" .. Uuid_v4()
+            popup.IDContext = entry.Uuid .. "Popup" .. RBUtils.Uuid_v4()
             local attrs = {
                 Uuid = entry.Uuid,
                 TemplateName = entry.TemplateName,
@@ -71,14 +71,14 @@ function RootTemplateBrowser:RenderIcon(entry, cell)
     iconImage.OnRightClick = function()
         if not rPopup then
             rPopup = cell:AddPopup("Preview Template")
-            rPopup.IDContext = entry.Uuid .. "RPopup" .. Uuid_v4()
+            rPopup.IDContext = entry.Uuid .. "RPopup" .. RBUtils.Uuid_v4()
             self:RenderCustomizationTab(rPopup, entry)
             local actTab = ImguiElements.AddContextMenu(rPopup, "Actions")
             actTab:AddItem(GetLoca("Spawn"), function()
-                local selected = self.selectedGuid or CGetHostCharacter()
+                local selected = self.selectedGuid or RBGetHostCharacter()
                 if not selected then return end
-                local spawnPos = {CGetPosition(selected)}
-                local spawnRot = {CGetRotation(selected)}
+                local spawnPos = {RBGetPosition(selected)}
+                local spawnRot = {RBGetRotation(selected)}
                 if not spawnPos or not spawnRot then return end
                 local spawnId = entry.TemplateId or entry.Uuid
                 Commands.SpawnCommand(spawnId, { Position=spawnPos, Rotation=spawnRot })
@@ -96,7 +96,7 @@ function RootTemplateBrowser:RenderIcon(entry, cell)
 
     iconImage.OnDragEnd = function()
         Timer:Ticks(20, function (timerID)
-            local spawnPos, spawnRot = GetPickingHitPosAndRot()
+            local spawnPos, spawnRot = PickingUtils.GetPickingHitPosAndRot()
             if not spawnPos or not spawnRot then return end
             Commands.SpawnCommand(entry.TemplateId, { Position=spawnPos, Rotation=spawnRot })
         end)

@@ -65,7 +65,7 @@ function SceneMenu:Render()
     local presetNameInput = r1:AddInputText("")
     local tryLoadButton = r1:AddButton(GetLoca("Load"))
 
-    local presetNameInputKeySub = SubscribeKeyInput({ Key = "RETURN" }, function()
+    local presetNameInputKeySub = InputEvents.SubscribeKeyInput({ Key = "RETURN" }, function()
         if saveButton and ImguiHelpers.IsFocused(presetNameInput) then
             saveButton.OnClick()
         end
@@ -87,7 +87,7 @@ function SceneMenu:Render()
         if object and object ~= "" then
             return object
         end
-        return CGetHostCharacter()
+        return RBGetHostCharacter()
     end
 
     local visibleOnlyCheckbox = self.panel:AddCheckbox(GetLoca("Visible Props Only"), self.visibleOnly)
@@ -181,7 +181,7 @@ function SceneMenu:Render()
     self.cellsPadding = { 5 * SCALE_FACTOR, 5 * SCALE_FACTOR }
     self.cellsPaddingSlider = ImguiHelpers.SafeAddSliderInt(previewConfigPopup, "Cell Padding", 1, 0, 20 * SCALE_FACTOR)
     self.cellsPaddingSlider.Components = 2
-    self.cellsPaddingSlider.Value = ToVec4Int(self.cellsPadding[1], self.cellsPadding[2])
+    self.cellsPaddingSlider.Value = RBUtils.ToVec4Int(self.cellsPadding[1], self.cellsPadding[2])
 
     self.iconBGcolor = {0, 0, 0, 0.5}
     self.iconBGcolorPicker = previewConfigPopup:AddColorEdit(GetLoca("Icon BG Color"))
@@ -224,7 +224,7 @@ function SceneMenu:SavePreset(name, overwrite, candiates)
 
     local anchor = self:GetSelectedObject()
     if not anchor or anchor == "" then
-        anchor = CGetHostCharacter()
+        anchor = RBGetHostCharacter()
     end
 
     local infos = {}
@@ -233,7 +233,7 @@ function SceneMenu:SavePreset(name, overwrite, candiates)
     else
         infos = EntityStore:GetAllStored()
     end
-    if not infos or CountMap(infos) == 0 then
+    if not infos or RBTableUtils.CountMap(infos) == 0 then
         ConfirmPopup:Popup("No props found to save in preset.")
         return
     end
@@ -261,18 +261,18 @@ function SceneMenu:SavePreset(name, overwrite, candiates)
 
         local pos, rot = nil, nil
         if self.isRelative then
-            pos = SaveLocalRelativePosOffset(entInfo.Guid, anchor)
-            rot = SaveLocalRelativeRotOffset(entInfo.Guid, anchor)
+            pos = MathHelpers.SaveLocalRelativePosOffset(entInfo.Guid, anchor)
+            rot = MathHelpers.SaveLocalRelativeRotOffset(entInfo.Guid, anchor)
         else
-            pos = {CGetPosition(entInfo.Guid)}
-            rot = {GetQuatRotation(entInfo.Guid)}
+            pos = {RBGetPosition(entInfo.Guid)}
+            rot = {EntityHelpers.GetQuatRotation(entInfo.Guid)}
         end
 
         entInfo.Position = pos
         entInfo.Rotation = rot
         entInfo.Level = levelName
 
-        local template = TakeTailTemplate(entInfo.TemplateId)
+        local template = EntityHelpers.TakeTailTemplate(entInfo.TemplateId)
         local templateObj = Ext.Template.GetTemplate(template)
         local isVisual = not templateObj and Ext.Resource.Get(entInfo.TemplateId, "Visual")
         if not templateObj and not isVisual then
@@ -313,7 +313,7 @@ function SceneMenu:SavePreset(name, overwrite, candiates)
         lca = TreeTable.GetRootKey()
     end
 
-    local tree = { [lca] = DeepCopy(EntityStore.Tree:Find(lca)) }
+    local tree = { [lca] = RBUtils.DeepCopy(EntityStore.Tree:Find(lca)) }
 
     self.sceneDatas[name] = {
         PresetType = self.isRelative and "Relative" or "Absolute",
@@ -394,19 +394,19 @@ function SceneMenu:LoadPreset(name, isPreview, force)
 
     local parentObj = self:GetSelectedObject()
     if not parentObj or parentObj == "" then
-        parentObj = CGetHostCharacter()
+        parentObj = RBGetHostCharacter()
     end
 
-    local data = DeepCopy(self.sceneDatas[name])
+    local data = RBUtils.DeepCopy(self.sceneDatas[name])
     if data == self.sceneDatas[name] then
         Debug("SceneMenu:LoadPreset: DeepCopy failed, using original data.")
-        data = DeepCopy(self.sceneDatas[name])
+        data = RBUtils.DeepCopy(self.sceneDatas[name])
     end
     if isPreview then
         data.SpawnType = "Preview"
     end
-    data.Position = {CGetPosition(parentObj)}
-    data.Rotation = {GetQuatRotation(parentObj)}
+    data.Position = {RBGetPosition(parentObj)}
+    data.Rotation = {EntityHelpers.GetQuatRotation(parentObj)}
     Commands.SpawnPreset(data)
 
     return nil
@@ -510,7 +510,7 @@ function SceneMenu:SetupContextMenu()
 
     local cm = ImguiElements.AddContextMenu(popup, "Scene")
 
-    cm:AddContext(contextItems)
+    cm:AddItems(contextItems)
 
     local highLightPicker = cm:AddMenu(GetLoca("Highlight Color")):AddColorEdit(GetLoca("Select Highlight Color"))
     self.highLightPicker = highLightPicker
@@ -526,7 +526,7 @@ function SceneMenu:SetupContextMenu()
         self.sceneDatas[name].HighlightColor = colorPicker.Color
         local btn = self.presetSideBarButtons[name]
         if btn then
-            btn:SetColor("Header", AdjustColor(self.sceneDatas[name].HighlightColor, -0.05))
+            btn:SetColor("Header", ColorUtils.AdjustColor(self.sceneDatas[name].HighlightColor, -0.05))
             btn:SetColor("HeaderHovered", self.sceneDatas[name].HighlightColor)
         end
         if self.presentingPreset == name and self.presetInfoWindow then
@@ -536,7 +536,7 @@ function SceneMenu:SetupContextMenu()
             self.previewTable:SetColor("TableBorderStrong", self.sceneDatas[name].HighlightColor)
             local title = self.presetInfoWindow.UserData and self.presetInfoWindow.UserData.Title
             if title then
-                title:SetColor("Header", AdjustColor(self.sceneDatas[name].HighlightColor, -0.05))
+                title:SetColor("Header", ColorUtils.AdjustColor(self.sceneDatas[name].HighlightColor, -0.05))
                 title:SetColor("HeaderHovered", self.sceneDatas[name].HighlightColor)
             end
         end
@@ -585,7 +585,7 @@ function SceneMenu:RenderSidebarSelection()
             button.Highlight = true
         end
         if self.sceneDatas[name].HighlightColor then
-            button:SetColor("Header", AdjustColor(self.sceneDatas[name].HighlightColor, -0.05))
+            button:SetColor("Header", ColorUtils.AdjustColor(self.sceneDatas[name].HighlightColor, -0.05))
             button:SetColor("HeaderHovered", self.sceneDatas[name].HighlightColor)
         end
 
@@ -644,8 +644,8 @@ function SceneMenu:RenderPresetDetails(name)
 
     if presetData.HighlightColor then
         self.previewTable.BordersOuter = true
-        self.previewTable:SetColor("TableBorderStrong", AdjustColor(presetData.HighlightColor, 0.2))
-        title:SetColor("Header", AdjustColor(presetData.HighlightColor, -0.05))
+        self.previewTable:SetColor("TableBorderStrong", ColorUtils.AdjustColor(presetData.HighlightColor, 0.2))
+        title:SetColor("Header", ColorUtils.AdjustColor(presetData.HighlightColor, -0.05))
         title:SetColor("HeaderHovered", presetData.HighlightColor)
     end
 
@@ -687,7 +687,7 @@ function SceneMenu:RenderPresetDetails(name)
         end
         self:SaveToFile(name)
     end
-    local descInputKeyLisener = SubscribeKeyInput({ Key = "RETURN" }, function()
+    local descInputKeyLisener = InputEvents.SubscribeKeyInput({ Key = "RETURN" }, function()
         if self.presetInfoWindow and ImguiHelpers.IsFocused(presetDescInput) then
             confirmInputBtn.OnClick()
         end
@@ -703,7 +703,7 @@ function SceneMenu:RenderPresetDetails(name)
         local modlist = presetData.ModList
         modInfoWarningButton:Tooltip():AddText(GetLoca("This preset depends on the following mods:"))
         modInfoWarningButton:Tooltip():AddText(GetLoca("(May not be 100% accurate)")).Font = "Tiny"
-        for modId, modInfo in SortedPairs(modlist, function (a, b)
+        for modId, modInfo in RBUtils.SortedPairs(modlist, function (a, b)
             local aV = modlist[a]
             local bV = modlist[b]
             local aName = aV.Name and aV.Name ~= "" and aV.Name or a
@@ -766,7 +766,7 @@ function SceneMenu:RenderPresetDetails(name)
         self.previewImageSize = self.previewImageSizeSlider.Value[1]
         for _, header in ipairs(propHeaders) do
             if header and header.Image then
-                header.Image.Size = ToVec2(self.previewImageSize)
+                header.Image.Size = RBUtils.ToVec2(self.previewImageSize)
             end
         end
         cT.OnWidthChange()
@@ -805,7 +805,7 @@ function SceneMenu:RenderPresetObjectInfo(parent, entInfo, presetName, presetTyp
     local tags = entInfo.Tags or {}
     local note = entInfo.Note or ""
     local template = entInfo.TemplateId or "Unknown"
-    template = TrimTail(template, 37)
+    template = RBStringUtils.TrimTail(template, 37)
     if template == "" then
         template = entInfo.TemplateId
     end
@@ -828,9 +828,9 @@ function SceneMenu:RenderPresetObjectInfo(parent, entInfo, presetName, presetTyp
 
     local header = parent:AddImageButton(displayName, CheckIcon(GetIconForTemplateId(entInfo.TemplateId)))
     local imageSize = self.previewImageSize or (64 * SCALE_FACTOR)
-    header.Image.Size = ToVec2(imageSize)
-    header.Background = self.iconBGcolor or ToVec4(0)
-    header.Tint = entInfo.IconTintColor or ToVec4(1)
+    header.Image.Size = RBUtils.ToVec2(imageSize)
+    header.Background = self.iconBGcolor or RBUtils.ToVec4(0)
+    header.Tint = entInfo.IconTintColor or RBUtils.ToVec4(1)
     local iconTooltip = header:Tooltip()
 
     local function addSe()
@@ -873,14 +873,14 @@ function SceneMenu:RenderPresetObjectInfo(parent, entInfo, presetName, presetTyp
     posInput.IDContext = "PosInput"
     posInput.SameLine = true
     posInput.Components = 3
-    posInput.Value = {FormatDecimal(pos[1], 2), FormatDecimal(pos[2], 2), FormatDecimal(pos[3], 2), 0}
+    posInput.Value = {RBStringUtils.FormatDecimal(pos[1], 2), RBStringUtils.FormatDecimal(pos[2], 2), RBStringUtils.FormatDecimal(pos[3], 2), 0}
 
     iconTooltip:AddText(GetLoca("Rotation") .. " :")
     local rotInput = iconTooltip:AddInputScalar("")
     rotInput.IDContext = "RotInput"
     rotInput.SameLine = true
     rotInput.Components = 4
-    rotInput.Value = {FormatDecimal(rot[1], 2), FormatDecimal(rot[2], 2), FormatDecimal(rot[3], 2), FormatDecimal(rot[4], 2)}
+    rotInput.Value = {RBStringUtils.FormatDecimal(rot[1], 2), RBStringUtils.FormatDecimal(rot[2], 2), RBStringUtils.FormatDecimal(rot[3], 2), RBStringUtils.FormatDecimal(rot[4], 2)}
 
     addSe()
 
@@ -906,7 +906,7 @@ function SceneMenu:RenderPresetObjectInfo(parent, entInfo, presetName, presetTyp
         if not checkLevel() then return nil end
         local parent = self:GetSelectedObject()
         if not parent or parent == "" then
-            parent = CGetHostCharacter()
+            parent = RBGetHostCharacter()
         end
 
         local fpos, frot = nil, nil
@@ -914,7 +914,7 @@ function SceneMenu:RenderPresetObjectInfo(parent, entInfo, presetName, presetTyp
             fpos = pos
             frot = rot
         else
-            fpos, frot = GetLocalRelativeTransformFromGuid(parent, pos, rot)
+            fpos, frot = MathHelpers.GetLocalRelativeTransformFromGuid(parent, pos, rot)
         end
 
         if not fpos or not frot then

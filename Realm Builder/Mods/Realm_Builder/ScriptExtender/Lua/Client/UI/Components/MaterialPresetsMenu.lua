@@ -38,8 +38,8 @@ MATERIALPRESET_DRAGDROP_TYPE = "MaterialPreset"
 --- @field RenderCCPresetList fun(self:MaterialPresetsMenu, presetName:string, parent:ExtuiTreeParent)
 MaterialPresetsMenu = MaterialPresetsMenu or {}
 
-local exportColor = HexToRGBA("C553898D")
-local disabledColor = HexToRGBA("C5323232")
+local exportColor = ColorUtils.HexToRGBA("C553898D")
+local disabledColor = ColorUtils.HexToRGBA("C5323232")
 
 local difineToDisplay = {
     CharacterCreationEyeColors = "Eye Color",
@@ -50,8 +50,8 @@ local difineToDisplay = {
 local function colorPresetComparator(a, b, aName, bName)
     local aR, aG, aB = a.UIColor[1], a.UIColor[2], a.UIColor[3]
     local bR, bG, bB = b.UIColor[1], b.UIColor[2], b.UIColor[3]
-    local aH, aS, aV = RGBtoHSV(aR, aG, aB)
-    local bH, bS, bV = RGBtoHSV(bR, bG, bB)
+    local aH, aS, aV = ColorUtils.RGBtoHSV(aR, aG, aB)
+    local bH, bS, bV = ColorUtils.RGBtoHSV(bR, bG, bB)
 
     if aH ~= bH then
         return aH < bH
@@ -124,7 +124,7 @@ function MaterialPresetsMenu:SetupWorkspace(parent, ccaModPack, notRenderImport,
     local function checkIfExportable()
         if not modPack.ModName or modPack.ModName == "" then return false, "no mod name" end
         if not modPack.Author or modPack.Author == "" then return false, "no author" end
-        if CountMap(modPack.Folders) == 0 then return false, "no folders defined" end
+        if RBTableUtils.CountMap(modPack.Folders) == 0 then return false, "no folders defined" end
 
         for _, version in pairs(modPack.Version) do
             if not tonumber(version) or version < 0 then
@@ -291,9 +291,9 @@ end
 local function setRowColor(row, color)
     --row:SetColor("TableRowBg", color)
     --row:SetColor("TableRowBgAlt", color)
-    row:SetColor("TableRowBg", AdjustColor(color, -0.4, -0.3, -0.4))
-    row:SetColor("TableRowBgAlt", AdjustColor(color, -0.4, -0.3, -0.4))
-    row:SetColor("TableHeaderBg", AdjustColor(color, -0.2, nil, -0.5))
+    row:SetColor("TableRowBg", ColorUtils.AdjustColor(color, -0.4, -0.3, -0.4))
+    row:SetColor("TableRowBgAlt", ColorUtils.AdjustColor(color, -0.4, -0.3, -0.4))
+    row:SetColor("TableHeaderBg", ColorUtils.AdjustColor(color, -0.2, nil, -0.5))
 end
 
 function MaterialPresetsMenu:RenderFolderPanel(presetTab, presetHeaders, exportSettings)
@@ -485,11 +485,11 @@ function MaterialPresetsMenu:RenderFolderRow(presetTab, folderName, openedFolder
             end
 
             -- not in this workspace, create new preset in this folder
-            guid = Uuid_v4()
+            guid = RBUtils.Uuid_v4()
             local newPreset = {
                 DisplayName = drop.UserData.DisplayName or "Unnamed Preset",
-                UIColor = DeepCopy(drop.UserData.UIColor or { 1, 1, 1, 1 }),
-                Parameters = DeepCopy(drop.UserData.Parameters or {}),
+                UIColor = RBUtils.DeepCopy(drop.UserData.UIColor or { 1, 1, 1, 1 }),
+                Parameters = RBUtils.DeepCopy(drop.UserData.Parameters or {}),
             }
 
             exportSettings.MaterialPresets[guid] = newPreset
@@ -545,10 +545,10 @@ function MaterialPresetsMenu:RenderImportSection(parent, exportSettings, onImpor
         exportSettings.Author = ccaModPack.Author or ""
         exportSettings.Description = ccaModPack.Description or ""
         exportSettings.Version = ccaModPack.Version or { 1, 0, 0, 0 }
-        exportSettings.MaterialPresets = DeepCopy(ccaModPack.MaterialPresets or {})
+        exportSettings.MaterialPresets = RBUtils.DeepCopy(ccaModPack.MaterialPresets or {})
         exportSettings.ModuleUUID = ccaModPack.ModuleUUID
-        exportSettings.Folders = DeepCopy(ccaModPack.Folders or {})
-        exportSettings.FolderDefinitions = DeepCopy(ccaModPack.FolderDefinitions or {})
+        exportSettings.Folders = RBUtils.DeepCopy(ccaModPack.Folders or {})
+        exportSettings.FolderDefinitions = RBUtils.DeepCopy(ccaModPack.FolderDefinitions or {})
 
         Debug("MaterialPresetsMenu: Imported CC mod pack for mod " .. modName .. " version " .. version)
         onImportComplete()
@@ -566,8 +566,8 @@ function MaterialPresetsMenu:RenderImportSection(parent, exportSettings, onImpor
             local aMajor, aMinor, aPatch, aBuild = a:match("(%d+)%.(%d+)%.(%d+)%.(%d+)")
             local bMajor, bMinor, bPatch, bBuild = b:match("(%d+)%.(%d+)%.(%d+)%.(%d+)")
 
-            local av64 = ComputeVersion64(aMajor, aMinor, aPatch, aBuild)
-            local bv64 = ComputeVersion64(bMajor, bMinor, bPatch, bBuild)
+            local av64 = RBUtils.ComputeVersion64(aMajor, aMinor, aPatch, aBuild)
+            local bv64 = RBUtils.ComputeVersion64(bMajor, bMinor, bPatch, bBuild)
             return av64 > bv64
         end)
 
@@ -610,10 +610,10 @@ function MaterialPresetsMenu:RenderImportSection(parent, exportSettings, onImpor
                 import(modName, version)
             end)
         importBtn:Tooltip():SetStyle("WindowBorderSize", 2)
-        importBtn:Tooltip():SetColor("Border", HexToRGBA("FFFF0000"))
-        importBtn:Tooltip():AddText("CAUTION:"):SetColor("Text", HexToRGBA("FFFF0000"))
+        importBtn:Tooltip():SetColor("Border", ColorUtils.HexToRGBA("FFFF0000"))
+        importBtn:Tooltip():AddText("CAUTION:"):SetColor("Text", ColorUtils.HexToRGBA("FFFF0000"))
         importBtn:Tooltip():AddText("This will overwrite your current workspace settings!"):SetColor("Text",
-            HexToRGBA("FFFFFFFF"))
+            ColorUtils.HexToRGBA("FFFFFFFF"))
 
         local deleteBtnCell = selectRow:AddCell()
         local deleteBtn = ImguiElements.AddSelectableButton(deleteBtnCell,
@@ -637,16 +637,16 @@ function MaterialPresetsMenu:RenderImportSection(parent, exportSettings, onImpor
                     Warning("Failed to import CC mod pack for mod " .. modName .. " version " .. version)
                     return
                 end
-                ccaModPack = DeepCopy(ccaModPack)
+                ccaModPack = RBUtils.DeepCopy(ccaModPack)
                 local versionStr = ccaModPack and
-                    BuildVersionString(ccaModPack.Version[1], ccaModPack.Version[2], ccaModPack.Version[3],
+                    RBUtils.BuildVersionString(ccaModPack.Version[1], ccaModPack.Version[2], ccaModPack.Version[3],
                         ccaModPack.Version
                         [4]) or version
-                local newWindow = RegisterWindow("generic", ccaModPack.ModName .. " - " .. versionStr,
+                local newWindow = WindowManager.RegisterWindow("generic", ccaModPack.ModName .. " - " .. versionStr,
                     "Character Creation Material Editor", nil, nil, { 1200 * SCALE_FACTOR, 900 * SCALE_FACTOR })
                 newWindow.Closeable = true
                 newWindow.OnClose = function()
-                    DeleteWindow(newWindow)
+                    WindowManager.DeleteWindow(newWindow)
                 end
                 self:SetupWorkspace(newWindow, ccaModPack, true, refreshCached)
             end)
@@ -665,7 +665,7 @@ function MaterialPresetsMenu:RenderImportSection(parent, exportSettings, onImpor
 
         local sortedModNames = {}
         for modName, _ in pairs(cache) do
-            if CountMap(cache[modName].Versions) == 0 then
+            if RBTableUtils.CountMap(cache[modName].Versions) == 0 then
                 cache[modName] = nil
                 self.cachedMods[modName] = nil
             else
@@ -716,7 +716,7 @@ function MaterialPresetsMenu:RenderFolderManagePopup(popup, folderName, folderSe
     local renameInput = renameCell:AddInputText("##MaterialPresetFolderRenameInput_" .. folderName)
     local confirmBtn = renameCell:AddButton("<##MaterialPresetFolderRenameBtn_" .. folderName)
     local warnText = renameCell:AddText("A folder with this name already exists.")
-    warnText:SetColor("Text", HexToRGBA("FFFF0000"))
+    warnText:SetColor("Text", ColorUtils.HexToRGBA("FFFF0000"))
     warnText.Visible = false
     local exportTypeCombo = row:AddCell():AddCombo("##MaterialPresetFolderExportTypeCombo_" .. folderName)
     local deleteBtn = row:AddCell():AddButton("Delete Folder##MaterialPresetFolderDeleteBtn_" .. folderName)
@@ -754,11 +754,11 @@ function MaterialPresetsMenu:RenderFolderManagePopup(popup, folderName, folderSe
     renameInput.Text = folderName
 
     renameInput:SetStyle("FrameBorderSize", 2)
-    renameInput:SetColor("Text", HexToRGBA("FFFFFFFF"))
-    renameInput:SetColor("Border", HexToRGBA("FF888888"))
+    renameInput:SetColor("Text", ColorUtils.HexToRGBA("FFFFFFFF"))
+    renameInput:SetColor("Border", ColorUtils.HexToRGBA("FF888888"))
     renameInput.OnChange = function()
-        local newName = ValidateFolderName(renameInput.Text)
-        if not IsValidFolderName(newName) then
+        local newName = RBUtils.ValidateFolderName(renameInput.Text)
+        if not RBUtils.IsValidFolderName(newName) then
             StyleHelpers.SetWarningBorder(renameInput)
             GuiAnim.PulseBorder(renameInput, 2)
             return
@@ -788,7 +788,7 @@ function MaterialPresetsMenu:RenderFolderManagePopup(popup, folderName, folderSe
         local newName = renameInput.Text
         if newName == folderName then return end
 
-        if not IsValidFolderName(newName) then
+        if not RBUtils.IsValidFolderName(newName) then
             StyleHelpers.SetWarningBorder(renameInput)
             GuiAnim.PulseBorder(renameInput, 2)
             return
@@ -968,12 +968,12 @@ function MaterialPresetsMenu:RenderExportPresetRow(parentTab, obj, uuid, onDelet
         end
 
         if drop.UserData and drop.UserData.Parameters then
-            obj.Parameters = DeepCopy(drop.UserData.Parameters or {})
+            obj.Parameters = RBUtils.DeepCopy(drop.UserData.Parameters or {})
             if drop.UserData.UIColor then
-                local oriColor = DeepCopy(obj.UIColor)
-                obj.UIColor = DeepCopy(drop.UserData.UIColor or { 1, 1, 1, 1 })
+                local oriColor = RBUtils.DeepCopy(obj.UIColor)
+                obj.UIColor = RBUtils.DeepCopy(drop.UserData.UIColor or { 1, 1, 1, 1 })
                 colorBox.Color = obj.UIColor
-                if EqualArrays(oriColor, obj.UIColor) then
+                if RBTableUtils.EqualArrays(oriColor, obj.UIColor) then
                     GuiAnim.FlashColor(colorBox)
                 else
                     GuiAnim.Blend(colorBox, oriColor, obj.UIColor)
@@ -985,8 +985,8 @@ function MaterialPresetsMenu:RenderExportPresetRow(parentTab, obj, uuid, onDelet
         end
 
         if drop.UserData and drop.UserData.UIColor then
-            local oriColor = DeepCopy(obj.UIColor)
-            obj.UIColor = DeepCopy(drop.UserData.UIColor or { 1, 1, 1, 1 })
+            local oriColor = RBUtils.DeepCopy(obj.UIColor)
+            obj.UIColor = RBUtils.DeepCopy(drop.UserData.UIColor or { 1, 1, 1, 1 })
             colorBox.Color = obj.UIColor
             GuiAnim.Blend(colorBox, oriColor, obj.UIColor)
             return
@@ -1028,7 +1028,7 @@ end
 ---@return CCMod_Pack?
 function MaterialPresetsMenu:ImportFromFile(modName, version)
     modName = modName:gsub("%s+", "_")
-    local versionStr = type(version) == "table" and BuildVersionString(version[1], version[2], version[3], version[4]) or
+    local versionStr = type(version) == "table" and RBUtils.BuildVersionString(version[1], version[2], version[3], version[4]) or
         tostring(version)
 
     if self.cachedMods and self.cachedMods[modName] and self.cachedMods[modName].Cache then
@@ -1072,7 +1072,7 @@ function MaterialPresetsMenu:ExportToMod(modPack, progressCallback)
     if not ok then
         Error(debug.traceback(thread, ""))
         progressCallback(-1, "Error: " .. tostring(err))
-        local time = GetFormatTime()
+        local time = RBUtils.GetFormatTime()
         local errorLog = {
             Time = Ext.Timer.ClockTime(),
             Error = tostring(err),
@@ -1098,7 +1098,7 @@ function MaterialPresetsMenu:__exportToMod(modPack, progressCallback, exportThre
     end
 
     local displayModName = modPack.ModName or "Unnamed Mod"
-    local modFolderName = ValidateFolderName(displayModName)
+    local modFolderName = RBUtils.ValidateFolderName(displayModName)
     local authorName = modPack.Author
     local description = modPack.Description
     local version = modPack.Version
@@ -1110,10 +1110,10 @@ function MaterialPresetsMenu:__exportToMod(modPack, progressCallback, exportThre
 
     local modFolderDisplayName = modFolderName ..
         "_" ..
-        BuildVersionString(version[1], version[2], version[3], version[4]) .. "_" .. GetFormatTime()
+        RBUtils.BuildVersionString(version[1], version[2], version[3], version[4]) .. "_" .. RBUtils.GetFormatTime()
 
-    local presetCnt = CountMap(matPresets)
-    local folderCnt = CountMap(folders)
+    local presetCnt = RBTableUtils.CountMap(matPresets)
+    local folderCnt = RBTableUtils.CountMap(folders)
 
     if not existUuid and self.cachedMods and self.cachedMods[modFolderName] then
         existUuid = self.cachedMods[modFolderName].ModuleUUID
@@ -1138,7 +1138,7 @@ function MaterialPresetsMenu:__exportToMod(modPack, progressCallback, exportThre
         progress = -1
         Error(debug.traceback(message))
         progressCallback(progress, message)
-        local time = GetFormatTime()
+        local time = RBUtils.GetFormatTime()
         Ext.IO.SaveFile(RealmPath.GetCCModLogPath(time),
             Ext.Json.Stringify({
                 Time = Ext.Timer.ClockTime(),
@@ -1189,7 +1189,7 @@ function MaterialPresetsMenu:__exportToMod(modPack, progressCallback, exportThre
         progressCallback(progress, message)
     end
 
-    if not IsUuid(existUuid) then
+    if not RBUtils.IsUuid(existUuid) then
         existUuid = nil
     end
 
@@ -1200,7 +1200,7 @@ function MaterialPresetsMenu:__exportToMod(modPack, progressCallback, exportThre
     end
 
     -- prefer reusing the existing ModuleUUID, so the game recognizes this as the same mod.
-    local modUuid = existUuid and existUuid or Uuid_v4()
+    local modUuid = existUuid and existUuid or RBUtils.Uuid_v4()
     modPack.ModuleUUID = modUuid
 
     --- build mod meta.lsx
@@ -1300,7 +1300,7 @@ function MaterialPresetsMenu:__exportToMod(modPack, progressCallback, exportThre
 
     local function checkIfDragonbornSkinType(paramName)
         for _, prefix in pairs(dragonbornPrefixes) do
-            if StartWith(paramName, prefix) then
+            if RBStringUtils.StartWith(paramName, prefix) then
                 return true
             end
         end
@@ -1323,7 +1323,7 @@ function MaterialPresetsMenu:__exportToMod(modPack, progressCallback, exportThre
         local ccaPresetNode = ccaDefNode[presetType]
 
         local internalName = modFolderName .. cheapName[presetType] .. internalNames[preset]
-        local ccaPresetUuid = Uuid_v4()
+        local ccaPresetUuid = RBUtils.Uuid_v4()
 
         local handle = table.remove(stringToHandles[preset.DisplayName]) -- use one handle per preset
 
@@ -1380,7 +1380,7 @@ end
 ---@param modPack CCMod_Pack
 ---@return boolean
 function MaterialPresetsMenu:SaveModCache(modPack)
-    local cacheFile = DeepCopy(modPack)
+    local cacheFile = RBUtils.DeepCopy(modPack)
     local modInternalName = modPack.ModName:gsub("%s+", "_")
     local version = modPack.Version
     local moduleID = modPack.ModuleUUID
@@ -1390,12 +1390,12 @@ function MaterialPresetsMenu:SaveModCache(modPack)
     self.cachedMods[modInternalName] = self.cachedMods[modInternalName] or {}
     self.cachedMods[modInternalName].ModuleUUID = moduleID
     self.cachedMods[modInternalName].Cache = self.cachedMods[modInternalName].Cache or {}
-    local versionStr = type(version) == "table" and BuildVersionString(version[1], version[2], version[3], version[4]) or
+    local versionStr = type(version) == "table" and RBUtils.BuildVersionString(version[1], version[2], version[3], version[4]) or
         tostring(version)
     self.cachedMods[modInternalName].Cache[versionStr] = cacheFile
     self.cachedMods[modInternalName].Versions = self.cachedMods[modInternalName].Versions or {}
     self.cachedMods[modInternalName].Versions[versionStr] = {
-        MaterialPresetCount = CountMap(cacheFile.MaterialPresets or {}),
+        MaterialPresetCount = RBTableUtils.CountMap(cacheFile.MaterialPresets or {}),
     }
 
     return Ext.IO.SaveFile(filePath, jsonStr)
@@ -1411,7 +1411,7 @@ function MaterialPresetsMenu:SaveModCacheRef(modUuid)
         }
         for version, cache in pairs(modCache.Cache) do
             versions[version] = {
-                MaterialPresetCount = CountMap(cache.MaterialPresets or {}),
+                MaterialPresetCount = RBTableUtils.CountMap(cache.MaterialPresets or {}),
             }
         end
     end
@@ -1510,7 +1510,7 @@ function MaterialPresetsMenu:RenderPresetColorBox(preset, parent)
     colorBox.OnHoverEnter = function()
         colorBox.Color = preset.UIColor
         colorBox:SetStyle("FrameBorderSize", 2)
-        colorBox:SetColor("Border", HexToRGBA("FFFFD500"))
+        colorBox:SetColor("Border", ColorUtils.HexToRGBA("FFFFD500"))
         if not tooltipText then
             tooltipText = colorBox:Tooltip():AddText(preset.DisplayName and preset.DisplayName:Get() or "Unnamed Preset")
         end
@@ -1518,7 +1518,7 @@ function MaterialPresetsMenu:RenderPresetColorBox(preset, parent)
 
     colorBox.OnHoverLeave = function()
         colorBox:SetStyle("FrameBorderSize", 0)
-        colorBox:SetColor("Border", HexToRGBA("FFFFFFFF"))
+        colorBox:SetColor("Border", ColorUtils.HexToRGBA("FFFFFFFF"))
     end
 
     return colorBox
@@ -1685,7 +1685,7 @@ function MaterialPresetsMenu:RenderCCPresetList(presetName, parent)
     local searchInput = leftSearchCell:AddInputText("##CCPresetSearch")
     searchInput.Hint = "Search Presets..."
     searchInput.SameLine = true
-    searchInput.OnChange = Debounce(10, function()
+    searchInput.OnChange = RBUtils.Debounce(10, function()
         if not searchInput.Text or searchInput.Text == "" then
             for uuid, cell in pairs(uuidToCells) do
                 cell.Visible = true
@@ -1715,12 +1715,12 @@ function MaterialPresetsMenu:RenderCCPresetList(presetName, parent)
 
     hueInput.OnChange = function()
         local r1, g1, b1 = hueInput.Color[1], hueInput.Color[2], hueInput.Color[3]
-        local h1, s1, v1 = RGBtoHSV(r1, g1, b1)
+        local h1, s1, v1 = ColorUtils.RGBtoHSV(r1, g1, b1)
 
         for _, res in ipairs(allRes) do
             local cell = uuidToCells[res.ResourceUUID]
             local r2, g2, b2 = res.UIColor[1], res.UIColor[2], res.UIColor[3]
-            local h2, s2, v2 = RGBtoHSV(r2, g2, b2)
+            local h2, s2, v2 = ColorUtils.RGBtoHSV(r2, g2, b2)
 
             local hueDiff = math.abs(h1 - h2)
             if hueDiff > 0.05 then

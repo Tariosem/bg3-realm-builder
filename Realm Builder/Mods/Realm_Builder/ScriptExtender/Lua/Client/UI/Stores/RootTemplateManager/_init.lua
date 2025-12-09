@@ -1,4 +1,4 @@
-RequireFiles("Client/UI/Stores/RootTemplateManager/", {
+RBUtils.RequireFiles("Client/UI/Stores/RootTemplateManager/", {
     "SceneryManager",
     "TileConstructionManager",
     "CharacterManager",

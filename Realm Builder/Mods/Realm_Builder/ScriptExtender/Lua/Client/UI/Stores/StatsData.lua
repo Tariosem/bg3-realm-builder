@@ -56,7 +56,7 @@ local function InitEffectStats()
             end
         end
 
-        if IsUuid(value) then
+        if RBUtils.IsUuid(value) then
             addEffectInfo(value)
         else
             for _, v in ipairs(parseEffectValue(value)) do

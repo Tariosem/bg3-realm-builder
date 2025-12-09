@@ -1,24 +1,3 @@
-function ArrayToMat(tbl, rows, cols)
-    local result = {}
-    for i = 1, rows do
-        result[i] = {}
-        for j = 1, cols do
-            result[i][j] = tbl[(i - 1) * cols + j] or 0
-        end
-    end
-    return result
-end
-
-function MatToArray(tbl)
-    local result = {}
-    for i = 1, #tbl do
-        for j = 1, #tbl[i] do
-            table.insert(result, tbl[i][j] or 0)
-        end
-    end
-    return Matrix.new(result, #tbl, #tbl[1])
-end
-
 local function AbsMatrix(mat)
     local result = {}
     for i = 1, #mat do

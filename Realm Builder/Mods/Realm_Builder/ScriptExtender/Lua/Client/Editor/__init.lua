@@ -1,4 +1,4 @@
-RequireFiles("Client/Editor/", {
+RBUtils.RequireFiles("Client/Editor/", {
     "GizmoVisualizer",
     "GizmoPicker",
     "Gizmo",

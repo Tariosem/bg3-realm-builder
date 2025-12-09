@@ -1,9 +1,9 @@
-
 --- some random stuff other mods already did
 --- just putting it here for my own convenience
 if not Ext.Debug.IsDeveloperMode() then return end
+
 RegisterDebugWindow("Misc", function(panel)
-    --- PM Extra Data Editor
+    --#region PM Extra Data Editor
     local pmTree = ImguiElements.AddTree(panel, "PhotoMode ExtraData")
     local pmEDField = {
         "PhotoModeCameraMovementSpeed",
@@ -22,6 +22,7 @@ RegisterDebugWindow("Misc", function(panel)
             setter(slider.Value[1])
         end
     end
+    --#endregion PM Extra Data Editor
 
     --#region Photo Mode Camera Proxy
     --- @class PhotoModeCameraProxy : RB_MovableProxy
@@ -149,7 +150,7 @@ RegisterDebugWindow("Misc", function(panel)
             local label = string.format(saveLabelPattern, i, save.Time)
             local btn = savedList:AddButton(label)
             btn.OnClick = function()
-                local cam = GetCamera()
+                local cam = RBGetCamera()
                 if not cam or not cam.PhotoModeCameraSavedTransform then return end
                 cam.PhotoModeCameraSavedTransform.field_0 = save.Transform
                 Ext.OnNextTick(function()
@@ -165,7 +166,7 @@ RegisterDebugWindow("Misc", function(panel)
     end
 
     saveBtn.OnClick = function()
-        local cam = GetCamera()
+        local cam = RBGetCamera()
         if not cam or not cam.PhotoModeCameraSavedTransform then return end
         local camTransform = cam.Transform.Transform
         local copy = {
@@ -175,7 +176,7 @@ RegisterDebugWindow("Misc", function(panel)
         }
         table.insert(savedQueue, {
             Transform = copy,
-            Time = GetFormatHMS(),
+            Time = RBUtils.GetFormatHMS(),
         })
         if #savedQueue > 20 then
             table.remove(savedQueue, 1)

@@ -29,7 +29,7 @@ function EffectsMenu:Render()
         self.panel = self.parent:AddTabItem(GetLoca("Effects"))
         self.isWindow = false
     else
-        self.panel = RegisterWindow("generic", GetLoca("Effects"), "Effects Menu", self)
+        self.panel = WindowManager.RegisterWindow("generic", GetLoca("Effects"), "Effects Menu", self)
         self.panel:SetSize({ EFFECTSMENU_WIDTH, EFFECTSMENU_HEIGHT })
         self.isWindow = true
     end
@@ -102,7 +102,7 @@ function EffectsMenu:Render()
             autoSaveOpe()
             autoSaveButton.Label = GetLoca("Auto Save") .. (self.autoSave and "(On)" or "(Off)")
             StyleHelpers.SetAlphaByBool(autoSaveButton, self.autoSave)
-            SaveConfig("EffectsMenu")
+            Config.SaveConfig("EffectsMenu")
         end, self.isWindow)
     StyleHelpers.SetAlphaByBool(autoSaveButton, self.autoSave)
     local clearAllButton = ImguiElements.AddMenuButton(self.fileMenu, GetLoca("Clear All"), clearAllOpe, self.isWindow)
@@ -250,7 +250,7 @@ function EffectsMenu:RenderCustomEffects()
             displayName = newName
             tab.displayName = newName
             effectButton:Destroy()
-            effectButton = effectCell:AddImageButton(tab.displayName, tab.icon, ToVec2(imageSize))
+            effectButton = effectCell:AddImageButton(tab.displayName, tab.icon, RBUtils.ToVec2(imageSize))
             effectButton:Tooltip():AddText(tab.description or tab.displayName or "")
             effectButton.OnClick = effectButtonOnClick
             effectNameText:Destroy()
@@ -553,7 +553,7 @@ function EffectsMenu:Collapsed()
 
 
     if self.isWindow then
-        DeleteWindow(self.panel)
+        WindowManager.DeleteWindow(self.panel)
     else
         if self.panel then
             self.panel:Destroy()

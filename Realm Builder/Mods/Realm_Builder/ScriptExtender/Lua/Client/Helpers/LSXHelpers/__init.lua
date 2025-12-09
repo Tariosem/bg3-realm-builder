@@ -1,4 +1,4 @@
-RequireFiles("Client/Helpers/LSXHelpers/", {
+RBUtils.RequireFiles("Client/Helpers/LSXHelpers/", {
     "TemplateHelpers",
     "ResourceHelpers",
     "AnubisHelpers",

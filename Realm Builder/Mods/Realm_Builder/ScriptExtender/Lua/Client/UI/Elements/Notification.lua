@@ -96,16 +96,16 @@ function Notification:BuildContent()
 
     self:ValidateConfig()
 
-    local screenWidth, screenHeight = GetScreenSize()
+    local screenWidth, screenHeight = UIHelpers.GetScreenSize()
     local panel = Ext.IMGUI.NewWindow("RB_Notification" .. tostring(math.random(1,1000000)))
     self.panel = panel
     panel:SetStyle("Alpha", 0)
     panel:SetPos({-screenWidth, -screenHeight})
     self.isVisible = true
-    ApplyGuiParams(self.panel)
+    WindowManager.ApplyGuiParams(self.panel)
 
     
-    local scale = GetUIScale() or 1
+    local scale = UIHelpers.GetUIScale() or 1
 
     local baseHeight = screenHeight * 0.1
     local baseWidth = baseHeight * 6
@@ -209,7 +209,7 @@ function Notification:StartAnimation(dir, direction)
         end
     end
 
-    local screenWidth, screenHeight = GetScreenSize()
+    local screenWidth, screenHeight = UIHelpers.GetScreenSize()
     local oldRelativePos = self.Pivot
     if dir == "FadeOut" and self.Moveable then
         self.Pivot = {
@@ -353,7 +353,7 @@ end
 function Notification:CalcStartPosition(width, height, screenWidth, screenHeight)
     width, height = table.unpack(self.panel.LastSize)
     if not screenWidth or not screenHeight then
-        screenWidth, screenHeight = GetScreenSize()
+        screenWidth, screenHeight = UIHelpers.GetScreenSize()
     end
     if not width or not height or not screenWidth or not screenHeight then
         Error("Invalid size for Notification")
@@ -380,7 +380,7 @@ end
 function Notification:CalcEndPosition(width, height, screenWidth, screenHeight)
     width, height = table.unpack(self.panel.LastSize)
     if not screenWidth or not screenHeight then
-        screenWidth, screenHeight = GetScreenSize()
+        screenWidth, screenHeight = UIHelpers.GetScreenSize()
     end
     if not width or not height or not screenWidth or not screenHeight then
         Error("Invalid size for Notification")
@@ -509,12 +509,12 @@ function ErrorNotify(level, message)
     notification.FlickToDismiss = true
     notification.Duration = 8000
     notification:Show(level, function(panel)
-        panel:SetColor("WindowBg", AdjustColor(HexToRGBA(DEBUG_COLOR[level]), -0.5, -0.5, -0.2))
-        panel:SetColor("Border", HexToRGBA(DEBUG_COLOR[level]))
-        notification.titleText:SetColor("Text", HexToRGBA(DEBUG_COLOR[level]))
-        notification.titleText:SetColor("Separator", AdjustColor(HexToRGBA(DEBUG_COLOR[level]), -0.2, -0.3))
+        panel:SetColor("WindowBg", ColorUtils.AdjustColor(ColorUtils.HexToRGBA(DEBUG_COLOR[level]), -0.5, -0.5, -0.2))
+        panel:SetColor("Border", ColorUtils.HexToRGBA(DEBUG_COLOR[level]))
+        notification.titleText:SetColor("Text", ColorUtils.HexToRGBA(DEBUG_COLOR[level]))
+        notification.titleText:SetColor("Separator", ColorUtils.AdjustColor(ColorUtils.HexToRGBA(DEBUG_COLOR[level]), -0.2, -0.3))
         local tokens = DebugGradient[level](message)
-        tokens = WrapTextTokens(tokens)
+        tokens = RBUtils.WrapTextTokens(tokens)
         for _, token in ipairs(tokens) do
             token.Style = {
                 ItemSpacing = {0, 0}

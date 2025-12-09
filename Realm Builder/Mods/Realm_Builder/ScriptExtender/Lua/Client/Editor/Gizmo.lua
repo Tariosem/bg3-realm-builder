@@ -102,7 +102,7 @@ function TransformGizmo:StartDragging(mouseRay, hit)
     else
         self.SelectedAxis = { X = true, Y = true, Z = true }
     end
-    if self.ActiveMode == "Rotate" and CountMap(self.SelectedAxis) == 2 then
+    if self.ActiveMode == "Rotate" and RBTableUtils.CountMap(self.SelectedAxis) == 2 then
         -- only rotate around one axis
         local firstAxis = next(self.SelectedAxis)
         self.SelectedAxis = { [firstAxis] = true }
@@ -122,7 +122,7 @@ function TransformGizmo:RestartDragging(mouseRay, axes)
         toAxes = axes
     end
 
-    if self.ActiveMode == Enums.TransformEditorMode.Rotate and CountMap(axes) == 2 then
+    if self.ActiveMode == Enums.TransformEditorMode.Rotate and RBTableUtils.CountMap(axes) == 2 then
         axes = { [next(axes)] = true }
     end
 
@@ -155,7 +155,7 @@ function TransformGizmo:SetupListeners()
 end
 
 function TransformGizmo:SetupActionSubscriptions()
-    self.Subscriptions["LockAxis"] = SubscribeKeyInput({}, function(e)
+    self.Subscriptions["LockAxis"] = InputEvents.SubscribeKeyInput({}, function(e)
         if not self.IsDragging then return end
         if e.Event ~= "KeyDown" or not e.Pressed or e.Repeat then return end
 
@@ -170,7 +170,7 @@ function TransformGizmo:SetupActionSubscriptions()
 
         local axisToLock = tostring(e.Key):sub(1, 1):upper()
 
-        local curCnt = CountMap(self.SelectedAxis)
+        local curCnt = RBTableUtils.CountMap(self.SelectedAxis)
         if self.ActiveMode == "Rotate" then
             if self.SelectedAxis and self.SelectedAxis[axisToLock] and curCnt == 1 then return end
             self:RestartDragging(mouseRay, { [axisToLock] = true })
@@ -186,7 +186,7 @@ function TransformGizmo:SetupActionSubscriptions()
             axes = { [axisToLock] = true }
         end
 
-        local newCnt = CountMap(axes)
+        local newCnt = RBTableUtils.CountMap(axes)
         local changed = curCnt ~= newCnt
         for a, _ in pairs(axes) do
             if changed then break end
@@ -219,7 +219,7 @@ function TransformGizmo:SetupActionSubscriptions()
     end)
     ]]
 
-    self.Subscriptions["SlowDown"] = SubscribeKeyInput({ Key = "LSHIFT" }, function(e)
+    self.Subscriptions["SlowDown"] = InputEvents.SubscribeKeyInput({ Key = "LSHIFT" }, function(e)
         if e.Repeat then return end
         if not self.IsDragging then return end
         if e.Event == "KeyDown" then
@@ -229,7 +229,7 @@ function TransformGizmo:SetupActionSubscriptions()
         end
     end)
 
-    self.Subscriptions["DragStart"] = SubscribeMouseInput({}, function(e)
+    self.Subscriptions["DragStart"] = InputEvents.SubscribeMouseInput({}, function(e)
         if e.Button == 1 and e.Pressed and self.Picker and not self.IsDragging then
             local mouseRay = ScreenToWorldRay()
             if not mouseRay then
@@ -243,14 +243,14 @@ function TransformGizmo:SetupActionSubscriptions()
         end
     end)
 
-    self.Subscriptions["DragCancel"] = SubscribeMouseInput({}, function(e)
+    self.Subscriptions["DragCancel"] = InputEvents.SubscribeMouseInput({}, function(e)
         if not self.IsDragging then return end
         if e.Pressed and tonumber(e.Button) == 3 then
             self:CancelDragging()
         end
     end)
 
-    self.Subscriptions["DragEnd"] = SubscribeMouseInput({}, function(e)
+    self.Subscriptions["DragEnd"] = InputEvents.SubscribeMouseInput({}, function(e)
         if not self.IsDragging then return end
         if e.Button == 1 and not e.Pressed then
             self:StopDragging()
@@ -331,7 +331,7 @@ function TransformGizmo:CreateItem()
 end
 
 function TransformGizmo:CreateModeItem(mode)
-    if self.SavedGizmos[mode] and EntityExists(self.SavedGizmos[mode]) then
+    if self.SavedGizmos[mode] and EntityHelpers.EntityExists(self.SavedGizmos[mode]) then
         NetChannel.SetAttributes:SendToServer({
             Guid = self.SavedGizmos[mode],
             Attributes = {
@@ -355,7 +355,7 @@ function TransformGizmo:CreateModeItem(mode)
         end
         self.SavedGizmos[mode] = response.Guid
 
-        WaitUntil(function()
+        RBUtils.WaitUntil(function()
             return VisualHelpers.GetEntityVisual(self.SavedGizmos[mode]) ~= nil
         end, function()
             NetChannel.SetAttributes:SendToServer({
@@ -498,7 +498,7 @@ local lastDraw = 0
 --- @param ray Ray
 --- @return Hit, Vec3
 function TransformGizmo:GetHit(ray)
-    local cnt = CountMap(self.SelectedAxis or {})
+    local cnt = RBTableUtils.CountMap(self.SelectedAxis or {})
     if cnt == 0 then
         Debug("Gizm:GetHit: No Axis ")
         return Hit.new(self.Picker.Position, nil, 0, nil), Vec3.new { 0, 0, 0 }
@@ -597,7 +597,7 @@ end
 local function CalcScaleChange(startHit, hit, selectedAxes, axes, origin)
     local sV = startHit.Position - origin
     local eV = hit.Position - origin
-    local cnt = CountMap(selectedAxes or {})
+    local cnt = RBTableUtils.CountMap(selectedAxes or {})
     local eps = EPSILON
     if cnt == 0 then return 1.0 end
 
@@ -671,7 +671,7 @@ function TransformGizmo:SetupDragging()
     self.RotatePointer = self.RotatePointer or {}
     local pickerPos = Vec3.new(self.Picker.Position)
     local pickerRot = Quat.new(self.Picker.Rotation)
-    local axesCnt = CountMap(self.SelectedAxis or {})
+    local axesCnt = RBTableUtils.CountMap(self.SelectedAxis or {})
     if self.ActiveMode == "Rotate" and axesCnt == 1 then
         local axis = nil
         for a, _ in pairs(self.SelectedAxis) do axis = a end
@@ -682,7 +682,7 @@ function TransformGizmo:SetupDragging()
         end
         local hit = self:GetHit(mouseRay)
         local dir = hit.Position - pickerPos
-        local quat = DirectionToQuat(dir, Ext.Math.QuatRotate(pickerRot, GLOBAL_COORDINATE.Y), axis)
+        local quat = MathHelpers.DirectionToQuat(dir, Ext.Math.QuatRotate(pickerRot, GLOBAL_COORDINATE.Y), axis)
 
         self._pointerStartDir = quat
         self._rotLastAngle = nil
@@ -690,7 +690,7 @@ function TransformGizmo:SetupDragging()
 
         for i = #self.RotatePointer, 1, -1 do
             local guid = self.RotatePointer[i]
-            if not EntityExists(guid) then
+            if not EntityHelpers.EntityExists(guid) then
                 table.remove(self.RotatePointer, i)
             end
         end
@@ -937,14 +937,14 @@ end
 
 function TransformGizmo:Visualize(guid)
     guid = guid or self.SavedGizmos[self.ActiveMode]
-    if not EntityExists(guid) then return end
-    local pos = { CGetPosition(guid) }
+    if not EntityHelpers.EntityExists(guid) then return end
+    local pos = { RBGetPosition(guid) }
     if #pos == 3 then
         self.Visualizer:UpdateScale(pos)
     end
 
-    local selectedAxis = DeepCopy(self.SelectedAxis)
-    if CountMap(selectedAxis) > 2 and self.ActiveMode == "Rotate" then
+    local selectedAxis = RBUtils.DeepCopy(self.SelectedAxis)
+    if RBTableUtils.CountMap(selectedAxis) > 2 and self.ActiveMode == "Rotate" then
         --- treat as single-axis rotation on closest axis
         selectedAxis = {}
     end
@@ -990,11 +990,11 @@ end
 
 function TransformGizmo:VisualizeRotatePointer(angle, axis)
     local pointer = self.RotatePointer and self.RotatePointer[#self.RotatePointer]
-    if not pointer or not EntityExists(pointer) then return end
+    if not pointer or not EntityHelpers.EntityExists(pointer) then return end
     local pickerPos = self.Picker.Position
     local startQuat = self._pointerStartDir
 
-    local cnt = CountMap(self.SelectedAxis or {})
+    local cnt = RBTableUtils.CountMap(self.SelectedAxis or {})
     if cnt > 2 then
         for _, viz in ipairs(self.RotatePointer or {}) do
             self.Visualizer:HideGizmo(viz)

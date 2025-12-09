@@ -1,4 +1,4 @@
-RequireFiles("Client/UI/Elements/Custom/", {
+RBUtils.RequireFiles("Client/UI/Elements/Custom/", {
     "CustomTree",
     "EnumRadioButtons",
     "CollapsingTable"

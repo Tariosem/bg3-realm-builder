@@ -1,5 +1,7 @@
+RBUtils = RBUtils or {}
+
 --- @return string
-function Uuid_v4()
+function RBUtils.Uuid_v4()
     local template = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'
     local uuid = string.gsub(template, '[xy]', function(c)
         local v = (c == 'x') and math.random(0, 15) or math.random(8, 11)
@@ -10,7 +12,7 @@ end
 
 ---@param object string?
 ---@return boolean
-function IsUuid(object)
+function RBUtils.IsUuid(object)
     if not object then return false end
 
     if type(object) ~= "string" then return false end
@@ -20,7 +22,7 @@ function IsUuid(object)
     return object:match("^%x%x%x%x%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%x%x%x%x%x%x%x%x$") ~= nil
 end
 
-function IsUuidIncludingNull(object)
+function RBUtils.IsUuidIncludingNull(object)
     if not object then return false end
 
     if type(object) ~= "string" then return false end
@@ -33,7 +35,7 @@ end
 ---@param revision string|number
 ---@param build string|number
 ---@return string
-function ComputeVersion64(major, minor, revision, build)
+function RBUtils.ComputeVersion64(major, minor, revision, build)
     major = tonumber(major) or 0
     minor = tonumber(minor) or 0
     revision = tonumber(revision) or 0
@@ -52,7 +54,7 @@ end
 ---@return number minor
 ---@return number revision
 ---@return number build
-function ParseVersion64(version64)
+function RBUtils.ParseVersion64(version64)
     local versionNum = tonumber(version64) or 0
     local major = (versionNum >> 55) & 0xFF
     local minor = (versionNum >> 47) & 0xFF
@@ -67,7 +69,7 @@ end
 ---@param revision string|number
 ---@param build string|number
 ---@return string
-function BuildVersionString(major, minor, revision, build)
+function RBUtils.BuildVersionString(major, minor, revision, build)
     major = tonumber(major) or 0
     minor = tonumber(minor) or 0
     revision = tonumber(revision) or 0
@@ -81,61 +83,14 @@ end
 ---@return number minor
 ---@return number revision
 ---@return number build
-function ParseVersionString(versionStr)
+function RBUtils.ParseVersionString(versionStr)
     local major, minor, revision, build = versionStr:match("^(%d+)%.(%d+)%.(%d+)%.(%d+)$")
     return tonumber(major) or 0, tonumber(minor) or 0, tonumber(revision) or 0, tonumber(build) or 0
 end
 
----@param desc string
----@return string, integer
-function StripLSTags(desc)
-    if not desc or desc == "" then return desc, 0 end
-    return desc:gsub("%b<>", ""):gsub("%s+", " "):gsub("^%s+", ""):gsub("%s+$", "")
-end
-
----@param t table|userdata
----@return boolean
-function IsArray(t)
-    if type(t) ~= "table" and type(t) ~= "userdata" then
-        return false
-    end
-    
-    local count = 0
-    --- @diagnostic disable-next-line
-    for k, _ in pairs(t) do
-        if type(k) ~= "number" then
-            return false
-        end
-        count = count + 1
-    end
-    for i = 1, count do
-        if t[i] == nil then
-            return false
-        end
-    end
-    return true
-end
-
----@param tbl table
----@param valueType "number"|"string"|"boolean"|"table"|"userdata"|"function"|"thread"|"nil"
----@return boolean
-function IsArrayOf(tbl, valueType)
-    if type(tbl) ~= "table" and type(tbl) ~= "userdata" then
-        return false
-    end
-
-    for _, v in pairs(tbl) do
-        if type(v) ~= valueType then
-            return false
-        end
-    end
-
-    return true
-end
-
 ---@param name any
 ---@return boolean
-function IsValidFolderName(name)
+function RBUtils.IsValidFolderName(name)
     if type(name) ~= "string" then
         return false
     end
@@ -151,7 +106,7 @@ end
 
 ---@param name any
 ---@return string|'Unnamed'
-function ValidateFolderName(name)
+function RBUtils.ValidateFolderName(name)
     if type(name) ~= "string" then
         return "Unnamed"
     end
@@ -166,152 +121,11 @@ function ValidateFolderName(name)
     return safe
 end
 
---- @param arr1 any[]
---- @param arr2 any[]
---- @return any[]
-function MergeArrays(arr1, arr2)
-    for _, v in ipairs(arr2) do
-        table.insert(arr1, v)
-    end
-    return arr1
-end
-
---- @param input string
---- @param trimWhitespace boolean?
---- @return string[]
-function SplitBySemicolon(input, trimWhitespace)
-    if type(input) ~= "string" then
-        return {}
-    end
-
-    trimWhitespace = trimWhitespace ~= false
-    local tokens = {}
-
-    for token in input:gmatch("[^;]+") do
-        if trimWhitespace then
-            token = token:match("^%s*(.-)%s*$")
-        end
-
-        if token ~= "" then
-            table.insert(tokens, token)
-        end
-    end
-
-    return tokens
-end
-
---- @param input string
---- @param trimWhitespace true
---- @return string[]
-function SplitByComma(input, trimWhitespace)
-    if type(input) ~= "string" then
-        return {}
-    end
-
-    trimWhitespace = trimWhitespace ~= false
-    local tokens = {}
-
-    for token in input:gmatch("[^,]+") do
-        if trimWhitespace then
-            token = token:match("^%s*(.-)%s*$")
-        end
-
-        if token ~= "" then
-            table.insert(tokens, token)
-        end
-    end
-
-    return tokens
-end
-
---- @param input string
---- @param separator string
---- @param trimWhitespace boolean?
---- @return string[]
-function SplitByString(input, separator, trimWhitespace)
-    if type(input) ~= "string" or type(separator) ~= "string" then
-        return {}
-    end
-
-    trimWhitespace = trimWhitespace ~= false
-    local tokens = {}
-    local pattern = "([^" .. separator .. "]+)"
-
-    for token in input:gmatch(pattern) do
-        if trimWhitespace then
-            token = token:match("^%s*(.-)%s*$")
-        end
-
-        if token ~= "" then
-            table.insert(tokens, token)
-        end
-    end
-
-    return tokens
-end
-
---- @param input string
---- @return string[]
-function SplitBySpace(input)
-    if not input or type(input) ~= "string" then
-        return {}
-    end
-    local result = {}
-
-    input = input:match("^%s*(.-)%s*$")
-
-    for word in input:gmatch("%S+") do
-        table.insert(result, word)
-    end
-
-    return result
-end
-
---- @param obj string
---- @param prefix string
---- @return boolean
-function StartWith(obj, prefix)
-    if type(obj) ~= "string" or type(prefix) ~= "string" then
-        return false
-    end
-    return string.sub(obj, 1, #prefix) == prefix
-end
-
----@param map any
----@return integer cnt
-function CountMap(map)
-    map = map or {}
-    local count = 0
-    for _, _ in pairs(map) do
-        count = count + 1
-    end
-    return count
-end
-
-function ArrayReverse(arr)
-    local result = {}
-    for i = #arr, 1, -1 do
-        table.insert(result, arr[i])
-    end
-    return result
-end
-
-function EqualArrays(arr1, arr2)
-    if #arr1 ~= #arr2 then
-        return false
-    end
-    for i = 1, #arr1 do
-        if arr1[i] ~= arr2[i] then
-            return false
-        end
-    end
-    return true
-end
 
 ---@param ... any
 ---@return number[]
-function ToVec4(...)
-    local numbers = DeepCopy({ ... })
+function RBUtils.ToVec4(...)
+    local numbers = RBUtils.DeepCopy({ ... })
     if #numbers == 1 and type(numbers[1]) == "table" then
         numbers = numbers[1]
     end
@@ -329,8 +143,8 @@ end
 
 --- @param ... any
 --- @return number[]
-function ToVec4Int(...)
-    local numbers = DeepCopy({ ... })
+function RBUtils.ToVec4Int(...)
+    local numbers = RBUtils.DeepCopy({ ... })
     for i = 1, #numbers do
         if type(numbers[i]) ~= "number" then
             numbers[i] = tonumber(numbers[i]) or 0
@@ -343,8 +157,8 @@ function ToVec4Int(...)
     return { numbers[1], numbers[2], numbers[3], numbers[4] }
 end
 
-function ToVec2(...)
-    local numbers = DeepCopy({ ... })
+function RBUtils.ToVec2(...)
+    local numbers = RBUtils.DeepCopy({ ... })
     for i = 1, #numbers do
         if type(numbers[i]) ~= "number" then
             numbers[i] = tonumber(numbers[i]) or 0
@@ -356,8 +170,8 @@ function ToVec2(...)
     return { numbers[1], numbers[2] }
 end
 
-function ToVec3(...)
-    local numbers = DeepCopy({ ... })
+function RBUtils.ToVec3(...)
+    local numbers = RBUtils.DeepCopy({ ... })
     for i = 1, #numbers do
         if type(numbers[i]) ~= "number" then
             numbers[i] = tonumber(numbers[i]) or 0
@@ -369,7 +183,7 @@ function ToVec3(...)
     return { numbers[1], numbers[2], numbers[3] }
 end
 
-function LightCToArray(arr)
+function RBUtils.LightCToArray(arr)
     if arr == nil then
         return {}
     end
@@ -384,62 +198,24 @@ end
 --- @generic T
 --- @param o T
 --- @return T
-function DeepCopy(o)
+function RBUtils.DeepCopy(o)
     if type(o) ~= 'table' and type(o) ~= 'userdata' then
         return o
     end
 
     local copy = {}
     for key, value in pairs(o) do
-        copy[key] = DeepCopy(value)
+        copy[key] = RBUtils.DeepCopy(value)
     end
 
     return copy
 end
 
-function DeepCopyAllSerializable(o)
-    if type(o) ~= 'table' and type(o) ~= 'userdata' then
-        return o
-    end
-
-    local copy = {}
-    for key, value in pairs(o) do
-        if not (type(value) == "function" or type(value) == "thread") then
-            copy[key] = DeepCopyAllSerializable(value)
-        end
-    end
-
-    return copy
-end
-
-function IsSerializable(v)
+function RBUtils.IsSerializable(v)
     return type(v) ~= "table" and type(v) ~= "userdata" and type(v) ~= "function" and type(v) ~= "thread"
 end
 
-function ToggleEntry(tbl, value)
-    if type(tbl) ~= "table" then
-        return false
-    end
-    for i, v in ipairs(tbl) do
-        if v == value then
-            table.remove(tbl, i)
-            return false
-        end
-    end
-    table.insert(tbl, value)
-    return true
-end
-
-function NextFromList(list, cur)
-    local curIndex = table.find(list, cur) or 0
-    local nextIndex = curIndex + 1
-    if nextIndex > #list then
-        nextIndex = 1
-    end
-    return list[nextIndex]
-end
-
-function RequireFiles(folderPath, files)
+function RBUtils.RequireFiles(folderPath, files)
     if type(folderPath) ~= "string" then
         _P("RequireFiles: folderPath must be a string")
     end
@@ -459,98 +235,11 @@ function RequireFiles(folderPath, files)
     end
 end
 
-function PadSuffix(str, len)
-    local toPad = len - #str
-    if toPad > 0 then
-        return str .. string.rep(" ", toPad)
-    end
-    return str
-end
-
-function PadPrefix(str, len)
-    local toPad = len - #str
-    if toPad > 0 then
-        return string.rep(" ", toPad) .. str
-    end
-    return str
-end
-
---- @param obj string
---- @param count integer
---- @return string
-function TrimTail(obj, count)
-    if not obj or type(obj) ~= "string" then return obj end
-    return string.sub(obj, 1, #obj - count)
-end
-
---- @param obj string
---- @param count integer
---- @return string
-function TakeTail(obj, count)
-    return string.sub(obj, -count)
-end
-
---- @param path string
---- @return string
-function GetLastPath(path)
-    return path:match("([^/]+)$") or path
-end
-
---- @param obj string
---- @return string, integer
-function ToLowerAlphaOnly(obj)
-    return string.lower(obj):gsub("[^a-z]", "")
-end
-
---- @param num number
---- @param size integer
---- @return string
-function PadNumber(num, size)
-    local s = tostring(num)
-    return string.format("%0" .. size .. "d", tonumber(s))
-end
-
---- @generic K, V
---- @param inputMap table<K, V>
---- @param comparator fun(a: {Key:K,Value:V}, b: {Key:K,Value:V}): boolean
---- @return table<{Key:K,Value:V}>
-function MapToSortedArrayByFunc(inputMap, comparator)
-    local result = {}
-    for k, v in pairs(inputMap) do
-        table.insert(result, { Key = k, Value = v })
-    end
-
-    table.sort(result, comparator)
-
-    return result
-end
-
---- @generic K, V
---- @param inputMap table<K, V>
---- @param order "asc"|"desc"
---- @return table<{Key:K,Value:V}>
-function MapToSortedArrayByKey(inputMap, order)
-    local result = {}
-    for k, v in pairs(inputMap) do
-        table.insert(result, { Key = k, Value = v })
-    end
-
-    table.sort(result, function(a, b)
-        if order == "desc" then
-            return a.Key > b.Key
-        else
-            return a.Key < b.Key
-        end
-    end)
-
-    return result
-end
-
 --- @generic K, V
 --- @param tbl table<K, V>
 --- @param func? fun(a:K, b:K):boolean
 --- @return fun(): (K, V)
-function SortedPairs(tbl, func)
+function RBUtils.SortedPairs(tbl, func)
     local keys = {}
     for k in pairs(tbl) do
         table.insert(keys, k)
@@ -580,7 +269,7 @@ end
 --- @param filterFunc fun(a:K, b:V):boolean
 --- @param sortFunc? fun(a:K, b:K):boolean
 --- @return fun(): (K, V)
-function FilteredPairs(tbl, filterFunc, sortFunc)
+function RBUtils.FilteredPairs(tbl, filterFunc, sortFunc)
     local keys = {}
     for k in pairs(tbl) do
         if filterFunc(k, tbl[k]) then
@@ -606,80 +295,14 @@ function FilteredPairs(tbl, filterFunc, sortFunc)
     end
 end
 
----@param num number|string
----@param n integer
----@return number|nil
-function FormatDecimal(num, n)
-    local toFormat = tonumber(num)
-    if toFormat == nil or n == nil then
-        return nil
-    end
-
-    local multiplier = 10 ^ n
-    return math.floor(toFormat * multiplier + 0.5) / multiplier
-end
-
---- @param num number|string
---- @return string
-function FormatThousand(num)
-    local toFormat = tonumber(num)
-    if not toFormat then
-        return tostring(num)
-    end
-    local sign = ""
-    if toFormat < 0 then
-        sign = "-"
-        toFormat = math.abs(toFormat)
-    end
-    local int, dec = tostring(toFormat):match("^(%d+)(%.%d+)?$")
-    int = int or tostring(toFormat)
-    dec = dec or ""
-    local formatted = int:reverse():gsub("(%d%d%d)", "%1,"):reverse()
-    if formatted:sub(1, 1) == "," then
-        formatted = formatted:sub(2)
-    end
-    return sign .. formatted .. (dec or "")
-end
-
----@param s string
----@param t string
----@param thereshold integer|nil
----@return integer
-function Levenshtein(s, t, thereshold)
-    local m, n = #s, #t
-    if thereshold and math.abs(m - n) > thereshold then return math.huge end
-    if m == 0 then return n end
-    if n == 0 then return m end
-    local prevRow, curRow = {}, {}
-    for j = 0, n do prevRow[j] = j end
-    for i = 1, m do
-        curRow[0] = i
-        for j = 1, n do
-            local cost = (s:sub(i, i) == t:sub(j, j)) and 0 or 1
-            curRow[j] = math.min(prevRow[j] + 1, curRow[j - 1] + 1, prevRow[j - 1] + cost)
-            if thereshold and curRow[j] > thereshold then return math.huge end
-        end
-        prevRow, curRow = curRow, prevRow
-    end
-    return prevRow[n]
-end
-
-function GetPathBeforeData(fullPath)
-    local dataIndex = string.find(fullPath, "Data\\")
-    if dataIndex then
-        return string.sub(fullPath, 1, dataIndex - 1)
-    end
-    return ""
-end
-
-function IsCamera(object)
+function RBUtils.IsCamera(object)
     if not object or type(object) ~= "string" then return false end
-    return object == CameraSymbol or string.sub(object, 1, #CameraSymbol) == CameraSymbol
+    return object == CAMERA_SYMBOL or string.sub(object, 1, #CAMERA_SYMBOL) == CAMERA_SYMBOL
 end
 
-function GetCamaraUserID(obj)
-    if IsCamera(obj) then
-        return tonumber(string.sub(obj, #CameraSymbol + 1))
+function RBUtils.GetCamaraUserID(obj)
+    if RBUtils.IsCamera(obj) then
+        return tonumber(string.sub(obj, #CAMERA_SYMBOL + 1))
     end
     return nil
 end
@@ -687,7 +310,7 @@ end
 ---@param func fun(...:any)
 ---@param delay number ms
 ---@return function
-function Debounce(delay, func)
+function RBUtils.Debounce(delay, func)
     local timerId = nil
 
     return function(...)
@@ -707,7 +330,7 @@ end
 --- @param doSomething fun()
 --- @param check fun():boolean
 --- @param timeOutFrame integer?
-function WaitUntil(check, doSomething, timeOutFrame)
+function RBUtils.WaitUntil(check, doSomething, timeOutFrame)
     timeOutFrame = timeOutFrame or 300
 
     local frameCount = 0
@@ -729,7 +352,7 @@ function WaitUntil(check, doSomething, timeOutFrame)
     end)
 end
 
-function GetFormatTime()
+function RBUtils.GetFormatTime()
     local clockTime = Ext.Timer.ClockTime()
     local y, m, d, h, min, s = clockTime:match("(%d+)-(%d+)-(%d+) (%d+):(%d+):(%d+)")
     if not y or not m or not d or not h or not min or not s then
@@ -739,9 +362,118 @@ function GetFormatTime()
             tonumber(h), tonumber(min), tonumber(s))
 end
 
-function GetFormatHMS()
+function RBUtils.GetFormatHMS()
     local clockTime = Ext.Timer.ClockTime()
     local y, m, d, h, min, s = clockTime:match("(%d+)-(%d+)-(%d+) (%d+):(%d+):(%d+)")
 
     return string.format("%02d:%02d:%02d", tonumber(h), tonumber(min), tonumber(s))
+end
+
+--- @param tokens RB_TextToken[]
+--- @param wrapPos number?
+--- @return RB_TextToken[]
+function RBUtils.WrapTextTokens(tokens, wrapPos)
+    local wrapped = {}
+    local currentLen = 0
+    wrapPos = wrapPos or 60
+
+    local function cloneToken(token, text)
+        local newToken = {}
+        for k, v in pairs(token) do
+            newToken[k] = v
+        end
+        newToken.Text = text
+        return newToken
+    end
+
+    local function addToken(token, text, newLine)
+        local newToken = cloneToken(token, text)
+        if newLine then
+            currentLen = 0
+            newToken.SameLine = false
+        else
+            newToken.SameLine = currentLen > 0
+        end
+        table.insert(wrapped, newToken)
+        currentLen = currentLen + #text
+    end
+
+    for i, token in ipairs(tokens) do
+        local text = token.Text or ""
+
+        if token.TooltipRef then
+            local tokenLen = #text
+            local overflow = (currentLen + tokenLen > wrapPos)
+            addToken(token, text, overflow)
+        else
+            local remaining = text
+            while #remaining > 0 do
+                local spaceLeft = wrapPos - currentLen
+
+                if spaceLeft <= 0 then
+                    currentLen = 0
+                    spaceLeft = wrapPos
+                end
+
+                if #remaining > spaceLeft then
+                    local search = remaining:sub(1, spaceLeft)
+                    local breakPos = search:find(" [^ ]*$")
+                    if breakPos then
+                        local chunk = search:sub(1, breakPos - 1)
+
+                        local nextChar = remaining:sub(breakPos + 1, breakPos + 1)
+                        local nextCharInNextToken = false
+
+                        if not nextChar or nextChar == "" then
+                            local nextToken = tokens[i + 1]
+                            if nextToken and nextToken.Text and #nextToken.Text > 0 then
+                                nextChar = nextToken.Text:sub(1, 1)
+                                nextCharInNextToken = true
+                            end
+                        end
+
+                        if nextChar and nextChar:match("[%.,%(%)%[%]%{%}\"'“”‘’]") then
+                            local chunk = remaining:sub(1, breakPos) .. nextChar
+                            if nextCharInNextToken then
+                                local nextToken = tokens[i + 1]
+                                nextToken.Text = nextToken.Text:sub(2)
+                            else
+                                remaining = remaining:sub(breakPos + 2)
+                            end
+
+                            addToken(token, chunk)
+                            remaining = remaining:sub(breakPos + 2)
+                            goto continue_token
+                        end
+
+                        if nextChar and nextChar:match("%s") then
+                            breakPos = breakPos + 1
+                        end
+
+                        if nextChar:match("%s") then
+                            breakPos = breakPos + 1
+                        end
+
+                        addToken(token, chunk)
+                        remaining = remaining:sub(breakPos + 1)
+                    else
+                        if currentLen > 0 then
+                            currentLen = 0
+                        else
+                            local chunk = remaining:sub(1, spaceLeft)
+                            addToken(token, chunk)
+                            remaining = remaining:sub(spaceLeft + 1)
+                        end
+                    end
+                else
+                    addToken(token, remaining, false)
+                    remaining = ""
+                end
+
+                ::continue_token::
+            end
+        end
+    end
+
+    return wrapped
 end

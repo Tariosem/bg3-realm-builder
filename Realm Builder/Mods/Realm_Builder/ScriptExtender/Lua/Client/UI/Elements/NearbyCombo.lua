@@ -81,7 +81,7 @@ end
 
 function NearbyCombo:Render()
     local parent = self.parent
-    self.IDContext = "NearbyComboParent" .. Uuid_v4()
+    self.IDContext = "NearbyComboParent" .. RBUtils.Uuid_v4()
     local overGroup = parent:AddGroup("NearbyComboOver##" .. self.IDContext)
     local reservedForImage = overGroup:AddGroup("NearbyCombo##" .. self.IDContext .. "ImageReserved")
     reservedForImage:AddImage("Item_Unknown", IMAGESIZE.FRAME)
@@ -89,7 +89,7 @@ function NearbyCombo:Render()
     self.combo = overGroup:AddCombo("")
     self.combo.UserData = self.combo.UserData or {}
     self.combo.UserData.ImageReservedSpace = reservedForImage
-    self.combo.IDContext = "NearbyCombo" .. Uuid_v4()
+    self.combo.IDContext = "NearbyCombo" .. RBUtils.Uuid_v4()
     self.combo.SameLine = true
 
     self.combo.Options = {}
@@ -141,7 +141,7 @@ function NearbyCombo:UpdateOptions()
     end)
     if not self.ExcludeCamera then
         table.insert(opts, 1, {
-            Guid = CameraSymbol,
+            Guid = CAMERA_SYMBOL,
             DisplayName = GetLoca("Camera"),
             Distance = 0,
         })
@@ -181,14 +181,14 @@ function NearbyCombo:SetupComboEvents()
     end
 
     self.combo.OnClick = function (cmb)
-        UpdateNearbyMap({CGetPosition(CGetHostCharacter())}, self.Radius)
+        UpdateNearbyMap({RBGetPosition(RBGetHostCharacter())}, self.Radius)
         self:UpdateOptions()
         self:RenderIcons()
         self.popup:Open()
     end
 
     self.combo.OnRightClick = function (cmb)
-        UpdateNearbyMap({CGetPosition(CGetHostCharacter())}, self.Radius)
+        UpdateNearbyMap({RBGetPosition(RBGetHostCharacter())}, self.Radius)
         self:UpdateOptions()
         self:RenderIcons()
         self.popup:Open()
@@ -213,7 +213,7 @@ function NearbyCombo:RenderSelectionTable(parent)
     searchInput.Hint = GetLoca("Search") .. "..."
 
     local function hide(keywords)
-        local words = SplitBySpace(keywords)
+        local words = RBStringUtils.SplitBySpace(keywords)
         if not words or #words == 0 or keywords == "" then
             for _, cell in pairs(self.cellRefs) do
                 cell.Visible = true
@@ -330,9 +330,9 @@ function NearbyCombo:RenderIcons()
         local displayName = entry.DisplayName
 
         local row = nil
-        if IsCamera(entry.Guid) or CIsCharacter(entry.Guid) then
+        if RBUtils.IsCamera(entry.Guid) or EntityHelpers.IsCharacter(entry.Guid) then
             row = characterRow
-        elseif CIsItem(entry.Guid) then
+        elseif EntityHelpers.IsItem(entry.Guid) then
             row = itemsRow
         elseif entry.Entity and entry.Entity.Scenery then
             row = sceneryRow

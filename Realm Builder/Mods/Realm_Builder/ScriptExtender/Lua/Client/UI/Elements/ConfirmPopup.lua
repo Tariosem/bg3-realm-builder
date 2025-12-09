@@ -33,8 +33,8 @@ function ConfirmPopup:_createWindow(message, confirmText, cancelText, confirmCal
         return
     end
 
-    local screenWidth, screenHeight = GetScreenSize()
-    local scale = GetUIScale() or 1
+    local screenWidth, screenHeight = UIHelpers.GetScreenSize()
+    local scale = UIHelpers.GetUIScale() or 1
 
     local baseHeight = screenHeight * 0.12
     local baseWidth = baseHeight * 3.5
@@ -44,7 +44,7 @@ function ConfirmPopup:_createWindow(message, confirmText, cancelText, confirmCal
 
     self.panel = Ext.IMGUI.NewWindow("RB_ConfirmPopup")
 
-    ApplyGuiParams(self.panel)
+    WindowManager.ApplyGuiParams(self.panel)
 
     self.panel.NoMove = true
     self.panel.NoResize = true
@@ -129,10 +129,10 @@ function ConfirmPopup:_buildContent(width, height, message, confirmText, cancelT
         self:_setupTimeout(timeoutSeconds, cancelText, cancelButton, cancelCallback)
     end
 
-    self.enterKeySubscription = SubscribeKeyInput({ Key= "RETURN", Pressed = true }, function()
+    self.enterKeySubscription = InputEvents.SubscribeKeyInput({ Key= "RETURN", Pressed = true }, function()
         self:_onConfirm(confirmCallback)
     end)
-    self.escapeKeySubscription = SubscribeKeyInput({ Key= "ESCAPE" }, function()
+    self.escapeKeySubscription = InputEvents.SubscribeKeyInput({ Key= "ESCAPE" }, function()
         self:_onCancel(cancelCallback)
     end)
 end

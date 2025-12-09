@@ -1,4 +1,4 @@
-RequireFiles("Client/UI/", {
+RBUtils.RequireFiles("Client/UI/", {
     "Config",
     "Elements/_init",
     "Stores/_init",

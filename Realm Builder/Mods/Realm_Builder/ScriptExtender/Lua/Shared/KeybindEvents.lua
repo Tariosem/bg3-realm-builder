@@ -124,7 +124,7 @@ end
 --- @param e SimplifiedInputEvent|EclLuaKeyInputEvent
 function KeybindHelpers.ParseInputToCharInput(e)
     local isShift = false
-    local mask = LightCToArray(e.Modifiers) or {}
+    local mask = RBUtils.LightCToArray(e.Modifiers) or {}
     isShift = table.find(mask, "SHIFT") or table.find(mask, "RShift") or table.find(mask, "LShift")
 
     if isShift then

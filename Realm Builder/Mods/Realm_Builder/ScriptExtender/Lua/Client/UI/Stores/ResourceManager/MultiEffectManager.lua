@@ -56,8 +56,8 @@ function MultiEffectManager:PopulateMultiEffectInfo(uuid)
                 Uuid = fxName,
                 DisplayName = nil,
                 FxNames = {fxName},
-                SourceBones = LightCToArray(effect.SourceBone),
-                TargetBones = LightCToArray(effect.TargetBone),
+                SourceBones = RBUtils.LightCToArray(effect.SourceBone),
+                TargetBones = RBUtils.LightCToArray(effect.TargetBone),
                 SourceBone = effect.SourceBone and effect.SourceBone[1] or "",
                 TargetBone = effect.TargetBone and effect.TargetBone[1] or "",
                 Repeat = 1,
@@ -177,5 +177,5 @@ function MultiEffectManager:PopulateAllEffects()
 
     self.populated = true
     ClearEffectToInfo()
-    return CountMap(self.Data)
+    return RBTableUtils.CountMap(self.Data)
 end

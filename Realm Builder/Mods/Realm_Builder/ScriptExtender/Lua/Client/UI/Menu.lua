@@ -61,14 +61,14 @@ function RealmBuilderMainMenu:RegisterEvents()
 
     meMod:RegisterEvent("OpenVisualTab", function (e)
         if e.Event ~= "KeyDown" then return end
-        local host = CGetHostCharacter()
+        local host = RBGetHostCharacter()
 
         if IsInCharacterCreationMirror() then
             VisualTab.new(host, GetName(host), nil, nil):Render()
             return
         end
 
-        local pick = GetPickingEntity()
+        local pick = PickingUtils.GetPickingEntity()
         local pickId = HandleToUuid(pick)
 
         if not pick then
@@ -101,7 +101,7 @@ function RealmBuilderMainMenu:RenderBrowserMenu()
         
     end
 
-    local browserMenu = RegisterWindow("generic", "Browser Menu", "Browser Menu")
+    local browserMenu = WindowManager.RegisterWindow("generic", "Browser Menu", "Browser Menu")
     browserMenu.Closeable = true
     browserMenu:SetSize({ 300 * SCALE_FACTOR, 600 * SCALE_FACTOR })
 
@@ -135,13 +135,13 @@ function RealmBuilderMainMenu:RenderBrowserMenu()
 end
 
 function RealmBuilderMainMenu:Render()
-    local screenWidth, screenHeight = GetScreenSize()
+    local screenWidth, screenHeight = UIHelpers.GetScreenSize()
     local MENU_WIDTH = screenWidth * 0.25
     local MENU_HEIGHT = screenHeight
     local MENU_X = screenWidth - MENU_WIDTH
     local MENU_Y = 0
 
-    self.panel = RegisterWindow("Citadel", "Realm Builder", "MainMenu", self, { MENU_X, MENU_Y}, {MENU_WIDTH, MENU_HEIGHT})
+    self.panel = WindowManager.RegisterWindow("Citadel", "Realm Builder", "MainMenu", self, { MENU_X, MENU_Y}, {MENU_WIDTH, MENU_HEIGHT})
     self.panel.Closeable = true
 
     self.tabBar = self.panel:AddTabBar("TabBar")
@@ -240,7 +240,7 @@ function RealmBuilderMainMenu:Render()
     Timer:Ticks(10, function()
         local tab = self.tabBar:AddTabItem("Materials")
         local childWin = tab:AddChildWindow("Material Presets Workshop")
-        local window = RegisterWindow("generic", "Material Presets Workshop", "Material Presets Workshop", MaterialPresetsMenu)
+        local window = WindowManager.RegisterWindow("generic", "Material Presets Workshop", "Material Presets Workshop", MaterialPresetsMenu)
         local render = MaterialPresetsMenu:RenderCCModExportMenu(childWin)
         local isWindow = false
 
@@ -308,7 +308,7 @@ function RealmBuilderMainMenu:Destroy()
         self.effectsMenu = nil
     end
     if self.panel then
-        DeleteWindow(self.panel)
+        WindowManager.DeleteWindow(self.panel)
         self.panel = nil
     end
     self.isValid = false
@@ -323,7 +323,7 @@ end
 
 --- @type RB_MainMenu
 RBMenu = nil
-RegisterOnSessionLoaded(function()
+EventsSubscriber.RegisterOnSessionLoaded(function()
     if RBMenu == nil then
         RBMenu = RealmBuilderMainMenu:Add()
         RBMenu.panel.Open = false

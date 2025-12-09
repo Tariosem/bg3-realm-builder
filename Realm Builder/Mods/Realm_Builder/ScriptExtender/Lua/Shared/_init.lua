@@ -1,5 +1,4 @@
 Ext.Require("Shared/Events.lua")
-Ext.Require("Shared/Logger.lua")
 Ext.Require("Shared/Debug.lua")
 Ext.Require("Shared/FilePath.lua")
 Ext.Require("Shared/Helpers/_init.lua")

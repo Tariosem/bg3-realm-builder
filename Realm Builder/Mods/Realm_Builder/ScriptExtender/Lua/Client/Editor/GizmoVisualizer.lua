@@ -36,24 +36,24 @@ local GIZMO_VISUALIZER_CONFIG = {
         1.0,
     },
     DefaultColor = {
-        X = HexToRGBA("FFDC4444"),
-        Y = HexToRGBA("FF58C458"), 
-        Z = HexToRGBA("FF4A7DFF"),
+        X = ColorUtils.HexToRGBA("FFDC4444"),
+        Y = ColorUtils.HexToRGBA("FF58C458"), 
+        Z = ColorUtils.HexToRGBA("FF4A7DFF"),
     },
     HighlightColor = {
-        X = HexToRGBA("FFFFB3B3"),
-        Y = HexToRGBA("FFB7FFB7"),
-        Z = HexToRGBA("FFB6C8FF"),
+        X = ColorUtils.HexToRGBA("FFFFB3B3"),
+        Y = ColorUtils.HexToRGBA("FFB7FFB7"),
+        Z = ColorUtils.HexToRGBA("FFB6C8FF"),
     },
     HoveredColor = {
-        X = HexToRGBA("FFFFA4A4"),
-        Y = HexToRGBA("FFBFFFBF"),
-        Z = HexToRGBA("FFBBBBFF"),
+        X = ColorUtils.HexToRGBA("FFFFA4A4"),
+        Y = ColorUtils.HexToRGBA("FFBFFFBF"),
+        Z = ColorUtils.HexToRGBA("FFBBBBFF"),
     },
     AxisLineColor = {
-        X = HexToRGBA("FFFF0000"),
-        Y = HexToRGBA("FF00FF00"),
-        Z = HexToRGBA("FF0000FF"),
+        X = ColorUtils.HexToRGBA("FFFF0000"),
+        Y = ColorUtils.HexToRGBA("FF00FF00"),
+        Z = ColorUtils.HexToRGBA("FF0000FF"),
     }
 }
 
@@ -61,20 +61,20 @@ function GizmoVisualizer:__init()
     self.GizmoScale = 0.1
     self.Scale = {1.0, 1.0, 1.0}
     self.ScaleMultiplier = {1.0, 1.0, 1.0}
-    self.DefaultColor = DeepCopy(GIZMO_VISUALIZER_CONFIG.DefaultColor)
-    self.HighlightColor = DeepCopy(GIZMO_VISUALIZER_CONFIG.HighlightColor)
-    self.HoveredColor = DeepCopy(GIZMO_VISUALIZER_CONFIG.HoveredColor)
-    self.AxisLineColor = DeepCopy(GIZMO_VISUALIZER_CONFIG.AxisLineColor)
+    self.DefaultColor = RBUtils.DeepCopy(GIZMO_VISUALIZER_CONFIG.DefaultColor)
+    self.HighlightColor = RBUtils.DeepCopy(GIZMO_VISUALIZER_CONFIG.HighlightColor)
+    self.HoveredColor = RBUtils.DeepCopy(GIZMO_VISUALIZER_CONFIG.HoveredColor)
+    self.AxisLineColor = RBUtils.DeepCopy(GIZMO_VISUALIZER_CONFIG.AxisLineColor)
 end
 
 function GizmoVisualizer:ResetToDefault()
     self.GizmoScale = GIZMO_VISUALIZER_CONFIG.GizmoScale
-    self.Scale = DeepCopy(GIZMO_VISUALIZER_CONFIG.Scale)
-    self.ScaleMultiplier = DeepCopy(GIZMO_VISUALIZER_CONFIG.ScaleMultiplier)
-    self.DefaultColor = DeepCopy(GIZMO_VISUALIZER_CONFIG.DefaultColor)
-    self.HighlightColor = DeepCopy(GIZMO_VISUALIZER_CONFIG.HighlightColor)
-    self.HoveredColor = DeepCopy(GIZMO_VISUALIZER_CONFIG.HoveredColor)
-    self.AxisLineColor = DeepCopy(GIZMO_VISUALIZER_CONFIG.AxisLineColor)
+    self.Scale = RBUtils.DeepCopy(GIZMO_VISUALIZER_CONFIG.Scale)
+    self.ScaleMultiplier = RBUtils.DeepCopy(GIZMO_VISUALIZER_CONFIG.ScaleMultiplier)
+    self.DefaultColor = RBUtils.DeepCopy(GIZMO_VISUALIZER_CONFIG.DefaultColor)
+    self.HighlightColor = RBUtils.DeepCopy(GIZMO_VISUALIZER_CONFIG.HighlightColor)
+    self.HoveredColor = RBUtils.DeepCopy(GIZMO_VISUALIZER_CONFIG.HoveredColor)
+    self.AxisLineColor = RBUtils.DeepCopy(GIZMO_VISUALIZER_CONFIG.AxisLineColor)
 end
 
 function GizmoVisualizer:GetHighlightColor(axis)
@@ -94,7 +94,7 @@ end
 --- @param Value any
 --- @return RenderableObject[]? -
 local function SetGizmoAxisTextureColorParam(axis, guid, Value)
-    if not IsGizmo(guid) then
+    if not EntityHelpers.IsGizmo(guid) then
         --Warning("GetGizmoAxisTextureColorParam: Invalid GUID: " .. tostring(guid))
         return nil
     end
@@ -138,7 +138,7 @@ function GizmoVisualizer:ScaleGizmo(axis, renderable, isTranslate)
     if isTranslate then
         scale = scale * translateScale
     end
-    local toScale = ToVec3(scale)
+    local toScale = RBUtils.ToVec3(scale)
     toScale[AxisIndexMap[axis]] = toScale[AxisIndexMap[axis]] * (self.ScaleMultiplier[AxisIndexMap[axis]] or 1.0)
     for _,r in ipairs(rend or {}) do
         r:SetWorldScale(toScale)
@@ -152,7 +152,7 @@ function GizmoVisualizer:Visualize3DCursor(guid, factor)
     local objs = visual.ObjectDescs or {}
     if #objs == 0 then return end
 
-    local camera = GetCamera()
+    local camera = RBGetCamera()
     if not camera then return end
 
     factor = factor or 0.3
@@ -202,7 +202,7 @@ function GizmoVisualizer:HideGizmo(guid)
 end
 
 
-local translateItemTemplateId = TakeTailTemplate(GIZMO_ITEM.Translate)
+local translateItemTemplateId = EntityHelpers.TakeTailTemplate(GIZMO_ITEM.Translate)
 function GizmoVisualizer:HighLightGizmoAxis(axis, guid)
     if tonumber(axis) then
         axis = IndexAxisMap[axis]
@@ -242,7 +242,7 @@ end
 
 function GizmoVisualizer:VisualizeRotatePointer(guid, axis)
     local rotateScale = self.Scale[AxisIndexMap[axis]] or 1.0
-    local scale = ToVec3((0.6 * rotateScale) / 0.81)
+    local scale = RBUtils.ToVec3((0.6 * rotateScale) / 0.81)
 
     for _,ax in pairs({"X", "Y", "Z"}) do
         if ax ~= axis then
@@ -267,7 +267,7 @@ end
 function GizmoVisualizer:UpdateScale(position)
     local k = self.GizmoScale or 0.1
     if position == Vec3.new({0,0,0}) then return 1.0 end
-    local cam = GetCamera()
+    local cam = RBGetCamera()
     if not cam then return 1.0 end
     local camPos = Vec3.new(cam.Transform.Transform.Translate)
     local dist = Ext.Math.Distance(position, camPos)

@@ -1,4 +1,4 @@
-RequireFiles("Client/UI/Elements/", {
+RBUtils.RequireFiles("Client/UI/Elements/", {
     "ImguiAnim",
     "StyleHelpers",
     "ImguiHelpers",

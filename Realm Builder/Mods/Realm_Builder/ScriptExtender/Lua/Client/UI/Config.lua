@@ -1,23 +1,31 @@
 SCALE_FACTOR = 1.0
 
+UIHelpers = UIHelpers or {}
+
 function GetScaleFactor(scale)
     SCALE_FACTOR = scale
 end
 
 ---@return integer width
 ---@return integer height
-function GetScreenSize()
+function UIHelpers.GetScreenSize()
     local screen = Ext.IMGUI.GetViewportSize()
     return screen[1], screen[2]
 end
 
-function GetUIScale()
-    local _, screenHeight = GetScreenSize()
+function UIHelpers.GetUIScale()
+    local _, screenHeight = UIHelpers.GetScreenSize()
     local baseHeight = 2160
     return screenHeight / baseHeight
 end
 
-SCALE_FACTOR = GetUIScale()
+--- @param value number
+--- @return number
+function ScaleUI(value)
+    return value * SCALE_FACTOR
+end
+
+SCALE_FACTOR = UIHelpers.GetUIScale()
 
 IMAGESIZE = {
     ROW = Vec2.new(36, 36) * SCALE_FACTOR,
@@ -28,6 +36,7 @@ IMAGESIZE = {
     LARGE = Vec2.new(128, 128) * SCALE_FACTOR,
 }
 
+Config = {}
 CONFIG = {
     Theme = {
         Color = {
@@ -59,9 +68,9 @@ CONFIG = {
     DEBUG_LEVEL = 4
 }
 
-function SaveConfig(field)
+function Config.SaveConfig(field)
     if field then
-        SaveConfigField(field)
+        Config.SaveConfigField(field)
         return
     end
 
@@ -70,7 +79,7 @@ function SaveConfig(field)
     Ext.IO.SaveFile(filePath, configData)
 end
 
-function LoadConfig()
+function Config.LoadConfig()
     local filePath = "Realm_Builder/Config.json"
     local configData = Ext.IO.LoadFile(filePath)
     if configData then
@@ -83,7 +92,7 @@ function LoadConfig()
     SetDebugLevel(CONFIG.DEBUG_LEVEL or 4)
 end
 
-function SaveConfigField(field)
+function Config.SaveConfigField(field)
     local filePath = "Realm_Builder/Config.json"
     local raw = Ext.IO.LoadFile(filePath)
     local data = raw and Ext.Json.Parse(raw) or {}
@@ -93,6 +102,6 @@ function SaveConfigField(field)
     Ext.IO.SaveFile(filePath, configData)
 end
 
-LoadConfig()
+Config.LoadConfig()
 
 

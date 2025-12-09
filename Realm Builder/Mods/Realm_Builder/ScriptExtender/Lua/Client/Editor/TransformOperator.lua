@@ -54,14 +54,14 @@ function TransformOperator:GetAxesBySpace(proxy, space)
         local z = Ext.Math.QuatRotate(rot, GLOBAL_COORDINATE.Z)
         self.AxesCache[proxy][space] = { X = x, Y = y, Z = z }
     elseif space == "View" then
-        local camRot = self.StartCameraTransform and self.StartCameraTransform.RotationQuat or {GetCameraRotation()}
+        local camRot = self.StartCameraTransform and self.StartCameraTransform.RotationQuat or {CameraHelpers.GetCameraRotation()}
         local x = Ext.Math.QuatRotate(camRot, GLOBAL_COORDINATE.X)
         local y = Ext.Math.QuatRotate(camRot, GLOBAL_COORDINATE.Y)
         local z = Ext.Math.QuatRotate(camRot, GLOBAL_COORDINATE.Z)
         self.AxesCache[proxy][space] = { X = x, Y = y, Z = z }
     elseif space == "Parent" then
         local parent = proxy:GetParent()
-        if parent and EntityExists(parent) then
+        if parent and EntityHelpers.EntityExists(parent) then
             local parentRot = parent:GetSavedTransform().RotationQuat
             local x = Ext.Math.QuatRotate(parentRot, GLOBAL_COORDINATE.X)
             local y = Ext.Math.QuatRotate(parentRot, GLOBAL_COORDINATE.Y)
@@ -76,8 +76,8 @@ function TransformOperator:GetAxesBySpace(proxy, space)
             }
         end
     elseif space == "Cursor" then
-        local cursor = self.Cursor or CGetHostCharacter()
-        local cursorRot = {CGetRotation(cursor)}
+        local cursor = self.Cursor or RBGetHostCharacter()
+        local cursorRot = {RBGetRotation(cursor)}
         local x = Ext.Math.QuatRotate(cursorRot, GLOBAL_COORDINATE.X)
         local y = Ext.Math.QuatRotate(cursorRot, GLOBAL_COORDINATE.Y)
         local z = Ext.Math.QuatRotate(cursorRot, GLOBAL_COORDINATE.Z)
@@ -108,7 +108,7 @@ function TransformOperator:__init(targets, space, mode, axis, ifInitStartTransfo
 
     self.Axis = axis or { X = true }
 
-    if self.Mode ~= "Scale" and CountMap(self.Axis) > 1 then
+    if self.Mode ~= "Scale" and RBTableUtils.CountMap(self.Axis) > 1 then
         self.Axis = { [next(self.Axis)] = true }
     end
 
@@ -124,7 +124,7 @@ function TransformOperator:InitStartTransforms(ifInit)
     end
 
     self.StartCameraTransform = {
-        RotationQuat = {GetCameraRotation()},
+        RotationQuat = {CameraHelpers.GetCameraRotation()},
     }
     for _,proxy in pairs(self.Targets) do
         local parent = proxy:GetParent()
@@ -183,7 +183,7 @@ function TransformOperator:ChangeVisualization()
         local axis = self:GetAxesBySpace(proxy, self.Space)[next(self.Axis)]
         local ray = Ray.new(proxy:GetSavedTransform().Translate, axis)
         local pos = ray:At(-30)
-        local dir = DirectionToQuat( axis * -1 )
+        local dir = MathHelpers.DirectionToQuat( axis * -1 )
         local newTransform = {
             Translate = pos,
             RotationQuat = dir,
@@ -201,7 +201,7 @@ end
 
 function TransformOperator:SetAxis(axis, shiftDown)
     if self.Mode ~= "Scale" then
-        if self.Axis and CountMap(self.Axis) == 1 and self.Axis[axis] then
+        if self.Axis and RBTableUtils.CountMap(self.Axis) == 1 and self.Axis[axis] then
             return -- same axis, do nothing
         else
             self.Axis = { [axis] = true }
@@ -210,7 +210,7 @@ function TransformOperator:SetAxis(axis, shiftDown)
         return
     end
 
-    if self.Axis and CountMap(self.Axis) == 1 and self.Axis[axis] then
+    if self.Axis and RBTableUtils.CountMap(self.Axis) == 1 and self.Axis[axis] then
         self.Axis = { X = true, Y = true, Z = true }
     elseif shiftDown then
         self.Axis = { X = true, Y = true, Z = true }
@@ -239,7 +239,7 @@ function TransformOperator:ParseInput(e)
         if self.Mode == 'Scale' then
             self.Axis = { X = true, Y = true, Z = true }
             self:SetSpace("Local")
-        elseif CountMap(self.Axis) > 1 then
+        elseif RBTableUtils.CountMap(self.Axis) > 1 then
             self.Axis = { [next(self.Axis)] = true }
         end
     elseif keyToSpace[e.Key] then

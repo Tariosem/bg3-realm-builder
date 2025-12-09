@@ -71,7 +71,7 @@ local function parseNumberText(numberStr)
                     local fallbackStr = formatVariant(lmvObj.FallbackValue)
                     parent:AddBulletText("Fallback Value: ") 
                     local varStr = parent:AddText(fallbackStr)
-                    varStr:SetColor("Text", HIGHLIGHT_COLOR)
+                    varStr:SetColor("Text", UI_COLORS.HighLight)
                     varStr.SameLine = true
                 end
 
@@ -93,7 +93,7 @@ local function parseNumberText(numberStr)
                     local levelCell = row:AddCell()
                     local valueCell = row:AddCell()
                     levelCell:AddText(string.format("Level %d ->", i)):SetColor("Text", {1, 1, 1, 1})
-                    valueCell:AddText(variantStr):SetColor("Text", HIGHLIGHT_COLOR)
+                    valueCell:AddText(variantStr):SetColor("Text", UI_COLORS.HighLight)
                     ::continue::
                 end
 
@@ -113,7 +113,7 @@ local function parseNumberText(numberStr)
 end
 
 local function simpleRenderer(text, bonus)
-    local bonusColor = bonus:sub(1,1) == "-" and DEBUFF_COLOR or HIGHLIGHT_COLOR
+    local bonusColor = bonus:sub(1,1) == "-" and UI_COLORS.Warning or UI_COLORS.HighLight
     if tonumber(bonus) and tonumber(bonus) > 0 then
         bonus = "+" .. bonus
     end
@@ -177,7 +177,7 @@ StatsBoostHandlers = {
             if RB_ItemManager then
                 icon = RB_ItemManager.tagIcons[prof] 
             end
-            local image = parent:AddImage(icon, ToVec2((iconSize or 32) * SCALE_FACTOR))
+            local image = parent:AddImage(icon, RBUtils.ToVec2((iconSize or 32) * SCALE_FACTOR))
             image.SameLine = true
             local name = parent:AddText(GetLoca(prof))
             name.SameLine = true
@@ -234,11 +234,11 @@ StatsBoostHandlers = {
             if specific ~= "" then
                 local specificText = parent:AddText(specific)
                 specificText.SameLine = true
-                specificText:SetColor("Text", HIGHLIGHT_COLOR)
+                specificText:SetColor("Text", UI_COLORS.HighLight)
             else
                 
 
-                rollTypeText:SetColor("Text", HIGHLIGHT_COLOR)
+                rollTypeText:SetColor("Text", UI_COLORS.HighLight)
             end
 
             return bulletText
@@ -264,10 +264,10 @@ StatsBoostHandlers = {
             if specific ~= "" then
                 local specificText = parent:AddText(specific)
                 specificText.SameLine = true
-                specificText:SetColor("Text", DEBUFF_COLOR)
+                specificText:SetColor("Text", UI_COLORS.Warning)
             else
                 
-                rollTypeText:SetColor("Text", DEBUFF_COLOR)
+                rollTypeText:SetColor("Text", UI_COLORS.Warning)
             end
             
             return bulletText
@@ -384,13 +384,13 @@ StatsBoostHandlers = {
         local tagRes = GetStaticDataByName(tag)
         local icon = CheckIcon(tagRes and tagRes.Icon or "Item_Unknown")
         local displayName = tagRes and tagRes.DisplayName:Get() or tag
-        displayName = StripLSTags(displayName)
+        displayName = RBStringUtils.StripLSTags(displayName)
         local description = tagRes and GetLoca(tagRes.Description) or ""
         local function render(parent, iconSize)
             local bulletText = parent:AddBulletText(string.format("Tag: %s", displayName))
             local image = nil
             if icon ~= "Item_Unknown" then
-                image = parent:AddImage(icon, ToVec2((iconSize or 32) * SCALE_FACTOR))
+                image = parent:AddImage(icon, RBUtils.ToVec2((iconSize or 32) * SCALE_FACTOR))
                 image.SameLine = true
             end
             if description and description ~= "" then
@@ -478,7 +478,7 @@ StatsBoostHandlers = {
 
         local conditionTokens = StatsParser:ParseCondition(boost.condition or "Unknown")
 
-        local wrpaedTokens = WrapTextTokens(conditionTokens, 60)
+        local wrpaedTokens = RBUtils.WrapTextTokens(conditionTokens, 60)
 
         local boostRenders = {}
         for _, effect in ipairs(boost.effects or {}) do
@@ -507,7 +507,7 @@ StatsBoostHandlers = {
             RenderTokenTexts(conditionCell, wrpaedTokens, true)
 
             if boost.Icon then
-                local image = parent:AddImage(boost.Icon, ToVec2(32 * SCALE_FACTOR))
+                local image = parent:AddImage(boost.Icon, RBUtils.ToVec2(32 * SCALE_FACTOR))
                 image.SameLine = true
                 if boost.Tooltip then
                     boost.Tooltip(image:Tooltip())
@@ -543,7 +543,7 @@ StatsParameterHandler = {
         end
 
         local token = parseNumberText("LevelMapValue(" .. statName .. ")")
-        token.Color = HIGHLIGHT_COLOR
+        token.Color = UI_COLORS.HighLight
         return {
             token
         }
@@ -622,7 +622,7 @@ StatsParameterHandler = {
     Distance = function(param)
         local distance = param.args[1] or ""
         return {
-            { Text = string.format("%s meters", distance), Color = HIGHLIGHT_COLOR}
+            { Text = string.format("%s meters", distance), Color = UI_COLORS.HighLight}
         }
     end,
 
@@ -660,12 +660,12 @@ StatsParameterHandler = {
         if damageType == "All" then
             return {
                 { Text = "Reduce all damage by " },
-                { Text = amount, Color = HIGHLIGHT_COLOR }
+                { Text = amount, Color = UI_COLORS.HighLight }
             }
         else
             return {
                 { Text = string.format("Reduce %s damage by ", damageType) },
-                { Text = amount, Color = HIGHLIGHT_COLOR }
+                { Text = amount, Color = UI_COLORS.HighLight }
             }
         end
     end,
@@ -673,13 +673,13 @@ StatsParameterHandler = {
     ClassLevel = function(param)
         local className = param.args[1] or "Unknown"
         return {
-            { Text = string.format("%s level", className), Color = HIGHLIGHT_COLOR }
+            { Text = string.format("%s level", className), Color = UI_COLORS.HighLight }
         }
     end,
 
     WisdomModifier = function(param)
         return {
-            { Text = "Wisdom modifier", Color = HIGHLIGHT_COLOR }
+            { Text = "Wisdom modifier", Color = UI_COLORS.HighLight }
         }
     end,
 
@@ -702,19 +702,19 @@ StatsParameterHandler = {
         baseText = baseText .. ")"
 
         return {
-            { Text = baseText, Color = HIGHLIGHT_COLOR }
+            { Text = baseText, Color = UI_COLORS.HighLight }
         }
     end,
 
     Cause = function(param)
         return {
-            { Text = "cause", Color = HIGHLIGHT_COLOR }
+            { Text = "cause", Color = UI_COLORS.HighLight }
         }
     end,
 
     ProficiencyBonus = function(param)
         return {
-            { Text = "proficiency bonus", Color = HIGHLIGHT_COLOR }
+            { Text = "proficiency bonus", Color = UI_COLORS.HighLight }
         }
     end,
 
@@ -734,7 +734,7 @@ StatsConditionHandlers = {
 
         local tokens = {
             { Text = "Has passive: " },
-            { Text = StripLSTags(GetLoca(passive and passive.DisplayName or args[1])), Icon = icon, TooltipRef = { Type = "PassiveData", Name = passiveName } }
+            { Text = RBStringUtils.StripLSTags(GetLoca(passive and passive.DisplayName or args[1])), Icon = icon, TooltipRef = { Type = "PassiveData", Name = passiveName } }
         }
 
         return tokens
@@ -744,8 +744,8 @@ StatsConditionHandlers = {
         local tagRes = GetStaticDataByName(args[1])
         local icon = nil
         icon = CheckIcon(tagRes and tagRes.Icon or "Item_Unknown")
-        local displayName = StripLSTags(tagRes and tagRes.DisplayName:Get() or args[1])
-        local description = StripLSTags(tagRes and GetLoca(tagRes.Description or "No description") or "")
+        local displayName = RBStringUtils.StripLSTags(tagRes and tagRes.DisplayName:Get() or args[1])
+        local description = RBStringUtils.StripLSTags(tagRes and GetLoca(tagRes.Description or "No description") or "")
         if icon == "Item_Unknown" then
             icon = nil
         end
@@ -761,7 +761,7 @@ StatsConditionHandlers = {
     CharacterLevelGreaterThan = function(args)
         local level = args[1] or "0"
         local tokens = {
-            { Text = string.format("Character level greater than %s", level), Color = HIGHLIGHT_COLOR }
+            { Text = string.format("Character level greater than %s", level), Color = UI_COLORS.HighLight }
         }
         return tokens
     end,
@@ -780,39 +780,39 @@ StatsConditionHandlers = {
         local className = args[2] or "Unknown"
         local level = args[1] or "0"
         local tokens = {
-            { Text = string.format("%s level >= %s", className, level), Color = HIGHLIGHT_COLOR }
+            { Text = string.format("%s level >= %s", className, level), Color = UI_COLORS.HighLight }
         }
         return tokens
     end,
     HasHPPercentageEqualOrLessThan = function(args)
         local percentage = args[1] or "0"
         local tokens = {
-            { Text = string.format("HP percentage <= %s%%", percentage), Color = HIGHLIGHT_COLOR }
+            { Text = string.format("HP percentage <= %s%%", percentage), Color = UI_COLORS.HighLight }
         }
         return tokens
     end,
     HasHPPercentageEqualOrMoreThan = function(args)
         local percentage = args[1] or "0"
         local tokens = {
-            { Text = string.format("HP percentage >= %s%%", percentage), Color = HIGHLIGHT_COLOR }
+            { Text = string.format("HP percentage >= %s%%", percentage), Color = UI_COLORS.HighLight }
         }
         return tokens
     end,
     HasHPPercentageWithoutTemporaryHPEqualOrLessThan = function(args)
         local percentage = args[1] or "0"
         local tokens = {
-            { Text = string.format("HP percentage (without temp HP) <= %s%%", percentage), Color = HIGHLIGHT_COLOR }
+            { Text = string.format("HP percentage (without temp HP) <= %s%%", percentage), Color = UI_COLORS.HighLight }
         }
         return tokens
     end,
     HasAdvantage = function(args)
         return {
-            { Text = "Has advantage", Color = HIGHLIGHT_COLOR }
+            { Text = "Has advantage", Color = UI_COLORS.HighLight }
         }
     end,
     HasDisadvantage = function(args)
         return {
-            { Text = "Has disadvantage", Color = HIGHLIGHT_COLOR }
+            { Text = "Has disadvantage", Color = UI_COLORS.HighLight }
         }
     end,
     IsResistantToDamageType = function(args)
@@ -835,13 +835,13 @@ StatsConditionHandlers = {
     end,
     IsInSunlight = function(args)
         local tokens = {
-            { Text = "In sunlight", Color = HIGHLIGHT_COLOR }
+            { Text = "In sunlight", Color = UI_COLORS.HighLight }
         }
         return tokens
     end,
     IsOffHandSlotEmpty = function(args)
         local tokens = {
-            { Text = "Off-hand slot empty", Color = HIGHLIGHT_COLOR }
+            { Text = "Off-hand slot empty", Color = UI_COLORS.HighLight }
         }
         return tokens
     end,
@@ -858,7 +858,7 @@ StatsConditionHandlers = {
     HasMaxHPWithoutTemporaryHP = function(args)
         local amount = args[1] or "0"
         local tokens = {
-            { Text = string.format("Max HP (without temp HP)"), Color = HIGHLIGHT_COLOR }
+            { Text = string.format("Max HP (without temp HP)"), Color = UI_COLORS.HighLight }
         }
         return tokens
     end,

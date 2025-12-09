@@ -52,7 +52,7 @@ end
 
 function ResourceEditor:SaveInitialState()
     local res = Ext.Resource.Get(self.ResourceUUID, self.ResourceType)
-    self.InitialState = DeepCopy(res[self.ResourceType])
+    self.InitialState = RBUtils.DeepCopy(res[self.ResourceType])
 end
 
 function ResourceEditor:Render()
@@ -67,7 +67,7 @@ function ResourceEditor:Render()
     end
 
     self:SaveInitialState()
-    local window = RegisterWindow(self.ResourceUUID, "Realm Builder - Resource Editor - " .. self.ResourceType,
+    local window = WindowManager.RegisterWindow(self.ResourceUUID, "Realm Builder - Resource Editor - " .. self.ResourceType,
         "Resource Editor")
     window.Closeable = true
 
@@ -97,7 +97,7 @@ function ResourceEditor:Render()
                 end)
             end)
     end
-    local delaySetter = Debounce(debouceDelay, setter)
+    local delaySetter = RBUtils.Debounce(debouceDelay, setter)
 
     local resetBtn = window:AddButton("Reset World " .. self.ResourceType)
     resetBtn.OnClick = function()
@@ -117,7 +117,7 @@ function ResourceEditor:Render()
     local resetThisBtn = window:AddButton("Reset Changes")
     resetThisBtn.SameLine = true
     resetThisBtn.OnClick = function()
-        self.ModfiedResource = DeepCopy(self.InitialState)
+        self.ModfiedResource = RBUtils.DeepCopy(self.InitialState)
         setter()
     end
 
@@ -207,24 +207,24 @@ function ResourceEditor:RenderEditor(parent, label, objGetter, objSetter)
         end
     end
 
-    for field, initValue in SortedPairs(objGetter()) do
+    for field, initValue in RBUtils.SortedPairs(objGetter()) do
         if readOnlyFields[field] then goto continue end
 
         local updateFunc = nil
-        if type(initValue) == "number" or IsArrayOf(initValue, "number") then
+        if type(initValue) == "number" or RBTableUtils.IsArrayOf(initValue, "number") then
             local function getter()
                 local val = objGetter()[field]
                 if type(val) == "number" then
                     return { val }
                 end
-                return LightCToArray(val)
+                return RBUtils.LightCToArray(val)
             end
 
             local function setter(value)
                 if #value == 1 then
                     objSetter(field, value[1])
                 else
-                    objSetter(field, LightCToArray(value))
+                    objSetter(field, RBUtils.LightCToArray(value))
                 end
             end
 
@@ -280,10 +280,10 @@ function ResourceEditor:RenderEditor(parent, label, objGetter, objSetter)
 
             local alignedTable = ImguiElements.AddAlignedTable(parent)
             local input = alignedTable:AddInputText(field, initValue)
-            local isUuid = IsUuidIncludingNull(initValue)
+            local isUuid = RBUtils.IsUuidIncludingNull(initValue)
             input.AutoSelectAll = true
             input.OnChange = function()
-                if isUuid and not IsUuidIncludingNull(input.Text) then return end
+                if isUuid and not RBUtils.IsUuidIncludingNull(input.Text) then return end
 
                 setter(input.Text)
             end
@@ -305,15 +305,15 @@ function ResourceEditor:RenderEditor(parent, label, objGetter, objSetter)
             updateFunc = function()
                 input.Text = getter()
             end
-        elseif IsArrayOf(initValue, "string") or IsArrayOf(initValue, "boolean") then
+        elseif RBTableUtils.IsArrayOf(initValue, "string") or RBTableUtils.IsArrayOf(initValue, "boolean") then
             updateFunc = self:RenderArrayEditor(parent, field,
                 function()
-                    return LightCToArray(objGetter()[field])
+                    return RBUtils.LightCToArray(objGetter()[field])
                 end,
                 function(value)
-                    objSetter(field, LightCToArray(value))
+                    objSetter(field, RBUtils.LightCToArray(value))
                 end)
-        elseif (type(initValue) == "table" or type(initValue) == "userdata") and not IsArray(initValue) then
+        elseif (type(initValue) == "table" or type(initValue) == "userdata") and not RBTableUtils.IsArray(initValue) then
             local subTree = parent:AddTree(field)
             subTree.Indent = 64 * SCALE_FACTOR
             local updateSub = nil
@@ -431,7 +431,7 @@ RegisterDebugWindow("Realm Builder Atmosphere Editor", function(panel)
             editor:Render()
             inputForCopy.Text = resUuid
         end
-        inputForCopy.OnChange = Debounce(100, function(input)
+        inputForCopy.OnChange = RBUtils.Debounce(100, function(input)
             local keyWord = tostring(input.Text):lower()
             if keyWord == "" then
                 combo.Options = nameArray
@@ -451,7 +451,7 @@ RegisterDebugWindow("Realm Builder Atmosphere Editor", function(panel)
 
     local notif = Notification.new("Resource Editor")
     panel:AddButton("Open Atmosphere Editor").OnClick = function()
-        local cameraPos = { GetCameraPosition() }
+        local cameraPos = { CameraHelpers.GetCameraPosition() }
         NetChannel.GetAtmosphere:RequestToServer({ Position = cameraPos }, function(response)
             local atmosphereUuid = response.Guid
             if atmosphereUuid == "" then
@@ -474,7 +474,7 @@ RegisterDebugWindow("Realm Builder Atmosphere Editor", function(panel)
         end)
     end
     panel:AddButton("Open Lighting Editor").OnClick = function()
-        local cameraPos = { GetCameraPosition() }
+        local cameraPos = { CameraHelpers.GetCameraPosition() }
         NetChannel.GetLighting:RequestToServer({ Position = cameraPos }, function(response)
             local lightingUuid = response.Guid
             if lightingUuid == "" then

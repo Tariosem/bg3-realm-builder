@@ -24,7 +24,7 @@ function MaterialTab:__init(parent, materialName, materialFunc, paramsSrc)
     self.Editor = MaterialEditor.new(materialName, materialFunc, paramsSrc)
     self.MaterialName = materialName
     self.SourceFile = self.Editor.SourceFile
-    self.ParentNodeName = GetLastPath(self.SourceFile) or "N/A"
+    self.ParentNodeName = RBStringUtils.GetLastPath(self.SourceFile) or "N/A"
 
     self.ResetFuncs = {}
     self.UpdateFuncs = {}
@@ -38,7 +38,7 @@ function MaterialTab:Render(parent)
     local sourceFileName = self.ParentNodeName
     parent = parent or self.Parent
     local parentNode = ImguiElements.AddTree(self.Parent, sourceFileName, false)
-    parentNode:AddTreeIcon(RB_ICONS.Mask, IMAGESIZE.ROW).Tint = HexToRGBA("FFAC3232")
+    parentNode:AddTreeIcon(RB_ICONS.Mask, IMAGESIZE.ROW).Tint = ColorUtils.HexToRGBA("FFAC3232")
     parentNode.AllowItemOverlap = true
     self.ParentNode = parentNode
     self.Panel = parentNode.Panel
@@ -52,7 +52,7 @@ function MaterialTab:Render(parent)
     }
 
     parentNode.OnDragStart = function(sel)
-        sel.DragPreview:AddImage(RB_ICONS.Mask, IMAGESIZE.ROW).Tint = HexToRGBA("FFAC3232")
+        sel.DragPreview:AddImage(RB_ICONS.Mask, IMAGESIZE.ROW).Tint = ColorUtils.HexToRGBA("FFAC3232")
         sel.DragPreview:AddText(sourceFileName).SameLine = true
     end
 
@@ -151,7 +151,7 @@ function MaterialTab:Render(parent)
 
         typeNode.OnDragDrop = function(sel, drop)
             if drop.UserData and drop.UserData.Parameters then
-                local udParams = DeepCopy(drop.UserData.Parameters)
+                local udParams = RBUtils.DeepCopy(drop.UserData.Parameters)
 
                 for i = 1, 6 do
                     if i ~= paramType then
@@ -235,7 +235,7 @@ function MaterialTab:Render(parent)
                         colorRect.Color = { value[1], value[2], value[3], value[4] or 1 }
                     else
                         for i = 1, #value do
-                            value[i] = FormatDecimal(value[i], 2)
+                            value[i] = RBStringUtils.FormatDecimal(value[i], 2)
                         end
                         propNode.DragPreview:AddText("Value: " .. table.concat(value, ", "))
                     end
@@ -323,7 +323,7 @@ function MaterialTab:RenderNumberProperty(node, propertyName, vecValue)
 
             local newValue = self:GetParameter(propertyName)
             if newValue then
-                colorPicker.Color = ToVec4(newValue)
+                colorPicker.Color = RBUtils.ToVec4(newValue)
                 for i = 1, #newValue do
                     if sliders[i] then
                         sliders[i].Value = { newValue[i], 0, 0, 0 }
@@ -333,7 +333,7 @@ function MaterialTab:RenderNumberProperty(node, propertyName, vecValue)
 
             self.ParamNodeRefs[propertyName].Highlight = self:HasChanged(propertyName) and true or false
         end
-        colorPicker.Color = ToVec4(vecValue)
+        colorPicker.Color = RBUtils.ToVec4(vecValue)
         colorPicker.AlphaBar = (#vecValue == 4)
         colorPicker.NoAlpha = (#vecValue == 3)
         colorPicker.NoInputs = true
@@ -391,7 +391,7 @@ function MaterialTab:RenderNumberProperty(node, propertyName, vecValue)
             end
 
             if colorPicker then
-                colorPicker.Color = ToVec4(newValue)
+                colorPicker.Color = RBUtils.ToVec4(newValue)
             end
 
             local applyValue = #vecValue == 1 and newValue[1] or newValue
@@ -417,7 +417,7 @@ function MaterialTab:RenderNumberProperty(node, propertyName, vecValue)
                 end
             end
             if colorPicker then
-                colorPicker.Color = ToVec4(newValue)
+                colorPicker.Color = RBUtils.ToVec4(newValue)
             end
         end
 
@@ -435,7 +435,7 @@ function MaterialTab:RenderNumberProperty(node, propertyName, vecValue)
                 end
             end
             if colorPicker then
-                colorPicker.Color = ToVec4(newValue)
+                colorPicker.Color = RBUtils.ToVec4(newValue)
             end
         end
 
@@ -491,7 +491,7 @@ function MaterialTab:RenderTextProperty(node, propertyName, propertyValue, prope
     end
     textBox.OnChange = function(sel)
         local newValue = sel.Text
-        if not IsUuidIncludingNull(newValue) then return end
+        if not RBUtils.IsUuidIncludingNull(newValue) then return end
         local check = false
         if propertyType == RB_MaterialParamType.Texture2D then
             check = TextureResourceManager:HasTextureResource(newValue)
@@ -594,7 +594,7 @@ function MaterialTab:BuildMaterialPresetResourceNode(uuid, internalName)
 end
 
 function MaterialTab:ExportChanges()
-    return DeepCopy(self.Editor.Parameters)
+    return RBUtils.DeepCopy(self.Editor.Parameters)
 end
 
 function MaterialTab:ImportChanges(params)
@@ -663,12 +663,12 @@ end
 MaterialMixerTab = _Class("MaterialMixerTab", MaterialTab)
 
 function MaterialMixerTab:__init(parameters)
-    self.Label = Uuid_v4()
-    self.Parent = RegisterWindow(self.Label, "Material Mixer", "Material Mixer Tab", self)
+    self.Label = RBUtils.Uuid_v4()
+    self.Parent = WindowManager.RegisterWindow(self.Label, "Material Mixer", "Material Mixer Tab", self)
     self.Parent.Closeable = true
 
     self.Parent.OnClose = function(win)
-        DeleteWindow(self.Parent)
+        WindowManager.DeleteWindow(self.Parent)
     end
 
     self.MaterialName = "MaterialMixerEditor"
@@ -817,7 +817,7 @@ function MaterialMixerTab:SetupManagePopup(popup)
 
     contextMenu:AddItem("Export As Preset##" .. self.MaterialName, function(sel)
         local save = LSXHelpers.BuildMaterialPresetBank()
-        local uuid = Uuid_v4()
+        local uuid = RBUtils.Uuid_v4()
         local preset = ResourceHelpers.BuildMaterialPresetResourceNode(self.ParametersSetProxy.Parameters, uuid,
             "MaterialMixer_Preset")
         save:AppendChild(preset)

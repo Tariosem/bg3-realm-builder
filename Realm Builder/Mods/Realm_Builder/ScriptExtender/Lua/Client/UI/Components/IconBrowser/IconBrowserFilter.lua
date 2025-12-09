@@ -224,7 +224,7 @@ function IconBrowser:RenderTagsFilter()
         local function openPopup()
             changeNamePopup:Open()
 
-            parentMenu.UserData.Subcriptions.KeySub = SubscribeKeyInput({ Key = "RETURN" }, function()
+            parentMenu.UserData.Subcriptions.KeySub = InputEvents.SubscribeKeyInput({ Key = "RETURN" }, function()
                 if self.tagsParentElements[parent] == nil then return UNSUBSCRIBE_SYMBOL end
                 local liveParent = self.tagsParentElements[parent]
                 local liveInput = liveParent.UserData and liveParent.UserData.RenameInput
@@ -262,7 +262,7 @@ function IconBrowser:RenderTagsFilter()
             preassignedParent[key] = parentMenu
         end
 
-        parentMenu.UserData.Subcriptions.ShiftModSub = SubscribeKeyInput({ Key = "LSHIFT" }, function(e)
+        parentMenu.UserData.Subcriptions.ShiftModSub = InputEvents.SubscribeKeyInput({ Key = "LSHIFT" }, function(e)
             if self.tagsParentElements[parent] == nil or not parentMenu then return UNSUBSCRIBE_SYMBOL end
             local liveParent = self.tagsParentElements[parent]
 
@@ -328,7 +328,7 @@ function IconBrowser:RenderTagsFilter()
         end
     end
 
-    for currentTag, currentCnt in SortedPairs(allTags, function(a, b)
+    for currentTag, currentCnt in RBUtils.SortedPairs(allTags, function(a, b)
         if sortWay == "asc" then
             return a < b
         else
@@ -535,7 +535,7 @@ function IconBrowser:AddGroupFilter()
         table.insert(self.groupFilterElements, self.groupPopup:AddText(GetLoca("Groups not found.")))
     end
 
-    for group, cnt in SortedPairs(allGroups, function(a, b)
+    for group, cnt in RBUtils.SortedPairs(allGroups, function(a, b)
         if sortWay == "asc" then
             return a < b
         else
@@ -642,7 +642,7 @@ function IconBrowser:Search()
         ExcludeGroups = excludeGroupsArray,
         NoteText = noteText,
         SearchField = fields,
-        Keywords = searchText ~= "" and SplitBySpace(searchText) or {},
+        Keywords = searchText ~= "" and RBStringUtils.SplitBySpace(searchText) or {},
         MatchAllTags = self.matchAllTags
     })
 

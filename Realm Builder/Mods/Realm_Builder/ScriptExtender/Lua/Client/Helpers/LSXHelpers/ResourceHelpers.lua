@@ -29,7 +29,7 @@ local function createParameterAttrNodes(paramObj, overrideValue, parameterName)
         lsattrNode("ExportAsPreset", "bool", true),
     }
 
-    MergeArrays(attrs, otherAttrs)
+    RBTableUtils.MergeArrays(attrs, otherAttrs)
 
     return attrs
 end
@@ -387,7 +387,7 @@ function ResourceHelpers.BuildVisualResource(srcUuid, uuid, internalName, overri
         local clothAttrs = {
             lsattrNode("ClothColliderResourceID", "FixedString", src.Cloth.ClothColliderResourceID),
         }
-        MergeArrays(attributes, clothAttrs)
+        RBTableUtils.MergeArrays(attributes, clothAttrs)
     end
 
 
@@ -412,11 +412,11 @@ function ResourceHelpers.BuildVisualResource(srcUuid, uuid, internalName, overri
         local matId = overrideMatId or obj.MaterialID
 
         if obj.LOD == 0 then
-            nonLods[TrimTail(linkId, 2)] = baseMatId -- remove .cnt suffix for matching
+            nonLods[RBStringUtils.TrimTail(linkId, 2)] = baseMatId -- remove .cnt suffix for matching
         elseif not overrideMatId then
             -- if this is a LOD object and no override is specified, try to find matching non-LOD material
             for otherLinkId, otherMatId in pairs(nonLods) do
-                if StartWith(linkId, otherLinkId) then -- simple prefix match
+                if RBStringUtils.StartWith(linkId, otherLinkId) then -- simple prefix match
                     matId = otherMatId
                     break
                 end

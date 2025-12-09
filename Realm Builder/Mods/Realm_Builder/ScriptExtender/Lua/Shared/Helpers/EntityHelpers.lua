@@ -1,3 +1,5 @@
+local declare = {}
+
 EntityHelpers = EntityHelpers or {}
 
 function EntityHelpers.EqualTransforms(a, b)
@@ -33,12 +35,12 @@ end
 --- @return Transform
 function EntityHelpers.SaveTransform(guid)
     local toSave = {
-        Translate = Vec3.new({ CGetPosition(guid) }),
-        RotationQuat = Quat.new({ CGetRotation(guid) }),
-        Scale = Vec3.new({CGetScale(guid)})
+        Translate = Vec3.new({ RBGetPosition(guid) }),
+        RotationQuat = Quat.new({ RBGetRotation(guid) }),
+        Scale = Vec3.new({RBGetScale(guid)})
     }
     if not toSave.Translate or #toSave.Translate ~= 3 then
-        toSave.Translate = { CGetPosition(CGetHostCharacter()) }
+        toSave.Translate = { RBGetPosition(RBGetHostCharacter()) }
     end
     if not toSave.RotationQuat or #toSave.RotationQuat ~= 4 then
         toSave.RotationQuat = { 0, 0, 0, 1 }
@@ -64,7 +66,7 @@ function EntityHelpers.FilterUuidsByType(guids)
     return groups
 end
 
-function GetTemplateId(guid)
+function EntityHelpers.GetTemplateId(guid)
     if not guid or guid == "" then
         return nil
     end
@@ -83,12 +85,12 @@ end
 
 --- @param guids GUIDSTRING|GUIDSTRING[]
 --- @return GUIDSTRING[] copy
-function NormalizeGuidList(guids)
+function RBUtils.NormalizeGuidList(guids)
     local returnData = {}
     if type(guids) == "string" then
         return { guids }
     elseif type(guids) == "table" then
-        returnData = DeepCopy(guids)
+        returnData = RBUtils.DeepCopy(guids)
     else
         return {}
     end
@@ -102,11 +104,11 @@ function NormalizeGuidList(guids)
     return returnData
 end
 
-function EntityExists(guid)
+function EntityHelpers.EntityExists(guid)
     if not guid or guid == "" then
         return false
     end
-    if IsCamera(guid) then
+    if RBUtils.IsCamera(guid) then
         return true
     end
 
@@ -133,7 +135,7 @@ local DummyComponentList = {
 
 ---@param entity EntityHandle
 ---@return boolean
-function IsDummy(entity)
+function EntityHelpers.IsDummy(entity)
     if not entity then
         return false
     end
@@ -149,7 +151,7 @@ end
 
 ---@param object any
 ---@return boolean
-function CIsCharacter(object)
+function EntityHelpers.IsCharacter(object)
     local objectType = type(object)
     if objectType == "userdata" then
         local mt = getmetatable(object)
@@ -171,7 +173,7 @@ end
 
 ---@param object any
 ---@return boolean
-function CIsItem(object)
+function EntityHelpers.IsItem(object)
     local objectType = type(object)
     if objectType == "userdata" then
         local mt = getmetatable(object)
@@ -191,7 +193,7 @@ function CIsItem(object)
     return false
 end
 
-function GetLevel(guid)
+function EntityHelpers.GetLevel(guid)
     local entity = UuidToHandle(guid)
     if not entity then
         return nil
@@ -205,7 +207,7 @@ function GetLevel(guid)
     return level
 end
 
-function CGetHostCharacter()
+function RBGetHostCharacter()
     if Ext.IsServer() then
         return Osi.GetHostCharacter() --[[@as GUIDSTRING]]
     end
@@ -217,17 +219,17 @@ function CGetHostCharacter()
     end
 end
 
-function TakeTailTemplate(templateId)
+function EntityHelpers.TakeTailTemplate(templateId)
     if not templateId or templateId == "" then
         return templateId
     end
     if #templateId > 36 then
-        return TakeTail(templateId, 36)
+        return RBStringUtils.TakeTail(templateId, 36)
     end
     return templateId
 end
 
-function GetEntityPosition(handle)
+function EntityHelpers.GetEntityPosition(handle)
     if not handle then
         return nil, nil, nil
     end
@@ -242,7 +244,7 @@ function GetEntityPosition(handle)
     return x, y, z
 end
 
-function GetEntityRotation(handle)
+function EntityHelpers.GetEntityRotation(handle)
     if not handle then
         return nil, nil, nil, nil
     end
@@ -257,7 +259,7 @@ function GetEntityRotation(handle)
     return qx, qy, qz, qw
 end
 
-function GetEntityScale(handle)
+function EntityHelpers.GetEntityScale(handle)
     if not handle then
         return nil, nil, nil
     end
@@ -275,7 +277,7 @@ end
 ---@param handle EntityHandle
 ---@param rot any
 ---@return boolean
-function SetEntityRotation(handle, rot)
+function EntityHelpers.SetEntityRotation(handle, rot)
     local entity = handle
     if not entity or not entity.Transform or not entity.Transform.Transform then
         return false
@@ -288,18 +290,20 @@ function SetEntityRotation(handle, rot)
     return true
 end
 
+
+
 --- @param uuid string
 --- @return number|nil qx
 --- @return number|nil qy
 --- @return number|nil qz
 --- @return number|nil qw
-function GetQuatRotation(uuid)
+function EntityHelpers.GetQuatRotation(uuid)
     if not uuid then
         return nil, nil, nil, nil
     end
 
-    if IsCamera(uuid) then return GetCameraRotation(uuid) end
-    if IsPartyMember(uuid) then return GetPartyMemberRotation(uuid) end
+    if RBUtils.IsCamera(uuid) then return CameraHelpers.GetCameraRotation(uuid) end
+    if EntityHelpers.IsPartyMember(uuid) then return declare.GetPartyMemberRotation(uuid) end
 
     local entity = UuidToHandle(uuid)
     if not entity then
@@ -310,20 +314,20 @@ function GetQuatRotation(uuid)
         return VisualHelpers.GetVisualRotation(entity)
     end
 
-    return GetEntityRotation(entity)
+    return EntityHelpers.GetEntityRotation(entity)
 end
 
 --- @param guid string
 --- @return number|nil x
 --- @return number|nil y
 --- @return number|nil z
-function CGetPosition(guid)
+function RBGetPosition(guid)
     if not guid then
         return nil, nil, nil
     end
 
-    if IsCamera(guid) then return GetCameraPosition(guid) end
-    if IsPartyMember(guid) then return GetPartyMemberPosition(guid) end
+    if RBUtils.IsCamera(guid) then return CameraHelpers.GetCameraPosition(guid) end
+    if EntityHelpers.IsPartyMember(guid) then return declare.GetPartyMemberPosition(guid) end
 
     if Ext.IsServer() then
         return Osi.GetPosition(guid) --[[@as number, number, number]]
@@ -339,11 +343,11 @@ function CGetPosition(guid)
         return VisualHelpers.GetVisualPosition(entity)
     end
 
-    return GetEntityPosition(entity)
+    return EntityHelpers.GetEntityPosition(entity)
 end
 
-function CGetRotation(uuid)
-    local qx, qy, qz, qw = GetQuatRotation(uuid)
+function RBGetRotation(uuid)
+    local qx, qy, qz, qw = EntityHelpers.GetQuatRotation(uuid)
     if not qx or not qy or not qz or not qw then
         return nil, nil, nil
     end
@@ -351,12 +355,12 @@ function CGetRotation(uuid)
     return qx, qy, qz, qw
 end
 
-function CGetScale(guid)
+function RBGetScale(guid)
     if not guid then
         return nil, nil, nil
     end
 
-    if IsCamera(guid) then return 1, 1, 1 end
+    if RBUtils.IsCamera(guid) then return 1, 1, 1 end
 
     local entity = UuidToHandle(guid)
     if not entity then
@@ -376,11 +380,11 @@ function CGetScale(guid)
 end
 
 function GetHostPosition()
-    return CGetPosition(CGetHostCharacter())
+    return RBGetPosition(RBGetHostCharacter())
 end
 
 --- @return GUIDSTRING[]
-function GetAllPartyMembers()
+function EntityHelpers.GetAllPartyMembers()
     local partyMembers = {}
     local entities = Ext.Entity.GetAllEntitiesWithComponent("PartyMember")
     for _, entity in ipairs(entities) do
@@ -394,7 +398,7 @@ function GetAllPartyMembers()
     return partyMembers
 end
 
-function CIsTaggedProp(guid)
+function EntityHelpers.IsTaggedProp(guid)
     local entity = UuidToHandle(guid)
 
     if not entity then
@@ -411,7 +415,7 @@ function CIsTaggedProp(guid)
     return false
 end
 
-function CClearTag(guid, tag)
+function EntityHelpers.ClearTag(guid, tag)
     local entity = UuidToHandle(guid)
     if not entity then
         return false
@@ -427,18 +431,9 @@ function CClearTag(guid, tag)
     return true
 end
 
-function IsItem(guid)
-    local entity = UuidToHandle(guid)
-    if not entity then
-        return false
-    end
-
-    return entity.IsItem ~= nil and true or false
-end
-
 --- @param uuid EntityHandle|GUIDSTRING
 --- @return boolean
-function IsPartyMember(uuid)
+function EntityHelpers.IsPartyMember(uuid)
     local entity = nil
     if type(uuid) == "string" then
         entity = UuidToHandle(uuid)
@@ -453,7 +448,7 @@ function IsPartyMember(uuid)
 end
 
 --- @return string[]
-function GetAllUuidsWithComponent(componentName)
+function EntityHelpers.GetAllUuidsWithComponent(componentName)
     local entities = Ext.Entity.GetAllEntitiesWithComponent(componentName)
     if not entities or #entities == 0 then
         --Warning("No entities found with component: " .. componentName)
@@ -471,7 +466,7 @@ function GetAllUuidsWithComponent(componentName)
     return uuids
 end
 
-function IsSpawned(uuid)
+function EntityHelpers.IsSpawned(uuid)
     if not uuid or uuid == "" then return false end
 
     if RB_FlagHelpers.HasFlag(uuid, "IsSpawned") then
@@ -479,12 +474,12 @@ function IsSpawned(uuid)
     end
 
     if Ext.IsClient() or true then
-        return CIsTaggedProp(uuid)
+        return EntityHelpers.IsTaggedProp(uuid)
     end
     return Osi.IsTagged(uuid, RB_PROP_TAG) == 1
 end
 
-function IsGizmo(uuid)
+function EntityHelpers.IsGizmo(uuid)
     if not uuid or uuid == "" then return false end
 
     if RB_FlagHelpers.HasFlag(uuid, "IsGizmo") then
@@ -507,40 +502,40 @@ function IsGizmo(uuid)
     return Osi.IsTagged(uuid, RB_GIZMO_TAG) == 1
 end
 
-function GetAllSpawned()
+function EntityHelpers.GetAllSpawned()
     local props = {}
     local AllUuids = Ext.Vars.GetEntitiesWithVariable(RB_FLAG_FIELD)
 
     if not AllUuids or #AllUuids == 0 then
-        AllUuids = GetAllUuidsWithComponent("Tag")
+        AllUuids = EntityHelpers.GetAllUuidsWithComponent("Tag")
     end
 
     for _, uuid in ipairs(AllUuids) do
-        if IsSpawned(uuid) then
+        if EntityHelpers.IsSpawned(uuid) then
             table.insert(props, uuid)
         end
     end
     return props
 end
 
-function BF_GetAllSpawned()
+function EntityHelpers.BF_GetAllSpawned()
     local props = {}
-    local AllUuids = GetAllUuidsWithComponent("Tag")
+    local AllUuids = EntityHelpers.GetAllUuidsWithComponent("Tag")
 
     for _, uuid in ipairs(AllUuids) do
-        if IsSpawned(uuid) then
+        if EntityHelpers.IsSpawned(uuid) then
             table.insert(props, uuid)
         end
     end
     return props
 end
 
-function GetAllGizmos()
+function EntityHelpers.GetAllGizmos()
     local gizmos = {}
     local AllUuids = Ext.Vars.GetEntitiesWithVariable(RB_FLAG_FIELD)
 
     for _, uuid in ipairs(AllUuids) do
-        if IsGizmo(uuid) then
+        if EntityHelpers.IsGizmo(uuid) then
             table.insert(gizmos, uuid)
         end
     end
@@ -548,12 +543,12 @@ function GetAllGizmos()
     return gizmos
 end
 
-function BF_GetAllGizmos()
+function EntityHelpers.BF_GetAllGizmos()
     local gizmos = {}
-    local AllUuids = GetAllUuidsWithComponent("Tag")
+    local AllUuids = EntityHelpers.GetAllUuidsWithComponent("Tag")
 
     for _, uuid in ipairs(AllUuids) do
-        if IsGizmo(uuid) then
+        if EntityHelpers.IsGizmo(uuid) then
             table.insert(gizmos, uuid)
         end
     end
@@ -561,9 +556,9 @@ function BF_GetAllGizmos()
     return gizmos
 end
 
-function GetDistance(uuid1, uuid2)
-    local x1, y1, z1 = CGetPosition(uuid1)
-    local x2, y2, z2 = CGetPosition(uuid2)
+function EntityHelpers.GetDistance(uuid1, uuid2)
+    local x1, y1, z1 = RBGetPosition(uuid1)
+    local x2, y2, z2 = RBGetPosition(uuid2)
     if not x1 or not y1 or not z1 or not x2 or not y2 or not z2 then
         --Error("GetDistance: Invalid position data for UUIDs: " .. tostring(uuid1) .. " and " .. tostring(uuid2))
         return nil
@@ -571,7 +566,7 @@ function GetDistance(uuid1, uuid2)
     return Ext.Math.Distance({ x1, y1, z1 }, { x2, y2, z2 })
 end
 
-function IsInInventory(holder, guid)
+function EntityHelpers.IsInInventory(holder, guid)
     local holderEntity = UuidToHandle(holder)
     local itemEntity = UuidToHandle(guid)
     if itemEntity ~= nil and holderEntity ~= nil then
@@ -598,15 +593,15 @@ end
 ---@param pos Vec3
 ---@param radius number
 ---@return table<number, {Entity:EntityHandle, Guid:string, Distance:number, DisplayName:string}>
-function GetNearbyCharactersAndItems(pos, radius)
+function EntityHelpers.GetNearbyCharactersAndItems(pos, radius)
     radius = radius or 18
     local nearbyEntities = {}
 
     for _, entity in pairs(Ext.Entity.GetEntitiesAroundPosition(pos, radius)) do
         local guid = HandleToUuid(entity)
-        if IsGizmo(guid) then goto continue end
+        if EntityHelpers.IsGizmo(guid) then goto continue end
         if not guid then goto continue end
-        local targetPos = { CGetPosition(guid) }
+        local targetPos = { RBGetPosition(guid) }
         local distance = 0
         if #targetPos < 3 then
             Warning("Failed to get [" .. guid .. "] Position")     
@@ -630,7 +625,7 @@ function GetNearbyCharactersAndItems(pos, radius)
 end
 
 --- @return EntityHandle|nil
-function GetCamera()
+function RBGetCamera()
     local Entities = Ext.Entity.GetAllEntitiesWithComponent("Camera")
     local returnCamera = nil
     local allActiveCameras = {}
@@ -650,8 +645,9 @@ function GetCamera()
     return returnCamera
 end
 
-function GetCameraController()
-    local camera = GetCamera()
+--- @return RfCameraController?
+function RBGetCameraController()
+    local camera = RBGetCamera()
     if not camera or not camera.Camera then
         return nil
     end
@@ -660,7 +656,10 @@ end
 
 -- Dirty Workaround
 
-CameraSymbol = "__UserCamera__"
+CameraHelpers = CameraHelpers or {}
+DummyHelpers = DummyHelpers or {}
+
+CAMERA_SYMBOL = "__UserCamera__"
 
 local ServerCameraPosition = {}
 local ServerCameraRotation = {}
@@ -669,14 +668,14 @@ local ServerDummyRotation = {}
 local ServerCameraForward = {}
 local ClientDummyEntity = {}
 
-function IsServerCameraValid(uuid)
+function CameraHelpers.IsServerCameraValid(uuid)
     if Ext.IsServer() then
         return ServerCameraPosition[uuid] ~= nil and ServerCameraRotation[uuid] ~= nil
     end
     return false
 end
 
-function GetCameraPosition(UserID)
+function CameraHelpers.GetCameraPosition(UserID)
     if Ext.IsServer() then
         local serverData = ServerCameraPosition[UserID]
         if not serverData or #serverData < 3 then
@@ -686,22 +685,22 @@ function GetCameraPosition(UserID)
         return serverData[1], serverData[2], serverData[3]
     end
 
-    local camera = GetCamera()
+    local camera = RBGetCamera()
     if not camera then
         return nil, nil, nil
     end
 
-    return GetEntityPosition(camera)
+    return EntityHelpers.GetEntityPosition(camera)
 end
 
-function SetCameraPosition(UserID, pos)
+function CameraHelpers.SetCameraPosition(UserID, pos)
     if Ext.IsServer() then
         ServerCameraPosition[UserID] = pos
         return
     end
 end
 
-function GetCameraRotation(UserID)
+function CameraHelpers.GetCameraRotation(UserID)
     if Ext.IsServer() then
         local serverData = ServerCameraRotation[UserID]
         if not serverData or #serverData < 4 then
@@ -711,19 +710,12 @@ function GetCameraRotation(UserID)
         return serverData[1] or 0, serverData[2] or 0, serverData[3] or 0, serverData[4] or 1
     end
 
-    local camera = GetCamera()
+    local camera = RBGetCamera()
     if not camera then
         return nil, nil, nil, nil
     end
 
-    return GetEntityRotation(camera)
-end
-
-function SetCameraForward(UserID, forward)
-    if Ext.IsServer() then
-        ServerCameraForward[UserID] = forward
-        return
-    end
+    return EntityHelpers.GetEntityRotation(camera)
 end
 
 --- @param cameraHandle EntityHandle?
@@ -734,7 +726,7 @@ function GetCameraForward(cameraHandle, userID)
     end
 
     if not cameraHandle then
-        cameraHandle = GetCamera()
+        cameraHandle = RBGetCamera()
     end
     if not cameraHandle or not cameraHandle.Camera then
         Error("GetCameraForward: Invalid camera entity or missing Camera component")
@@ -748,18 +740,18 @@ function GetCameraForward(cameraHandle, userID)
     return forward --[[@as Vec3]]
 end
 
-function SetCameraRotation(UserID, rot)
+function CameraHelpers.SetCameraRotation(UserID, rot)
     if Ext.IsServer() then
         ServerCameraRotation[UserID] = rot
         return
     end
 end
 
-function GetPartyMemberPosition(uuid)
+function declare.GetPartyMemberPosition(uuid)
     if Ext.IsServer() then
         if ServerDummyPosition[uuid] then
             local pos = ServerDummyPosition[uuid]
-            if not pos then return GetEntityPosition(UuidToHandle(uuid)) end
+            if not pos then return EntityHelpers.GetEntityPosition(UuidToHandle(uuid)) end
             return pos[1], pos[2], pos[3]
         end
     end
@@ -774,10 +766,10 @@ function GetPartyMemberPosition(uuid)
         end
     end
 
-    return GetEntityPosition(UuidToHandle(uuid))
+    return EntityHelpers.GetEntityPosition(UuidToHandle(uuid))
 end
 
-function SetDummyPosition(uuid, pos)
+function DummyHelpers.SetDummyPosition(uuid, pos)
     if Ext.IsServer() then
         ServerDummyPosition[uuid] = pos
         return
@@ -795,7 +787,7 @@ function SetDummyPosition(uuid, pos)
     end
 end
 
-function GetPartyMemberRotation(uuid)
+function declare.GetPartyMemberRotation(uuid)
     if Ext.IsServer() then
         if ServerDummyRotation[uuid] then
             local rot = ServerDummyRotation[uuid]
@@ -811,11 +803,11 @@ function GetPartyMemberRotation(uuid)
         end
     end
 
-    local p, y, r, w = GetEntityRotation(UuidToHandle(uuid))
+    local p, y, r, w = EntityHelpers.GetEntityRotation(UuidToHandle(uuid))
     return p, y, r, w
 end
 
-function SetDummyRotation(uuid, rot)
+function DummyHelpers.SetDummyRotation(uuid, rot)
     if Ext.IsServer() then
         ServerDummyRotation[uuid] = rot
         return
@@ -833,7 +825,7 @@ function SetDummyRotation(uuid, rot)
     end
 end
 
-function ClearDummyData()
+function DummyHelpers.ClearDummyData()
     if Ext.IsServer() then
         ServerDummyPosition = {}
         ServerDummyRotation = {}
@@ -846,16 +838,16 @@ function ClearDummyData()
 end
 
 if Ext.IsClient() then
-    function SetClientDummyEntity(uuid, entity)
+    function DummyHelpers.SetClientDummyEntity(uuid, entity)
         ClientDummyEntity[uuid] = entity
     end
 
-    function GetAllDummies()
+    function DummyHelpers.GetAllDummies()
         return ClientDummyEntity
     end
 
     --- @return EntityHandle|nil
-    function GetDummyByUuid(uuid)
+    function DummyHelpers.GetDummyByUuid(uuid)
         return ClientDummyEntity[uuid]
     end
 end

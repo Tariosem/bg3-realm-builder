@@ -90,11 +90,11 @@ end
 
 function MovableProxy:SaveTransform()
     self.StoredTransform = self:GetTransform()
-    return DeepCopy(self.StoredTransform)
+    return RBUtils.DeepCopy(self.StoredTransform)
 end
 
 function MovableProxy:GetSavedTransform()
-    return DeepCopy(self.StoredTransform) or self:GetTransform()
+    return RBUtils.DeepCopy(self.StoredTransform) or self:GetTransform()
 end
 
 function MovableProxy:RestoreTransform()
@@ -263,7 +263,7 @@ function SceneryMovableProxy:Render(parent)
     local template = Ext.Resource.Get(self.Entity.Scenery.Visual, "Visual") --[[@as ResourceVisualResource|ResourceEffectResource]]
 
     parent:AddImage(RB_ICONS.Scenery, IMAGESIZE.SMALL)
-    parent:AddText(SplitByString(GetLastPath(template.Template), ".")[1]).SameLine = true
+    parent:AddText(RBStringUtils.SplitByString(RBStringUtils.GetLastPath(template.Template), ".")[1]).SameLine = true
     local uuid = parent:AddText("(" .. self.Entity.Scenery.Uuid .. ")")
     uuid.SameLine = true
     uuid:SetColor("Text", {0.5,0.5,0.5,0.6})
@@ -317,7 +317,7 @@ local movabelCache = {}
 
 local function clearCache()
     for guid,_ in pairs(movabelCache) do
-        if not EntityExists(guid) and not SceneryRegistry[guid] then
+        if not EntityHelpers.EntityExists(guid) and not SceneryRegistry[guid] then
             movabelCache[guid] = nil
         end
     end
@@ -326,7 +326,7 @@ end
 --- @param guid string
 --- @return RB_MovableProxy?
 function MovableProxy.CreateByGuid(guid)
-    if not IsUuid(guid) then return nil end
+    if not RBUtils.IsUuid(guid) then return nil end
     clearCache()
     local proxy = movabelCache[guid]
     if proxy then
@@ -341,9 +341,9 @@ function MovableProxy.CreateByGuid(guid)
         end
     end
     if not proxy then
-        if CIsCharacter(guid) then
+        if EntityHelpers.IsCharacter(guid) then
             proxy = CharacterMovableProxy.new(guid)
-        elseif CIsItem(guid) then
+        elseif EntityHelpers.IsItem(guid) then
             proxy = ItemMovableProxy.new(guid)
         elseif SceneryRegistry[guid] then
             proxy = SceneryMovableProxy.new(SceneryRegistry[guid].Scenery)

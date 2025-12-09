@@ -22,12 +22,12 @@ function TemplateExportMenu.new(entDatas)
 end
 
 function TemplateExportMenu:Render()
-    local panel = RegisterWindow("generic", "Realm Builder - Template Exporter", "Template Exporter", self)
+    local panel = WindowManager.RegisterWindow("generic", "Realm Builder - Template Exporter", "Template Exporter", self)
     panel.Closeable = true
 
     panel.OnClose = function()
         self.isValid = false
-        DeleteWindow(panel)
+        WindowManager.DeleteWindow(panel)
     end
 
     local exportSettings = {
@@ -135,7 +135,7 @@ function TemplateExportMenu:RenderExportEntities(panel)
         local function spawnFunc()
             for guid, entry in pairs(self.ExportDatas) do
                 self:VisualizeExportEntry(guid, -1)
-                local templateObj = Ext.Template.GetTemplate(TakeTailTemplate(entry.TemplateId))
+                local templateObj = Ext.Template.GetTemplate(EntityHelpers.TakeTailTemplate(entry.TemplateId))
                 if templateObj.TemplateType == "scenery" then
                     Timer:Ticks(30, function (timerID)
                         if not thread then return end
@@ -177,7 +177,7 @@ function TemplateExportMenu:RenderExportEntities(panel)
         local typeRow = typeTab:AddRow()
 
         local ents = filtered[templateType]
-        for guid, entData in SortedPairs(ents, function(a, b)
+        for guid, entData in RBUtils.SortedPairs(ents, function(a, b)
             local nameA = ents[a].DisplayName or ents[a].TemplateId
             local nameB = ents[b].DisplayName or ents[b].TemplateId
             return nameA < nameB
@@ -204,7 +204,7 @@ end
 --- @param cell ExtuiTableCell
 --- @param entData EntityData
 function TemplateExportMenu:RenderTemplateEntry(cell, entData)
-    local templateObj = Ext.Template.GetTemplate(TakeTailTemplate(entData.TemplateId))
+    local templateObj = Ext.Template.GetTemplate(EntityHelpers.TakeTailTemplate(entData.TemplateId))
     if not templateObj then
         Warning("[TemplateExportMenu] Failed to get template object for template ID: " .. tostring(entData.TemplateId))
         return nil
@@ -299,7 +299,7 @@ function TemplateExportMenu:RenderTemplateEntry(cell, entData)
                 local vCnt = #value
                 local input = valueCell:AddInputScalar("##" .. key .. entData.Guid)
                 input.Components = vCnt
-                input.Value = ToVec4(value)
+                input.Value = RBUtils.ToVec4(value)
                 input.ReadOnly = readonlyAttrs[key] or false
 
                 input.OnChange = function(inp)
@@ -409,7 +409,7 @@ function TemplateExportMenu:RenderTemplateEntry(cell, entData)
                 end)
             end
 
-            for attrName, defaultValue in SortedPairs(cached) do
+            for attrName, defaultValue in RBUtils.SortedPairs(cached) do
                 local attRow = configTab:AddRow()
                 local attrKeyCell = attRow:AddCell()
                 local attrValueCell = attRow:AddCell()
@@ -419,7 +419,7 @@ function TemplateExportMenu:RenderTemplateEntry(cell, entData)
                 if type(defaultValue) == "table" then
                     local slider = attrValueCell:AddSlider("##" .. attrName .. entData.Guid)
                     slider.Components = #defaultValue
-                    slider.Value = ToVec4(defaultValue)
+                    slider.Value = RBUtils.ToVec4(defaultValue)
                     slider.Max = {10, 10, 10, 10}
                     slider.Min = {0, 0, 0, 0}
                     slider.OnChange = function(sld)
@@ -432,7 +432,7 @@ function TemplateExportMenu:RenderTemplateEntry(cell, entData)
                     end
                     local resetBtn = ImguiElements.AddResetButton(attrValueCell, true)
                     resetBtn.OnClick = function()
-                        slider.Value = ToVec4(defaultValue)
+                        slider.Value = RBUtils.ToVec4(defaultValue)
                         cached[attrName] = defaultValue
                     end
                 else
@@ -513,7 +513,7 @@ local function throwExportError(message, exportSettings, progressCallback, co)
     local stack = co and debug.traceback(co, message) or debug.traceback(message)
     Error(stack)
     progressCallback(-1, message)
-    local time = GetFormatTime()
+    local time = RBUtils.GetFormatTime()
     local suc = Ext.IO.SaveFile(RealmPath.GetMapModLogPath(time),
         Ext.Json.Stringify({
             Time = Ext.Timer.ClockTime(),
@@ -547,7 +547,7 @@ function TemplateExportMenu:__export(exportSettings, progressCallback)
     local toBuildCustomVisuals = {} --[[@type table<string, EntityData> ]]
 
     local function isValidTemplateId(templateId)
-        return templateId and templateId ~= "" and Ext.Template.GetTemplate(TakeTailTemplate(templateId)) ~= nil
+        return templateId and templateId ~= "" and Ext.Template.GetTemplate(EntityHelpers.TakeTailTemplate(templateId)) ~= nil
     end
 
     for guid, entData in pairs(exportSettings.Entities) do
@@ -560,7 +560,7 @@ function TemplateExportMenu:__export(exportSettings, progressCallback)
         end
     end
 
-    local exportCnt = CountMap(toExport)
+    local exportCnt = RBTableUtils.CountMap(toExport)
 
     local actCnt =
         1 +               -- build meta.lsx
@@ -613,7 +613,7 @@ function TemplateExportMenu:__export(exportSettings, progressCallback)
         yield()
     end
 
-    local modInternalName = ValidateFolderName(exportSettings.ModName)
+    local modInternalName = RBUtils.ValidateFolderName(exportSettings.ModName)
     local modUuid = nil
     local modCache = RealmPath.GetMapModCachePath()
     local file = Ext.IO.LoadFile(modCache)
@@ -621,7 +621,7 @@ function TemplateExportMenu:__export(exportSettings, progressCallback)
     modUuid = modCachedUuids[modInternalName]
 
     if not modUuid then
-        modUuid = Uuid_v4()
+        modUuid = RBUtils.Uuid_v4()
         modCachedUuids[modInternalName] = modUuid
         suc = Ext.IO.SaveFile(modCache, Ext.Json.Stringify(modCachedUuids))
         if not suc then
@@ -672,22 +672,22 @@ function TemplateExportMenu:__export(exportSettings, progressCallback)
     local templateNameCnt = {}
 
     for guid, entData in pairs(toExport) do
-        local templateObj = Ext.Template.GetTemplate(TakeTailTemplate(entData.TemplateId))
+        local templateObj = Ext.Template.GetTemplate(EntityHelpers.TakeTailTemplate(entData.TemplateId))
         local baseName = templateObj.Name or "Template"
         templateNameCnt[baseName] = (templateNameCnt[baseName] or 0) + 1
-        intenalNameMap[guid] = modInternalName .. "_" .. baseName .. "_" .. PadNumber(templateNameCnt[baseName], 3) 
+        intenalNameMap[guid] = modInternalName .. "_" .. baseName .. "_" .. RBStringUtils.PadNumber(templateNameCnt[baseName], 3) 
     end
 
     --- map of original material id -> generated material id -> param set
     local matIdToParams = {} --[[@type table<string, table<string, RB_ParameterSet>> ]]
     local templateToVisual = {} -- origin template -> generated rootTemplateId ->  linkId -> materialId
     for guid, entData in pairs(toBuildCustomVisuals) do
-        local overrideVisualID = Uuid_v4()
+        local overrideVisualID = RBUtils.Uuid_v4()
         local internalName = intenalNameMap[guid]
 
         if entData.TemplateType == "character" then
             -- for character, simply build material preset and apply to character visual
-            local presetUuid = Uuid_v4()
+            local presetUuid = RBUtils.Uuid_v4()
             local presetInternalName = internalName .. "_CharacterPreset_" .. presetUuid
 
             --- build preset resource
@@ -754,7 +754,7 @@ function TemplateExportMenu:__export(exportSettings, progressCallback)
                             linkIdToMatId[linkId] = generated
                         else
                             --- create new
-                            generated = Uuid_v4()
+                            generated = RBUtils.Uuid_v4()
                             existingOriMatIdToParams[generated] = paramSet
                             matResToBuild[generated] = {
                                 OriginalMatId = objDesc.MaterialID,
@@ -811,7 +811,7 @@ function TemplateExportMenu:__export(exportSettings, progressCallback)
                 saveFile(visualPath, visualBank:Stringify({ AutoFindRoot = true }))
 
                 --- build root template with visual override
-                local overrideTemplateID = Uuid_v4()
+                local overrideTemplateID = RBUtils.Uuid_v4()
                 local overrideTemplateInternalName = internalName .. "_VisualTemplate"
                 local rootTemplate = LSXHelpers.BuildRootTemplate(entData.TemplateId, overrideTemplateID,
                     overrideTemplateInternalName, { VisualTemplate = overrideVisualID })

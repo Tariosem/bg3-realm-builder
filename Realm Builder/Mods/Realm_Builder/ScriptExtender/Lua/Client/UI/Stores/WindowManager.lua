@@ -1,5 +1,13 @@
 --- @class WindowManager
---- @field RegisterWindow fun(guid: string, displayName: string, iType: string, instance: any, pos: vec2 | nil, size: vec2 | nil): ExtuiWindow | nil
+--- @field RegisterWindow fun(guid: string, displayName: string, iType: string, instance: any, pos: vec2 | nil, size: vec2 | nil): ExtuiWindow
+--- @field DeleteWindow fun(handle: ExtuiWindow): boolean
+--- @field IsWindowValid fun(handle: ExtuiWindow): boolean
+--- @field CheckWindowExists fun(guid: string, iType: string): boolean, Class|nil
+--- @field GetAllValidWindows fun(): ExtuiWindow[]
+--- @field SetAllWindowsStyle fun(styleVar: GuiStyleVar, paramA: number|vec2, paramB: number|nil)
+--- @field SetAllWindowsColor fun(guiColor: GuiColor, vec4: vec4)
+--- @field ApplyGuiParams fun(window: ExtuiWindow)
+WindowManager = WindowManager or {}
 
 --- @class WindowEntry
 --- @field window ExtuiWindow
@@ -7,9 +15,7 @@
 --- @field instance Class
 --- @field isValid boolean
 
---- @alias WindowMap table<string, WindowEntry[]>
-
---- @type WindowMap
+--- @type table<string, WindowEntry[]>
 local WindowMap = {}
 
 --- @param guid string
@@ -19,7 +25,7 @@ local WindowMap = {}
 --- @param pos vec2 | nil
 --- @param size vec2 | nil
 --- @return ExtuiWindow
-function RegisterWindow(guid, displayName, iType, instance, pos, size)
+function WindowManager.RegisterWindow(guid, displayName, iType, instance, pos, size)
     local screenWH = Ext.ClientIMGUI.GetViewportSize()
     local screenWidth, screenHeight = screenWH[1], screenWH[2]
     if WindowMap[guid] == nil then
@@ -39,7 +45,7 @@ function RegisterWindow(guid, displayName, iType, instance, pos, size)
     for _, win in ipairs(WindowMap[guid]) do
         if win.isValid and win.finalName == finalname then
             Debug("[Window] Window with name " .. finalname .. " already exists for GUID: " .. guid .. ", deleting existing window.")
-            DeleteWindow(win.window)
+            WindowManager.DeleteWindow(win.window)
         end
     end
 
@@ -60,7 +66,7 @@ function RegisterWindow(guid, displayName, iType, instance, pos, size)
     windowHandle:SetStyle("WindowTitleAlign", 0.5)
 
     if guid ~= "Citadel" then
-        ApplyGuiParams(windowHandle)
+        WindowManager.ApplyGuiParams(windowHandle)
     end
 
     if pos[1] + size[1] > screenWidth then
@@ -77,7 +83,7 @@ function RegisterWindow(guid, displayName, iType, instance, pos, size)
     return windowHandle
 end
 
-function DeleteWindow(handle)
+function WindowManager.DeleteWindow(handle)
     for guid, windows in pairs(WindowMap) do
         for i = #windows, 1, -1 do
             local entry = windows[i]
@@ -98,7 +104,7 @@ function DeleteWindow(handle)
     return false
 end
 
-function IsWindowValid(handle)
+function WindowManager.IsWindowValid(handle)
     for guid, windows in pairs(WindowMap) do
         for i = #windows, 1, -1 do
             local entry = windows[i]
@@ -110,7 +116,7 @@ function IsWindowValid(handle)
     return false
 end
 
-function CheckWindowExists(guid, iType)
+function WindowManager.CheckWindowExists(guid, iType)
     if not guid or not iType then
         return false
     end
@@ -131,7 +137,7 @@ function CheckWindowExists(guid, iType)
     return false
 end
 
-function GetAllValidWindows()
+function WindowManager.GetAllValidWindows()
     local validWindows = {}
     for guid, windows in pairs(WindowMap) do
         for _, win in ipairs(windows) do
@@ -146,8 +152,8 @@ function GetAllValidWindows()
     return validWindows
 end
 
-function SetAllWindowsStyle(styleVar, paramA, paramB)
-    local allWindows = GetAllValidWindows()
+function WindowManager.SetAllWindowsStyle(styleVar, paramA, paramB)
+    local allWindows = WindowManager.GetAllValidWindows()
     for _, window in ipairs(allWindows) do
         if window and window.SetStyle then
             window:SetStyle(styleVar, paramA, paramB)
@@ -155,8 +161,8 @@ function SetAllWindowsStyle(styleVar, paramA, paramB)
     end
 end
 
-function SetAllWindowsColor(guiColor, vec4)
-    local allWindows = GetAllValidWindows()
+function WindowManager.SetAllWindowsColor(guiColor, vec4)
+    local allWindows = WindowManager.GetAllValidWindows()
     for _, window in ipairs(allWindows) do
         if window then
             window:SetColor(guiColor, vec4)
@@ -165,7 +171,7 @@ function SetAllWindowsColor(guiColor, vec4)
     end
 end
 
-function ApplyGuiParams(window)
+function WindowManager.ApplyGuiParams(window)
     if not WindowMap["Citadel"] or #WindowMap["Citadel"] == 0 then
         return
     end

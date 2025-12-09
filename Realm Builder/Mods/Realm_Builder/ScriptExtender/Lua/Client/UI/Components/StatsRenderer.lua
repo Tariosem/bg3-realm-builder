@@ -45,7 +45,7 @@ function RenderTokenTexts(parent, tokens, firstAlwaysSameLine)
         
         if token.Icon and not token.TooltipRef then
             icon = parent:AddImage(token.Icon)
-            icon.ImageData.Size = ToVec2(32 * SCALE_FACTOR)
+            icon.ImageData.Size = RBUtils.ToVec2(32 * SCALE_FACTOR)
         end
 
         local label = nil
@@ -64,7 +64,7 @@ function RenderTokenTexts(parent, tokens, firstAlwaysSameLine)
         end
         if token.Style then
             for styleVar, styleVal in pairs(token.Style) do
-                styleVal = type(styleVal) == "number" and styleVal or ToVec2(styleVal)
+                styleVal = type(styleVal) == "number" and styleVal or RBUtils.ToVec2(styleVal)
                 label:SetStyle(styleVar, styleVal[1], styleVal[2])
             end
         end
@@ -121,7 +121,7 @@ local function RenderStatsObjectTitle(statsObj, parent, statType, isTooltip)
     local iconCell = tableRow:AddCell()
 
     local title = nameCell:AddText(displayName)
-    title:SetColor("Text", HIGHLIGHT_COLOR)
+    title:SetColor("Text", UI_COLORS.HighLight)
 
     if statType == "SpellData" then
         local spellLevel = statsObj.Level == 0 and "Cantrips" or GetLoca("Level ") .. tostring(statsObj.Level or "?")
@@ -135,16 +135,16 @@ local function RenderStatsObjectTitle(statsObj, parent, statType, isTooltip)
 
         local subTitle = string.format("%s %s", spellLevel, spellSchool)
         local subTitleText = nameCell:AddText(subTitle)
-        subTitleText:SetColor("Text", SUBTITLE_COLOR)
+        subTitleText:SetColor("Text", UI_COLORS.Subtitle)
     end
 
-    local image = iconCell:AddImage(icon, ToVec2(64 * SCALE_FACTOR))
+    local image = iconCell:AddImage(icon, RBUtils.ToVec2(64 * SCALE_FACTOR))
 
     local _,rightContent = parent:AddDummy(10 * SCALE_FACTOR, 1), parent:AddGroup("StatsDescGroup")
     rightContent.SameLine = true
     descRender(rightContent)
     parent:SetStyle("WindowBorderSize", 2)
-    parent:SetColor("Border", BORDER_COLOR)
+    parent:SetColor("Border", UI_COLORS.Border)
 
 end
 
@@ -161,7 +161,7 @@ local function renderSpellAttrs(spellData, parent)
     end
 
     if spellData.TooltipAttackSave and spellData.TooltipAttackSave ~= "" then
-        local saves = SplitBySemicolon(spellData.TooltipAttackSave, true)
+        local saves = RBStringUtils.SplitBySemicolon(spellData.TooltipAttackSave, true)
         if #saves > 0 then
             for _, save in ipairs(saves) do
                 if save:find("Attack") then
@@ -194,15 +194,15 @@ local function renderSpellAttrs(spellData, parent)
     local purpleCell = purpleRow:AddCell()
     purpleTable.RowBg = true
     purpleTable.Borders = true
-    purpleTable:SetColor("TableRowBg", HexToRGBA("FF352B3F"))
-    purpleTable:SetColor("TableBorderStrong", HexToRGBA("FF6A4C93"))
+    purpleTable:SetColor("TableRowBg", ColorUtils.HexToRGBA("FF352B3F"))
+    purpleTable:SetColor("TableBorderStrong", ColorUtils.HexToRGBA("FF6A4C93"))
 
     if spellData.UseCosts and spellData.UseCosts ~= "" then
-        local costs = SplitBySemicolon(spellData.UseCosts, true)
+        local costs = RBStringUtils.SplitBySemicolon(spellData.UseCosts, true)
         if #costs > 0 then
             for i, cost in ipairs(costs) do
                 if cost:sub(1, 15) == "SpellSlotsGroup" then
-                    cost = " Level " .. TakeTail(cost, 1) .. " Spell Slot" 
+                    cost = " Level " .. RBStringUtils.TakeTail(cost, 1) .. " Spell Slot" 
                 elseif cost:sub(1, 16) == "WarlockSpellSlot" then
                     cost = " Warlock Spell Slot"
                 end
@@ -231,11 +231,11 @@ function RenderStatsObject(statsObj, type, nameOverride)
         --- @type ExtuiImageButton
         local image = nil
         if useTextLink then
-            image = parent:AddImage(icon, ToVec2(38 * SCALE_FACTOR))
+            image = parent:AddImage(icon, RBUtils.ToVec2(38 * SCALE_FACTOR))
         else
-            image = parent:AddImageButton(Uuid_v4(), icon, ToVec2(38 * SCALE_FACTOR))
+            image = parent:AddImageButton(RBUtils.Uuid_v4(), icon, RBUtils.ToVec2(38 * SCALE_FACTOR))
         end
-        image:SetColor("Button", ToVec4(0))
+        image:SetColor("Button", RBUtils.ToVec4(0))
         image.SameLine = true
         local popup = nil
         local name = nil
@@ -243,7 +243,7 @@ function RenderStatsObject(statsObj, type, nameOverride)
         local displayName = nameOverride or GetLoca(statsObj.DisplayName) or "Unknown"
         if useTextLink then
             name = parent:AddTextLink(displayName)
-            name.IDContext = Uuid_v4()
+            name.IDContext = RBUtils.Uuid_v4()
             refEle = name
         else
             name = parent:AddText(displayName)
@@ -261,7 +261,7 @@ function RenderStatsObject(statsObj, type, nameOverride)
         end
 
         refEle.OnClick = function()
-            popup = parent:AddPopup((statsObj.DisplayName or "Spell") .. "##" .. Uuid_v4())
+            popup = parent:AddPopup((statsObj.DisplayName or "Spell") .. "##" .. RBUtils.Uuid_v4())
             RenderStatsObjectTitle(statsObj, popup, type)
 
             if type == "SpellData" then

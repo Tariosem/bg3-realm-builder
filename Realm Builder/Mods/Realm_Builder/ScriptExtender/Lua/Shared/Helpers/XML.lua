@@ -58,7 +58,7 @@ local defaultStringifyOptions = {
 }
 
 local function validateStringifyOptions(opts)
-    local validOpts = DeepCopy(defaultStringifyOptions)
+    local validOpts = RBUtils.DeepCopy(defaultStringifyOptions)
     if type(opts) ~= "table" then
         return validOpts
     end
@@ -221,7 +221,7 @@ local function throwXMLStringifyError(node, message)
         Stack = debug.traceback(),
         Node = node,
     }
-    Ext.IO.SaveFile(RealmPath.GetXMLErrorLogPath(GetFormatTime()),
+    Ext.IO.SaveFile(RealmPath.GetXMLErrorLogPath(RBUtils.GetFormatTime()),
         Ext.Json.Stringify(errLog,
             {
                 Beautify = true,

@@ -36,7 +36,7 @@ function Quat.Identity() return Quat.new(0,0,0,1) end
 function Quat:Inverse() return Quat.new(Ext.Math.QuatInverse(self)) end
 function Quat:Normalize() return Quat.new(Ext.Math.QuatNormalize(self)) end
 function Quat:Rotate(v) return Vec3.new(Ext.Math.QuatRotate(self, v)) end
-function Quat:ToEuler() return QuatToEuler(self) end
+function Quat:ToEuler() return MathHelpers.QuatToEuler(self) end
 
 function Quat:Sanitize(default, limit)
     default = Quat.new(default or {0, 0, 0, 1})

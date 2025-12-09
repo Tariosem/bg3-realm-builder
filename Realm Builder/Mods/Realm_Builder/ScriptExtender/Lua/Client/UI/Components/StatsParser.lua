@@ -26,7 +26,7 @@ function StatsParser:ParseString(boostStr)
         local i = 1
 
         if toSplit:find(";") then
-            return SplitBySemicolon(toSplit, true)
+            return RBStringUtils.SplitBySemicolon(toSplit, true)
         end
 
         while i <= #toSplit do
@@ -166,7 +166,7 @@ local function ParseLSTextToTokens(input)
         if typeAttr and tooltip and typeAttr ~= "ActionResource" then
             table.insert(results, { Text = innerText, TooltipRef = { Type = typeAttr .. "Data" , Name = tooltip } })
         elseif tooltip then
-            table.insert(results, { Text = innerText, Color = HIGHLIGHT_COLOR })
+            table.insert(results, { Text = innerText, Color = UI_COLORS.HighLight })
         else
             table.insert(results, { Text = innerText })
         end
@@ -183,7 +183,7 @@ local function ParseLSTextToTokens(input)
 
     for _, token in ipairs(results) do
         if token.Text then
-            token.Text = StripLSTags(token.Text)
+            token.Text = RBStringUtils.StripLSTags(token.Text)
         end
     end
 
@@ -283,7 +283,7 @@ function StatsParser:ParseParams(descParams)
         --Warning("No handler for param", param.name)
         --Warning("Storing unknown param", param.name, "at index", nextIndex)
         --Info("Original params string:", descParams)
-        parsed[nextIndex] = { { Text = param.name, Color = HIGHLIGHT_COLOR } }
+        parsed[nextIndex] = { { Text = param.name, Color = UI_COLORS.HighLight } }
         nextIndex = nextIndex + 1
         ::continue::
     end
@@ -401,8 +401,8 @@ function StatsParser:ParseDesc(desc, descRef, descParams, depth, isTooltip)
 
     local function render(parent, wrapPos)
         parent:SetStyle("WindowBorderSize", 2)
-        parent:SetColor("Border", HexToRGBA("FFC69800"))
-        local wrappedTokens = WrapTextTokens(tokens, wrapPos or 60)
+        parent:SetColor("Border", ColorUtils.HexToRGBA("FFC69800"))
+        local wrappedTokens = RBUtils.WrapTextTokens(tokens, wrapPos or 60)
 
         RenderTokenTexts(parent, wrappedTokens)
     end
@@ -464,7 +464,7 @@ end
 function StatsParser:ParsePassives(passives)
     local allRenders = {}
 
-    local splitPass = SplitBySemicolon(passives or "")
+    local splitPass = RBStringUtils.SplitBySemicolon(passives or "")
     for _, pass in ipairs(splitPass) do
         local statsObj = Ext.Stats.Get(pass) --[[@as PassiveData]]
         if statsObj then
@@ -477,19 +477,19 @@ function StatsParser:ParsePassives(passives)
             local function render(parent)
                 local bulletText = parent:AddBulletText("")
                 if icon ~= "Item_Unknown" then
-                    local image = parent:AddImage(icon, ToVec2(48 * SCALE_FACTOR))
+                    local image = parent:AddImage(icon, RBUtils.ToVec2(48 * SCALE_FACTOR))
                     image.SameLine = true
                 else
                 end
-                local name = parent:AddText(StripLSTags(GetLoca(statsObj.DisplayName, pass)))
+                local name = parent:AddText(RBStringUtils.StripLSTags(GetLoca(statsObj.DisplayName, pass)))
                 name.SameLine = true
-                name:SetColor("Text", HexToRGBA("FFFFD06A"))
+                name:SetColor("Text", ColorUtils.HexToRGBA("FFFFD06A"))
 
                 local isHidden = table.find(statsObj.Properties, "IsHidden")
                 if isHidden then
                     local hiddenText = parent:AddText(" (Hidden)")
-                    name:SetColor("Text", HexToRGBA("FF888888"))
-                    hiddenText:SetColor("Text", HexToRGBA("FF888888"))
+                    name:SetColor("Text", ColorUtils.HexToRGBA("FF888888"))
+                    hiddenText:SetColor("Text", ColorUtils.HexToRGBA("FF888888"))
                     hiddenText.SameLine = true
                 end
 

@@ -1,4 +1,4 @@
-RequireFiles("Client/UI/Stores/ResourceManager/", {
+RBUtils.RequireFiles("Client/UI/Stores/ResourceManager/", {
     "MultiEffectManager",
     "TextureResourceManager",
     "VisualResourceManager",

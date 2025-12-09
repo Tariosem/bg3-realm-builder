@@ -20,8 +20,8 @@ function TransformToolbar:RegisterKeyInputEvents()
     self.Registered = true
 
     local function singleSelect()
-        local guid = GetPickingGuid()
-        local entity = GetPickingEntity()
+        local guid = PickingUtils.GetPickingGuid()
+        local entity = PickingUtils.GetPickingEntity()
 
         if entity and entity.Scenery and not self.Ignore["Scenery"] then
             guid = entity.Scenery.Uuid
@@ -32,7 +32,7 @@ function TransformToolbar:RegisterKeyInputEvents()
             return
         end
 
-        if CIsCharacter(guid) and self.Ignore["Character"] then
+        if EntityHelpers.IsCharacter(guid) and self.Ignore["Character"] then
             return
         end
 
@@ -73,7 +73,7 @@ function TransformToolbar:RegisterKeyInputEvents()
     ttMod:AddModuleCondition(restrainInputing)
     buMod:AddModuleCondition(restrainInputing)
 
-    self.Subscriptions["NumericInput"] = SubscribeKeyInput({}, function(e)
+    self.Subscriptions["NumericInput"] = InputEvents.SubscribeKeyInput({}, function(e)
         if not restrainInputing(e) then return end
         if not restrainOpening(e) then return end
         if e.Repeat then return end
@@ -121,7 +121,7 @@ function TransformToolbar:RegisterKeyInputEvents()
         local targets = RB_GLOBALS.TransformEditor.Target or {}
         if #targets == 0 then return end
 
-        local pos, rot = GetPickingHitPosAndRot()
+        local pos, rot = PickingUtils.GetPickingHitPosAndRot()
         if not pos or not rot then return end
         local minY = math.huge
         local centerXZ = Vec3.new(0,0,0)
@@ -212,7 +212,7 @@ function TransformToolbar:RegisterKeyInputEvents()
     buMod:RegisterEvent("BindTo", function(e)
         if e.Event ~= "KeyDown" then return end
         if not RB_GLOBALS.TransformEditor.Target or #RB_GLOBALS.TransformEditor.Target == 0 then return end
-        local parent = GetPickingGuid()
+        local parent = PickingUtils.GetPickingGuid()
         if not parent or parent == "" then
             Debug("No valid target to bind to")
             return
@@ -269,7 +269,7 @@ function TransformToolbar:RegisterKeyInputEvents()
         end
 
         if #targets == 0 then
-            targets = { GetPickingGuid() }
+            targets = { PickingUtils.GetPickingGuid() }
         end
 
         for guid, popup in pairs(self.BindPopupCache or {}) do
@@ -371,10 +371,10 @@ function TransformToolbar:RegisterTransformEditorEvents()
             avgPos = avgPos + proxy:GetWorldTranslate()
         end
         avgPos = avgPos / #globalEditor.Target
-        CameraMoveToPosition({ avgPos.X, avgPos.Y, avgPos.Z })
+        CameraHelpers.CameraMoveToPosition({ avgPos.X, avgPos.Y, avgPos.Z })
     end)
 
-    self.Subscriptions["ResetTransform"] = SubscribeKeyInput({}, function(e)
+    self.Subscriptions["ResetTransform"] = InputEvents.SubscribeKeyInput({}, function(e)
         if not globalEditor.Target or #globalEditor.Target == 0 then return end
         if globalEditor.IsDragging then return end
         if e.Event ~= "KeyDown" then return end
@@ -383,8 +383,8 @@ function TransformToolbar:RegisterTransformEditorEvents()
 
         local resetTransform = {}
         if e.Key == teMod:GetKeyByEvent("RotateMode").Key then resetTransform.RotationQuat = { 0, 0, 0, 1 } end
-        if e.Key == teMod:GetKeyByEvent("TranslateMode").Key then resetTransform.Translate = { CGetPosition(
-            CGetHostCharacter()) } end
+        if e.Key == teMod:GetKeyByEvent("TranslateMode").Key then resetTransform.Translate = { RBGetPosition(
+            RBGetHostCharacter()) } end
         if e.Key == teMod:GetKeyByEvent("ScaleMode").Key then resetTransform.Scale = { 1, 1, 1 } end
 
         Commands.SetTransform(globalEditor.Target or {}, resetTransform)
@@ -417,19 +417,19 @@ function TransformToolbar:SetupBoxSelect()
         if not boxSelectStart or not boxSelectEnd then return end
         local toCheck = {}
 
-        for _, guid in pairs(GetAllPartyMembers()) do
+        for _, guid in pairs(EntityHelpers.GetAllPartyMembers()) do
             table.insert(toCheck, guid)
         end
         for guid, _ in pairs(EntityStore:GetAllStored()) do
             table.insert(toCheck, guid)
         end
 
-        local camera = GetCamera()
+        local camera = RBGetCamera()
         if not camera then
             Warning("No camera found for box select")
             return
         end
-        local screenWidth, screenHeight = GetScreenSize()
+        local screenWidth, screenHeight = UIHelpers.GetScreenSize()
         if not screenWidth or not screenHeight then
             Warning("No screen size found for box select")
             return
@@ -445,14 +445,14 @@ function TransformToolbar:SetupBoxSelect()
                 return { Min = min, Max = max }
             end
             if not visual then
-                local pos = Vec3.new { CGetPosition(guid) }
+                local pos = Vec3.new { RBGetPosition(guid) }
                 aabb = makeAabb(pos)
             else
                 aabb = visual.WorldBound
             end
 
             if not aabb then
-                local pos = Vec3.new { CGetPosition(guid) }
+                local pos = Vec3.new { RBGetPosition(guid) }
                 aabb = makeAabb(pos)
             end
 
@@ -461,7 +461,7 @@ function TransformToolbar:SetupBoxSelect()
             local inside = false
             for _, v in ipairs(vertices) do
                 local screenPos = WorldToScreenPoint(v, camera, screenWidth, screenHeight)
-                if screenPos and IsInRect(screenPos, boxSelectStart, boxSelectEnd) then
+                if screenPos and MathHelpers.IsInRect(screenPos, boxSelectStart, boxSelectEnd) then
                     inside = true
                     break
                 end
@@ -494,8 +494,8 @@ function TransformToolbar:SetupBoxSelect()
         boxSelectWindow.NoMove = true
         boxSelectWindow:SetStyle("WindowBorderSize", 3 * SCALE_FACTOR)
         boxSelectWindow:SetStyle("WindowRounding", 0)
-        boxSelectWindow:SetColor("Border", HexToRGBA("FF007712"))
-        boxSelectWindow:SetColor("WindowBg", HexToRGBA("12121212"))
+        boxSelectWindow:SetColor("Border", ColorUtils.HexToRGBA("FF007712"))
+        boxSelectWindow:SetColor("WindowBg", ColorUtils.HexToRGBA("12121212"))
     end
 
     self.KeybindModule:RegisterEvent("BoxSelect", function(e)
@@ -503,11 +503,11 @@ function TransformToolbar:SetupBoxSelect()
 
         if e.Event == "KeyDown" then
             if boxSelectTimer then return end
-            boxSelectStart = Vec2.new(GetCursorPos())
+            boxSelectStart = Vec2.new(PickingUtils.GetCursorPos())
             boxSelectEnd = nil
             initBoxSelectWindow()
             boxSelectTimer = Timer:EveryFrame(function()
-                boxSelectEnd = Vec2.new(GetCursorPos())
+                boxSelectEnd = Vec2.new(PickingUtils.GetCursorPos())
                 if not boxSelectStart or not boxSelectEnd then return end
                 local left = math.min(boxSelectStart[1], boxSelectEnd[1])
                 local top = math.min(boxSelectStart[2], boxSelectEnd[2])
@@ -534,7 +534,7 @@ function TransformToolbar:SetupBoxSelect()
 
             local proxies = {}
             for selGuid, _ in pairs(self.Selecting) do
-                if CIsCharacter(selGuid) and self.Ignore["Character"] then
+                if EntityHelpers.IsCharacter(selGuid) and self.Ignore["Character"] then
                     goto continue
                 end
 
@@ -553,7 +553,7 @@ function TransformToolbar:Render()
 end
 
 function TransformToolbar:RenderTopBar()
-    local panel = RegisterWindow("generic", "Transform ToolBar", "ToolBar", self)
+    local panel = WindowManager.RegisterWindow("generic", "Transform ToolBar", "ToolBar", self)
     self.TopToolBar = panel
 
     panel.OnClose = function()
@@ -564,7 +564,7 @@ function TransformToolbar:RenderTopBar()
         self:ClearSubscriptions()
     end
 
-    local screenWidth, screenHeight = GetScreenSize()
+    local screenWidth, screenHeight = UIHelpers.GetScreenSize()
     panel:SetSize({ screenWidth * 0.6, 80 * SCALE_FACTOR })
     panel:SetPos({ screenWidth * 0.2, 0 })
 
@@ -585,9 +585,9 @@ function TransformToolbar:RenderTopBar()
         self:Toggle()
     end
     closeButton.Tint = { 1, 1, 1, 0.8 }
-    closeButton:SetColor("Button", HexToRGBA("C24B0000"))
-    closeButton:SetColor("ButtonHovered", HexToRGBA("96920000"))
-    closeButton:SetColor("ButtonActive", HexToRGBA("C24B0000"))
+    closeButton:SetColor("Button", ColorUtils.HexToRGBA("C24B0000"))
+    closeButton:SetColor("ButtonHovered", ColorUtils.HexToRGBA("96920000"))
+    closeButton:SetColor("ButtonActive", ColorUtils.HexToRGBA("C24B0000"))
 
     local openKeybindConfig = leftCell:AddButton("Configs")
     openKeybindConfig.OnClick = function()
@@ -619,7 +619,7 @@ function TransformToolbar:RenderTopBar()
 
     local notice = inputTooltip:AddText("Note: Scale only supports Local space.")
     notice.Font = "Tiny"
-    notice:SetColor("Text", HexToRGBA("C4B5B5B5"))
+    notice:SetColor("Text", ColorUtils.HexToRGBA("C4B5B5B5"))
 
     self.OperatorInput = operatorInput
 
@@ -676,7 +676,7 @@ function TransformToolbar:RenderTopBar()
 end
 
 function TransformToolbar:RenderConfigMenu()
-    local panel = RegisterWindow("generic", "Key Bind", "Menu", self, { 0, 0 }, { 0, 0 })
+    local panel = WindowManager.RegisterWindow("generic", "Key Bind", "Menu", self, { 0, 0 }, { 0, 0 })
     self.KeybindConfigWindow = panel
 
     panel.Open = false
@@ -687,8 +687,8 @@ function TransformToolbar:RenderConfigMenu()
 
     local closeSel = panel:AddSelectable("Transform Tool Configs")
     closeSel.Selected = true
-    closeSel:SetColor("HeaderHovered", HexToRGBA("96920000"))
-    closeSel:SetColor("Header", HexToRGBA("C24B0000"))
+    closeSel:SetColor("HeaderHovered", ColorUtils.HexToRGBA("96920000"))
+    closeSel:SetColor("Header", ColorUtils.HexToRGBA("C24B0000"))
     closeSel.OnClick = function()
         panel.Open = false
         closeSel.Selected = true
@@ -749,7 +749,7 @@ function TransformToolbar:SetupOperator(mode, space, axis)
         self.Operator.Cursor = self.Cursor
     end
 
-    local inputSub = SubscribeKeyAndMouse(function(e)
+    local inputSub = InputEvents.SubscribeKeyAndMouse(function(e)
         local isDone = false
         if e.Key == "ESCAPE" or e.Key == "RMB" then
             self.Operator:Cancel()
@@ -783,9 +783,9 @@ function TransformToolbar:CreateBindPopup(guid)
     if not self.BindPopupCache[guid] then
         self.BindPopupCache[guid] = notif
     end
-    local screenWidth, screenHeight = GetScreenSize()
-    local camera = GetCamera()
-    local pivot = WorldToScreenPoint({ CGetPosition(guid) }, camera, screenWidth, screenHeight)
+    local screenWidth, screenHeight = UIHelpers.GetScreenSize()
+    local camera = RBGetCamera()
+    local pivot = WorldToScreenPoint({ RBGetPosition(guid) }, camera, screenWidth, screenHeight)
     if not pivot then pivot = { screenWidth / 2, screenHeight / 2 } end
     pivot = { pivot[1] / screenWidth, pivot[2] / screenHeight }
     notif.NoAnimation = true
@@ -946,7 +946,7 @@ function TransformToolbar:CreateNearbyPopup()
     nearbyNotif.InstantDismiss = true
     nearbyNotif.NoAnimation = true
     nearbyNotif.AutoFadeOut = false
-    nearbyNotif.Pivot = Vec2.new(GetCursorPos()) / Vec2.new(GetScreenSize())
+    nearbyNotif.Pivot = Vec2.new(PickingUtils.GetCursorPos()) / Vec2.new(UIHelpers.GetScreenSize())
     nearbyNotif.Moveable = true
 
     UpdateNearbyMap()
@@ -968,7 +968,7 @@ function TransformToolbar:CreateNearbyPopup()
                 Label = "Open Entity Tab",
                 OnClick = function(selectable)
                     if not selected or selected == "" then return end
-                    if not EntityExists(selected) then return end
+                    if not EntityHelpers.EntityExists(selected) then return end
                     local entityTab = EntityTab.new(selected, nil, nil, nil)
                     entityTab:Render()
                 end
@@ -1021,7 +1021,7 @@ function TransformToolbar:CreateNearbyPopup()
             local sle = contextMenu:AddItemPacked(item)
 
             if item.HotKey then
-                tempSubs[item.Label] = SubscribeKeyAndMouse(function(e)
+                tempSubs[item.Label] = InputEvents.SubscribeKeyAndMouse(function(e)
                     if e.Event ~= "KeyDown" then return end
                     if not selected or selected == "" then return end
                     if localNearbyCombo.HoveringKey then
@@ -1048,7 +1048,7 @@ function TransformToolbar:CreateNearbyPopup()
 end
 
 function TransformToolbar:CreateCursor(pos)
-    if self.Cursor and EntityExists(self.Cursor) or (self.creatingCursor) then
+    if self.Cursor and EntityHelpers.EntityExists(self.Cursor) or (self.creatingCursor) then
         return
     end
 
@@ -1056,7 +1056,7 @@ function TransformToolbar:CreateCursor(pos)
 
     pos = ScreenToWorldRay():At(10)
     local hostPosition = Vec3.new(pos)
-    local hostRotation = Quat.new(GetCameraRotation())
+    local hostRotation = Quat.new(CameraHelpers.GetCameraRotation())
 
     NetChannel.Visualize:RequestToServer({
         Type = "Cursor",
@@ -1077,13 +1077,13 @@ function TransformToolbar:CreateCursor(pos)
 end
 
 function TransformToolbar:MoveCursor()
-    if not self.Cursor or not EntityExists(self.Cursor) then
+    if not self.Cursor or not EntityHelpers.EntityExists(self.Cursor) then
         self:CreateCursor()
         return
     end
 
     local pos = ScreenToWorldRay():At(10)
-    local rot = Quat.new(GetCameraRotation())
+    local rot = Quat.new(CameraHelpers.GetCameraRotation())
 
     NetChannel.SetTransform:RequestToServer({
         Guid = self.Cursor,

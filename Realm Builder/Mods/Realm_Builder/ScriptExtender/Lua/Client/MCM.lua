@@ -38,6 +38,6 @@ end)
 
 MCM.EventButton.SetDisabled("event_button_toggle_main_widnow", true, GetLoca("Enabled after loading a save"))
 
-RegisterOnSessionLoaded(function()
+EventsSubscriber.RegisterOnSessionLoaded(function()
     MCM.EventButton.SetDisabled("event_button_toggle_main_widnow", false)
 end)

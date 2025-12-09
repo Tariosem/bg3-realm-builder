@@ -139,8 +139,8 @@ function Commands.SnapCommand(targets, onlyRotation, onlyPosition)
                 allParentTransform[parent].Scale = nil
             else
                 allParentTransform[parent] = {
-                    Translate = { CGetPosition(parent) },
-                    RotationQuat = { CGetRotation(parent) },
+                    Translate = { RBGetPosition(parent) },
+                    RotationQuat = { RBGetRotation(parent) },
                 }
             end
             ::continue::
@@ -165,7 +165,7 @@ end
 
 --- @param targets GUIDSTRING[]
 function Commands.DeleteCommand(targets)
-    targets = NormalizeGuidList(targets)
+    targets = RBUtils.NormalizeGuidList(targets)
     if #targets == 0 then return end
 
     local spawned = targets
@@ -193,8 +193,8 @@ function Commands.AddMarker(target, markerType)
     local spwanPost = {
         TemplateId = MARKER_ITEM[markerType],
         EntInfo = {
-            Position = { CGetPosition(target) },
-            Rotation = { CGetRotation(target) },
+            Position = { RBGetPosition(target) },
+            Rotation = { RBGetRotation(target) },
             DisplayName = "Spot Light Marker",
         }
     }
@@ -202,7 +202,7 @@ function Commands.AddMarker(target, markerType)
     NetChannel.Spawn:RequestToServer(spwanPost, function(response)
         local newGuid = response.Guid
         if newGuid then
-            PickingHelpers:RegisterGuidRedirect(newGuid, target)
+            PickingUtils:RegisterGuidRedirect(newGuid, target)
 
             Commands.Bind(newGuid, target)
         end

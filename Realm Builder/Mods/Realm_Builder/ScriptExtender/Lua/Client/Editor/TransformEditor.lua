@@ -194,11 +194,11 @@ function TransformEditor:HandleGizmo()
         local sumPos = Vec3.new(0, 0, 0)
         local pivotPos = nil
         if self.PivotMode == "Cursor" then
-            if self.Cursor and EntityExists(self.Cursor) then
-                local pos = { CGetPosition(self.Cursor) }
+            if self.Cursor and EntityHelpers.EntityExists(self.Cursor) then
+                local pos = { RBGetPosition(self.Cursor) }
                 pivotPos = Vec3.new(pos)
             else
-                pivotPos = Vec3.new(CGetPosition(CGetHostCharacter()))
+                pivotPos = Vec3.new(RBGetPosition(RBGetHostCharacter()))
             end
         elseif self.PivotMode == "Active" then
             local latestProxy = self.Target[#self.Target]
@@ -297,10 +297,10 @@ function TransformEditor:GetPivotRotation()
             rot = Quat.Identity()
         end
     elseif space == "View" then
-        rot = { GetCameraRotation() }
+        rot = { CameraHelpers.GetCameraRotation() }
     elseif space == "Cursor" then
-        if self.Cursor and EntityExists(self.Cursor) then
-            rot = { CGetRotation(self.Cursor) }
+        if self.Cursor and EntityHelpers.EntityExists(self.Cursor) then
+            rot = { RBGetRotation(self.Cursor) }
         else
             rot = Quat.Identity()
         end
@@ -350,7 +350,7 @@ function TransformEditor:MakePointVisualization(gizmo, pointTransform, index)
             table.insert(self.PointVisualizations, viz)
         end
 
-        WaitUntil(function()
+        RBUtils.WaitUntil(function()
             local allReady = true
             for _, viz in ipairs(response or {}) do
                 if not VisualHelpers.GetEntityVisual(viz) then
@@ -389,11 +389,11 @@ function TransformEditor:MakeAxisLineVisualization(gizmo, ray, color, index)
         gizmo.Visualizer:SetLineFxColor(line2Guid, color)
         local newLineTransform = {
             Translate = startPoint,
-            RotationQuat = DirectionToQuat(beamDirection),
+            RotationQuat = MathHelpers.DirectionToQuat(beamDirection),
         }
         local newLine2Transform = {
             Translate = secondPoint,
-            RotationQuat = DirectionToQuat(ray.Direction)
+            RotationQuat = MathHelpers.DirectionToQuat(ray.Direction)
         }
         NetChannel.SetTransform:RequestToServer({ Guid = lineGuid, Transforms = { [lineGuid] = newLineTransform } },
             function(response)
@@ -422,7 +422,7 @@ function TransformEditor:MakeAxisLineVisualization(gizmo, ray, color, index)
         Duration = -1,
     }, function(response)
         local viz = response[1]
-        WaitUntil(function()
+        RBUtils.WaitUntil(function()
             return VisualHelpers.GetEntityVisual(viz) ~= nil
         end, function()
             gizmo.Visualizer:SetLineFxColor(viz, color)
@@ -438,7 +438,7 @@ function TransformEditor:MakeAxisLineVisualization(gizmo, ray, color, index)
         Duration = -1,
     }, function(response)
         local viz = response[1]
-        WaitUntil(function()
+        RBUtils.WaitUntil(function()
             return VisualHelpers.GetEntityVisual(viz) ~= nil
         end, function()
             gizmo.Visualizer:SetLineFxColor(viz, color)
@@ -492,7 +492,7 @@ function TransformEditor:SetupGizmo()
 
         for i = #self.LineVisualizations, 1, -1 do
             local guids = self.LineVisualizations[i]
-            if not EntityExists(guids[1]) or not EntityExists(guids[2]) then
+            if not EntityHelpers.EntityExists(guids[1]) or not EntityHelpers.EntityExists(guids[2]) then
                 NetChannel.Delete:RequestToServer({ Guid = guids }, function(response)
                     -- make sure it's dead
                 end)
@@ -502,7 +502,7 @@ function TransformEditor:SetupGizmo()
 
         for i = #self.PointVisualizations, 1, -1 do
             local guid = self.PointVisualizations[i]
-            if not EntityExists(guid) then
+            if not EntityHelpers.EntityExists(guid) then
                 NetChannel.Delete:RequestToServer({ Guid = guid }, function(response)
                     -- make sure it's dead
                 end)
@@ -518,7 +518,7 @@ function TransformEditor:SetupGizmo()
             gizmo.Visualizer:HideGizmo(v)
         end
 
-        local selectedCnt = CountMap(gizmo.SelectedAxis)
+        local selectedCnt = RBTableUtils.CountMap(gizmo.SelectedAxis)
         if gizmo.ActiveMode == "Rotate" and gizmo.SelectedAxis and selectedCnt > 1 then
             return
         end
@@ -664,7 +664,7 @@ function TransformEditor:SetupGizmo()
             if individualPivotMode[self.PivotMode] or individualOriention[self.Space] then
                 proxy:SetWorldScale(newScale)
             elseif picPos then
-                local newTransform = ScaleAroundPivot(picPos, startTransform, newScale)
+                local newTransform = MathHelpers.ScaleAroundPivot(picPos, startTransform, newScale)
                 proxy:SetTransform(newTransform)
             else
                 Warning("TransformEditor: OnDragScale picPos is nil")
@@ -700,7 +700,7 @@ function TransformEditor:SetupGizmo()
                     Debug("TransformEditor: OnDragRotate picPos is nil")
                     return
                 end
-                local newTransform = RotateAroundPivot(picPos, startTransform, deltaAxis, deltaAngle)
+                local newTransform = MathHelpers.RotateAroundPivot(picPos, startTransform, deltaAxis, deltaAngle)
 
                 proxy:SetTransform(newTransform)
                 ::continue::

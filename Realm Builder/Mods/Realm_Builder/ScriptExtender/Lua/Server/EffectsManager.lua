@@ -55,8 +55,8 @@ local function NormalizeData(data)
     return {
         DisplayName = data.DisplayName or "",
         FxName = data.FxName or "",
-        Object = NormalizeGuidList(data.Object) or { Osi.GetHostCharacter() },
-        Target = NormalizeGuidList(data.Target) or { Osi.GetHostCharacter() },
+        Object = RBUtils.NormalizeGuidList(data.Object) or { Osi.GetHostCharacter() },
+        Target = RBUtils.NormalizeGuidList(data.Target) or { Osi.GetHostCharacter() },
         SourceBone = data.SourceBone or "",
         TargetBone = data.TargetBone or "",
         Scale = data.Scale or 1.0,
@@ -98,7 +98,7 @@ function EffectsManager:PlayLoopEffect(data)
     local targetBone = data.TargetBone or ""
 
     for _, obj in ipairs(data.Object) do
-        if IsCamera(obj) then
+        if RBUtils.IsCamera(obj) then
             Warning("PlayLoopEffect: Cannot play loop effect on camera object.")
             goto continue
         end
@@ -108,12 +108,12 @@ function EffectsManager:PlayLoopEffect(data)
                 self:StoreLoopEffect(fxhandle, obj, fxname)
             end
         elseif tags.PlayAtPositionAndRotation then
-            local x, y, z = CGetPosition(obj)
+            local x, y, z = RBGetPosition(obj)
             local pitch, yaw, roll = Osi.GetRotation(obj)
             fxhandle = Osi.PlayLoopEffectAtPositionAndRotation(fxname, x, y, z, pitch, yaw, roll, data.Scale)
             self:StoreLoopEffect(fxhandle, obj, fxname)
         elseif tags.PlayAtPosition then
-            local x, y, z = CGetPosition(obj)
+            local x, y, z = RBGetPosition(obj)
             fxhandle = Osi.PlayLoopEffectAtPosition(fxname, x, y, z, data.Scale)
             self:StoreLoopEffect(fxhandle, obj, fxname)
         else
@@ -122,7 +122,7 @@ function EffectsManager:PlayLoopEffect(data)
             elseif sourceBone then
                 fxhandle = Osi.PlayLoopEffect(obj, fxname, sourceBone, data.Scale)
             else
-                local x, y, z = CGetPosition(obj)
+                local x, y, z = RBGetPosition(obj)
                 fxhandle = Osi.PlayLoopEffectAtPosition(fxname, x, y, z, data.Scale)
             end
             self:StoreLoopEffect(fxhandle, obj, fxname)
@@ -150,7 +150,7 @@ function EffectsManager:PlayEffect(data)
 
     local tags = data.Tags or {}
     for _, obj in ipairs(data.Object) do
-        if IsCamera(obj) then
+        if RBUtils.IsCamera(obj) then
             Warning("PlayEffect: Cannot play effect on camera object.")
             goto continue
         end
@@ -159,11 +159,11 @@ function EffectsManager:PlayEffect(data)
                 Osi.PlayBeamEffect(obj, tgt, fxname, sourceBone, targetBone)
             end
         elseif tags.PlayAtPositionAndRotation then
-            local x, y, z = CGetPosition(obj)
-            local p, yaw = CGetRotation(obj)
+            local x, y, z = RBGetPosition(obj)
+            local p, yaw = RBGetRotation(obj)
             Osi.PlayEffectAtPositionAndRotation(fxname, x, y, z, yaw, data.Scale)  
         elseif tags.PlayAtPosition then
-            local x, y, z = CGetPosition(obj)
+            local x, y, z = RBGetPosition(obj)
             Osi.PlayEffectAtPosition(fxname, x, y, z, data.Scale)
         elseif tags.PlayOnObject then
             if targetBone then
@@ -277,7 +277,7 @@ function EffectsManager:StopEffectByComb(fxName, object)
         return
     end
 
-    local uuids = NormalizeGuidList(object) or {}
+    local uuids = RBUtils.NormalizeGuidList(object) or {}
     if #uuids == 0 then
         --Warning("StopEffectByComb: No valid objects found for given GUID.")
         return
@@ -378,10 +378,10 @@ function EffectsManager:PlayStatus(data)
     }
     self:RemoveStatus(removeData)
 
-    local toApply = NormalizeGuidList(data.Object) or { Osi.GetHostCharacter()}
+    local toApply = RBUtils.NormalizeGuidList(data.Object) or { Osi.GetHostCharacter()}
 
     for _, obj in ipairs(toApply) do
-        if EntityExists(obj) then
+        if EntityHelpers.EntityExists(obj) then
             --PrintDivider("PlayStatus")
             --_D(Ext.Stats.Get(statName).StatusEffect)
             Osi.ApplyStatus(obj, statName, data.Duration or 10, 1)
@@ -402,10 +402,10 @@ function EffectsManager:RemoveStatus(data)
         return
     end
 
-    local toRemove = NormalizeGuidList(data.Object) or {}
+    local toRemove = RBUtils.NormalizeGuidList(data.Object) or {}
 
     for _, obj in ipairs(toRemove) do
-        if EntityExists(obj) then
+        if EntityHelpers.EntityExists(obj) then
             Osi.RemoveStatus(obj, statName)
         else
             Warning("RemoveStatus: Object " .. tostring(obj) .. " is not a character or player character.")
@@ -537,16 +537,16 @@ function EffectsManager:PlaySpell(data)
         end
     end
 
-    local toUse = NormalizeGuidList(data.Object) or { Osi.GetHostCharacter()}
-    local toTgt = NormalizeGuidList(data.Target) or { Osi.GetHostCharacter()}
+    local toUse = RBUtils.NormalizeGuidList(data.Object) or { Osi.GetHostCharacter()}
+    local toTgt = RBUtils.NormalizeGuidList(data.Target) or { Osi.GetHostCharacter()}
 
     for _, obj in ipairs(toUse) do
-        if not EntityExists(obj) then
+        if not EntityHelpers.EntityExists(obj) then
             goto continue
         end
 
         for _, tgt in ipairs(toTgt) do
-            if not EntityExists(tgt) then
+            if not EntityHelpers.EntityExists(tgt) then
                 goto continue
             end
             if data.AtPosition then

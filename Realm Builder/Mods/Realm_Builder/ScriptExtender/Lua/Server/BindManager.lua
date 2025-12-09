@@ -32,7 +32,7 @@ function BindManager:Bind(child, parent, attributes)
         return false
     end
 
-    if not EntityExists(parent) then
+    if not EntityHelpers.EntityExists(parent) then
         Warning("Can't find parent: " .. parent)
         return false
     end
@@ -47,7 +47,7 @@ function BindManager:Bind(child, parent, attributes)
         return false
     end
 
-    if IsCamera(child) then
+    if RBUtils.IsCamera(child) then
         Warning("Cannot bind camera: " .. tostring(child) .. " as a child")
         return false
     end
@@ -63,13 +63,13 @@ function BindManager:Bind(child, parent, attributes)
         self:Unbind(child)
     end
 
-    if IsCamera(parent) and not GetCameraPosition(parent) then
+    if RBUtils.IsCamera(parent) and not CameraHelpers.GetCameraPosition(parent) then
         local postBack = {
             Type = "Bind",
             Guid = child,
             Parent = parent
         }
-        local userId = GetCamaraUserID(parent) --[[@as number]]
+        local userId = RBUtils.GetCamaraUserID(parent) --[[@as number]]
         NetChannel.CameraBind:SendToClient({
             Type = "Bind",
             Guid = child,
@@ -92,8 +92,8 @@ function BindManager:Bind(child, parent, attributes)
 
     self.BindStores[child] = self.BindStores[child] or {}
 
-    self.BindStores[child].RelativePosition = SaveLocalRelativePosOffset(child, parent)
-    self.BindStores[child].RelativeRotation = SaveLocalRelativeRotOffset(child, parent)
+    self.BindStores[child].RelativePosition = MathHelpers.SaveLocalRelativePosOffset(child, parent)
+    self.BindStores[child].RelativeRotation = MathHelpers.SaveLocalRelativeRotOffset(child, parent)
     self.BindStores[child].KeepLookingAt = keepLookingAt and keepLookingAt or false
     self.BindStores[child].FollowParent = followParent
 
@@ -118,12 +118,12 @@ function BindManager:Unbind(child)
 
     local parent = self.BindTree:GetParentKey(child)
 
-    if parent and IsCamera(parent) then
+    if parent and RBUtils.IsCamera(parent) then
         local postBack = {
             Type = "Unbind",
             Guid = child
         }
-        local userId = GetCamaraUserID(parent) --[[@as number]]
+        local userId = RBUtils.GetCamaraUserID(parent) --[[@as number]]
         NetChannel.CameraBind:SendToClient(postBack, userId)
     end
 
@@ -151,8 +151,8 @@ function BindManager:UpdateOffset(child)
     if not self.BindStores[child] then return end
     local parent = self.BindTree:GetParentKey(child)
     if not parent then return end
-    self.BindStores[child].RelativePosition = SaveLocalRelativePosOffset(child, parent)
-    self.BindStores[child].RelativeRotation = SaveLocalRelativeRotOffset(child, parent)
+    self.BindStores[child].RelativePosition = MathHelpers.SaveLocalRelativePosOffset(child, parent)
+    self.BindStores[child].RelativeRotation = MathHelpers.SaveLocalRelativeRotOffset(child, parent)
 end
 
 function BindManager:UpdateBind(child)
@@ -163,13 +163,13 @@ function BindManager:UpdateBind(child)
         return
     end
 
-    if not EntityExists(child) then
+    if not EntityHelpers.EntityExists(child) then
         Debug("Child entity no longer exists, unbinding: " .. tostring(child))
         self:Unbind(child)
         return
     end
 
-    if not EntityExists(parent) then
+    if not EntityHelpers.EntityExists(parent) then
         Debug("Parent entity no longer exists, unbinding: " .. tostring(child))
         self:Unbind(child)
         return
@@ -180,7 +180,7 @@ function BindManager:UpdateBind(child)
         return
     end
     
-    if not parent or not EntityExists(parent) then
+    if not parent or not EntityHelpers.EntityExists(parent) then
         self:Unbind(child)
         return
     end
@@ -206,11 +206,11 @@ end
 
 function BindManager:HandleNotFollowParent(child, parent, store)
     if store.KeepLookingAt then
-        local lookAt = LookAtParent(child, parent)
+        local lookAt = MathHelpers.LookAtParent(child, parent)
         if not lookAt then return false end
         OsirisHelpers.RotateTo(child, table.unpack(lookAt))
 
-        if CIsCharacter(child) then
+        if EntityHelpers.IsCharacter(child) then
             NetChannel.SetVisualTransform:Broadcast({
                 Guid = child,
                 Transforms = {
@@ -227,14 +227,14 @@ function BindManager:HandleNotFollowParent(child, parent, store)
 end
 
 function BindManager:HandleFollowParent(child, parent, store)
-    local finalPos, finalRot = GetLocalRelativeTransformFromGuid(parent, store.RelativePosition, store.RelativeRotation)
+    local finalPos, finalRot = MathHelpers.GetLocalRelativeTransformFromGuid(parent, store.RelativePosition, store.RelativeRotation)
     
     if not finalPos or not finalRot then
         return false
     end
 
     if store.KeepLookingAt then
-        local lookAt = LookAtParent(child, parent)
+        local lookAt = MathHelpers.LookAtParent(child, parent)
         if lookAt then
             finalRot = lookAt
         end
@@ -243,7 +243,7 @@ function BindManager:HandleFollowParent(child, parent, store)
     local posSuccess = OsirisHelpers.TeleportTo(child, table.unpack(finalPos))
     local rotSuccess = OsirisHelpers.RotateTo(child, table.unpack(finalRot))
     
-    if CIsCharacter(child) then
+    if EntityHelpers.IsCharacter(child) then
         NetChannel.SetVisualTransform:Broadcast({
             Guid = child,
             Transforms = {

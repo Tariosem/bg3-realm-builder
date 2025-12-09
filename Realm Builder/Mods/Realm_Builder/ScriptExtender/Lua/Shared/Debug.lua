@@ -1,7 +1,5 @@
 RB_DEBUG_LEVEL = Ext.Debug.IsDeveloperMode() and 4 or 3
 
-RB_ENABLE_LOGGER = false
-
 --- @alias RB_DEBUG_LEVELS "Critical"|"Error"|"Warning"|"Info"|"Debug"|"Trace"
 
 RB_DEBUG_LEVELS = {
@@ -94,9 +92,6 @@ local function RB_Print(prefix, level, message)
     message = palette(message, debugColor[level])]]
     local logMessage = table.concat({ title, prefix, level, message }, " ")
 
-    if RB_ENABLE_LOGGER then
-        Logger.Log(logMessage)
-    end
 
     if lvl == RB_DEBUG_LEVELS.Critical then
         RBPrintCritical(logMessage)
@@ -198,25 +193,25 @@ end
 --- @param mode "rgb"|"hsv"|"perceptual"|"sine"|"rainbow"
 --- @param options GradientOpts?
 function GradientPrint(text, startColor, endColor, mode, options)
-    _P(GradientToANSI(GradientText(text, startColor, endColor, mode, options)))
+    _P(GradientToANSI(ColorUtils.GradientText(text, startColor, endColor, mode, options)))
 end
 
 --- @type table<RB_DEBUG_LEVELS, fun(text:string, opts:GradientOpts?):RB_TextToken[]>
 DebugGradient = {
     Error = function(text, opts)
-        return GradientText(text, "#FF4500", "#FFB3A7", "perceptual", opts).Segments
+        return ColorUtils.GradientText(text, "#FF4500", "#FFB3A7", "perceptual", opts).Segments
     end,
     Warning = function(text, opts)
-        return GradientText(text, "#FFD700", "#FFFFDC", "perceptual", opts).Segments
+        return ColorUtils.GradientText(text, "#FFD700", "#FFFFDC", "perceptual", opts).Segments
     end,
     Info = function(text, opts)
-        return GradientText(text, "#00BFFF", "#DCFFFF", "perceptual", opts).Segments
+        return ColorUtils.GradientText(text, "#00BFFF", "#DCFFFF", "perceptual", opts).Segments
     end,
     Debug = function(text, opts)
-        return GradientText(text, "#6254FD", "#D6B4FF", "perceptual", opts).Segments
+        return ColorUtils.GradientText(text, "#6254FD", "#D6B4FF", "perceptual", opts).Segments
     end,
     Trace = function(text, opts)
-        return GradientText(text, "#003300", "#007700", "perceptual", opts).Segments
+        return ColorUtils.GradientText(text, "#003300", "#007700", "perceptual", opts).Segments
     end,
 }
 

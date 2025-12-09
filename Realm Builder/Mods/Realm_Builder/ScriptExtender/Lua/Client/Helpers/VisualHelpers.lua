@@ -18,7 +18,7 @@ function VisualHelpers.GetEntityVisual(handle)
         end
 
         local entityHandle = UuidToHandle(handle)
-        if CIsCharacter(handle) then
+        if EntityHelpers.IsCharacter(handle) then
             local hasPMDummy = entityHandle.HasDummy
             if hasPMDummy then
                 handle = hasPMDummy.Entity
@@ -296,7 +296,7 @@ function VisualHelpers.ApplyValueToLightComponent(guid, compIndex, value, propNa
     local comp = VisualHelpers.GetEffectComponent(guid, compIndex) --[[@as AspkLightComponent]]
     if not comp then return end
 
-    if TakeTail(propName, #"Property") == "Property" then
+    if RBStringUtils.TakeTail(propName, #"Property") == "Property" then
         VisualHelpers.ApplyValueToFrames(guid, compIndex, value, propName)
         return
     end
@@ -336,7 +336,7 @@ function VisualHelpers.ApplyVisualParams(guid, preset, retryCnt)
     end
 
     for key, compParams in pairs(preset.Effects) do
-        local parsed = SplitByString(key, "::")
+        local parsed = RBStringUtils.SplitByString(key, "::")
         local compType, compIndex = parsed[#parsed - 1], tonumber(parsed[#parsed])
         if not compIndex then
             Warning("Invalid component index in preset key:" ..
@@ -364,7 +364,7 @@ function VisualHelpers.ApplyVisualParams(guid, preset, retryCnt)
     end
 
     for key, matParam in pairs(preset.Materials) do
-        local parsed = SplitByString(key, "::")
+        local parsed = RBStringUtils.SplitByString(key, "::")
         local descIndex, attachIndex = tonumber(parsed[#parsed]), tonumber(parsed[#parsed - 1])
         if not descIndex then
             Warning([[Invalid desc index in preset key: ]] .. tostring(key) ..

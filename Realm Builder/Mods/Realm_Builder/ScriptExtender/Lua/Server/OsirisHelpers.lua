@@ -12,7 +12,7 @@
 OsirisHelpers = OsirisHelpers or {}
 
 function OsirisHelpers.Propify(guids)
-    local targets = NormalizeGuidList(guids)
+    local targets = RBUtils.NormalizeGuidList(guids)
     for _, guid in ipairs(targets) do
         Osi.SetGravity(guid, 1)
         Osi.SetCanInteract(guid, 1)
@@ -35,9 +35,9 @@ function OsirisHelpers.DrawLine(startPos, endPos, width, user)
 
     local fxHandle = Osi.CreateAt(RB_BEAM_ITEM_FX, 0, 0, 0, 1, 0, "") --[[@as string]]
     OsirisHelpers.TeleportTo(fxHandle, startPos[1], startPos[2], startPos[3])
-    OsirisHelpers.RotateTo(fxHandle, table.unpack(DirectionToQuat(dir)))
+    OsirisHelpers.RotateTo(fxHandle, table.unpack(MathHelpers.DirectionToQuat(dir)))
     Timer:Ticks(10, function (timerID)
-        if not EntityExists(fxHandle) then return end
+        if not EntityHelpers.EntityExists(fxHandle) then return end
 
         NetChannel.SetVisualTransform:Broadcast({
             Guid = fxHandle,
@@ -174,7 +174,7 @@ function OsirisHelpers.RotateTo(guid, rx, ry, rz, w)
     transform.RotationQuat = {rx or 0, ry or 0, rz or 0, w or 1}
 
     --- @diagnostic disable-next-line: param-type-mismatch
-    OsirisHelpers.TeleportTo(guid, CGetPosition(guid))
+    OsirisHelpers.TeleportTo(guid, RBGetPosition(guid))
 
     return true
 end
@@ -193,7 +193,7 @@ function OsirisHelpers.ScaleTo(guid, sx, sy, sz)
     transform.Scale = {sx or 1, sy or 1, sz or 1}
 
     --- @diagnostic disable-next-line: param-type-mismatch
-    OsirisHelpers.TeleportTo(guid, CGetPosition(guid))
+    OsirisHelpers.TeleportTo(guid, RBGetPosition(guid))
 
     return true
 end
@@ -223,13 +223,13 @@ function OsirisHelpers.PreviewTemplate(templateId, x, y, z, p, yaw, r, w, visual
         p, yaw, r, w = 0, 0, 0, 1
     end
 
-    local templateName = TrimTail(templateId, 37)
+    local templateName = RBStringUtils.TrimTail(templateId, 37)
     if templateName == "" then
         templateName = templateId
     end
 
     local spawnTemplate = templateId --[[@as string?]]
-    local templateObj = Ext.Template.GetTemplate(TakeTailTemplate(templateId))
+    local templateObj = Ext.Template.GetTemplate(EntityHelpers.TakeTailTemplate(templateId))
     local tempoFlag = 0
     spawnTemplate, tempoFlag = EntityManager.TemplateTrick(templateObj, templateId)
     if not spawnTemplate then

@@ -4,8 +4,8 @@ GLOBAL_DEBUG_WINDOW.Open = false
 
 local debugWindowRegistery = {}
 
-RegisterOnSessionLoaded(function()
-    for title, renderFunc in SortedPairs(debugWindowRegistery) do
+EventsSubscriber.RegisterOnSessionLoaded(function()
+    for title, renderFunc in RBUtils.SortedPairs(debugWindowRegistery) do
         renderFunc(ImguiElements.AddTree(GLOBAL_DEBUG_WINDOW, title))
     end
     GLOBAL_DEBUG_WINDOW.Open = Ext.Debug.IsDeveloperMode()
@@ -17,7 +17,7 @@ function RegisterDebugWindow(title, renderFunc)
     debugWindowRegistery[title] = renderFunc
 end
 
-RequireFiles("Client/", {
+RBUtils.RequireFiles("Client/", {
     "ClientListeners",
     "Localization",
     "Blacklist",
@@ -126,7 +126,7 @@ function GetDataFromUuid(uuid)
     if not uuid or uuid == "" then
         return nil
     end
-    TakeTailTemplate(uuid)
+    EntityHelpers.TakeTailTemplate(uuid)
     return RB_ItemManager.Data[uuid] or RB_MultiEffectManager.Data[uuid] or {}
 end
 
@@ -216,19 +216,19 @@ local function Realm_Builder_Population()
         sumCnt .. " root templates took " .. (itemsFinished - now) .. " ms:")
         local longest = -1
         local toPrint = {}
-        for k, v in SortedPairs(cnts) do
+        for k, v in RBUtils.SortedPairs(cnts) do
             longest = math.max(longest, #k)
             table.insert(toPrint, { k, v })
         end
         for _, pair in pairs(toPrint) do
-            RBPrintPurple("    " .. PadSuffix(pair[1] .. ":", longest + 2) .. " " .. pair[2])
+            RBPrintPurple("    " .. RBStringUtils.PadSuffix(pair[1] .. ":", longest + 2) .. " " .. pair[2])
         end
         RBPrintPurple("[Realm Builder] Populating Effects took " ..
         (effectsFinished - itemsFinished) .. " ms for " .. effectCnt .. " effects")
     end
 end
 
-RegisterOnSessionLoaded(Realm_Builder_Population, 0)
+EventsSubscriber.RegisterOnSessionLoaded(Realm_Builder_Population, 0)
 
 
 RegisterConsoleCommand("rb_open", function()

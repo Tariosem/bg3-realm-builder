@@ -1,4 +1,4 @@
-RequireFiles("Client/UI/Components/", {
+RBUtils.RequireFiles("Client/UI/Components/", {
     "MaterialTab",
     "VisualTab",
     "StatsParser",

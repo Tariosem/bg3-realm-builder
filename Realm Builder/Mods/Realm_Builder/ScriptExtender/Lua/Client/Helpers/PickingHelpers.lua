@@ -1,21 +1,21 @@
-PickingHelpers = {
+PickingUtils = {
     GuidRedirects = {},
 }
 
 --- for markers
-function PickingHelpers:RegisterGuidRedirect(fromGuid, toGuid)
+function PickingUtils:RegisterGuidRedirect(fromGuid, toGuid)
     self.GuidRedirects[fromGuid] = toGuid
 end
 
 --- @return GUIDSTRING|nil
-function GetPickingGuid()
+function PickingUtils.GetPickingGuid()
     local pickHandle = Ext.ClientUI.GetPickingHelper(1).Inner.Inner[1].GameObject
 
     if pickHandle then
         local pickUuid = HandleToUuid(pickHandle)
         if pickUuid then
-            if PickingHelpers.GuidRedirects[pickUuid] then
-                pickUuid = PickingHelpers.GuidRedirects[pickUuid]
+            if PickingUtils.GuidRedirects[pickUuid] then
+                pickUuid = PickingUtils.GuidRedirects[pickUuid]
             end
             return pickUuid
         end
@@ -26,10 +26,10 @@ function GetPickingGuid()
     local entity = nil
 
     if not mouseRay then return nil end
-    local allPartyMembers = GetAllPartyMembers()
+    local allPartyMembers = EntityHelpers.GetAllPartyMembers()
     local closestPartyMemberhit = nil
     for _, guid in ipairs(allPartyMembers) do
-        local member = GetDummyByUuid(guid) or Ext.Entity.Get(guid) --[[@as EntityHandle]]
+        local member = DummyHelpers.GetDummyByUuid(guid) or Ext.Entity.Get(guid) --[[@as EntityHandle]]
 
         local hit = mouseRay:IntersectEntity(member)
         if hit and (not closestPartyMemberhit or hit:IsCloserThan(closestPartyMemberhit)) then
@@ -39,20 +39,20 @@ function GetPickingGuid()
         end
     end
 
-    if PickingHelpers.GuidRedirects[returnGuid] then
-        returnGuid = PickingHelpers.GuidRedirects[returnGuid]
+    if PickingUtils.GuidRedirects[returnGuid] then
+        returnGuid = PickingUtils.GuidRedirects[returnGuid]
     end
     return returnGuid
 end
 
-function GetPickingEntity()
+function PickingUtils.GetPickingEntity()
     return Ext.ClientUI.GetPickingHelper(1).Inner.Inner[1].GameObject
 end
 
 ---@param picker EclPlayerPickingHelper?
 ---@return number x
 ---@return number y
-function GetCursorPos(picker)
+function PickingUtils.GetCursorPos(picker)
     if not picker then
         picker = Ext.ClientUI.GetPickingHelper(1)
     end
@@ -68,13 +68,13 @@ end
 --- @param picker EclPlayerPickingHelper?
 --- @return Vec3?
 --- @return Quat?
-function GetPickingHitPosAndRot(picker)
+function PickingUtils.GetPickingHitPosAndRot(picker)
     if not picker then
         picker = Ext.ClientUI.GetPickingHelper(1)
     end
     local pos = picker.Inner.SceneryPosition
     local normal = picker.Inner.SceneryNormal
-    local rot = DirectionToQuat(normal, nil, "Y")
+    local rot = MathHelpers.DirectionToQuat(normal, nil, "Y")
 
     pos = Vec3.new(pos) --[[@as Vec3]]
 
@@ -85,15 +85,13 @@ function GetPickingHitPosAndRot(picker)
     return pos, rot
 end
 
-function CalcNDC(x, y, screenW, screenH)
+function PickingUtils.CalcNDC(x, y, screenW, screenH)
     local ndcX = (2.0 * x) / screenW - 1.0
     local ndcY = 1.0 - (2.0 * y) / screenH
     return ndcX, ndcY
 end
 
---[[
-    Converts a 2D screen-space coordinate into a world-space ray.
-]]
+-- Converts a 2D screen-space coordinate into a world-space ray.
 ---@param cameraHandle EntityHandle?
 ---@param mouseX number?
 ---@param mouseY number?
@@ -102,13 +100,13 @@ end
 ---@return Ray?
 function ScreenToWorldRay(cameraHandle, mouseX, mouseY, screenW, screenH)
     if not screenW or not screenH then
-        screenW, screenH = GetScreenSize()
+        screenW, screenH = UIHelpers.GetScreenSize()
     end
     if not mouseX or not mouseY then
-        mouseX, mouseY = GetCursorPos()
+        mouseX, mouseY = PickingUtils.GetCursorPos()
     end
     if not cameraHandle then
-        cameraHandle = GetCamera()
+        cameraHandle = RBGetCamera()
     end
 
     if not cameraHandle or not cameraHandle.Camera then
@@ -119,7 +117,7 @@ function ScreenToWorldRay(cameraHandle, mouseX, mouseY, screenW, screenH)
     local camera = cameraHandle.Camera --[[@as CameraComponent]]
     local controller = camera.Controller
 
-    local ndcX, ndcY = CalcNDC(mouseX, mouseY, screenW, screenH)
+    local ndcX, ndcY = PickingUtils.CalcNDC(mouseX, mouseY, screenW, screenH)
 
     local zNearClip = 0
     local zFarClip  = 1.0
@@ -159,9 +157,7 @@ function ScreenToWorldRay(cameraHandle, mouseX, mouseY, screenW, screenH)
     return ray
 end
 
---[[
-    Converts a 3D world-space coordinate into a 2D screen-space coordinate.
-]]
+-- Converts a 3D world-space coordinate into a 2D screen-space coordinate.
 --- @param worldPos Vec3
 --- @param cameraHandle EntityHandle?
 --- @param screenW number?
@@ -169,10 +165,10 @@ end
 --- @return Vec2
 function WorldToScreenPoint(worldPos, cameraHandle, screenW, screenH)
     if not screenW or not screenH then
-        screenW, screenH = GetScreenSize()
+        screenW, screenH = UIHelpers.GetScreenSize()
     end
     if not cameraHandle then
-        cameraHandle = GetCamera()
+        cameraHandle = RBGetCamera()
     end
 
     if not cameraHandle or not cameraHandle.Camera then

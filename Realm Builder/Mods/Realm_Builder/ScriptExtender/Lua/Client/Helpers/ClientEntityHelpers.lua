@@ -1,5 +1,5 @@
 local specialGuids = {
-    [CameraSymbol] = "Item_DEN_VoloOperation_ErsatzEye",
+    [CAMERA_SYMBOL] = "Item_DEN_VoloOperation_ErsatzEye",
 }
 
 local defaultIcon = "Item_Unknown"
@@ -38,8 +38,8 @@ function GetIcon(guid)
         return RB_ICONS.Scenery
     end
 
-    if IsCamera(guid) then
-        return specialGuids[CameraSymbol]
+    if RBUtils.IsCamera(guid) then
+        return specialGuids[CAMERA_SYMBOL]
     end
 
     local stored = EntityStore:GetStoredData(guid)
@@ -49,14 +49,14 @@ function GetIcon(guid)
         return CheckIcon(icon, defaultIcon)
     end
 
-    if not IsUuid(guid) then
+    if not RBUtils.IsUuid(guid) then
         return defaultIcon
     end
 
     local entity = UuidToHandle(guid)
     -- Hijack easycheat and focus addon icons for characters XD
-    if CIsCharacter(guid) then
-        local icon = IsPartyMember(guid) and defaultPartyMemberIcon or defautlCharacterIcon
+    if EntityHelpers.IsCharacter(guid) then
+        local icon = EntityHelpers.IsPartyMember(guid) and defaultPartyMemberIcon or defautlCharacterIcon
         if originIconPrefix and entity.Origin then
             local origin = entity.Origin.Origin
             if origin == "DarkUrge" or origin == "Alfira" then
@@ -101,7 +101,7 @@ function GetName(guid)
         return outlineName
     end
 
-    if not IsUuid(guid) then
+    if not RBUtils.IsUuid(guid) then
         return "Unknown"
     end
 
@@ -113,11 +113,11 @@ function GetName(guid)
         end
     end
 
-    local templateId = GetTemplateId(guid)
+    local templateId = EntityHelpers.GetTemplateId(guid)
     if not templateId or templateId == "" then
         return "Unknown"
     end
-    local template = Ext.Template.GetTemplate(TakeTailTemplate(templateId))
+    local template = Ext.Template.GetTemplate(EntityHelpers.TakeTailTemplate(templateId))
     if not template then
         return "Unknown"
     end
@@ -132,7 +132,7 @@ local templateTypeToIcon = {
 }
 
 function GetIconForTemplateId(uuid)
-    uuid = TakeTailTemplate(uuid)
+    uuid = EntityHelpers.TakeTailTemplate(uuid)
     local template = Ext.Template.GetTemplate(uuid)
     if not template then
         return "Item_Unknown"
@@ -157,12 +157,12 @@ function GetDisplayNameForEntity(entity)
 end
 
 function GetDisplayNameForTemplateId(uuid)
-    uuid = TakeTailTemplate(uuid)
+    uuid = EntityHelpers.TakeTailTemplate(uuid)
     local template = Ext.Template.GetTemplate(uuid)
     if not template then
         local isVisual = Ext.Resource.Get(uuid, "Visual") --[[@as ResourceVisualResource]]
         if not isVisual then return "Unknown" end
-        return GetLastPath(isVisual.SourceFile)
+        return RBStringUtils.GetLastPath(isVisual.SourceFile)
     end
     if template.TemplateType == "TileConstruction" then return template.Name end
     local transalatedString = template.DisplayName.Handle.Handle
@@ -174,9 +174,9 @@ function GetDisplayNameForTemplateId(uuid)
 end
 
 function GetTemplateNameForGuid(guid)
-    local templateId = GetTemplateId(guid)
+    local templateId = EntityHelpers.GetTemplateId(guid)
     if not templateId or templateId == "" then return nil end
-    local template = Ext.Template.GetTemplate(TakeTailTemplate(templateId))
+    local template = Ext.Template.GetTemplate(EntityHelpers.TakeTailTemplate(templateId))
     if not template then
         --Error("GetTemplateNameForGuid: No template found for guid: " .. guid)
         return nil

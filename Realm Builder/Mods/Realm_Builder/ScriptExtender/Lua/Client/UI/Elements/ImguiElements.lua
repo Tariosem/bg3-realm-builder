@@ -27,7 +27,7 @@ end
 --- @return ExtuiButton
 local function AddSliderStepButton(parent, label, step, slider, direction)
     local button = parent:AddButton(label)
-    button.IDContext = Uuid_v4()
+    button.IDContext = RBUtils.Uuid_v4()
 
     button.UserData = { Slider = slider }
 
@@ -117,7 +117,7 @@ end
 function ImguiElements.AddSliderWithStep(parent, IDContext, defaultValue, min, max, step, isInteger)
     local sliderProxy = {}
     if not IDContext then
-        IDContext = Uuid_v4()
+        IDContext = RBUtils.Uuid_v4()
     end
     local stepInput = nil
     local slider = nil
@@ -202,7 +202,7 @@ function ImguiElements.AddSliderWithStep(parent, IDContext, defaultValue, min, m
 
         sliderPopup:Open()
         slider.OnRightClick = function()
-            local toFunc = isInteger and ToVec4Int or ToVec4
+            local toFunc = isInteger and RBUtils.ToVec4Int or RBUtils.ToVec4
             stepInput.Value = toFunc(isInteger and math.floor(s.UserData.Step) or s.UserData.Step)
             minInput.Value = toFunc(isInteger and math.floor(s.Min[1]) or s.Min[1])
             maxInput.Value = toFunc(isInteger and math.floor(s.Max[1]) or s.Max[1])
@@ -212,7 +212,7 @@ function ImguiElements.AddSliderWithStep(parent, IDContext, defaultValue, min, m
 
     resetButton.IDContext = IDContext .. "_ResetButton"
     resetButton.OnClick = function()
-        slider.Value = ToVec4(defaultValue or 0)
+        slider.Value = RBUtils.ToVec4(defaultValue or 0)
         if slider.OnChange then
             slider:OnChange()
         end
@@ -252,7 +252,7 @@ function ImguiElements.AddSliderWithStep(parent, IDContext, defaultValue, min, m
                 hideResetBtn = v
                 resetGroup.Visible = not v
             elseif k == "Value" then
-                local toFunc = isInteger and ToVec4Int or ToVec4
+                local toFunc = isInteger and RBUtils.ToVec4Int or RBUtils.ToVec4
                 slider.Value = toFunc(v)
             else
                 slider[k] = v
@@ -302,9 +302,9 @@ function ImguiElements.RenderExportSettingPanel(parent, settings)
     modNameTooltip:SetStyle("WindowBorderSize", 2)
 
     local currentModInternalNameTooltip = modNameTooltip:AddText("Current Mod Internal Name:")
-    currentModInternalNameTooltip:SetColor("Text", HexToRGBA("FFFFBC51"))
-    local modIntenalNameTooltip = modNameTooltip:AddText(settings.ModName and ValidateFolderName(settings.ModName) or "")
-    modIntenalNameTooltip:SetColor("Text", HexToRGBA("FFFFFFFF"))
+    currentModInternalNameTooltip:SetColor("Text", ColorUtils.HexToRGBA("FFFFBC51"))
+    local modIntenalNameTooltip = modNameTooltip:AddText(settings.ModName and RBUtils.ValidateFolderName(settings.ModName) or "")
+    modIntenalNameTooltip:SetColor("Text", ColorUtils.HexToRGBA("FFFFFFFF"))
     modIntenalNameTooltip.SameLine = true
 
     modNameInput.Hint = "Enter Mod Name..."
@@ -312,9 +312,9 @@ function ImguiElements.RenderExportSettingPanel(parent, settings)
     modNameInput:SetStyle("WindowBorderSize", 2)
 
 
-    modNameInput.OnChange = Debounce(50, function()
-        if ValidateFolderName(modNameInput.Text) ~= 'Unnamed' then
-            modIntenalNameTooltip.Label = ValidateFolderName(modNameInput.Text)
+    modNameInput.OnChange = RBUtils.Debounce(50, function()
+        if RBUtils.ValidateFolderName(modNameInput.Text) ~= 'Unnamed' then
+            modIntenalNameTooltip.Label = RBUtils.ValidateFolderName(modNameInput.Text)
             StyleHelpers.ClearWarningBorder(modNameInput)
             settings.ModName = modNameInput.Text
         else
@@ -334,16 +334,16 @@ function ImguiElements.RenderExportSettingPanel(parent, settings)
     local authorNameInput = parent:AddInputText("##MaterialPresetAuthorName")
     authorNameInput:SetStyle("FrameBorderSize", 2)
     local modNameTooltip = modNameInput:Tooltip()
-    modNameTooltip:AddText("CAUTION:"):SetColor("Text", HexToRGBA("FFFF0000"))
+    modNameTooltip:AddText("CAUTION:"):SetColor("Text", ColorUtils.HexToRGBA("FFFF0000"))
     modNameTooltip:AddText("Special character will be removed from mod internal name."):SetColor("Text",
-        HexToRGBA("FFFFBD4C"))
+        ColorUtils.HexToRGBA("FFFFBD4C"))
     modNameTooltip:AddText("Space will be treated as underscore (_), but display name will remain unchanged.")
-        :SetColor("Text", HexToRGBA("FFFFBD4C"))
+        :SetColor("Text", ColorUtils.HexToRGBA("FFFFBD4C"))
     modNameTooltip:AddText("My Mod and My_Mod are considered the same mod name."):SetColor("Text",
-        HexToRGBA("FFFFBD4C"))
+        ColorUtils.HexToRGBA("FFFFBD4C"))
 
     authorNameInput.Hint = "Enter Author Name..."
-    authorNameInput.OnChange = Debounce(50, function()
+    authorNameInput.OnChange = RBUtils.Debounce(50, function()
         local newName = authorNameInput.Text
         if newName == "" then
             StyleHelpers.SetWarningBorder(authorNameInput)
@@ -429,7 +429,7 @@ function ImguiElements.AddNumberSliders(parent, label, getter, setter, config)
         end
 
         for i, slider in ipairs(sliders) do
-            slider.Value = ToVec4(value[i])
+            slider.Value = RBUtils.ToVec4(value[i])
         end
         if colorPicker then
             colorPicker.Color = { value[1], value[2], value[3], value[4] or 1 }
@@ -447,7 +447,7 @@ function ImguiElements.AddNumberSliders(parent, label, getter, setter, config)
 
     local isInt = config.IsInt or false
     local range = config.Range or { Min = -10, Max = 10, Step = 0.1 }
-    local uuid = Uuid_v4()
+    local uuid = RBUtils.Uuid_v4()
     local innerTable = parent:AddTable(parent.Label, 2) -- -- Use the same name so tables under the same parent share column widths.
     innerTable.ColumnDefs[1] = { WidthFixed = true }
     innerTable.ColumnDefs[2] = { WidthStretch = true }
@@ -460,7 +460,7 @@ function ImguiElements.AddNumberSliders(parent, label, getter, setter, config)
     addLittleSpacer(displayNameCell)
     local resetChange = function()
         for i, slider in ipairs(sliders) do
-            slider.Value = ToVec4(initValue[i])
+            slider.Value = RBUtils.ToVec4(initValue[i])
         end
         if colorPicker then
             colorPicker.Color = { initValue[1], initValue[2], initValue[3], initValue[4] or 1 }
@@ -506,7 +506,7 @@ function ImguiElements.AddNumberSliders(parent, label, getter, setter, config)
             colorPicker.Color[4] or nil })
 
             for i, slider in ipairs(sliders) do
-                slider.Value = ToVec4(colorPicker.Color[i])
+                slider.Value = RBUtils.ToVec4(colorPicker.Color[i])
             end
         end
     end
@@ -537,7 +537,7 @@ end
 --- @return function -- update function
 function ImguiElements.AddGeneralTableEditor(parent, o, onSet, ignoreKeys)
     local updateFuncs = {}
-    for k, v in SortedPairs(o) do
+    for k, v in RBUtils.SortedPairs(o) do
         if ignoreKeys and ignoreKeys[k] then
             goto continue
         end
@@ -573,10 +573,10 @@ end
 --- @return ExtuiPopup
 function ImguiElements.AddTexturePopup(parent, getter, setter)
     local optionToId = {}
-    local id = Uuid_v4()
+    local id = RBUtils.Uuid_v4()
     local safeGetter = function()
         local propertyValue = getter()
-        if not IsUuidIncludingNull(propertyValue) then
+        if not RBUtils.IsUuidIncludingNull(propertyValue) then
             Warning("StyleHelpers.RenderTexturePopup called with invalid UUID: " .. tostring(propertyValue))
             propertyValue = GUID_NULL
         end
@@ -655,7 +655,7 @@ function ImguiElements.AddEditorByGetter(parent, label, getter, setter)
             setter(sel.Value[1])
         end
         updateFunc = function()
-            slider.Value = ToVec4(getter)
+            slider.Value = RBUtils.ToVec4(getter)
         end
     elseif type(initValue) == "string" then
         local inputText = alignedTable:AddInputText(label, initValue)
@@ -665,7 +665,7 @@ function ImguiElements.AddEditorByGetter(parent, label, getter, setter)
         updateFunc = function()
             inputText.Text = getter()
         end
-    elseif IsArray(initValue) then
+    elseif RBTableUtils.IsArray(initValue) then
         updateFunc = ImguiElements.AddNumberSliders(parent, label, getter, setter,
             { IsInt = math.type(initValue[1]) == "integer", Range = { Min = 0, Max = 100, Step = 1 }, ResetValue =
             initValue })
@@ -677,20 +677,20 @@ function ImguiElements.AddEditorByGetter(parent, label, getter, setter)
 end
 
 function ImguiElements.AddResetButton(parent, sameLine)
-    local group = parent:AddGroup("ResetButtonGroup_" .. Uuid_v4())
+    local group = parent:AddGroup("ResetButtonGroup_" .. RBUtils.Uuid_v4())
     group.SameLine = sameLine and true or false
 
     local button = nil
-    button = group:AddImageButton("##ResetButton_" .. Uuid_v4(), RB_ICONS.Arrow_CounterClockwise, IMAGESIZE.FRAME) --[[@as ExtuiImageButton]]
+    button = group:AddImageButton("##ResetButton_" .. RBUtils.Uuid_v4(), RB_ICONS.Arrow_CounterClockwise, IMAGESIZE.FRAME) --[[@as ExtuiImageButton]]
 
     --button.PositionOffset = { 0, 4 }
     return button, group
 end
 
 function ImguiElements.AddMiddleAlignedImageButton(parent, icon, sameLine)
-    local group = parent:AddGroup("MiddleAlignedImageButtonGroup_" .. Uuid_v4())
+    local group = parent:AddGroup("MiddleAlignedImageButtonGroup_" .. RBUtils.Uuid_v4())
     group.SameLine = sameLine and true or false
-    local button = group:AddImageButton("##MiddleAlignedImageButton_" .. Uuid_v4(), icon, IMAGESIZE.FRAME) --[[@as ExtuiImageButton]]
+    local button = group:AddImageButton("##MiddleAlignedImageButton_" .. RBUtils.Uuid_v4(), icon, IMAGESIZE.FRAME) --[[@as ExtuiImageButton]]
     return button, group
 end
 
@@ -698,7 +698,7 @@ end
 ---@param size number?
 ---@return ExtuiGroup
 function ImguiElements.AddIndent(parent, size)
-    local _, rightGroup = parent:AddDummy(size or (10 * SCALE_FACTOR), 1), parent:AddGroup("IndentGroup_" .. Uuid_v4())
+    local _, rightGroup = parent:AddDummy(size or (10 * SCALE_FACTOR), 1), parent:AddGroup("IndentGroup_" .. RBUtils.Uuid_v4())
     rightGroup.SameLine = true
     return rightGroup
 end
@@ -758,7 +758,7 @@ function ImguiElements.AddReadOnlyAttrTable(parent, contents)
         input.AutoSelectAll = true
     end
 
-    for name, value in SortedPairs(contents) do
+    for name, value in RBUtils.SortedPairs(contents) do
         addRow(name, value)
     end
 
@@ -857,7 +857,7 @@ end
 ---@return ExtuiTableCell
 ---@return ExtuiTableCell
 function ImguiElements.AddTwoColTable(parent, label)
-    local table = parent:AddTable(label or Uuid_v4(), 2)
+    local table = parent:AddTable(label or RBUtils.Uuid_v4(), 2)
     local row = table:AddRow()
     local leftCell = row:AddCell()
     local rightCell = row:AddCell()
@@ -872,7 +872,7 @@ function ImguiElements.AddStyleDebugWindow(extui, symbol)
 
     }
     symbol = symbol or ""
-    local window = Ext.IMGUI.NewWindow("Style Debugger " .. symbol .. "##" .. Uuid_v4())
+    local window = Ext.IMGUI.NewWindow("Style Debugger " .. symbol .. "##" .. RBUtils.Uuid_v4())
     window.Closeable = true
     window.OnClose = function()
         window:Destroy()

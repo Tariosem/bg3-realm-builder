@@ -46,7 +46,7 @@ function CustomEffectTab:RenderProfile()
     self.displayNameInput = r1:AddInputText("", self.displayName)
     self.displayNameInput.SameLine = true
 
-    self.displayNameInputKeySub = SubscribeKeyInput({ Key = "RETURN"}, function()
+    self.displayNameInputKeySub = InputEvents.SubscribeKeyInput({ Key = "RETURN"}, function()
         local ok, focus = pcall(function() return ImguiHelpers.IsFocused(self.displayNameInput) end)
         if not ok then return UNSUBSCRIBE_SYMBOL end
         if focus then
@@ -78,7 +78,7 @@ function CustomEffectTab:RenderProfile()
     self.iconNameInput = r2:AddInputText("", self.icon)
     self.iconNameInput.SameLine = true
 
-    self.iconNameInputKeySub = SubscribeKeyInput({ Key = "RETURN"}, function()
+    self.iconNameInputKeySub = InputEvents.SubscribeKeyInput({ Key = "RETURN"}, function()
         local ok, focus = pcall(function() return ImguiHelpers.IsFocused(self.iconNameInput) end)
         if not ok then return UNSUBSCRIBE_SYMBOL end
         if focus then
@@ -99,7 +99,7 @@ function CustomEffectTab:RenderProfile()
     self.descInput = r3:AddInputText("", self.description or "")
     self.descInput.SameLine = true
 
-    self.descInputKeySub = SubscribeKeyInput({ Key = "RETURN"}, function()
+    self.descInputKeySub = InputEvents.SubscribeKeyInput({ Key = "RETURN"}, function()
         local ok, focus = pcall(function() return ImguiHelpers.IsFocused(self.descInput) end)
         if not ok then return UNSUBSCRIBE_SYMBOL end
         if focus then
@@ -339,7 +339,7 @@ function CustomEffectTab:RenderEffects()
 
         sourceBoneInput.OnRightClick = function(text)
             if text.Text and text.Text ~= "" then
-                local bestMatch = FindBestMatchBone(text.Text)
+                local bestMatch = BoneHelpers.FindBestMatchBone(text.Text)
                 text.Text = bestMatch
                 effectObj.SourceBone = bestMatch
                 --userData.SourceBone = bestMatch
@@ -374,7 +374,7 @@ function CustomEffectTab:RenderEffects()
         end
         targetBoneInput.OnRightClick = function(text)
             if text.Text and text.Text ~= "" then
-                local bestMatch = FindBestMatchBone(text.Text)
+                local bestMatch = BoneHelpers.FindBestMatchBone(text.Text)
                 text.Text = bestMatch
                 effectObj.TargetBone = bestMatch
             end
@@ -592,7 +592,7 @@ function CustomEffectTab:SetupContextMenu()
         },
     }
 
-    contextMenu:AddContext(items, function()
+    contextMenu:AddItems(items, function()
         return self.selectedIndex ~= nil
     end)
 
@@ -609,7 +609,7 @@ function CustomEffectTab:OpenContextMenu()
 end
 
 function CustomEffectTab:Add(uuid, parent, displayName, searchData, statsType)
-    local exist, tab = CheckWindowExists(uuid, "Custom Effect Tab")
+    local exist, tab = WindowManager.CheckWindowExists(uuid, "Custom Effect Tab")
     if exist then
         return tab
     end

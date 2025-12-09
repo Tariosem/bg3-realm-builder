@@ -104,7 +104,7 @@ function VisualResourceManager:PopulateAllVisualResources()
     RBPrintPurple("[Realm Builder] Populating Visual Resources...")
     for _, resId in pairs(visualResources) do
         local res = Ext.Resource.Get(resId, "Visual") --[[@as ResourceVisualResource]]
-        local fileName = GetLastPath(res.SourceFile)
+        local fileName = RBStringUtils.GetLastPath(res.SourceFile)
         local path = LSXHelpers.GetPathAfterData(res.SourceFile)
         self.Data[res.Guid] = {
             SourceFile = fileName,
@@ -177,7 +177,7 @@ local function populateCCAVResource()
 end
 
 if Ext.Debug.IsDeveloperMode() then
-    RegisterOnSessionLoaded(function ()
+    EventsSubscriber.RegisterOnSessionLoaded(function ()
         populateVisualResource()
         populateCCAVResource()
     end)

@@ -28,7 +28,7 @@ function EntityTab:__init(guid, templateId, parent, initAttach)
     self.guid = guid
     if templateId then
         self.templateId = templateId
-        self.templateName = TrimTail(templateId, 37)
+        self.templateName = RBStringUtils.TrimTail(templateId, 37)
         if self.templateName == "" then
             self.templateName = templateId
         end
@@ -36,7 +36,7 @@ function EntityTab:__init(guid, templateId, parent, initAttach)
         NetChannel.GetTemplate:RequestToServer({ Guid = guid }, function (data)
             if data and data.GuidToTemplateId[guid] then
                 self.templateId = data.GuidToTemplateId[guid]
-                self.templateName = TrimTail(self.templateId, 37)
+                self.templateName = RBStringUtils.TrimTail(self.templateId, 37)
                 if self.templateName == "" then
                     self.templateName = data.TemplateId
                 end
@@ -44,7 +44,7 @@ function EntityTab:__init(guid, templateId, parent, initAttach)
                     self.attrTable:SetValue("TemplateId", self.templateId)
                     self.attrTable:SetValue("TemplateName", self.templateName)
                 end
-                local templateObj = Ext.Template.GetTemplate(TakeTailTemplate(self.templateId))
+                local templateObj = Ext.Template.GetTemplate(EntityHelpers.TakeTailTemplate(self.templateId))
                 if templateObj.TemplateType == "character" then
                     self:RenderCharacterTab()
                 elseif templateObj.TemplateType == "item" then
@@ -78,7 +78,7 @@ function EntityTab:Render()
         self.isWindow = false
         self:OnAttach()
     else
-        self.panel = RegisterWindow(self.guid, self.displayName, "EntityTab", self, self.lastPosition, self.lastSize or {ENTTAB_WIDTH, ENTTAB_HEIGHT})
+        self.panel = WindowManager.RegisterWindow(self.guid, self.displayName, "EntityTab", self, self.lastPosition, self.lastSize or {ENTTAB_WIDTH, ENTTAB_HEIGHT})
         self.panel.Closeable = true
         self.isWindow = true
         self:OnDetach()
@@ -89,7 +89,7 @@ function EntityTab:Render()
     self:RenderFilterTab()
     self:RenderVisualTab()
 
-    local selfTemplate = Ext.Template.GetTemplate(TakeTailTemplate(self.templateId))
+    local selfTemplate = Ext.Template.GetTemplate(EntityHelpers.TakeTailTemplate(self.templateId))
     if not selfTemplate then return end
 
     if selfTemplate.TemplateType == "character" then
@@ -105,7 +105,7 @@ end
 
 local function debugEntity(guid)
     local template = EntityStore:GetStoredData(guid).TemplateId
-    local templateObj = Ext.Template.GetTemplate(TakeTailTemplate(template))
+    local templateObj = Ext.Template.GetTemplate(EntityHelpers.TakeTailTemplate(template))
 
     local visualTemplate = templateObj and templateObj.VisualTemplate or nil
 
@@ -178,7 +178,7 @@ function EntityTab:RenderMonitorTab()
     copyPosBtn:SetColor("Button", {0,0,0,0})
     pastePosBtn:SetColor("Button", {0,0,0,0})
     copyPosBtn.OnClick = function()
-        local pos = {CGetPosition(self.guid)}
+        local pos = {RBGetPosition(self.guid)}
         if pos and #pos == 3 then
             copiedTransform.Translate = {pos[1], pos[2], pos[3]}
         end
@@ -199,16 +199,16 @@ function EntityTab:RenderMonitorTab()
             return
         end
 
-        local xp, yp, zp = CGetPosition(self.guid)
+        local xp, yp, zp = RBGetPosition(self.guid)
         
         if not xp or not yp or not zp then
             positionMonitor.Value = self.LastTranslation or {0, 0, 0, 0}
             return
         end
 
-        local x = FormatDecimal(xp, 2)
-        local y = FormatDecimal(yp, 2)
-        local z = FormatDecimal(zp, 2)
+        local x = RBStringUtils.FormatDecimal(xp, 2)
+        local y = RBStringUtils.FormatDecimal(yp, 2)
+        local z = RBStringUtils.FormatDecimal(zp, 2)
 
         if x and y and z then
             positionMonitor.Value = {x, y, z, 0}
@@ -235,7 +235,7 @@ function EntityTab:RenderMonitorTab()
     copyRotBtn:SetColor("Button", {0,0,0,0})
     pasteRotBtn:SetColor("Button", {0,0,0,0})
     copyRotBtn.OnClick = function()
-        local quat = {GetQuatRotation(self.guid)}
+        local quat = {EntityHelpers.GetQuatRotation(self.guid)}
         if quat and #quat == 4 then
             copiedTransform.RotationQuat = {quat[1], quat[2], quat[3], quat[4]}
         end
@@ -262,7 +262,7 @@ function EntityTab:RenderMonitorTab()
         if not self.isValid then
             return UNSUBSCRIBE_SYMBOL
         end
-        if not EntityExists(self.guid) then
+        if not EntityHelpers.EntityExists(self.guid) then
             rotationMonitor.Value = self.LastRotation or {0, 0, 0, 0}
             return
         end
@@ -270,12 +270,12 @@ function EntityTab:RenderMonitorTab()
             return
         end
 
-        local quat = {GetQuatRotation(self.guid)}
+        local quat = {EntityHelpers.GetQuatRotation(self.guid)}
         if not quat or #quat ~= 4 then
             rotationMonitor.Value = self.LastRotation or {0, 0, 0, 0}
             return
         end
-        local RADs = QuatToEuler(quat)
+        local RADs = MathHelpers.QuatToEuler(quat)
         for i=1,3 do
             RADs[i] = math.deg(RADs[i])
         end
@@ -286,9 +286,9 @@ function EntityTab:RenderMonitorTab()
             return
         end
 
-        local xf = FormatDecimal(rx, 2)
-        local yf = FormatDecimal(ry, 2)
-        local zf = FormatDecimal(rz, 2)
+        local xf = RBStringUtils.FormatDecimal(rx, 2)
+        local yf = RBStringUtils.FormatDecimal(ry, 2)
+        local zf = RBStringUtils.FormatDecimal(rz, 2)
         if xf and yf and zf then
             rotationMonitor.Value = {xf, yf, zf, 0}
             self.LastRotation = {xf, yf, zf, 0}
@@ -316,16 +316,16 @@ function EntityTab:RenderMonitorTab()
             return UNSUBSCRIBE_SYMBOL
         end
 
-        local sx, sy, sz = CGetScale(self.guid)
+        local sx, sy, sz = RBGetScale(self.guid)
 
         if not sx or not sy or not sz then
             scaleTextMonitor.Value = self.LastScale or {1, 1, 1, 0}
             return
         end
 
-        local x = FormatDecimal(sx, 2)
-        local y = FormatDecimal(sy, 2)
-        local z = FormatDecimal(sz, 2)
+        local x = RBStringUtils.FormatDecimal(sx, 2)
+        local y = RBStringUtils.FormatDecimal(sy, 2)
+        local z = RBStringUtils.FormatDecimal(sz, 2)
 
         if x and y and z then
             scaleTextMonitor.Value = {x, y, z, 0}
@@ -424,7 +424,7 @@ function EntityTab:RenderFilterTab()
         local tag = self.tagsInput.Text
         if tag and tag ~= "" then
             if table.find(entInfo.Tags, tag) then
-                ToggleEntry(entInfo.Tags, tag)
+                RBTableUtils.ToggleEntry(entInfo.Tags, tag)
             else
                 Warning("[EntityTab] Cannot remove tag that doesn't exist: " .. tag .. " for GUID: " .. self.guid)
                 return
@@ -557,7 +557,7 @@ function EntityTab:Collapsed()
         self.panel:Destroy()
         self.panel = nil
     else
-        DeleteWindow(self.panel)
+        WindowManager.DeleteWindow(self.panel)
         self.panel = nil
     end
 
@@ -688,7 +688,7 @@ function EntityTab:RenderCharacterTab()
     local names = {}
     local nameToUuid = {}
     local function refreshParties()
-        local allPMs = GetAllPartyMembers()
+        local allPMs = EntityHelpers.GetAllPartyMembers()
         
         names = { GetLoca("<None>") }
         nameToUuid = {}
@@ -728,7 +728,7 @@ function EntityTab:RenderCharacterTab()
     end
 
     --- @type EsvCharacter
-    local serverCharacter = DeepCopy(serverCharacterTemplate)
+    local serverCharacter = RBUtils.DeepCopy(serverCharacterTemplate)
     
     local function setServerCharacter()
         NetChannel.SetServerEntity:SendToServer({ Guid = self.guid, Data = { ServerCharacter = serverCharacter } })
@@ -747,7 +747,7 @@ end
 function EntityTab:RenderItemTab()
     local tabItem = self.tabBar:AddTabItem("Item")
 
-    local serverItem = DeepCopy(serverItemTemplate)
+    local serverItem = RBUtils.DeepCopy(serverItemTemplate)
 
     local function setServerItem()
         NetChannel.SetServerEntity:SendToServer({ Guid = self.guid, Data = { ServerItem = serverItem } })

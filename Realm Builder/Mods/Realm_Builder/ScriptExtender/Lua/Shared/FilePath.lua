@@ -1,14 +1,16 @@
-local configPath = "Realm_Builder/Config.json"
-local visualPresetsPath = "Realm_Builder/Visual_Presets/"
-local visRefPath = "Realm_Builder/Visual_Presets/References.json"
-local effRefPath = "Realm_Builder/Custom_Effects/References.json"
-local effPath = "Realm_Builder/Custom_Effects/"
-local presetRefPath = "Realm_Builder/Scenes/References.json"
-local presetPath = "Realm_Builder/Scenes/"
-local localGenPath = "Realm_Builder/Localization/"
-local keybindPath = "Realm_Builder/Keybind.json"
-local browserSettingPath = "Realm_Builder/Browsers/%s.json"
-local generatedPrefabPath = "Realm_Builder/Prefabs/"
+local rootFolder = "Realm Builder/"
+
+local configPath = rootFolder .. "Config.json"
+local visualPresetsPath = rootFolder .. "Visual Presets/"
+local visRefPath = rootFolder .. "Visual Presets/References.json"
+local effRefPath = rootFolder .. "Custom Effects/References.json"
+local effPath = rootFolder .. "Custom Effects/"
+local presetRefPath = rootFolder .. "Scenes/References.json"
+local presetPath = rootFolder .. "Scenes/"
+local localGenPath = rootFolder .. "Localization/"
+local keybindPath = rootFolder .. "Keybind.json"
+local browserSettingPath = rootFolder .. "Browsers/%s.json"
+local generatedPrefabPath = rootFolder .. "Prefabs/"
 
 local logPath = "Realm_Builder/Logs/"
 local mapModLogPath = logPath .. "Map_Mods_Export_Log_%s.json"
@@ -104,7 +106,7 @@ function RealmPath.GetCCALocalizationPath(modName, modFolderName, lang)
 end
 
 function RealmPath.GetCCAModCachePath(modName, version)
-    local versionStr = type(version) == "table" and BuildVersionString(version[1], version[2], version[3], version[4]) or version
+    local versionStr = type(version) == "table" and RBUtils.BuildVersionString(version[1], version[2], version[3], version[4]) or version
 
     local fileName = string.format("%s_%s_Cache.json", modName, versionStr)
 

@@ -61,7 +61,7 @@ function KeybindMenu:Render(parent)
         self.isWindow = false
         self:OnAttach()
     else
-        self.panel = RegisterWindow("generic", "Key binding", "Menu", self)
+        self.panel = WindowManager.RegisterWindow("generic", "Key binding", "Menu", self)
         self.panel.AlwaysAutoResize = true
         self.isWindow = true
         self:OnDetach()
@@ -220,7 +220,7 @@ function KeybindMenu:RenderEvent(row, moduleName, eventName, module, registry)
         local desc = ImguiElements.AddIndent(eventCell):AddText(registry.Description)
         desc.TextWrapPos = 900
 
-        desc:SetColor("Text", HexToRGBA("#CCCCCC"))
+        desc:SetColor("Text", ColorUtils.HexToRGBA("#CCCCCC"))
         desc.Font = "Tiny"
     end
 
@@ -274,7 +274,7 @@ function KeybindMenu:Collapsed()
     end
 
     if self.panel and self.isWindow then
-        DeleteWindow(self.panel)
+        WindowManager.DeleteWindow(self.panel)
         self.panel = nil
     else
         self.panel:Destroy()

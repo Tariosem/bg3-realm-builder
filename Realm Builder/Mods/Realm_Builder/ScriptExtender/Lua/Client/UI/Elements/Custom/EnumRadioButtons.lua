@@ -12,7 +12,7 @@
 --- @param initValue integer
 --- @return EnumRadioButtonsGroup
 function ImguiElements.AddBitmaskRadioButtons(parent, options, initValue)
-    local group = parent:AddGroup("BitmaskRadioButtonsGroup" .. Uuid_v4())
+    local group = parent:AddGroup("BitmaskRadioButtonsGroup" .. RBUtils.Uuid_v4())
     local value = initValue or 0
     local btns = {}
 
@@ -47,7 +47,7 @@ function ImguiElements.AddBitmaskRadioButtons(parent, options, initValue)
         end
     })
 
-    local uuid = Uuid_v4()
+    local uuid = RBUtils.Uuid_v4()
     for i, option in ipairs(options) do
         local radio = group:AddRadioButton(option.Label or ("Option" .. i))
         radio.IDContext = "BitmaskRadioButton__" .. option.Label .. "__" .. i .. "__" .. uuid
@@ -76,7 +76,7 @@ end
 --- @param initValue number
 --- @return EnumRadioButtonsGroup
 function ImguiElements.AddEnumRadioButtons(parent, options, initValue)
-    local group = parent:AddGroup("EnumRadioButtonsGroup" .. Uuid_v4())
+    local group = parent:AddGroup("EnumRadioButtonsGroup" .. RBUtils.Uuid_v4())
 
     local current = initValue
     local radioButtons = {}

@@ -14,7 +14,7 @@ local function ClearNearbyMap(pos, radius)
             local newEntry = {
                 Guid = guid,
                 DisplayName = entry.Visual and entry.Visual.Visual and
-                GetLastPath(entry.Visual.Visual.VisualResource.SourceFile),
+                RBStringUtils.GetLastPath(entry.Visual.Visual.VisualResource.SourceFile),
                 Entity = entry,
                 Distance = newDis,
                 IsScenery = true,
@@ -28,7 +28,7 @@ end
 ---@param radius number?
 function UpdateNearbyMap(pos, radius)
     if not pos then
-        pos = { CGetPosition(CGetHostCharacter()) }
+        pos = { RBGetPosition(RBGetHostCharacter()) }
     end
     radius = radius or 18
     ClearNearbyMap(pos, radius)
@@ -37,7 +37,7 @@ function UpdateNearbyMap(pos, radius)
         return
     end
 
-    local entries = GetNearbyCharactersAndItems(pos, radius)
+    local entries = EntityHelpers.GetNearbyCharactersAndItems(pos, radius)
     if not entries or #entries == 0 then return end
 
     for _, entry in pairs(entries) do
@@ -50,7 +50,7 @@ function UpdateNearbyMap(pos, radius)
 end
 
 function PopulateSceneryNearby(pos, radius, onComplete)
-    pos = pos or { CGetPosition(CGetHostCharacter()) }
+    pos = pos or { RBGetPosition(RBGetHostCharacter()) }
     radius = radius or 18
     local thread
     local lastYieldTime = Ext.Timer.MicrosecTime()
@@ -70,7 +70,7 @@ function PopulateSceneryNearby(pos, radius, onComplete)
                 goto continue
             end
             local displayName = entity.Visual and entity.Visual.Visual and
-            GetLastPath(entity.Visual.Visual.VisualResource.SourceFile)
+            RBStringUtils.GetLastPath(entity.Visual.Visual.VisualResource.SourceFile)
             local entry = {
                 Guid = guid,
                 DisplayName = displayName,
