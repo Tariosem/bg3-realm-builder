@@ -136,7 +136,6 @@ function MaterialPresetsMenu:SetupWorkspace(parent, ccaModPack, notRenderImport,
             if not modPack.FolderDefinitions[folderName].ExportType then
                 if presetHeaders[folderName] then
                     local header = presetHeaders[folderName]
-                    GuiAnim.Vibrate(header)
                     StyleHelpers.SetWarningBorder(header)
                     GuiAnim.PulseBorder(header, 2)
                 end

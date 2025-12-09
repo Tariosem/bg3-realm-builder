@@ -158,7 +158,7 @@ StatsBoostHandlers = {
         local sd = Ext.Stats.Get(boost.args[1] or "") --[[@as SpellData]]
         local function render(parent, iconSize)
             local bulletText = parent:AddBulletText(GetLoca("Unlock Spell : "))
-            RenderStatsObject(sd, "SpellData")(parent)
+            ImguiElements.RenderStatsObject(sd, "SpellData")(parent)
             return bulletText
         end
 
@@ -344,7 +344,7 @@ StatsBoostHandlers = {
 
         local function render(parent)
             local bulletText = parent:AddBulletText("Immunity to status:")
-            RenderStatsObject(status, "StatusData")(parent)
+            ImguiElements.RenderStatsObject(status, "StatusData")(parent)
             return bulletText
         end
         return render
@@ -426,7 +426,7 @@ StatsBoostHandlers = {
         local interruptStats = Ext.Stats.Get(interrupt) --[[@as InterruptData]]
         local function render(parent)
             local bulletText = parent:AddBulletText(string.format("Unlock reaction:"))
-            RenderStatsObject(interruptStats, "InterruptData")(parent)
+            ImguiElements.RenderStatsObject(interruptStats, "InterruptData")(parent)
             return bulletText
         end
         return render
@@ -441,10 +441,10 @@ StatsBoostHandlers = {
 
         local function render(parent)
             local bulletText = parent:AddBulletText(string.format("Attack spell override: "))
-            RenderStatsObject(targetStats, "SpellData")(parent)
+            ImguiElements.RenderStatsObject(targetStats, "SpellData")(parent)
             local targetText = parent:AddText(" -> ")
             targetText.SameLine = true
-            RenderStatsObject(spellStats, "SpellData")(parent)
+            ImguiElements.RenderStatsObject(spellStats, "SpellData")(parent)
             return bulletText
         end
         return render
@@ -504,7 +504,7 @@ StatsBoostHandlers = {
 
             local conditionCell = row:AddCell()
             local bulletText = conditionCell:AddBulletText("If ")
-            RenderTokenTexts(conditionCell, wrpaedTokens, true)
+            ImguiElements.RenderTokenTexts(conditionCell, wrpaedTokens, true)
 
             if boost.Icon then
                 local image = parent:AddImage(boost.Icon, RBUtils.ToVec2(32 * SCALE_FACTOR))

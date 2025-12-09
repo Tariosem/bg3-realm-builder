@@ -17,7 +17,14 @@ local punctuations = {
     ["?"] = true,
 }
 
-function RenderTokenTexts(parent, tokens, firstAlwaysSameLine)
+ImguiElements = ImguiElements or {}
+
+--- comment
+--- @param parent ExtuiTreeParent
+--- @param tokens RB_TextToken[]
+--- @param firstAlwaysSameLine boolean?
+--- @return ExtuiText[]
+function ImguiElements.RenderTokenTexts(parent, tokens, firstAlwaysSameLine)
     local elements = {}
 
     local oneCharEndurance = true
@@ -52,7 +59,7 @@ function RenderTokenTexts(parent, tokens, firstAlwaysSameLine)
 
         local statImage = nil
         if token.TooltipRef and statsObj then
-            local statsObjRenderfunc = RenderStatsObject(statsObj, statsType, text)
+            local statsObjRenderfunc = ImguiElements.RenderStatsObject(statsObj, statsType, text)
             statImage,label = statsObjRenderfunc(parent, true)
         else
             label = parent:AddText(text)
@@ -220,7 +227,7 @@ end
 --- @param type any
 --- @param nameOverride string|nil
 --- @return fun(parent: ExtuiTreeParent, useTextLink: boolean): (ExtuiImageButton|ExtuiImage, ExtuiText|ExtuiTextLink)|fun()
-function RenderStatsObject(statsObj, type, nameOverride)
+function ImguiElements.RenderStatsObject(statsObj, type, nameOverride)
     if not statsObj then
         return function() end
     end

@@ -27,6 +27,7 @@ local function previewEffect(guid, entry)
             loopEffectData.Tags.PlayLoop = true
             loopEffectData.Duration = 5000
 
+            
             table.insert(effectsData, effectData)
             table.insert(effectsData, loopEffectData)
         end

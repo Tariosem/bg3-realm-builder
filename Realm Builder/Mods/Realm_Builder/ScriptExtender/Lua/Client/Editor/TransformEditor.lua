@@ -27,6 +27,8 @@
 --- @field new fun(): TransformEditor
 TransformEditor = _Class("TransformEditor")
 
+local TRANSFORMEDITOR_MAX_SELECTION_SIZE = 100
+
 function TransformEditor:__init()
     self.Target = nil
     self.Gizmo = TransformGizmo.new()
@@ -83,7 +85,6 @@ local individualPivotMode = {
     Individual = true,
 }
 
-local selectionMaxSize = 50
 
 --- @param selection RB_MovableProxy[]
 function TransformEditor:Select(selection, notRecordHistory)
@@ -111,13 +112,14 @@ function TransformEditor:Select(selection, notRecordHistory)
     if chekcIfSameSelection(selection, oriSelection) then return end
     local tempTarget = simpleUnique(selection)
 
-    local exceedFlag = false
-    if #tempTarget > selectionMaxSize then
-        exceedFlag = true
+    local maxSize = TRANSFORMEDITOR_MAX_SELECTION_SIZE
+    local overflowFlag = false
+    if #tempTarget > maxSize then
+        overflowFlag = true
         Warning("TransformEditor: Selection size exceeds maximum of " ..
-        tostring(selectionMaxSize) .. ". Truncating selection.")
+            tostring(maxSize) .. ". Truncating selection.")
         local newSelection = {}
-        for i = 1, selectionMaxSize do
+        for i = 1, maxSize do
             table.insert(newSelection, tempTarget[i])
         end
         tempTarget = newSelection
@@ -126,7 +128,7 @@ function TransformEditor:Select(selection, notRecordHistory)
 
     self:HandleGizmo()
     self:RegisterEvents()
-    self:PopupNotify(exceedFlag)
+    self:PopupNotify(overflowFlag)
 
     return true
 end
@@ -172,7 +174,7 @@ function TransformEditor:PopupNotify(exceed)
         end
         if exceed then
             panel:AddText("Selection size exceeded maximum limit.\n Truncated to " ..
-            tostring(selectionMaxSize) .. " entities."):SetColor("Text", { 1, 0, 0, 1 })
+                tostring(TRANSFORMEDITOR_MAX_SELECTION_SIZE) .. " entities."):SetColor("Text", { 1, 0, 0, 1 })
         end
     end)
 end
@@ -389,11 +391,11 @@ function TransformEditor:MakeAxisLineVisualization(gizmo, ray, color, index)
         gizmo.Visualizer:SetLineFxColor(line2Guid, color)
         local newLineTransform = {
             Translate = startPoint,
-            RotationQuat = MathHelpers.DirectionToQuat(beamDirection),
+            RotationQuat = MathUtils.DirectionToQuat(beamDirection),
         }
         local newLine2Transform = {
             Translate = secondPoint,
-            RotationQuat = MathHelpers.DirectionToQuat(ray.Direction)
+            RotationQuat = MathUtils.DirectionToQuat(ray.Direction)
         }
         NetChannel.SetTransform:RequestToServer({ Guid = lineGuid, Transforms = { [lineGuid] = newLineTransform } },
             function(response)
@@ -637,7 +639,7 @@ function TransformEditor:SetupGizmo()
                 local axes = gizmo.Picker:GetAxes()
                 newScale = calculateScale(axes, baseScale)
 
-            --- individual orientation spaces need to calculate axes per entity
+                --- individual orientation spaces need to calculate axes per entity
             elseif self.Space == "Parent" then
                 local parent = proxy:GetParent()
                 if parent and parent:IsValid() then
@@ -664,7 +666,7 @@ function TransformEditor:SetupGizmo()
             if individualPivotMode[self.PivotMode] or individualOriention[self.Space] then
                 proxy:SetWorldScale(newScale)
             elseif picPos then
-                local newTransform = MathHelpers.ScaleAroundPivot(picPos, startTransform, newScale)
+                local newTransform = MathUtils.ScaleAroundPivot(picPos, startTransform, newScale)
                 proxy:SetTransform(newTransform)
             else
                 Warning("TransformEditor: OnDragScale picPos is nil")
@@ -700,7 +702,7 @@ function TransformEditor:SetupGizmo()
                     Debug("TransformEditor: OnDragRotate picPos is nil")
                     return
                 end
-                local newTransform = MathHelpers.RotateAroundPivot(picPos, startTransform, deltaAxis, deltaAngle)
+                local newTransform = MathUtils.RotateAroundPivot(picPos, startTransform, deltaAxis, deltaAngle)
 
                 proxy:SetTransform(newTransform)
                 ::continue::

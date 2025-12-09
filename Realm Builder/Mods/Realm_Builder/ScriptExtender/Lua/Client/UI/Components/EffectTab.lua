@@ -1,6 +1,7 @@
 local EFFECTTAB_WIDTH = 1000 * SCALE_FACTOR
 local EFFECTTAB_HEIGHT = 1200 * SCALE_FACTOR
 
+--- @class EffectTab
 EffectTab = _Class("EffectTab")
 
 --- @class EffectTab

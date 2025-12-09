@@ -101,16 +101,16 @@ function TextureResourceManager:GetAllTextureResourceUnderPath(pathPrefix, preci
 
     local results = {}
     local maxSize = 1000
-    local exceedFlag = false
+    local overflowFlag = false
 
     --for id,_ in pairs(trieNode[fetchField] or {}) do
         --_P("Found texture resource under path: " .. pathPrefix .. " -> " .. self.TextureResources[id].SourceFile)
     --end
 
     for _,trieNode in pairs(allTrieNode) do
-        if #results >= maxSize then exceedFlag = true break end
+        if #results >= maxSize then overflowFlag = true break end
         for id,_ in pairs(trieNode.__resources or {}) do
-            if #results >= maxSize then exceedFlag = true break end
+            if #results >= maxSize then overflowFlag = true break end
             local fileName = self.TextureResources[id].SourceFile
             if searchCriteria and not fileName:find(searchCriteria, 1, true) then
                 goto continue
@@ -120,7 +120,7 @@ function TextureResourceManager:GetAllTextureResourceUnderPath(pathPrefix, preci
         end
     end
 
-    return results, exceedFlag
+    return results, overflowFlag
 end
 function TextureResourceManager:PopulateVirtualTextureResource(id)
     local res = Ext.Resource.Get(id, "VirtualTexture") --[[@as ResourceVirtualTextureResource]]

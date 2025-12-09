@@ -183,7 +183,7 @@ function TransformOperator:ChangeVisualization()
         local axis = self:GetAxesBySpace(proxy, self.Space)[next(self.Axis)]
         local ray = Ray.new(proxy:GetSavedTransform().Translate, axis)
         local pos = ray:At(-30)
-        local dir = MathHelpers.DirectionToQuat( axis * -1 )
+        local dir = MathUtils.DirectionToQuat( axis * -1 )
         local newTransform = {
             Translate = pos,
             RotationQuat = dir,

@@ -461,7 +461,7 @@ function TransformToolbar:SetupBoxSelect()
             local inside = false
             for _, v in ipairs(vertices) do
                 local screenPos = WorldToScreenPoint(v, camera, screenWidth, screenHeight)
-                if screenPos and MathHelpers.IsInRect(screenPos, boxSelectStart, boxSelectEnd) then
+                if screenPos and MathUtils.IsInRect(screenPos, boxSelectStart, boxSelectEnd) then
                     inside = true
                     break
                 end

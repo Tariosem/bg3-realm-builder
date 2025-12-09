@@ -682,7 +682,7 @@ function TransformGizmo:SetupDragging()
         end
         local hit = self:GetHit(mouseRay)
         local dir = hit.Position - pickerPos
-        local quat = MathHelpers.DirectionToQuat(dir, Ext.Math.QuatRotate(pickerRot, GLOBAL_COORDINATE.Y), axis)
+        local quat = MathUtils.DirectionToQuat(dir, Ext.Math.QuatRotate(pickerRot, GLOBAL_COORDINATE.Y), axis)
 
         self._pointerStartDir = quat
         self._rotLastAngle = nil

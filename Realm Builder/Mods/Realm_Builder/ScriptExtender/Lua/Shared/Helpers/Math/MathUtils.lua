@@ -1,10 +1,10 @@
-MathHelpers = MathHelpers or {}
+MathUtils = MathUtils or {}
 
 --- @param position Vec3
 --- @param rotationQuat quat
 --- @param scale Vec3
 --- @return number[]
-function MathHelpers.BuildModelMatrix(position, rotationQuat, scale)
+function MathUtils.BuildModelMatrix(position, rotationQuat, scale)
     local rotationMat = Matrix.new(Ext.Math.QuatToMat4(rotationQuat))
     local translateMat = Matrix.new(Ext.Math.BuildTranslation(position))
     local scaleMat = Matrix.new(Ext.Math.BuildScale(scale))
@@ -13,12 +13,12 @@ end
 
 ---@param transform Transform
 ---@return number[]
-function MathHelpers.BuildModelMatrixFromTransform(transform)
+function MathUtils.BuildModelMatrixFromTransform(transform)
     local transalte = Vec3.new(transform.Translate)
     local rotation = transform.RotationQuat
     local scale = Vec3.new(transform.Scale)
 
-    return MathHelpers.BuildModelMatrix(transalte, rotation, scale)
+    return MathUtils.BuildModelMatrix(transalte, rotation, scale)
 end
 
 local LHCS_AXES = {
@@ -51,7 +51,7 @@ GLOBAL_COORDINATE = LHCS
 ---@param quat vec4
 ---@param axis "X"|"Y"|"Z"
 ---@return vec4 Flipped
-function MathHelpers.FlipAxis(quat, axis)
+function MathUtils.FlipAxis(quat, axis)
     if not quat or #quat ~= 4 then
         Error("Invalid quaternion: " .. tostring(quat))
         return quat
@@ -65,7 +65,7 @@ function MathHelpers.FlipAxis(quat, axis)
     return Ext.Math.Normalize(flipped)
 end
 
-function MathHelpers.GetCenterPosition(uuids)
+function MathUtils.GetCenterPosition(uuids)
     local positions = {}
     if type(uuids) == "string" then
         uuids = {uuids}
@@ -97,7 +97,7 @@ end
 --- @param up? Vec3
 --- @param forwardAxis? TransformAxis|Vec3
 --- @return quat
-function MathHelpers.DirectionToQuat(direction, up, forwardAxis)
+function MathUtils.DirectionToQuat(direction, up, forwardAxis)
     direction = Ext.Math.Normalize(direction)
     up = up and Ext.Math.Normalize(up) or GLOBAL_COORDINATE.Y
     forwardAxis = forwardAxis and type(forwardAxis) == "string" and forwardAxis:upper() or forwardAxis or "Z"
@@ -150,7 +150,7 @@ end
 
 --- @param quat quat
 --- @return Vec3 euler in degrees
-function MathHelpers.QuatToEuler(quat)
+function MathUtils.QuatToEuler(quat)
     local globalAxes = {
         X = GLOBAL_COORDINATE.X,
         Y = GLOBAL_COORDINATE.Y,
@@ -181,7 +181,7 @@ end
 --- @param point Vec2
 --- @param rectMin Vec2
 --- @param rectMax Vec2
-function MathHelpers.IsInRect(point, rectMin, rectMax)
+function MathUtils.IsInRect(point, rectMin, rectMax)
     local minX = math.min(rectMin.x, rectMax.x)
     local maxX = math.max(rectMin.x, rectMax.x)
     local minY = math.min(rectMin.y, rectMax.y)
@@ -193,7 +193,7 @@ end
 --- @param childUuid string
 --- @param parentUuid string
 --- @return number[]|nil relativePosition
-function MathHelpers.SaveLocalRelativePosOffset(childUuid, parentUuid)
+function MathUtils.SaveLocalRelativePosOffset(childUuid, parentUuid)
     local childPos = {RBGetPosition(childUuid)}
     local parentPos = {RBGetPosition(parentUuid)}
     local pqx, pqy, pqz, pqw = EntityHelpers.GetQuatRotation(parentUuid)
@@ -214,7 +214,7 @@ end
 --- @param childUuid string
 --- @param parentUuid string
 --- @return number[]|nil relativeRotation
-function MathHelpers.SaveLocalRelativeRotOffset(childUuid, parentUuid)
+function MathUtils.SaveLocalRelativeRotOffset(childUuid, parentUuid)
     local cqx, cqy, cqz, cqw = EntityHelpers.GetQuatRotation(childUuid)
     local pqx, pqy, pqz, pqw = EntityHelpers.GetQuatRotation(parentUuid)
 
@@ -229,7 +229,7 @@ function MathHelpers.SaveLocalRelativeRotOffset(childUuid, parentUuid)
     return relativeQuat
 end
 
-function MathHelpers.SaveLocalRelativeTransform(pivotTransform, worldPos, worldQuat, worldScale)
+function MathUtils.SaveLocalRelativeTransform(pivotTransform, worldPos, worldQuat, worldScale)
     if not pivotTransform or not worldPos or not worldQuat then return end
     local px, py, pz = pivotTransform.Translate[1], pivotTransform.Translate[2], pivotTransform.Translate[3]
     local pqx, pqy, pqz, pqw = pivotTransform.RotationQuat[1], pivotTransform.RotationQuat[2], pivotTransform.RotationQuat[3], pivotTransform.RotationQuat[4]
@@ -258,7 +258,7 @@ end
 --- @param rotOffset number[]
 --- @return Vec3|nil finalPosition
 --- @return Quat|nil finalRotation
-function MathHelpers.GetLocalRelativeTransformFromGuid(parentUuid, posOffset, rotOffset)
+function MathUtils.GetLocalRelativeTransformFromGuid(parentUuid, posOffset, rotOffset)
     if not parentUuid then
         Error("Missing parent UUID")
         return nil, nil
@@ -273,7 +273,7 @@ function MathHelpers.GetLocalRelativeTransformFromGuid(parentUuid, posOffset, ro
         return nil, nil
     end
 
-    return MathHelpers.GetLocalRelativeTransform(
+    return MathUtils.GetLocalRelativeTransform(
         {
             Translate = {px, py, pz},
             RotationQuat = {pqx, pqy, pqz, pqw},
@@ -289,7 +289,7 @@ end
 --- @param rotOffset Quat
 --- @return Vec3|nil finalPosition
 --- @return Quat|nil finalRotation
-function MathHelpers.GetLocalRelativeTransform(transfrom, posOffset, rotOffset)
+function MathUtils.GetLocalRelativeTransform(transfrom, posOffset, rotOffset)
     local px, py, pz = transfrom.Translate[1], transfrom.Translate[2], transfrom.Translate[3]
     local pqx, pqy, pqz, pqw = transfrom.RotationQuat[1], transfrom.RotationQuat[2], transfrom.RotationQuat[3], transfrom.RotationQuat[4]
     local psx, psy, psz = transfrom.Scale[1], transfrom.Scale[2], transfrom.Scale[3]
@@ -314,7 +314,7 @@ end
 --- @param childUuid string
 --- @param parentUuid string
 --- @return quat lookAtQuat
-function MathHelpers.LookAtParent(childUuid, parentUuid)
+function MathUtils.LookAtParent(childUuid, parentUuid)
     local cx, cy, cz = RBGetPosition(childUuid)
     local px, py, pz = RBGetPosition(parentUuid)
     local up = Ext.Math.QuatRotate({RBGetRotation(childUuid)}, GLOBAL_COORDINATE.Y)
@@ -330,7 +330,7 @@ function MathHelpers.LookAtParent(childUuid, parentUuid)
         return Quat.Identity()
     end
 
-    local quat = MathHelpers.DirectionToQuat(direction, up)
+    local quat = MathUtils.DirectionToQuat(direction, up)
     return quat
 end
 
@@ -339,7 +339,7 @@ end
 --- @param axis Vec3
 --- @param angleRad number
 --- @return Transform newTransform
-function MathHelpers.RotateAroundPivot(pivot, targetTransform, axis, angleRad)
+function MathUtils.RotateAroundPivot(pivot, targetTransform, axis, angleRad)
     local pivotPos = Vec3.new(pivot)
     local targetPos = Vec3.new(targetTransform.Translate)
 
@@ -363,7 +363,7 @@ end
 --- @param targetTransform Transform
 --- @param scaleVec Vec3
 --- @return Transform newTransform
-function MathHelpers.ScaleAroundPivot(pivot, targetTransform, scaleVec)
+function MathUtils.ScaleAroundPivot(pivot, targetTransform, scaleVec)
     local pivotPos = Vec3.new(pivot)
     local targetPos = Vec3.new(targetTransform.Translate)
     local targetScale = Vec3.new(targetTransform.Scale)
@@ -382,7 +382,7 @@ end
 --- @param point Vec3
 --- @param boxMin Vec3
 --- @param boxMax Vec3
-function MathHelpers.IsInBoundingBox(point, boxMin, boxMax)
+function MathUtils.IsInBoundingBox(point, boxMin, boxMax)
     return point[1] >= boxMin[1] and point[1] <= boxMax[1] and
            point[2] >= boxMin[2] and point[2] <= boxMax[2] and
            point[3] >= boxMin[3] and point[3] <= boxMax[3]

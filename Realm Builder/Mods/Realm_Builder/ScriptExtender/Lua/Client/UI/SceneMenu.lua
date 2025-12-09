@@ -261,8 +261,8 @@ function SceneMenu:SavePreset(name, overwrite, candiates)
 
         local pos, rot = nil, nil
         if self.isRelative then
-            pos = MathHelpers.SaveLocalRelativePosOffset(entInfo.Guid, anchor)
-            rot = MathHelpers.SaveLocalRelativeRotOffset(entInfo.Guid, anchor)
+            pos = MathUtils.SaveLocalRelativePosOffset(entInfo.Guid, anchor)
+            rot = MathUtils.SaveLocalRelativeRotOffset(entInfo.Guid, anchor)
         else
             pos = {RBGetPosition(entInfo.Guid)}
             rot = {EntityHelpers.GetQuatRotation(entInfo.Guid)}
@@ -914,7 +914,7 @@ function SceneMenu:RenderPresetObjectInfo(parent, entInfo, presetName, presetTyp
             fpos = pos
             frot = rot
         else
-            fpos, frot = MathHelpers.GetLocalRelativeTransformFromGuid(parent, pos, rot)
+            fpos, frot = MathUtils.GetLocalRelativeTransformFromGuid(parent, pos, rot)
         end
 
         if not fpos or not frot then
@@ -978,7 +978,7 @@ function SceneMenu:RenderPresetObjectInfo(parent, entInfo, presetName, presetTyp
 end
 
 function SceneMenu:SaveToFile(presetName)
-    local refFilePath = GetPresetReferencePath()
+    local refFilePath = RealmPath.GetPresetReferencePath()
     local refData = {}
 
     for name, preset in pairs(self.sceneDatas) do
@@ -990,7 +990,7 @@ function SceneMenu:SaveToFile(presetName)
     Ext.IO.SaveFile(refFilePath, Ext.Json.Stringify(refData))
 
     if presetName then
-        local presetFilePath = GetPresetPath(presetName)
+        local presetFilePath = RealmPath.GetPresetPath(presetName)
         local presetData = self.sceneDatas[presetName]
         if presetData then
             Ext.IO.SaveFile(presetFilePath, Ext.Json.Stringify(presetData))
@@ -999,7 +999,7 @@ function SceneMenu:SaveToFile(presetName)
 end
 
 function SceneMenu:LoadFromFile()
-    local refFilePath = GetPresetReferencePath()
+    local refFilePath = RealmPath.GetPresetReferencePath()
     local refData = Ext.IO.LoadFile(refFilePath)
     if refData then
         self.sceneDatas = Ext.Json.Parse(refData) or {}
@@ -1008,7 +1008,7 @@ function SceneMenu:LoadFromFile()
     end
 
     for name,_ in pairs(self.sceneDatas) do
-        local presetFilePath = GetPresetPath(name)
+        local presetFilePath = RealmPath.GetPresetPath(name)
         local presetFile = Ext.IO.LoadFile(presetFilePath)
         if presetFile then
             local presetData = Ext.Json.Parse(presetFile)
@@ -1026,7 +1026,7 @@ function SceneMenu:TryToLoadFile(presetName)
         return false
     end
 
-    local presetFilePath = GetPresetPath(presetName)
+    local presetFilePath = RealmPath.GetPresetPath(presetName)
     local presetFile = Ext.IO.LoadFile(presetFilePath)
     if not presetFile then
         return false
@@ -1038,7 +1038,7 @@ function SceneMenu:TryToLoadFile(presetName)
 
     local function savePreset()
         self.sceneDatas[presetName] = Ext.Json.Parse(presetFile) or {}
-        local refFilePath = GetPresetReferencePath()
+        local refFilePath = RealmPath.GetPresetReferencePath()
         local refData = {}
         local refFile = Ext.IO.LoadFile(refFilePath)
         if refFile then

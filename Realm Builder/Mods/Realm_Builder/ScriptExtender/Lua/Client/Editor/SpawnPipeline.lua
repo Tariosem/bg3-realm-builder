@@ -131,7 +131,7 @@ local function spawnPrefab(prefabObj, entInfo)
             childEntInfo.Rotation = prefabObj.ChildrenTransforms[i].RotationQuat or { 0, 0, 0, 1 }
 
             -- Calculate relative position/rotation
-            local pos, rot = MathHelpers.GetLocalRelativeTransform(pivotTransform, childEntInfo.Position, childEntInfo.Rotation)
+            local pos, rot = MathUtils.GetLocalRelativeTransform(pivotTransform, childEntInfo.Position, childEntInfo.Rotation)
             if not pos or not rot then
                 Warning("[spawnPrefab] Failed to calculate relative transform for prefab child.")
                 pos = pivotTransform.Translate
@@ -341,7 +341,7 @@ function Commands.SpawnPreset(data)
         local pos, rot = entData.Position, entData.Rotation or Quat.Identity()
         if data.PresetType == "Relative" then
             --- @diagnostic disable-next-line
-            pos, rot = MathHelpers.GetLocalRelativeTransform(pivotTransform, pos, rot)
+            pos, rot = MathUtils.GetLocalRelativeTransform(pivotTransform, pos, rot)
             if not pos or not rot then
                 Warning("[SpawnPreset] Failed to calculate relative transform.")
                 return

@@ -275,7 +275,7 @@ function EntityTab:RenderMonitorTab()
             rotationMonitor.Value = self.LastRotation or {0, 0, 0, 0}
             return
         end
-        local RADs = MathHelpers.QuatToEuler(quat)
+        local RADs = MathUtils.QuatToEuler(quat)
         for i=1,3 do
             RADs[i] = math.deg(RADs[i])
         end

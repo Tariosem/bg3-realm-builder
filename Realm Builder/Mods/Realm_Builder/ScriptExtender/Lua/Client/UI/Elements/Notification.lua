@@ -520,7 +520,7 @@ function ErrorNotify(level, message)
                 ItemSpacing = {0, 0}
             }
         end
-        RenderTokenTexts(panel:AddTable("", 1):AddRow():AddCell(), tokens)
+        ImguiElements.RenderTokenTexts(panel:AddTable("", 1):AddRow():AddCell(), tokens)
     end)
     return notification
 end

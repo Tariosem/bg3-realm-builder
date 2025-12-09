@@ -7,10 +7,10 @@ local ClientVisualPresetData = {}
 local ClientOriginalVisualData = {}
 
 local function LoadVisualPresetData()
-    local refFile = GetVisualReferencePath()
+    local refFile = RealmPath.GetVisualReferencePath()
     local refData = Ext.Json.Parse(Ext.IO.LoadFile(refFile) or "{}")
     for templateName, data in pairs(refData) do
-        local visualPresetFile = GetVisualPresetsPath(templateName)
+        local visualPresetFile = RealmPath.GetVisualPresetsPath(templateName)
         local visualPresetData = Ext.Json.Parse(Ext.IO.LoadFile(visualPresetFile) or "{}")
         if visualPresetData then
             ClientVisualPresetData[templateName] = visualPresetData
@@ -2051,7 +2051,7 @@ function VisualTab:Save(name, overwrite)
 
     local saveName = name or self.displayName or "Unnamed"
 
-    local filePath = GetVisualPresetsPath(templateName)
+    local filePath = RealmPath.GetVisualPresetsPath(templateName)
     local oriFile = Ext.Json.Parse(Ext.IO.LoadFile(filePath) or "{}")
 
     local localTransforms = {}
@@ -2101,7 +2101,7 @@ function VisualTab:Save(name, overwrite)
         return false
     end
 
-    local refFilePath = GetVisualReferencePath()
+    local refFilePath = RealmPath.GetVisualReferencePath()
     local refFile = Ext.Json.Parse(Ext.IO.LoadFile(refFilePath) or "{}")
 
     refFile[templateName] = refFile[templateName] or {}
@@ -2165,7 +2165,7 @@ function VisualTab:Load(notoverwrite)
         return false
     end
 
-    local filePath = GetVisualPresetsPath(templateName)
+    local filePath = RealmPath.GetVisualPresetsPath(templateName)
     local fileContent = Ext.IO.LoadFile(filePath)
 
     if not fileContent then
@@ -2191,7 +2191,7 @@ function VisualTab:Load(notoverwrite)
         self.saveInput.OnChange()
     end
 
-    local refFilePath = GetVisualReferencePath()
+    local refFilePath = RealmPath.GetVisualReferencePath()
     local refFile = Ext.Json.Parse(Ext.IO.LoadFile(refFilePath) or "{}")
     if not refFile[templateName] then
         refFile[templateName] = {}
@@ -2213,7 +2213,7 @@ function VisualTab:Remove(name)
         return false
     end
 
-    local filePath = GetVisualPresetsPath(templateName)
+    local filePath = RealmPath.GetVisualPresetsPath(templateName)
 
     local oriFile = Ext.Json.Parse(Ext.IO.LoadFile(filePath) or "{}")
     if not oriFile or type(oriFile) ~= "table" then
@@ -2243,7 +2243,7 @@ function VisualTab:Remove(name)
     end
 
     if #self.savedPresets == 0 then
-        local refFilePath = GetVisualReferencePath()
+        local refFilePath = RealmPath.GetVisualReferencePath()
         local refFile = Ext.Json.Parse(Ext.IO.LoadFile(refFilePath) or "{}")
         if refFile[templateName] then
             refFile[templateName] = nil

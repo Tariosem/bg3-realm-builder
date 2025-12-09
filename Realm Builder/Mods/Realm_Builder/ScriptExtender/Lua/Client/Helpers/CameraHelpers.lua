@@ -4,7 +4,7 @@
 CameraHelpers = CameraHelpers or {}
 
 function CameraHelpers.CameraMoveToEntity(guid)
-    local pos = {MathHelpers.GetCenterPosition(guid)}
+    local pos = {MathUtils.GetCenterPosition(guid)}
     local camera = Ext.Entity.GetAllEntitiesWithComponent("GameCameraBehavior")[1].GameCameraBehavior
 
     camera.Targets = {}

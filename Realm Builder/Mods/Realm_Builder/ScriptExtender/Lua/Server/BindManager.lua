@@ -92,8 +92,8 @@ function BindManager:Bind(child, parent, attributes)
 
     self.BindStores[child] = self.BindStores[child] or {}
 
-    self.BindStores[child].RelativePosition = MathHelpers.SaveLocalRelativePosOffset(child, parent)
-    self.BindStores[child].RelativeRotation = MathHelpers.SaveLocalRelativeRotOffset(child, parent)
+    self.BindStores[child].RelativePosition = MathUtils.SaveLocalRelativePosOffset(child, parent)
+    self.BindStores[child].RelativeRotation = MathUtils.SaveLocalRelativeRotOffset(child, parent)
     self.BindStores[child].KeepLookingAt = keepLookingAt and keepLookingAt or false
     self.BindStores[child].FollowParent = followParent
 
@@ -151,8 +151,8 @@ function BindManager:UpdateOffset(child)
     if not self.BindStores[child] then return end
     local parent = self.BindTree:GetParentKey(child)
     if not parent then return end
-    self.BindStores[child].RelativePosition = MathHelpers.SaveLocalRelativePosOffset(child, parent)
-    self.BindStores[child].RelativeRotation = MathHelpers.SaveLocalRelativeRotOffset(child, parent)
+    self.BindStores[child].RelativePosition = MathUtils.SaveLocalRelativePosOffset(child, parent)
+    self.BindStores[child].RelativeRotation = MathUtils.SaveLocalRelativeRotOffset(child, parent)
 end
 
 function BindManager:UpdateBind(child)
@@ -206,7 +206,7 @@ end
 
 function BindManager:HandleNotFollowParent(child, parent, store)
     if store.KeepLookingAt then
-        local lookAt = MathHelpers.LookAtParent(child, parent)
+        local lookAt = MathUtils.LookAtParent(child, parent)
         if not lookAt then return false end
         OsirisHelpers.RotateTo(child, table.unpack(lookAt))
 
@@ -227,14 +227,14 @@ function BindManager:HandleNotFollowParent(child, parent, store)
 end
 
 function BindManager:HandleFollowParent(child, parent, store)
-    local finalPos, finalRot = MathHelpers.GetLocalRelativeTransformFromGuid(parent, store.RelativePosition, store.RelativeRotation)
+    local finalPos, finalRot = MathUtils.GetLocalRelativeTransformFromGuid(parent, store.RelativePosition, store.RelativeRotation)
     
     if not finalPos or not finalRot then
         return false
     end
 
     if store.KeepLookingAt then
-        local lookAt = MathHelpers.LookAtParent(child, parent)
+        local lookAt = MathUtils.LookAtParent(child, parent)
         if lookAt then
             finalRot = lookAt
         end

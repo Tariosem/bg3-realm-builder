@@ -21,7 +21,7 @@ function FindCurrentAtmosphereTrigger(pos, user)
             max[3] + triggerPos[3],
         }
 
-        if MathHelpers.IsInBoundingBox(pos, worldMin, worldMax) then
+        if MathUtils.IsInBoundingBox(pos, worldMin, worldMax) then
             return trigger
         end
     end
@@ -51,7 +51,7 @@ function FindCurrentLightingTrigger(pos, user)
             max[3] + triggerPos[3],
         }
 
-        if MathHelpers.IsInBoundingBox(pos, worldMin, worldMax) then
+        if MathUtils.IsInBoundingBox(pos, worldMin, worldMax) then
             return trigger
         end
     end

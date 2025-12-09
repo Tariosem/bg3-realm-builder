@@ -936,7 +936,7 @@ function OutlinerMenu:SetupCollectionSelectablePopup(openKey)
         pivtoTransform.Translate = pivtoTransform.Translate / #childArr
         for i, guid in ipairs(childArr) do
             local childPos, childRot, childScale = childWorldTransforms[i].Translate, childWorldTransforms[i].RotationQuat, childWorldTransforms[i].Scale
-            local relativeTransform = MathHelpers.SaveLocalRelativeTransform(pivtoTransform, childPos, childRot, childScale)
+            local relativeTransform = MathUtils.SaveLocalRelativeTransform(pivtoTransform, childPos, childRot, childScale)
             childRelativeTransforms[i] = relativeTransform
         end
 

@@ -74,7 +74,7 @@ function PickingUtils.GetPickingHitPosAndRot(picker)
     end
     local pos = picker.Inner.SceneryPosition
     local normal = picker.Inner.SceneryNormal
-    local rot = MathHelpers.DirectionToQuat(normal, nil, "Y")
+    local rot = MathUtils.DirectionToQuat(normal, nil, "Y")
 
     pos = Vec3.new(pos) --[[@as Vec3]]
 

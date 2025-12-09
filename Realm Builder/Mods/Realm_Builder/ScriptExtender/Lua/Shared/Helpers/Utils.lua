@@ -10,6 +10,7 @@ function RBUtils.Uuid_v4()
     return uuid
 end
 
+
 ---@param object string?
 ---@return boolean
 function RBUtils.IsUuid(object)

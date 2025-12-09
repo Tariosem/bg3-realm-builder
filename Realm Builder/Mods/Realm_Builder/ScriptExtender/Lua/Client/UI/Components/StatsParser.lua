@@ -404,7 +404,7 @@ function StatsParser:ParseDesc(desc, descRef, descParams, depth, isTooltip)
         parent:SetColor("Border", ColorUtils.HexToRGBA("FFC69800"))
         local wrappedTokens = RBUtils.WrapTextTokens(tokens, wrapPos or 60)
 
-        RenderTokenTexts(parent, wrappedTokens)
+        ImguiElements.RenderTokenTexts(parent, wrappedTokens)
     end
 
     return render

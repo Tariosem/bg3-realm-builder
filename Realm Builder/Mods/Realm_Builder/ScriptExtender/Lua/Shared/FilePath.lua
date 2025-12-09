@@ -12,13 +12,13 @@ local keybindPath = rootFolder .. "Keybind.json"
 local browserSettingPath = rootFolder .. "Browsers/%s.json"
 local generatedPrefabPath = rootFolder .. "Prefabs/"
 
-local logPath = "Realm_Builder/Logs/"
+local logPath = rootFolder .. "Logs/"
 local mapModLogPath = logPath .. "Map_Mods_Export_Log_%s.json"
 local ccaModLogPath = logPath .. "CC_Mods_Export_Log_%s.json"
 local xmlErrorLogPath = logPath .. "XML_Stringify_Errors_%s.json"
 
-local ccPath = "Realm_Builder/CC_Mods/"
-local ccModCachePath = "Realm_Builder/CC_Mod_Cache/"
+local ccPath = rootFolder .. "CC Mods/"
+local ccModCachePath = rootFolder .. "CC Mod Cache/"
 local ccModCacheRefPath = ccModCachePath .. "CCAModCache_References.json"
 
 local ccaModMetaFile = ccPath .. "%s/Mods/%s/meta.lsx"
@@ -36,7 +36,7 @@ local ccaEyeColorPath = matPresetsPath .. "Eye Presets/[PAK]_%s/"
 local ccaHairColorPath = matPresetsPath .. "Hair Color Presets/[PAK]_%s/"
 local ccaSkinColorPath = matPresetsPath .. "Skin Presets/[PAK]_%s/"
 
-local mapModsPath = "Realm_Builder/Map_Mods/"
+local mapModsPath = rootFolder .. "Map Mods/"
 local mapModMetaFile = mapModsPath .. "%s/Mods/%s/meta.lsx"
 local mapModLocalizationFile = mapModsPath .. "%s/Localization/%s/%s.xml"
 
@@ -53,35 +53,31 @@ local mapModCachePath = mapModsPath .. "Map_Mod_Uuids.json"
 
 RealmPath = {}
 
-function GetVisualPresetsPath(templateName)
+function RealmPath.GetVisualPresetsPath(templateName)
     return visualPresetsPath .. templateName .. ".json"
 end
 
-function GetCustomEffectPath(displayName)
+function RealmPath.GetCustomEffectPath(displayName)
     return effPath .. displayName .. ".json"
 end
 
-function GetPresetPath(presetName)
+function RealmPath.GetPresetPath(presetName)
     return presetPath .. presetName .. ".json"
 end
 
-function GetPresetReferencePath()
+function RealmPath.GetPresetReferencePath()
     return presetRefPath
 end
 
-function GetVisualReferencePath()
+function RealmPath.GetVisualReferencePath()
     return visRefPath
 end
 
-function GetEffectReferencePath()
+function RealmPath.GetEffectReferencePath()
     return effRefPath
 end
 
-function GetModPath(name)
-    return "Realm_Builder/" .. name .. ".json"
-end
-
-function GetLocalizationPath()
+function RealmPath.GetLocalizationPath()
     return localGenPath .. ".json"
 end
 

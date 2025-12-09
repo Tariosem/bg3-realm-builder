@@ -35,7 +35,7 @@ function OsirisHelpers.DrawLine(startPos, endPos, width, user)
 
     local fxHandle = Osi.CreateAt(RB_BEAM_ITEM_FX, 0, 0, 0, 1, 0, "") --[[@as string]]
     OsirisHelpers.TeleportTo(fxHandle, startPos[1], startPos[2], startPos[3])
-    OsirisHelpers.RotateTo(fxHandle, table.unpack(MathHelpers.DirectionToQuat(dir)))
+    OsirisHelpers.RotateTo(fxHandle, table.unpack(MathUtils.DirectionToQuat(dir)))
     Timer:Ticks(10, function (timerID)
         if not EntityHelpers.EntityExists(fxHandle) then return end
 
