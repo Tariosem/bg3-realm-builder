@@ -113,6 +113,7 @@ function RealmBuilderMainMenu:RenderBrowserMenu()
         {Key = "scenery", Label = "Scenery"},
         {Key = "prefab", Label = "Prefab"},
         {Key = "construction", Label = "Tile Construction"},
+        {Key = "CCAV", Label = "Character Creation Appearance Visuals"},
     }
     table.sort(allAvailableBrowsers, function(a,b) return a.Label < b.Label end)
 
@@ -219,8 +220,17 @@ function RealmBuilderMainMenu:Render()
         end
         local visualBrowser = RB_VisualManager:SetupVisualBrowser()
         self.browsers.visual = visualBrowser
-        self.browsers.visual:CreateCachedSort("DisplayName")
-        Debug("Visual Browser initialized.")
+        self.browsers.visual:CreateCachedSort("SourceFile")
+        Debug("Visual Browser initialized.")        
+    end)
+
+    Timer:Ticks(9, function (timerID)
+        if not RB_CCAVManager or not RB_CCAVManager.populated then
+            return
+        end
+        self.browsers.CCAV = RB_CCAVManager:SetupCCAVBrowser()
+        self.browsers.CCAV:CreateCachedSort("DisplayName")
+        Debug("CCAV Browser initialized.")
     end)
 
     Timer:Ticks(10, function()

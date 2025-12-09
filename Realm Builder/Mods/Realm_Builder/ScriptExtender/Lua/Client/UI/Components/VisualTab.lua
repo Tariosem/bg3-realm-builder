@@ -1965,6 +1965,7 @@ function VisualTab:RenderParticleSystemComponent(node, component, compIndex)
         Color = {
             Range = { Min = -1, Max = 1, Step = 0.01 },
             DisplayName = "Color",
+            IsColor = true,
         }
     }
 

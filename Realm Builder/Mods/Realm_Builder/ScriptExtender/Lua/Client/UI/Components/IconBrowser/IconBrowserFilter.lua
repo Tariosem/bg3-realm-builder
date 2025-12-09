@@ -63,7 +63,7 @@ end
 function IconBrowser:RenderTagsFilter()
     local allGroups, allTags, groupMap, tagsMap = self.dataManager:CountGroupsAndTags(self.selectedGuid)
     local tagTree = self.dataManager.tagTree
-
+    
     self.tagsMap = tagsMap
     self.groupMap = groupMap
     self:ClearNonExistTagsAndGroups()
@@ -75,7 +75,10 @@ function IconBrowser:RenderTagsFilter()
     for _, ele in pairs(self.tagsFilterElements or {}) do
         ele:Destroy()
     end
-
+    local dragDropType = "TagCollection" .. self.displayName
+    if #dragDropType > 31 then
+        dragDropType = string.sub(dragDropType, 1, 31)
+    end
     self.tagsParentElements = self.tagsParentElements or {}
     self.oldSortedParents = self.oldSortedParents or {}
 
@@ -232,10 +235,12 @@ function IconBrowser:RenderTagsFilter()
             end)
         end
 
+
+
         parentMenu.CanDrag = true
         parentMenu.UserData.TagCollection = parent
         parentMenu.OnRightClick = openPopup
-        parentMenu.DragDropType = "TagCollection" .. self.displayName
+        parentMenu.DragDropType = dragDropType
 
         local function menuDragDropSingle(menu, drop)
             local data = drop.UserData
@@ -312,7 +317,7 @@ function IconBrowser:RenderTagsFilter()
     end
     --Debug("Tag parents render order:", table.concat(parentRenderOrder, " > "))
 
-    self.tagsPopup.DragDropType = "TagCollection" .. self.displayName
+    self.tagsPopup.DragDropType = dragDropType
     self.tagsPopup.OnDragDrop = function(menu, drop)
         local data = drop.UserData
 
@@ -348,7 +353,7 @@ function IconBrowser:RenderTagsFilter()
         local selection = tagArea:AddSelectable(currentTag .. " (" .. currentCnt .. ")")
 
         selection.CanDrag = true
-        selection.DragDropType = "TagCollection" .. self.displayName
+        selection.DragDropType = dragDropType
         selection.UserData = { Tag = currentTag }
 
         selection.OnDragStart = function(sel)

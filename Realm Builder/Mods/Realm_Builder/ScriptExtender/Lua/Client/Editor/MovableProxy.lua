@@ -212,6 +212,9 @@ function CharacterMovableProxy:SetTransform(transform)
     end
 
     VisualHelpers.SetVisualTransform({self.Guid}, transforms)
+
+    local entity = Ext.Entity.Get(self.Guid) --[[@as EntityHandle]]
+    
 end
 
 CharacterMovableProxy.GetParent = ItemMovableProxy.GetParent
@@ -329,14 +332,24 @@ function MovableProxy.CreateByGuid(guid)
     if proxy then
         return proxy
     end
-    if CIsCharacter(guid) then
-        proxy = CharacterMovableProxy.new(guid)
-    elseif CIsItem(guid) then
-        proxy = ItemMovableProxy.new(guid)
-    elseif SceneryRegistry[guid] then
-        proxy = SceneryMovableProxy.new(SceneryRegistry[guid].Scenery)
-    else
-        proxy = ItemMovableProxy.new(guid)
+    local stored = EntityStore:GetStoredTemplateType(guid)
+    if stored then
+        if stored == "item" or stored == "scenery" then
+            proxy = ItemMovableProxy.new(guid)
+        elseif stored == "character" then
+            proxy = CharacterMovableProxy.new(guid)
+        end
+    end
+    if not proxy then
+        if CIsCharacter(guid) then
+            proxy = CharacterMovableProxy.new(guid)
+        elseif CIsItem(guid) then
+            proxy = ItemMovableProxy.new(guid)
+        elseif SceneryRegistry[guid] then
+            proxy = SceneryMovableProxy.new(SceneryRegistry[guid].Scenery)
+        else
+            proxy = CharacterMovableProxy.new(guid)
+        end
     end
     movabelCache[guid] = proxy
     return proxy

@@ -180,6 +180,7 @@ function EntityStore:SubscribeToBindChanges(guid, callback)
 
     return { Unsubscribe = unsub, ID = sub }
 end
+
 ---@param guid string
 ---@param data EntityData
 function EntityStore:AddEntity(guid, data)
@@ -254,6 +255,20 @@ function EntityStore:GetStoredData(guid)
     end
 
     return data
+end
+
+--- @param guid any
+--- @return 'item'|'character'|'scenery'|nil
+function EntityStore:GetStoredTemplateType(guid)
+    local data = self:GetStoredData(guid)
+    if not data then
+        return nil
+    end
+    local template = Ext.Template.GetTemplate(TakeTailTemplate(data.TemplateId))
+    if not template then
+        return nil
+    end
+    return template.TemplateType
 end
 
 function EntityStore:GetStoredDatas(guids)

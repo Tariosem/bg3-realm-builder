@@ -74,7 +74,7 @@ function KeybindManager:GetKeybinding(key, modifiers)
 end
 
 function KeybindManager:HandleInput(module, e)
-    if self.Disabled then return end
+    if self.Disabled or self.rebinding then return end
     if not self.Events[module] then return end
     if not self.Modules[module] then return end
 
@@ -232,8 +232,10 @@ function KeybindManager:Rebind(module, eventName, newKey, newModifiers)
 end
 
 function KeybindManager:RebindByInput(module, eventName, callback)
+    self.rebinding = true
     SubscribeKeyAndMouse(function(e)
         if e.Event == "KeyUp" then
+            self.rebinding = false
             if self:GetKeyByEvent(module, eventName) then
                 local keybinding = self:GetKeyByEvent(module, eventName)
                 if keybinding == Keybinding.new(e.Key, e.Modifiers or {}) then

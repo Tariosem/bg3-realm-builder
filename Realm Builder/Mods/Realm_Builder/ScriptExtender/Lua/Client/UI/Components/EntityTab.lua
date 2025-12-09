@@ -44,6 +44,12 @@ function EntityTab:__init(guid, templateId, parent, initAttach)
                     self.attrTable:SetValue("TemplateId", self.templateId)
                     self.attrTable:SetValue("TemplateName", self.templateName)
                 end
+                local templateObj = Ext.Template.GetTemplate(TakeTailTemplate(self.templateId))
+                if templateObj.TemplateType == "character" then
+                    self:RenderCharacterTab()
+                elseif templateObj.TemplateType == "item" then
+                    self:RenderItemTab()
+                end
             end
         end)
     end

@@ -30,7 +30,7 @@ function RB_FlagHelpers.HasFlag(entity, flag)
     if type(entity) == "string" then
         entity = Ext.Entity.Get(entity) --[[@as EntityHandle]]
     end
-    if not entity then return false end
+    if not entity or not entity.Vars then return false end
 
     local flags = entity.Vars[RB_FLAG_FIELD] or RB_UserVars_Flags.None
     return (flags & flag) ~= 0
@@ -46,7 +46,7 @@ function RB_FlagHelpers.SetFlag(entity, flag)
     if type(entity) == "string" then
         entity = Ext.Entity.Get(entity) --[[@as EntityHandle]]
     end
-    if not entity then return false end
+    if not entity or not entity.Vars then return false end
 
     local flags = entity.Vars[RB_FLAG_FIELD] or RB_UserVars_Flags.None
     entity.Vars[RB_FLAG_FIELD] = flags | flag
@@ -60,7 +60,7 @@ function RB_FlagHelpers.ClearFlag(entity, flag)
     if type(entity) == "string" then
         entity = Ext.Entity.Get(entity) --[[@as EntityHandle]]
     end
-    if not entity then return false end
+    if not entity or not entity.Vars then return false end
 
     local flags = entity.Vars[RB_FLAG_FIELD] or RB_UserVars_Flags.None
     entity.Vars[RB_FLAG_FIELD] = flags & (~flag)

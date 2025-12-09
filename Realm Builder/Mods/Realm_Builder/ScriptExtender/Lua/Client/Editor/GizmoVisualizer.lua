@@ -92,7 +92,7 @@ end
 --- @param axis any
 --- @param guid any
 --- @param Value any
---- @return RenderableObject[]?
+--- @return RenderableObject[]? -
 local function SetGizmoAxisTextureColorParam(axis, guid, Value)
     if not IsGizmo(guid) then
         --Warning("GetGizmoAxisTextureColorParam: Invalid GUID: " .. tostring(guid))

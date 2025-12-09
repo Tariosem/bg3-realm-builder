@@ -7,6 +7,7 @@ RequireFiles("Client/UI/Components/", {
     "ItemBrowser",
     "EffectBrowser",
     "RootTemplateBrowser",
+    "CCAVBrowser",
     "EntityTab",
     "EffectTab",
     "CustomEffectTab",

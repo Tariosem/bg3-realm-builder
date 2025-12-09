@@ -1,6 +1,5 @@
 --- @class RootTemplateBrowser : IconBrowser
 --- @field DataManager ManagerBase
---- @field AddOtherContextItems fun(self:RootTemplateBrowser, contextMenu:RB_ContextMenu, entry:RB_Scenery)
 --- @field new fun(dataManager:ManagerBase, title:string):RootTemplateBrowser
 RootTemplateBrowser = _Class("RootTemplateBrowser", IconBrowser)
 
@@ -17,7 +16,6 @@ function RootTemplateBrowser:SubclassInit()
 
     self.iconButtonBgColor = HexToRGBA("FF615238")
 end
-
 
 --- @param entry RB_Scenery
 --- @param cell ExtuiTableCell
@@ -63,6 +61,7 @@ function RootTemplateBrowser:RenderIcon(entry, cell)
                 Icon = entry.Icon,
                 TemplateId = entry.TemplateId,
                 SourceFile = entry.SourceFile,
+                Path = entry.Path,
             }
             ImguiElements.AddReadOnlyAttrTable(popup, attrs)
         end
@@ -84,10 +83,6 @@ function RootTemplateBrowser:RenderIcon(entry, cell)
                 local spawnId = entry.TemplateId or entry.Uuid
                 Commands.SpawnCommand(spawnId, { Position=spawnPos, Rotation=spawnRot })
             end)
-
-            if self.AddOtherContextItems then
-                self:AddOtherContextItems(actTab, entry)
-            end
         end
         rPopup:Open()
     end

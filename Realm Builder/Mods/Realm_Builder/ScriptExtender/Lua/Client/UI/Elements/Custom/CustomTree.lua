@@ -171,8 +171,6 @@ function ImguiElements.AddTree(parent, label, open)
                 return function(_, ...)
                     return panel[k](panel, ...)
                 end
-            elseif k == "OnExpand" or k == "OnCollapse" then
-                return rawget(closure, k)
             elseif k == "Tooltip" then
                 return function()
                     return selectable:Tooltip()

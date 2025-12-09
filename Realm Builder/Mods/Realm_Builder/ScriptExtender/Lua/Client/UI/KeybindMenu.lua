@@ -189,6 +189,11 @@ local function getPresentation(keybind)
     return table.concat(parts, " + ")
 end
 
+local conflictNotif = Notification.new("Keybind Conflict")
+conflictNotif.Pivot = {0.5, 0.5}
+conflictNotif.ClickToDismiss = true
+conflictNotif.ChangeDirectionWhenFadeOut = true
+
 ---@param row ExtuiTableRow
 ---@param moduleName string
 ---@param eventName string
@@ -226,21 +231,29 @@ function KeybindMenu:RenderEvent(row, moduleName, eventName, module, registry)
     local keyButton = keyCell:AddButton(keybindText) --[[@as ExtuiSelectable]]
 
     keyButton.OnClick = function()
+        local originLabel = keyButton.Label
         keyButton.Label = "Press any key..."
         keyButton.Disabled = true
         module:RebindByInput(eventName, function(newKeybind, conflictModule, conflictEvent)
             if not newKeybind then
-                if conflictModule and conflictEvent then
-                    keyButton.Label = "Conflict with " .. conflictModule .. " : " .. conflictEvent
-                else
-                    keyButton.Label = "Invalid Keybind !"
-                end
-                keyButton:SetColor("Text", HexToRGBA("FFFF2424"))
-                Timer:After(5000, function()
-                    keyButton.Disabled = false
-                    keyButton:SetColor("Text", HexToRGBA("FFFFFFFF"))
-                    keyButton.Label = getPresentation(module:GetKeyByEvent(eventName))
+                local conflictKeybind = KeybindManager:GetKeyByEvent(conflictModule, conflictEvent)
+                conflictNotif:Show("Keybind Conflict", function (panel)
+                    local notigSel = panel:AddSelectable(getPresentation(conflictKeybind or {}))
+                    notigSel.Font = "Large"
+                    notigSel:SetColor("Text", {1, 1, 1, 1})
+                    notigSel:SetStyle("SelectableTextAlign", 0.5, 0)
+                    notigSel.SelectableDisabled = true
+                    panel:AddText("Is already bound to "):SetColor("Text", {1, 1, 1, 1})
+                    local modTex = panel:AddBulletText(conflictModule)
+                    modTex:SetColor("Text", {0.7, 0.7, 0.7, 1})
+                    modTex.Font = "Large"
+                    local tex = panel:AddText(conflictEvent)
+                    tex:SetColor("Text", {1,1,1,1})
+                    tex.SameLine = true
+                    tex.Font = "Large"
                 end)
+                keyButton.Disabled = false
+                keyButton.Label = originLabel
                 return
             end
             keyButton.Label = getPresentation(newKeybind)

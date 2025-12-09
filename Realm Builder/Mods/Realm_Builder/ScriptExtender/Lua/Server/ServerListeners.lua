@@ -359,6 +359,9 @@ NetChannel.ManageGizmo:SetRequestHandler(function(data, userID)
                 [guid] = { Scale = { 0, 0, 0 } }
             }
         })
+        NetChannel.SetVisualTransform:SendToClient({ Guid = guid, Transforms = {
+            [guid] = { Scale = { 1, 1, 1 } }
+        } }, userID)
     end)
 
     gizmoUserStack[tostring(userID)] = gizmoUserStack[tostring(userID)] or {}

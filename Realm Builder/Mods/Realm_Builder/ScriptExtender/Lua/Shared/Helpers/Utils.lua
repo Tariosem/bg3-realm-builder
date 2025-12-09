@@ -430,6 +430,15 @@ function ToggleEntry(tbl, value)
     return true
 end
 
+function NextFromList(list, cur)
+    local curIndex = table.find(list, cur) or 0
+    local nextIndex = curIndex + 1
+    if nextIndex > #list then
+        nextIndex = 1
+    end
+    return list[nextIndex]
+end
+
 function RequireFiles(folderPath, files)
     if type(folderPath) ~= "string" then
         _P("RequireFiles: folderPath must be a string")
@@ -728,4 +737,11 @@ function GetFormatTime()
     end
     return string.format("%04d-%02d-%02d_%02d%02d%02d", tonumber(y), tonumber(m), tonumber(d),
             tonumber(h), tonumber(min), tonumber(s))
+end
+
+function GetFormatHMS()
+    local clockTime = Ext.Timer.ClockTime()
+    local y, m, d, h, min, s = clockTime:match("(%d+)-(%d+)-(%d+) (%d+):(%d+):(%d+)")
+
+    return string.format("%02d:%02d:%02d", tonumber(h), tonumber(min), tonumber(s))
 end

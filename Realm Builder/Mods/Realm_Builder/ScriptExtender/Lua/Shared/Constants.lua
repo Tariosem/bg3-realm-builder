@@ -6,7 +6,6 @@ RB_PROP_TAG = "02131330-7126-43c4-b5a3-b619e42dcf50"
 RB_GIZMO_TAG = "08f54bd8-3029-4faa-9f2f-cef3160a44c0"
 
 RB_PROP_AXIS_FX = "RB_Gizmo_Translate_347586d3-e55e-4cea-8d26-168d17e233c6"
-
 RB_BEAM_ITEM_FX = "18e043e7-45e7-4eb0-b201-cdd78e38528a"
 
 GIZMO_ITEM = {
@@ -38,7 +37,7 @@ INVISIBLE_HELPER_SCENERY = "3d4e8434-f972-4080-8602-66b12e2949f2"
 INVISIBLE_HELPER_PREVIEW = "9e28abea-a971-4aae-ab97-c161ed663c99"
 INVISIBLE_HELPER_VISUAL = "7cc1fdbe-a0c1-4003-acec-07f26b5efe4b"
 
---- @enum RB_ICONS
+--- @enum RB_Icons
 RB_ICONS = {}
 RB_ICONS.Character = "RB_Character_Icon"
 RB_ICONS.Scenery = "RB_Scenery_Icon"
@@ -89,7 +88,7 @@ RB_PROP_BIND_VISUALIZATION_FX = "3af9c664-d864-cbcd-e6b1-11ea99e307df" -- Loop b
 RB_PROP_BIND_VISUALIZATION_FX_RED = "3e3032d5-dd5c-a9e1-a77c-64273e97a7ce"  -- VFX_Debug_Beam_01
 
 
---- @type table<RB_ICONS, {U1:number,U2:number,V1:number,V2:number}>
+--- @type table<RB_Icons, {U1:number,U2:number,V1:number,V2:number}>
 RB_ICON_UV = {}
 RB_ICON_UV[RB_ICONS.Eye] = {
     U1 = 0.12524414,
@@ -128,7 +127,7 @@ RB_ICON_UV[RB_ICONS.Menu_Down] = {
     V2 = 0.49975586,
 }
 
---- @type table<RB_ICONS, {UV0:number[],UV1:number[]}>
+--- @type table<RB_Icons, {UV0:number[],UV1:number[]}>
 RB_ICON_UV01 = {}
 for icon,data in pairs(RB_ICON_UV) do
     RB_ICON_UV01[icon] = {

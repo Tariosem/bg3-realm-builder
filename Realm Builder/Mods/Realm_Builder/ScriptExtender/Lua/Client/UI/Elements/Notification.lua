@@ -134,6 +134,10 @@ function Notification:BuildContent()
         titleText:SetColor("Text", {color[1], color[2], color[3], color[4] + 0.4})
     end
     titleText.OnClick = function()
+        if self.fadeOutTimer then
+            Timer:Cancel(self.fadeOutTimer)
+            self.fadeOutTimer = nil
+        end
         self:Dismiss()
     end
     titleText:SetColor("Text", {1,1,1,1})
@@ -146,6 +150,10 @@ function Notification:BuildContent()
             child.OnClick = function()
                 childOnClick(child)
                 if not clicked then
+                    if self.fadeOutTimer then
+                        Timer:Cancel(self.fadeOutTimer)
+                        self.fadeOutTimer = nil
+                    end
                     self:Dismiss()
                     clicked = true
                 end
@@ -208,6 +216,7 @@ function Notification:StartAnimation(dir, direction)
             Ext.Math.Clamp(panel.LastPosition[1] / screenWidth, 0, 1),
             Ext.Math.Clamp(panel.LastPosition[2] / screenHeight, 0, 1)
         }
+        self.panel.Disabled = true
     end
     if dir == "FadeOut" and self.ChangeDirectionWhenFadeOut then
         self.AnimDirection = direction == "Horizontal" and "Vertical" or "Horizontal"

@@ -17,10 +17,11 @@ function VisualHelpers.GetEntityVisual(handle)
             return visualRegistry[handle].Visual.Visual
         end
 
+        local entityHandle = UuidToHandle(handle)
         if CIsCharacter(handle) then
-            local dummy = GetDummyByUuid(handle)
-            if dummy then
-                handle = dummy
+            local hasPMDummy = entityHandle.HasDummy
+            if hasPMDummy then
+                handle = hasPMDummy.Entity
             elseif GetClientVisualDummy(handle) then
                 handle = GetClientVisualDummy(handle) --[[@as EntityHandle]]
             else
@@ -105,16 +106,6 @@ end
 function VisualHelpers.GetVisualScale(handle)
     local visual = VisualHelpers.GetEntityVisual(handle)
 
-    if CIsItem(handle) then
-        local renderable = VisualHelpers.GetRenderable(handle, 1)
-        if renderable and renderable.WorldTransform then
-            local scale = renderable.WorldTransform.Scale
-            if scale and #scale >= 3 then
-                return scale[1], scale[2], scale[3]
-            end
-        end
-    end
-
     if not visual or not visual.WorldTransform then
         return nil, nil, nil
     end
@@ -154,8 +145,7 @@ end
 
 --- @param handle EntityHandle|GUIDSTRING
 function VisualHelpers.SetVisualScale(handle, scale)
-    local entity = handle
-    local visual = VisualHelpers.GetEntityVisual(entity)
+    local visual = VisualHelpers.GetEntityVisual(handle)
     if not visual or not visual.WorldTransform then
         return false
     end
@@ -184,7 +174,7 @@ end
 ---@param transforms table<GUIDSTRING, Transform>
 function VisualHelpers.SetVisualTransform(guids, transforms)
     local visuals = {} --[[@as table<GUIDSTRING, Visual>]]
-
+    
     for _, guid in pairs(guids) do
         if type(guid) ~= "string" or guid == "" then
             goto continue
@@ -200,40 +190,19 @@ function VisualHelpers.SetVisualTransform(guids, transforms)
 
 
     for guid, visual in pairs(visuals) do
-        if CIsCharacter(guid) then
-            local transform = transforms[guid]
-            if not transform then
-                --Warning("TransformEditor: No transform provided for guid: "..tostring(guid))
-                return
-            end
-            if transform.Translate then
-                visual:SetWorldTranslate(transform.Translate)
-            end
-            if transform.RotationQuat then
-                visual:SetWorldRotate(transform.RotationQuat)
-            end
-            if transform.Scale then
-                visual:SetWorldScale(transform.Scale)
-            end
-        else
-            local transform = transforms[guid]
-            local objs = visual.ObjectDescs --[[@as VisualObjectDesc[] ]]
-            for _, obj in pairs(objs) do
-                local renderable = obj.Renderable
-                if not renderable or not renderable.WorldTransform then
-                    goto continue
-                end
-                if transform.Translate then
-                    renderable.WorldTransform.Translate = transform.Translate
-                end
-                if transform.RotationQuat then
-                    renderable.WorldTransform.RotationQuat = transform.RotationQuat
-                end
-                if transform.Scale then
-                    renderable.WorldTransform.Scale = transform.Scale
-                end
-                ::continue::
-            end
+        local transform = transforms[guid]
+        if not transform then
+            --Warning("TransformEditor: No transform provided for guid: "..tostring(guid))
+            return
+        end
+        if transform.Translate then
+            visual:SetWorldTranslate(transform.Translate)
+        end
+        if transform.RotationQuat then
+            visual:SetWorldRotate(transform.RotationQuat)
+        end
+        if transform.Scale then
+            visual:SetWorldScale(transform.Scale)
         end
     end
 end

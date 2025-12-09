@@ -43,6 +43,17 @@ Ext.Events.ResetCompleted:Subscribe(function ()
     NetChannel.ClearHistory:Broadcast({})
 end)
 
+Ext.Events.Shutdown:Subscribe(function ()
+    local allModVars = Ext.Vars.GetModVariables(ModuleUUID)
+    for _,guid in pairs(allModVars) do
+        if RB_FlagHelpers.HasFlag(guid, "IsGizmo") or RB_FlagHelpers.HasFlag(guid, "DeleteLater") then
+            Osi.RequestDeleteTemporary(guid)
+            Osi.RequestDelete(guid)
+        end
+    end
+    NetChannel.ClearHistory:Broadcast({})
+end)
+
 local initModVar = Ext.Vars.GetModVariables(ModuleUUID)
 if not initModVar then
     initModVar = {}

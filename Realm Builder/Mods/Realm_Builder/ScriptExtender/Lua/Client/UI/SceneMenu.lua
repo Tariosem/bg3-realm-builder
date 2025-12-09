@@ -427,7 +427,7 @@ function SceneMenu:DeletePreset(name)
         self.presetInfoWindow = nil
     end
 
-    self:RenderPresetInfo()
+    self:RenderPresetDetails()
     self:RenderSidebarSelection()
 
     return true
@@ -438,7 +438,7 @@ function SceneMenu:ChangePresentingPreset(name)
     cT.OnWidthChange = nil
 
     self:ClearSidebarHighlights()
-    self:RenderPresetInfo(name)
+    self:RenderPresetDetails(name)
     local sidebarBtn = self.presetSideBarButtons[name]
     if sidebarBtn then
         sidebarBtn.Selected = true
@@ -573,6 +573,7 @@ function SceneMenu:RenderSidebarSelection()
     for _, name in ipairs(allPresets) do
         local cell = tempRow:AddCell()
         local button = cell:AddSelectable(name)
+        button:SetStyle("SelectableTextAlign", 0.5, 0)
         self.presetsDescText[name] = button:Tooltip():AddText(self.sceneDatas[name].Description or "")
         if self.presetsDescText[name].Label == "" then
             button:Tooltip():SetStyle("Alpha", 0)
@@ -606,7 +607,7 @@ function SceneMenu:RenderSidebarSelection()
     end
 end
 
-function SceneMenu:RenderPresetInfo(name)
+function SceneMenu:RenderPresetDetails(name)
     if self.descKeyInputSub then
         self.descKeyInputSub:Unsubscribe()
         self.descKeyInputSub = nil
@@ -670,6 +671,7 @@ function SceneMenu:RenderPresetInfo(name)
     local descInputContent = presetData.Description
     local presetDescInput = inputCell:AddInputText("", descInputContent)
     presetDescInput.Hint = GetLoca("Enter a description here...")
+    presetDescInput.Multiline = true
     local confirmInputBtn = inputCell:AddButton("<")
     confirmInputBtn.IDContext = "ConfirmPresetDesc"
     StyleHelpers.ApplyInfoButtonStyle(confirmInputBtn)
