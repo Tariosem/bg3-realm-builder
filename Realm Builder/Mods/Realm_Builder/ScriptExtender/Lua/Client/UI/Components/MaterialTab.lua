@@ -631,12 +631,12 @@ end
 
 function MaterialTab:GetAllParameterNames()
     return {
-        [1] = self.Editor.ParamSetProxy:GetAllScalarParameterNames(),
-        [2] = self.Editor.ParamSetProxy:GetAllVector2ParameterNames(),
-        [3] = self.Editor.ParamSetProxy:GetAllVector3ParameterNames(),
-        [4] = self.Editor.ParamSetProxy:GetAllVector4ParameterNames(),
-        [5] = self.Editor.ParamSetProxy:GetAllTexture2DParameterNames(),
-        [6] = self.Editor.ParamSetProxy:GetAllVirtualTextureParameterNames(),
+        [1] = self.Editor.ParamSet:GetAllScalarParameterNames(),
+        [2] = self.Editor.ParamSet:GetAllVector2ParameterNames(),
+        [3] = self.Editor.ParamSet:GetAllVector3ParameterNames(),
+        [4] = self.Editor.ParamSet:GetAllVector4ParameterNames(),
+        [5] = self.Editor.ParamSet:GetAllTexture2DParameterNames(),
+        [6] = self.Editor.ParamSet:GetAllVirtualTextureParameterNames(),
     }
 end
 

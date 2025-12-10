@@ -1,5 +1,7 @@
 local materialProxies = {}
 
+--- just populate a formatted table for easier handling of material parameters
+
 --- @alias ParamterName string
 --- @enum RB_MaterialParamType
 RB_MaterialParamType = {

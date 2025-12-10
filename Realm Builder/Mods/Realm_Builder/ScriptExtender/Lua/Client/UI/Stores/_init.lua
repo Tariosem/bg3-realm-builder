@@ -1,6 +1,6 @@
 RBUtils.RequireFiles("Client/UI/Stores/", {
     "EntityStore",
-    "GuidMap",
+    "ClientDummy",
     "WindowManager",
     "NearbyMap",
     "StatsData",

@@ -3,7 +3,7 @@
 --- @field SourceFile string
 --- @field MaterialType MaterialType
 --- @field DiffusionProfileUUID string
---- @field ParamSetProxy ParametersSetProxy -- ParameterSetProxy instance for easier parameter access
+--- @field ParamSet ParametersSetProxy -- ParameterSetProxy instance for easier parameter access
 --- @field Instance fun():Material
 --- @field ParamsSrc fun():MaterialParameters
 --- @field new fun(originMaterial: GUIDSTRING, matSrc:fun():Material , paramsSrc:fun():MaterialParameters):MaterialEditor
@@ -22,7 +22,7 @@ function MaterialEditor:__init(originMaterial, matSrc, paramsSrc)
     self.Material = originMaterial or ""
     self.SourceFile = LSXHelpers.GetPathAfterData(matRes.SourceFile or "")
 
-    self.ParamSetProxy = ParametersSetProxy.new(paramsSrc()) --[[@as ParametersSetProxy]]
+    self.ParamSet = ParametersSetProxy.new(paramsSrc()) --[[@as ParametersSetProxy]]
 
     self.ParamsSrc = paramsSrc
     self.Instance = matSrc
@@ -41,7 +41,7 @@ end
 function MaterialEditor:SetDefaultParameters(params)
     for ptype,paramsTable in pairs(params) do
         for paramName,value in pairs(paramsTable) do
-            self.ParamSetProxy:SetDefaultParameter(paramName, value, ptype) 
+            self.ParamSet:SetDefaultParameter(paramName, value, ptype) 
         end
     end
 
@@ -51,7 +51,7 @@ end
 ---@param paramName string
 ---@return number|number[]|string?, RB_MaterialParamType?
 function MaterialEditor:GetParameter(paramName)
-    local ptype = self.ParamSetProxy:GetParameterType(paramName)
+    local ptype = self.ParamSet:GetParameterType(paramName)
     if not ptype then
         --Warning("MaterialEditor: Could not determine parameter type for '" .. tostring(paramName) .. "'.")
         return nil
@@ -60,7 +60,7 @@ function MaterialEditor:GetParameter(paramName)
     local value = self.Parameters[ptype][paramName]
 
     if not value then
-        value = self.ParamSetProxy:GetParameter(paramName)
+        value = self.ParamSet:GetParameter(paramName)
 
         if not value then
             Warning("MaterialEditor: Could not find parameter '" .. tostring(paramName) .. "' in material proxy for material '" .. tostring(self.Material) .. "'.")
@@ -72,7 +72,7 @@ function MaterialEditor:GetParameter(paramName)
 end
 
 function MaterialEditor:HasChanged(paramName)
-    local ptype = self.ParamSetProxy:GetParameterType(paramName)
+    local ptype = self.ParamSet:GetParameterType(paramName)
     if not ptype then
         Warning("MaterialEditor: Could not determine parameter type for '" .. tostring(paramName) .. "'.")
         return false
@@ -100,7 +100,7 @@ function MaterialEditor:SetParameter(paramName, value, ptype)
     local mat = self.Instance()
     if not mat then return false end
 
-    ptype = ptype or self.ParamSetProxy:GetParameterType(paramName)
+    ptype = ptype or self.ParamSet:GetParameterType(paramName)
     if not ptype then
         --Warning("MaterialEditor: Could not find parameter '" .. tostring(paramName) .. "' in material proxy for material '" .. tostring(self.Material) .. "'. Cannot set.")
         return false
@@ -126,7 +126,7 @@ function MaterialEditor:ResetParameter(paramName)
     local mat = self.Instance()
     if not mat then return false end
 
-    local value, ptype = self.ParamSetProxy:GetParameter(paramName)
+    local value, ptype = self.ParamSet:GetParameter(paramName)
 
     if not value then
         Warning("MaterialEditor: Could not find parameter '" .. tostring(paramName) .. "' in material proxy for material '" .. tostring(self.Material) .. "'. Cannot reset.")
@@ -183,7 +183,7 @@ function MaterialEditor:ResetAll()
         return false
     end
 
-    for ptype,params in pairs(self.ParamSetProxy.Parameters) do
+    for ptype,params in pairs(self.ParamSet.Parameters) do
         for paramName,value in pairs(params) do
             local funcName = ParamTypeToFunc[ptype]
 

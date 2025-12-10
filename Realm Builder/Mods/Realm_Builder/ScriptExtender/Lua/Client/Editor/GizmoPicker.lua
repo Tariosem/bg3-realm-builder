@@ -9,8 +9,8 @@ PICKER_CONSTANTS.CENTER_SPHERE = {
 }
 
 PICKER_CONSTANTS.TRANSLATE_PLANE_SQUARE = {
-    Inner = 0.4,
-    HalfSize = 0.8
+    Inner = 0.0,
+    HalfSize = 0.5
 }
 
 PICKER_CONSTANTS.TRANSLATE_AXIS_BB = {

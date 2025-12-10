@@ -1,4 +1,4 @@
---- REMEMBER TO IMPLEMENT "SetTransform" AND "__getTransform" AND "IsValid" IN DERIVED CLASSES
+--- need to implement GetTransform, SetTransform and IsValid
 --- @class RB_MovableProxy
 --- @field StoredTransform Transform
 --- @field SetWorldTranslate fun(self: RB_MovableProxy, position: Vec3)

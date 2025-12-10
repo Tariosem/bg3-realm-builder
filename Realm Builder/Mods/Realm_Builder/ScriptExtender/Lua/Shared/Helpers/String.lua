@@ -7,6 +7,7 @@ function RBStringUtils.StripLSTags(desc)
     return desc:gsub("%b<>", ""):gsub("%s+", " "):gsub("^%s+", ""):gsub("%s+$", "")
 end
 
+
 --- @param input string
 --- @param trimWhitespace boolean?
 --- @return string[]

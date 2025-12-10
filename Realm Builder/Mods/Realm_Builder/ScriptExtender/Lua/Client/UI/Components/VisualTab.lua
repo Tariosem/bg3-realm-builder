@@ -303,7 +303,7 @@ function VisualTab:RenderMaterialContextPopup()
     contextMenu:AddItem("Open Material Mixer", function (sel)
         local matTab = self.Materials[self.SelectedMaterial]
         if not matTab then return end
-        local allParams = matTab.Editor.ParamSetProxy.Parameters
+        local allParams = matTab.Editor.ParamSet.Parameters
         local mixerParams = {}
         for paramType, typeParams in pairs(allParams) do
             mixerParams[paramType] = {}
@@ -979,7 +979,7 @@ function VisualTab:RenderAttachmentEditors()
             materialTab.Parent = objNode
             materialTab.Editor.Instance = getliveMat
             materialTab.Editor.ParamsSrc = getliveParams
-            materialTab.Editor.ParamSetProxy:Update(getliveParams())
+            materialTab.Editor.ParamSet:Update(getliveParams())
             materialTab.Editor:SetDefaultParameters(overrideCharacterParams)
 
             objNode.OnRightClick = function()
@@ -1095,7 +1095,7 @@ function VisualTab:RenderObjectEditor()
         materialEditor.Parent = materialNode
         materialEditor.Editor.Instance = getliveMat
         materialEditor.Editor.ParamsSrc = getliveParams
-        materialEditor.Editor.ParamSetProxy:Update(getliveParams())
+        materialEditor.Editor.ParamSet:Update(getliveParams())
 
         materialNode.OnRightClick = function()
             materialNode.OnExpand()

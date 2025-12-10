@@ -13,9 +13,11 @@
 --- @field Close fun(self:IconBrowser)
 --- @field RenderPage fun(self:IconBrowser)
 --- @field SaveToFile fun(self:IconBrowser, field:string, content:any):boolean ok
+--- @field new fun(dataManager:ManagerBase, displayName:string):IconBrowser
 IconBrowser = _Class("IconBrowser")
 
---- @class IconsBrowser
+--- @param dataManager ManagerBase
+--- @param DisplayName string
 function IconBrowser:__init(dataManager, DisplayName)
     local screenWidth, screenHeight = UIHelpers.GetScreenSize()
     self.displayName = DisplayName or "Icons"
