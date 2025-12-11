@@ -52,7 +52,7 @@ function OsirisHelpers.DrawLine(startPos, endPos, width, user)
             Guid = fxHandle,
             Transforms = {
                 [fxHandle] = {
-                    Scale = {1 * (width or 1) , 1 * (width or 1), toScale},
+                    Scale = {width or 1 , width or 1, toScale},
                 }
             }
         }, user)

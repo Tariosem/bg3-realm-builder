@@ -28,7 +28,6 @@ function RealmBuilderMainMenu:RegisterEvents()
             self.panel.Open = not self.panel.Open
         end
         NetChannel.ManageEntity:SendToServer({ Action = "Scan" })
-        self.entityMenu:UpdateList()
     end)
 
     meMod:RegisterEvent("OpenTransformToolbar", function(e)
@@ -82,7 +81,7 @@ function RealmBuilderMainMenu:RegisterEvents()
             if pick.Scenery then
                 VisualTab.CreateByEntity(pick, pick.Scenery.Uuid, "Scenery"):Render()
             else
-                _D(pick:GetAllComponents())
+                --_D(pick:GetAllComponents())
             end
         end
     end)
@@ -119,7 +118,7 @@ function RealmBuilderMainMenu:RenderBrowserMenu()
 
     self.browserBtns = {}
     for _, browser in pairs(allAvailableBrowsers) do
-        local btn = browserMenu:AddButton(browser.Label)
+        local btn = browserMenu:AddButton(GetLoca(browser.Label))
         btn.OnClick = function()
             ToggleBrowser(browser.Key)
         end

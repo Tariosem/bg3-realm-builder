@@ -415,39 +415,28 @@ function TransformEditor:MakeAxisLineVisualization(gizmo, ray, color, index)
         return
     end
 
+    local width = gizmo.Visualizer:GetLineVisualWidth()
     self.LineVisualizations[index] = {}
-    NetChannel.Visualize:RequestToServer({
-        Type = "Line",
-        Position = startPoint,
-        EndPosition = ray:At(100),
-        Width = gizmo.Visualizer.Scale[1] * 0.3,
-        Duration = -1,
-    }, function(response)
-        local viz = response[1]
-        RBUtils.WaitUntil(function()
-            return VisualHelpers.GetEntityVisual(viz) ~= nil
-        end, function()
-            gizmo.Visualizer:SetLineFxColor(viz, color)
-            gizmo.Visualizer:SetLineLength(viz, 200)
-        end, 300)
-        table.insert(self.LineVisualizations[index], viz)
-    end)
-    NetChannel.Visualize:RequestToServer({
-        Type = "Line",
-        Position = secondPoint,
-        EndPosition = ray:At(-100),
-        Width = gizmo.Visualizer.Scale[1] * 0.3,
-        Duration = -1,
-    }, function(response)
-        local viz = response[1]
-        RBUtils.WaitUntil(function()
-            return VisualHelpers.GetEntityVisual(viz) ~= nil
-        end, function()
-            gizmo.Visualizer:SetLineFxColor(viz, color)
-            gizmo.Visualizer:SetLineLength(viz, 200)
-        end, 300)
-        table.insert(self.LineVisualizations[index], viz)
-    end)
+    local function makeLine(pos, t)
+        NetChannel.Visualize:RequestToServer({
+            Type = "Line",
+            Position = pos,
+            EndPosition = ray:At(t),
+            Width = width,
+            Duration = -1,
+        }, function(response)
+            local viz = response[1]
+            RBUtils.WaitUntil(function()
+                return VisualHelpers.GetEntityVisual(viz) ~= nil
+            end, function()
+                gizmo.Visualizer:SetLineFxColor(viz, color)
+                gizmo.Visualizer:SetLineLength(viz, 200)
+            end, 300)
+            table.insert(self.LineVisualizations[index], viz)
+        end)
+    end
+    makeLine(startPoint, 100)
+    makeLine(secondPoint, -100)
 end
 
 function TransformEditor:SafeTraverseTarget()

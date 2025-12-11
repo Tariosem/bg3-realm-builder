@@ -68,18 +68,17 @@ end
 
 ---@param window ExtuiWindow
 function ImguiHelpers.FocusWindow(window)
-    if not WindowManager.IsWindowValid(window) then return end
-
     window:SetCollapsed(false)
     window:SetFocus()
     window.Open = true
 end
 
+local focusFlag = Ext.Enums.GuiItemStatusFlags.Focused
 --- @param extui ExtuiStyledRenderable
 --- @return boolean
 function ImguiHelpers.IsFocused(extui)
     if not extui then return false end
-    return (extui.StatusFlags & Ext.Enums.GuiItemStatusFlags.Focused) ~= 0
+    return (extui.StatusFlags & focusFlag) ~= 0
 end
 
 --- @param extui ExtuiStyledRenderable

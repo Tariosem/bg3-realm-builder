@@ -1,6 +1,5 @@
 --- @type table<string, table<string, Keybinding>>
-local DEFAULT_KEYBINDS = {
-
+return {
     GeneralShortcuts = {
         ["OpenMainMenu"] = { Key = "GRAVE" },
         ["OpenBrowserMenu"] = { Key = "F1" },
@@ -41,5 +40,3 @@ local DEFAULT_KEYBINDS = {
     },
     
 }
-
-return DEFAULT_KEYBINDS

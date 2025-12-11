@@ -1121,6 +1121,8 @@ function VisualTab:RenderObjectEditor()
     end
 end
 
+--#region effects
+
 function VisualTab:RenderEffectSection()
     local entity = self:GetEntity(self.guid) --[[@as EntityHandle]]
     if entity.Effect == nil then
@@ -1991,6 +1993,8 @@ function VisualTab:RenderParticleSystemComponent(node, component, compIndex)
         }
     })
 end
+
+--#endregion effects
 
 function VisualTab:RenderTransformSliders(parent, descIndex, attachIndex, keyName)
     local selectInTransformEditor = parent:AddButton(GetLoca("Select in Transform Editor"))

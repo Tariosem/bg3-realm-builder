@@ -159,11 +159,11 @@ function GizmoVisualizer:Visualize3DCursor(guid, factor)
     local disatance = Ext.Math.Distance(camera.Transform.Transform.Translate, visual.WorldTransform.Translate)
     local clampedDistance = Ext.Math.Clamp(disatance, 1.0, 100.0)
     local baseScale = (clampedDistance / 10.0)
-    local scaleVec = Vec3.new({baseScale * factor, baseScale * factor, baseScale * factor})
+    local scaleVec = {baseScale * factor, baseScale * factor, baseScale * factor}
 
-    local color = Vec4.new(self.AxisLineColor["X"])
+    local color = self.AxisLineColor["X"]
+    visual:SetWorldScale(scaleVec)
     for _,obj in ipairs(objs) do
-        obj.Renderable:SetWorldScale(scaleVec)
         obj.Renderable.ActiveMaterial:SetVector4("Color", color)
     end
 end
@@ -335,4 +335,8 @@ function GizmoVisualizer:SetLineLength(guid, length, width)
         renderable:SetWorldScale(toSet)
     end
     --Debug("SetLineLength: Set length of "..tostring(guid).." to "..tostring(length))
+end
+
+function GizmoVisualizer:GetLineVisualWidth()
+    return self.Scale[1] * 0.15
 end

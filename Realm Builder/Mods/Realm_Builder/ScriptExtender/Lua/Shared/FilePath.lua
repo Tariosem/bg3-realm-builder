@@ -1,6 +1,6 @@
 local rootFolder = "Realm Builder/"
 
-local configPath = rootFolder .. "Config.json"
+local configPath = rootFolder .. "UIConfig.json"
 local visualPresetsPath = rootFolder .. "Visual Presets/"
 local visRefPath = rootFolder .. "Visual Presets/References.json"
 local effRefPath = rootFolder .. "Custom Effects/References.json"
@@ -52,6 +52,10 @@ local mapTemplatePath = mapModsPath .. "%s/Mods/%s/Levels/%s/%s/%s.lsx"
 local mapModCachePath = mapModsPath .. "Map_Mod_Uuids.json"
 
 RealmPath = {}
+
+function RealmPath.GetUIConfigPath()
+    return configPath
+end
 
 function RealmPath.GetVisualPresetsPath(templateName)
     return visualPresetsPath .. templateName .. ".json"

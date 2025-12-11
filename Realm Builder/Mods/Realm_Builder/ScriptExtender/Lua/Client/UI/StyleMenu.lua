@@ -57,11 +57,11 @@ function StyleMenu:RenderSaveLoad()
         for name, func in pairs(self.saveFuncs) do
             func()
         end
-        Config.SaveConfig("Theme")
+        UIConfig.SaveConfig("Theme")
     end
 
     loadConfigButton.OnClick = function()
-        Config.LoadConfig()
+        UIConfig.LoadConfig()
         if self.reloadColors then
             self.reloadColors()
         end
@@ -87,16 +87,16 @@ function StyleMenu:RenderSaveLoad()
 end
 
 function StyleMenu:RenderColorPickers()
-    local colorAutoReload = self.panel:AddCheckbox(GetLoca("Auto Reload"), CONFIG.Theme.Color.autoReload or false)
+    local colorAutoReload = self.panel:AddCheckbox(GetLoca("Auto Reload"), UICONFIG.Theme.Color.autoReload or false)
     colorAutoReload.IDContext = "ColorAutoReload"
 
     colorAutoReload.OnChange = function(c)
-        CONFIG.Theme.Color.autoReload = c.Checked
-        Config.SaveConfig("Theme")
+        UICONFIG.Theme.Color.autoReload = c.Checked
+        UIConfig.SaveConfig("Theme")
     end
 
     local accentColorPicker = self.panel:AddColorEdit(GetLoca("Accent Color"))
-    accentColorPicker.Color = CONFIG.Theme.Color.Accent or {0.2, 0.2, 0.2, 0.85}
+    accentColorPicker.Color = UICONFIG.Theme.Color.Accent or {0.2, 0.2, 0.2, 0.85}
 
     local themeAlphaSlider = self.panel:AddSlider(GetLoca("Accent Alpha"), 1, 0, 1)
     themeAlphaSlider.Value = {accentColorPicker.Color[4] or 1, 0, 0, 0}
@@ -108,15 +108,15 @@ function StyleMenu:RenderColorPickers()
     end
 
     local secondaryColorPicker = self.panel:AddColorEdit(GetLoca("Secondary Accent Color"))
-    secondaryColorPicker.Color = CONFIG.Theme.Color.Accent2 or {0.3, 0.3, 0.3, 0.85}
+    secondaryColorPicker.Color = UICONFIG.Theme.Color.Accent2 or {0.3, 0.3, 0.3, 0.85}
     secondaryColorPicker.OnChange = function(c)
         local color = secondaryColorPicker.Color
-        CONFIG.Theme.Color.Accent2 = color
+        UICONFIG.Theme.Color.Accent2 = color
         accentColorPicker.OnChange()
     end
 
     local bgColorPicker = self.panel:AddColorEdit(GetLoca("Background Color"))
-    bgColorPicker.Color = CONFIG.Theme.Color.MainBackground or {0.1, 0.1, 0.1, 0.85}
+    bgColorPicker.Color = UICONFIG.Theme.Color.MainBackground or {0.1, 0.1, 0.1, 0.85}
 
     local bgAlphaSlider = self.panel:AddSlider(GetLoca("Bg Alpha"), 1, 0, 1)
     bgAlphaSlider.Value = {bgColorPicker.Color[4] or 1, 0, 0, 0}
@@ -134,7 +134,7 @@ function StyleMenu:RenderColorPickers()
 
     local colorTrees = {}
 
-    --- @type GuiColorCategory[]
+    --- @type GuiColorCategories[]
     local colorOrder = {
         "Color.Text",
         "Color.Background",
@@ -148,7 +148,6 @@ function StyleMenu:RenderColorPickers()
         "Color.Tab",
         "Color.Separator",
         "Color.Plot",
-        --- @diagnostic disable-next-line
         "Color.Other"
     }
 
@@ -180,7 +179,7 @@ function StyleMenu:RenderColorPickers()
         local colorsTree = colorTrees[category]
         local colorPicker = colorsTree:AddColorEdit(name)
         colorPicker.UserData = { Changed = false }
-        colorPicker.Color = CONFIG.Theme.Color[name] or {1, 1, 1, 1}
+        colorPicker.Color = UICONFIG.Theme.Color[name] or {1, 1, 1, 1}
         colorPicker.OnChange = function(c)
             c = colorPicker
             WindowManager.SetAllWindowsColor(name, c.Color)
@@ -189,7 +188,7 @@ function StyleMenu:RenderColorPickers()
         self.saveFuncs[name] = function()
             if not colorPicker.UserData.Changed then return end
             --- @diagnostic disable-next-line
-            CONFIG.Theme.Color[name] = colorPicker.Color
+            UICONFIG.Theme.Color[name] = colorPicker.Color
         end
         colorPickers[name] = colorPicker
     end
@@ -207,8 +206,8 @@ function StyleMenu:RenderColorPickers()
         end
         themeAlphaSlider.Value = {themeColor[4] or 1, 0, 0, 0}
         self.saveFuncs.LOPMainColor = function()
-            CONFIG.Theme.Color.Accent = themeColor
-            CONFIG.Theme.Color.MainBackground = bgColor
+            UICONFIG.Theme.Color.Accent = themeColor
+            UICONFIG.Theme.Color.MainBackground = bgColor
         end
     end
 
@@ -218,40 +217,40 @@ function StyleMenu:RenderColorPickers()
     end
 
     self.reloadColors = function ()
-        accentColorPicker.Color = CONFIG.Theme.Color.Accent or {0.2, 0.2, 0.2, 0.85}
+        accentColorPicker.Color = UICONFIG.Theme.Color.Accent or {0.2, 0.2, 0.2, 0.85}
         themeAlphaSlider.Value = {accentColorPicker.Color[4] or 1, 0, 0, 0}
-        bgColorPicker.Color = CONFIG.Theme.Color.MainBackground or {0.1, 0.1, 0.1, 0.85}
+        bgColorPicker.Color = UICONFIG.Theme.Color.MainBackground or {0.1, 0.1, 0.1, 0.85}
         bgAlphaSlider.Value = {bgColorPicker.Color[4] or 1, 0, 0, 0}
-        for name, value in pairs(CONFIG.Theme.Color) do
+        for name, value in pairs(UICONFIG.Theme.Color) do
             if name == "MainBackground" or name == "MainTheme" or name == "autoReload" then
                 goto continue
             end
             if not colorPickers[name] then
                 goto continue
             end
-            colorPickers[name].Color = CONFIG.Theme.Color[name] or {1, 1, 1, 1}
+            colorPickers[name].Color = UICONFIG.Theme.Color[name] or {1, 1, 1, 1}
             colorPickers[name].OnChange()
             ::continue::
         end
     end
 
-    if CONFIG.Theme.Color.autoReload then
+    if UICONFIG.Theme.Color.autoReload then
         self.reloadColors()
     end
 end
 
 function StyleMenu:RenderStyleSliders()
-    local styleAutoReload = self.panel:AddCheckbox(GetLoca("Auto Reload"), CONFIG.Theme.Style.autoReload or false)
+    local styleAutoReload = self.panel:AddCheckbox(GetLoca("Auto Reload"), UICONFIG.Theme.Style.autoReload or false)
     styleAutoReload.IDContext = "StyleAutoReload"
 
     styleAutoReload.OnChange = function(c)
-        CONFIG.Theme.Style.autoReload = c.Checked
-        Config.SaveConfig("Theme")
+        UICONFIG.Theme.Style.autoReload = c.Checked
+        UIConfig.SaveConfig("Theme")
     end
 
-    local baseRoundingSlider = self.panel:AddSlider(GetLoca("Base Rounding"), CONFIG.Theme.Style.BaseRounding or 5, 0, 40)
-    local basePaddingSlider = self.panel:AddSlider(GetLoca("Base Padding"), CONFIG.Theme.Style.BasePadding or 10, 0, 20)
-    local baseBorderSlider = self.panel:AddSlider(GetLoca("Base Border"), CONFIG.Theme.Style.BaseBorder, 0, 5)
+    local baseRoundingSlider = self.panel:AddSlider(GetLoca("Base Rounding"), UICONFIG.Theme.Style.BaseRounding or 5, 0, 40)
+    local basePaddingSlider = self.panel:AddSlider(GetLoca("Base Padding"), UICONFIG.Theme.Style.BasePadding or 10, 0, 20)
+    local baseBorderSlider = self.panel:AddSlider(GetLoca("Base Border"), UICONFIG.Theme.Style.BaseBorder, 0, 5)
     basePaddingSlider.Visible = false
 
     local styleVarHeader = ImguiElements.AddTree(self.panel, GetLoca("Style Variables"))
@@ -261,7 +260,7 @@ function StyleMenu:RenderStyleSliders()
 
     local styleVarTrees = {}
 
-    --- @type GuiStyleVarCategory[]
+    --- @type GuiStyleVarCategories[]
     local styleVarOrder = {
         "Var.Global",
         "Var.Window",
@@ -274,7 +273,6 @@ function StyleMenu:RenderStyleSliders()
         "Var.Layout",
         "Var.Align",
         "Var.Table",
-        --- @diagnostic disable-next-line
         "Var.Other"
     }
 
@@ -354,8 +352,8 @@ function StyleMenu:RenderStyleSliders()
         end
         local slider = styleVarTree:AddSlider(name, 1, min, max)
         slider.UserData = { Changed = false }
-        if CONFIG.Theme.Style[name] then
-            slider.Value = { CONFIG.Theme.Style[name][1] or 1, CONFIG.Theme.Style[name][2] or 0, 0, 0 }
+        if UICONFIG.Theme.Style[name] then
+            slider.Value = { UICONFIG.Theme.Style[name][1] or 1, UICONFIG.Theme.Style[name][2] or 0, 0, 0 }
         else
             slider.Value = { 1, 0, 0, 0 }
         end
@@ -369,7 +367,7 @@ function StyleMenu:RenderStyleSliders()
         self.saveFuncs[name] = function()
             if not slider.UserData.Changed then return end
             --- @diagnostic disable-next-line
-            CONFIG.Theme.Style[name] = {slider.Value[1], slider.Value[2] or 0}
+            UICONFIG.Theme.Style[name] = {slider.Value[1], slider.Value[2] or 0}
         end
         styleVarSlider[name] = slider
     end
@@ -392,31 +390,31 @@ function StyleMenu:RenderStyleSliders()
             s.Value = {param1, param2 or 0, 0, 0}
             s.OnChange()
         end
-        CONFIG.Theme.Style.BaseRounding = baseRounding
-        CONFIG.Theme.Style.BasePadding = basePadding
-        CONFIG.Theme.Style.BaseBorder = baseBorder
+        UICONFIG.Theme.Style.BaseRounding = baseRounding
+        UICONFIG.Theme.Style.BasePadding = basePadding
+        UICONFIG.Theme.Style.BaseBorder = baseBorder
     end
     basePaddingSlider.OnChange = baseRoundingSlider.OnChange
     baseBorderSlider.OnChange = baseRoundingSlider.OnChange
 
     self.reloadStyleVars = function ()
-        baseBorderSlider.Value = {CONFIG.Theme.Style.BaseBorder or 0, 0, 0, 0}
-        basePaddingSlider.Value = {CONFIG.Theme.Style.BasePadding or 10, 0, 0, 0}
-        baseRoundingSlider.Value = {CONFIG.Theme.Style.BaseRounding or 5, 0, 0, 0}
-        for name,value in pairs(CONFIG.Theme.Style) do
+        baseBorderSlider.Value = {UICONFIG.Theme.Style.BaseBorder or 0, 0, 0, 0}
+        basePaddingSlider.Value = {UICONFIG.Theme.Style.BasePadding or 10, 0, 0, 0}
+        baseRoundingSlider.Value = {UICONFIG.Theme.Style.BaseRounding or 5, 0, 0, 0}
+        for name,value in pairs(UICONFIG.Theme.Style) do
             if name == "BaseRounding" or name == "BasePadding" or name == "BaseBorder" or name == "autoReload" then
                 goto continue
             end
             local slider = styleVarSlider[name]
-            if CONFIG.Theme.Style[name] then
-                slider.Value = { CONFIG.Theme.Style[name][1] or 1, CONFIG.Theme.Style[name][2] or 0, 0, 0 }
+            if UICONFIG.Theme.Style[name] then
+                slider.Value = { UICONFIG.Theme.Style[name][1] or 1, UICONFIG.Theme.Style[name][2] or 0, 0, 0 }
                 slider.OnChange()
             end    
             ::continue::
         end
     end
 
-    if CONFIG.Theme.Style.autoReload then
+    if UICONFIG.Theme.Style.autoReload then
         self.reloadStyleVars()
     end
 end

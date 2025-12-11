@@ -18,7 +18,7 @@ function EffectsMenu:__init(parent)
     self.searchNote = ""
     self.nameAscend = true
 
-    self.autoSave = CONFIG.EffectMenu.autoSave and CONFIG.EffectMenu.autoSave or false
+    self.autoSave = UICONFIG.EffectMenu.autoSave and UICONFIG.EffectMenu.autoSave or false
     self:Load()
 end
 
@@ -49,7 +49,7 @@ function EffectsMenu:Render()
 
     local autoSaveOpe = function()
         self.autoSave = not self.autoSave
-        CONFIG.EffectMenu.autoSave = self.autoSave
+        UICONFIG.EffectMenu.autoSave = self.autoSave
     end
 
     local stopAllOpe = function()
@@ -102,7 +102,7 @@ function EffectsMenu:Render()
             autoSaveOpe()
             autoSaveButton.Label = GetLoca("Auto Save") .. (self.autoSave and "(On)" or "(Off)")
             StyleHelpers.SetAlphaByBool(autoSaveButton, self.autoSave)
-            Config.SaveConfig("EffectsMenu")
+            UIConfig.SaveConfig("EffectsMenu")
         end, self.isWindow)
     StyleHelpers.SetAlphaByBool(autoSaveButton, self.autoSave)
     local clearAllButton = ImguiElements.AddMenuButton(self.fileMenu, GetLoca("Clear All"), clearAllOpe, self.isWindow)

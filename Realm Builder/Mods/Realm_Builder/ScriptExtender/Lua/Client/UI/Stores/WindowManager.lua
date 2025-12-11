@@ -4,7 +4,7 @@
 --- @field IsWindowValid fun(handle: ExtuiWindow): boolean
 --- @field CheckWindowExists fun(guid: string, iType: string): boolean, Class|nil
 --- @field GetAllValidWindows fun(): ExtuiWindow[]
---- @field SetAllWindowsStyle fun(styleVar: GuiStyleVar, paramA: number|vec2, paramB: number|nil)
+--- @field SetAllWindowsStyle fun(styleVar: GuiStyleVar, paramA: number, paramB: number|nil)
 --- @field SetAllWindowsColor fun(guiColor: GuiColor, vec4: vec4)
 --- @field ApplyGuiParams fun(window: ExtuiWindow)
 WindowManager = WindowManager or {}
@@ -33,10 +33,10 @@ function WindowManager.RegisterWindow(guid, displayName, iType, instance, pos, s
     end
 
     if not pos then
-        pos = {screenWidth * 0.1, screenHeight * 0.2}
+        pos = { screenWidth * 0.1, screenHeight * 0.2 }
     end
     if not size then
-        size = {screenWidth * 0.2, screenHeight * 0.6}
+        size = { screenWidth * 0.2, screenHeight * 0.6 }
     end
 
     local basename = displayName .. "##" .. guid .. "-" .. iType
@@ -44,20 +44,25 @@ function WindowManager.RegisterWindow(guid, displayName, iType, instance, pos, s
 
     for _, win in ipairs(WindowMap[guid]) do
         if win.isValid and win.finalName == finalname then
-            Debug("[Window] Window with name " .. finalname .. " already exists for GUID: " .. guid .. ", deleting existing window.")
+            Debug("[Window] Window with name " ..
+            finalname .. " already exists for GUID: " .. guid .. ", deleting existing window.")
             WindowManager.DeleteWindow(win.window)
         end
     end
 
+    local locaizedName = GetLoca(finalname)
+
     --- @type ExtuiWindow
-    local windowHandle = Ext.IMGUI.NewWindow(finalname, false)
+    local windowHandle = Ext.IMGUI.NewWindow(locaizedName, false)
 
     if WindowMap[guid] == nil then
         WindowMap[guid] = {}
     end
 
     if windowHandle then
-        table.insert(WindowMap[guid], {window = windowHandle, type = iType or "default", instance = instance or nil, isValid = true, finalName = finalname})
+        table.insert(WindowMap[guid],
+            { window = windowHandle, type = iType or "default", instance = instance or nil, isValid = true, finalName =
+            finalname })
         --Info("[Window] Registered window with GUID: " .. guid .. " and name: " .. displayName .. "-" .. iType)
     else
         Error("[Window] Failed to register window with GUID: " .. guid .. " and name: " .. displayName .. "-" .. iType)
@@ -101,18 +106,6 @@ function WindowManager.DeleteWindow(handle)
         end
     end
 
-    return false
-end
-
-function WindowManager.IsWindowValid(handle)
-    for guid, windows in pairs(WindowMap) do
-        for i = #windows, 1, -1 do
-            local entry = windows[i]
-            if entry.window == handle then
-                return entry.isValid
-            end
-        end
-    end
     return false
 end
 
@@ -171,19 +164,20 @@ function WindowManager.SetAllWindowsColor(guiColor, vec4)
     end
 end
 
+--- @param window ExtuiTreeParent
 function WindowManager.ApplyGuiParams(window)
     if not WindowMap["Citadel"] or #WindowMap["Citadel"] == 0 then
         return
     end
 
     local mainWindow = WindowMap["Citadel"][1].window
-    for name,_ in pairs(GetAllGuiColorNames()) do
+    for name, _ in pairs(GetAllGuiColorNames()) do
         local color = mainWindow:GetColor(name)
         if color then
             window:SetColor(name, color)
         end
     end
-    for name,_ in pairs(GetAllGuiStyleVarNames()) do
+    for name, _ in pairs(GetAllGuiStyleVarNames()) do
         local a, b = mainWindow:GetStyle(name)
         if a then
             window:SetStyle(name, a, b)

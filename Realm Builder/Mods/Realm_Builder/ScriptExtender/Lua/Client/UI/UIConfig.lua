@@ -36,8 +36,8 @@ IMAGESIZE = {
     LARGE = Vec2.new(128, 128) * SCALE_FACTOR,
 }
 
-Config = {}
-CONFIG = {
+UIConfig = {}
+UICONFIG = {
     Theme = {
         Color = {
             autoReload = false,
@@ -68,40 +68,40 @@ CONFIG = {
     DEBUG_LEVEL = 4
 }
 
-function Config.SaveConfig(field)
+function UIConfig.SaveConfig(field)
     if field then
-        Config.SaveConfigField(field)
+        UIConfig.SaveConfigField(field)
         return
     end
 
-    local configData = Ext.Json.Stringify(CONFIG)
-    local filePath = "Realm_Builder/Config.json"
+    local configData = Ext.Json.Stringify(UICONFIG)
+    local filePath = RealmPath.GetUIConfigPath()
     Ext.IO.SaveFile(filePath, configData)
 end
 
-function Config.LoadConfig()
-    local filePath = "Realm_Builder/Config.json"
+function UIConfig.LoadConfig()
+    local filePath = RealmPath.GetUIConfigPath()
     local configData = Ext.IO.LoadFile(filePath)
     if configData then
         local saved = Ext.Json.Parse(configData)
         for key, v in pairs(saved) do
-            CONFIG[key] = v
+            UICONFIG[key] = v
         end
     end
 
-    SetDebugLevel(CONFIG.DEBUG_LEVEL or 4)
+    SetDebugLevel(UICONFIG.DEBUG_LEVEL or 4)
 end
 
-function Config.SaveConfigField(field)
-    local filePath = "Realm_Builder/Config.json"
+function UIConfig.SaveConfigField(field)
+    local filePath = RealmPath.GetUIConfigPath()
     local raw = Ext.IO.LoadFile(filePath)
     local data = raw and Ext.Json.Parse(raw) or {}
 
-    data[field] = CONFIG[field]
+    data[field] = UICONFIG[field]
     local configData = Ext.Json.Stringify(data)
     Ext.IO.SaveFile(filePath, configData)
 end
 
-Config.LoadConfig()
+UIConfig.LoadConfig()
 
 

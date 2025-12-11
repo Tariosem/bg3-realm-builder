@@ -168,6 +168,7 @@ function TransformToolbar:RegisterKeyInputEvents()
 
     ttMod:RegisterEvent("Duplicate", function(e)
         if e.Event ~= "KeyDown" then return end
+        if not RB_GLOBALS.TransformEditor.Target or #RB_GLOBALS.TransformEditor.Target == 0 then return end
 
         local targets = {}
         for _, proxy in pairs(RB_GLOBALS.TransformEditor.Target) do

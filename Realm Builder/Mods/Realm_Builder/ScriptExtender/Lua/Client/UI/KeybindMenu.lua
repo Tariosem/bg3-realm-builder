@@ -29,13 +29,13 @@ local KEYBIND_EVENT_RENDER_ORDER = {
         "ClearSelection",
         "DeleteSelection",
         "Duplicate",
-        "Undo",
-        "Redo",
         "HideSelection",
         "ShowSelection",
         "ApplyGravity",
         "FreezeGravity",
         "OpenNearbyPopup",
+        "Undo",
+        "Redo",
     },
     TransformEditor = {
         "CycleMode",
@@ -50,6 +50,47 @@ local KEYBIND_EVENT_RENDER_ORDER = {
         "Unbind",
         "Snap",
     },
+}
+
+local localizedNames = {
+    GeneralShortcuts = "Genetal Shortcuts",
+
+    OpenMainMenu = "Toggle Main Menu",
+    OpenBrowserMenu = "Toggle Browser Menu",
+    OpenTransformToolbar = "Toggle Transform Toolbar",
+    OpenVisualTab = "Open Visual Tab",
+    DeleteAllGizmos = "Clear All Gizmos",
+
+    TransformToolbar = "Transform Toolbar",
+
+    MultiSelect = "Multi Select",
+    BoxSelect = "Box Select",
+    Select = "Select",
+    ClearSelection = "Clear Selection",
+    DeleteSelection = "Delete Selection",
+    Duplicate = "Duplicate Selection",
+    HideSelection = "Hide Selection",
+    ShowSelection = "Show Selection",
+    ApplyGravity = "Apply Gravity",
+    FreezeGravity = "Freeze Gravity",
+    OpenNearbyPopup = "Open Nearby Popup",
+    Undo = "Undo",
+    Redo = "Redo",
+
+    TransformEditor = "Transform Editor",
+
+    CycleMode = "Cycle Mode",
+    Grab = "Grab",
+    Rotate = "Rotate",
+    Scale = "Scale",
+    FollowTarget = "Follow target",
+
+    BindUtility = "Bind Utility",
+
+    BindPopup = "Open Bind Popup",
+    BindTo = "Bind To Hover",
+    Unbind = "Unbind Selection",
+    Snap = "Snap Parented Selction",
 }
 
 function KeybindMenu:Render(parent)
@@ -139,7 +180,7 @@ function KeybindMenu:RenderModule(module)
     local name = module.Name
     local row = self.rootTable:AddRow()
     local cell = row:AddCell()
-    local header = cell:AddCollapsingHeader(name)
+    local header = cell:AddCollapsingHeader(localizedNames[name] or name)
     local tTable = header:AddTable(name .. "Events", 4)
     applyTableStyle(tTable)
     applyHeaderStyle(header)

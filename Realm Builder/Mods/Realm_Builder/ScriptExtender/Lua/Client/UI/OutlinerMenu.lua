@@ -530,8 +530,9 @@ function OutlinerMenu:CommonContext()
             EntityStore.Tree:Reparent(key, name)
         end
         self.propTreeList:ClearSelection()
-        self:UpdateList()
-        self.propTreeList:SetupRenameInput(name, name)
+        self:UpdateList(function()
+            self.propTreeList:SetupRenameInput(name, name)
+        end)
     end
 
     local function paste()
@@ -1108,10 +1109,10 @@ function OutlinerMenu:FocusEntityVisualTab(guid)
     return true
 end
 
-function OutlinerMenu:UpdateList()
+function OutlinerMenu:UpdateList(onComplete)
     self.imageRefs = {}
     self.eyeImageRefs = {}
-    self.propTreeList:RenderList()
+    self.propTreeList:RenderList(onComplete)
 end
 
 function OutlinerMenu:UpdateEyeIcon(guid)

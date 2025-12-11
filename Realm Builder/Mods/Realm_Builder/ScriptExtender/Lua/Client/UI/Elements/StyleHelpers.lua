@@ -16,31 +16,31 @@
 StyleHelpers = StyleHelpers or {}
 
 function StyleHelpers.ApplyInfoButtonStyle(button)
-    button:SetColor("Button", CONFIG.Misc.InfoButtonColor)
-    button:SetColor("ButtonHovered", CONFIG.Misc.InfoButtonHoveredColor)
-    button:SetColor("ButtonActive", CONFIG.Misc.InfoButtonActiveColor)
-    button:SetColor("Text", CONFIG.Misc.InfoButtonTextColor)
+    button:SetColor("Button", UICONFIG.Misc.InfoButtonColor)
+    button:SetColor("ButtonHovered", UICONFIG.Misc.InfoButtonHoveredColor)
+    button:SetColor("ButtonActive", UICONFIG.Misc.InfoButtonActiveColor)
+    button:SetColor("Text", UICONFIG.Misc.InfoButtonTextColor)
 end
 
 ---@param button ExtuiButton
 function StyleHelpers.ApplyDangerButtonStyle(button)
-    button:SetColor("Button", CONFIG.Misc.DangerButtonColor)
-    button:SetColor("ButtonHovered", CONFIG.Misc.DangerButtonHoveredColor)
-    button:SetColor("ButtonActive", CONFIG.Misc.DangerButtonActiveColor)
-    button:SetColor("Text", CONFIG.Misc.DangerButtonTextColor)
+    button:SetColor("Button", UICONFIG.Misc.DangerButtonColor)
+    button:SetColor("ButtonHovered", UICONFIG.Misc.DangerButtonHoveredColor)
+    button:SetColor("ButtonActive", UICONFIG.Misc.DangerButtonActiveColor)
+    button:SetColor("Text", UICONFIG.Misc.DangerButtonTextColor)
 end
 
 --- @param s ExtuiSelectable|ExtuiStyledRenderable
 function StyleHelpers.ApplyDangerSelectableStyle(s)
-    s:SetColor("HeaderHovered", CONFIG.Misc.DangerButtonColor)
-    s:SetColor("Text", CONFIG.Misc.DangerButtonHoveredColor)
+    s:SetColor("HeaderHovered", UICONFIG.Misc.DangerButtonColor)
+    s:SetColor("Text", UICONFIG.Misc.DangerButtonHoveredColor)
 end
 
 function StyleHelpers.ApplyConfirmButtonStyle(button)
-    button:SetColor("Button", CONFIG.Misc.ConfirmButtonColor)
-    button:SetColor("ButtonHovered", CONFIG.Misc.ConfirmButtonHoveredColor)
-    button:SetColor("ButtonActive", CONFIG.Misc.ConfirmButtonActiveColor)
-    button:SetColor("Text", CONFIG.Misc.ConfirmButtonTextColor)
+    button:SetColor("Button", UICONFIG.Misc.ConfirmButtonColor)
+    button:SetColor("ButtonHovered", UICONFIG.Misc.ConfirmButtonHoveredColor)
+    button:SetColor("ButtonActive", UICONFIG.Misc.ConfirmButtonActiveColor)
+    button:SetColor("Text", UICONFIG.Misc.ConfirmButtonTextColor)
 end
 
 --- @param s ExtuiRenderable

@@ -290,7 +290,9 @@ function TreeList:ApplyTreeTableStyle(tbl)
     tbl.RowBg = true
 end
 
-function TreeList:RenderList()
+--- Renders the tree list
+--- @param onComplete fun()?
+function TreeList:RenderList(onComplete)
     -- validate renderOrder
     
     if self.__killRenderThread then
@@ -474,6 +476,9 @@ function TreeList:RenderList()
 
         self:IterativeShow(TreeTable.GetRootKey())
         self:OnRenderComplete()
+        if onComplete then
+            onComplete()
+        end
         self.__killRenderThread = nil
         self.panel.Disabled = false
     end

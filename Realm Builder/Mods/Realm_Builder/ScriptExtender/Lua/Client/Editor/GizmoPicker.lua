@@ -207,7 +207,6 @@ end
 --- @field GetTransform fun(self: GizmoPicker): (Vec3?, Quat?)
 --- @field GetAxes fun(self: GizmoPicker, origin: Vec3?, rotation: Quat?): table<TransformAxis, Vec3>
 --- @field Hit fun(self: GizmoPicker, ray: Ray): (GizmoPickerHit|nil)
---- @field HitRotationTorus fun(self: GizmoPicker, ray: Ray): (Hit|nil)
 --- @field ClosestTTo fun(self: GizmoPicker, ray: Ray, normal: Vec3): Vec3
 --- @field ClosestAxis fun(self: GizmoPicker, ray: Ray): TransformAxis
 --- @field ClosestPlane fun(self: GizmoPicker, ray: Ray): (TransformAxis|nil, Hit|nil)

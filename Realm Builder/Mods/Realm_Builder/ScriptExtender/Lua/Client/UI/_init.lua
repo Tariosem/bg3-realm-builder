@@ -1,5 +1,5 @@
 RBUtils.RequireFiles("Client/UI/", {
-    "Config",
+    "UIConfig",
     "Elements/_init",
     "Stores/_init",
     "Components/_init",
