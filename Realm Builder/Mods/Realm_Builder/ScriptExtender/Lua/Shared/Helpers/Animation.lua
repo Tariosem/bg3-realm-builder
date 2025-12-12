@@ -226,7 +226,7 @@ function AnimateValue(fps, fromValue, toValue, duration, easing, onComplete, onU
                 onUpdate(value, eased)
             end)
             if not ok then
-                --Error(err)
+                Error(err)
                 errorCount = errorCount + 1
             end
             if errorCount >= maxErrors then
@@ -261,7 +261,8 @@ function AnimateValue(fps, fromValue, toValue, duration, easing, onComplete, onU
         pcallOnUpdate(currentValue, eased)
 
         if progress < 1 then
-            Timer:After(frameDelay, step)
+            Ext.Timer.WaitForRealtime(frameDelay, step)
+            --Timer:After(frameDelay, step)
         else
             pcallOnComplete()
         end

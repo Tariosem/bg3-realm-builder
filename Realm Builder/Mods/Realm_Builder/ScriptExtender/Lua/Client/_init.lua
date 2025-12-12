@@ -120,6 +120,7 @@ RB_SceneryManager = SceneryManager.new()
 RB_TileConstructionManager = TileConstructionManager.new()
 RB_PrefabManager = PrefabManager.new()
 
+
 --- @param uuid GUIDSTRING
 --- @return GameObjectTemplate|ResourceMultiEffectInfo|ResourceEffectInfo|nil
 function GetDataFromUuid(uuid)

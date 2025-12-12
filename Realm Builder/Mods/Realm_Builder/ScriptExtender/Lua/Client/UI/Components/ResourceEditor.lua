@@ -97,7 +97,8 @@ function ResourceEditor:Render()
                 end)
             end)
     end
-    local delaySetter = RBUtils.Debounce(debouceDelay, setter)
+    --local delaySetter = RBUtils.Debounce(debouceDelay, setter)
+    local delaySetter = setter
 
     local resetBtn = window:AddButton("Reset World " .. self.ResourceType)
     resetBtn.OnClick = function()
@@ -343,6 +344,7 @@ function ResourceEditor:RenderEditor(parent, label, objGetter, objSetter)
                         if not grandParent then
                             objSetter(field, {})
                         end
+
                         parentTbl = objGetter(true)[field]
                         if not parentTbl then
                             parentTbl = {}

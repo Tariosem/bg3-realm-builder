@@ -219,6 +219,9 @@ function RBGetHostCharacter()
     end
 end
 
+--- strip uuid from format like 'name_uuid', usually from Osi.GetTemplate
+--- @param templateId any
+--- @return any
 function EntityHelpers.TakeTailTemplate(templateId)
     if not templateId or templateId == "" then
         return templateId

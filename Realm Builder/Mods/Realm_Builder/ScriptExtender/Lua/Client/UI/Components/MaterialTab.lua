@@ -190,6 +190,7 @@ function MaterialTab:Render(parent)
                     sel.Highlight = false
                     sel.Selected = false
                     self.ResetFuncs[propertyName]()
+                    typeNode.Framed = self:HasChangeInType(paramType)
                 end
                 propNode.OnRightClick = propNode.OnClick
 
@@ -201,7 +202,7 @@ function MaterialTab:Render(parent)
                         self:RenderNumberProperty(paramgroup, propertyName, paramValue, rowCell)
                     end
                     propNode.OnHoverEnter = function()
-                        propNode.Highlight = self:HasChanged(propertyName) and true or false
+                        propNode.Selected = self:HasChanged(propertyName) and true or false
                         typeNode.Framed = self:HasChangeInType(paramType)
                     end
                 end
@@ -315,7 +316,8 @@ function MaterialTab:RenderNumberProperty(node, propertyName, vecValue)
         vecValue = { vecValue }
     end
 
-    if #vecValue >= 3 then
+    local paramType = #vecValue
+    if paramType >= 3 then
         colorPicker = node:AddColorEdit("##" .. self.MaterialName .. propertyName)
         local resetButton = ImguiElements.AddResetButton(node, true)
         resetButton.OnClick = function(sel)
@@ -331,17 +333,17 @@ function MaterialTab:RenderNumberProperty(node, propertyName, vecValue)
                 end
             end
 
-            self.ParamNodeRefs[propertyName].Highlight = self:HasChanged(propertyName) and true or false
+            self:UpdateParamState(propertyName, paramType)
         end
         colorPicker.Color = RBUtils.ToVec4(vecValue)
-        colorPicker.AlphaBar = (#vecValue == 4)
-        colorPicker.NoAlpha = (#vecValue == 3)
+        colorPicker.AlphaBar = (paramType == 4)
+        colorPicker.NoAlpha = (paramType == 3)
         colorPicker.NoInputs = true
         colorPicker.ItemWidth = 400 * SCALE_FACTOR
         colorPicker.OnChange = function(sel)
             local newValue = { sel.Color[1], sel.Color[2], sel.Color[3], sel.Color[4] } --[[@as number[] ]]
 
-            for j = #vecValue + 1, 4 do
+            for j = paramType + 1, 4 do
                 newValue[j] = nil
             end
 
@@ -351,10 +353,10 @@ function MaterialTab:RenderNumberProperty(node, propertyName, vecValue)
 
             self:SetParameter(propertyName, newValue)
 
-            self.ParamNodeRefs[propertyName].Highlight = self:HasChanged(propertyName) and true or false
+            self:UpdateParamState(propertyName, paramType)
         end
         colorPicker.OnRightClick = function(sel)
-            for i = 1, #vecValue do
+            for i = 1, paramType do
                 if sliders[i] then
                     sliders[i].Visible = not sliders[i].Visible
                 end
@@ -363,7 +365,7 @@ function MaterialTab:RenderNumberProperty(node, propertyName, vecValue)
     end
 
     local range = { min = -100, max = 100, step = 0.1 }
-    for i = 1, #vecValue do
+    for i = 1, paramType do
         local isIndex = propertyName:find("Index") ~= nil
         if isIndex then
             range.min = 0
@@ -397,7 +399,7 @@ function MaterialTab:RenderNumberProperty(node, propertyName, vecValue)
             local applyValue = #vecValue == 1 and newValue[1] or newValue
             self:SetParameter(propertyName, applyValue, #vecValue, true)
 
-            self.ParamNodeRefs[propertyName].Highlight = self:HasChanged(propertyName) and true or false
+            self:UpdateParamState(propertyName, paramType)
         end
 
         sliders[i] = slider
@@ -421,7 +423,7 @@ function MaterialTab:RenderNumberProperty(node, propertyName, vecValue)
             end
         end
 
-        self.ParamNodeRefs[propertyName].Highlight = self:HasChanged(propertyName) and true or false
+        self:UpdateParamState(propertyName, paramType)
     end
 
     local function updateSliders(newValue)
@@ -439,7 +441,7 @@ function MaterialTab:RenderNumberProperty(node, propertyName, vecValue)
             end
         end
 
-        self.ParamNodeRefs[propertyName].Highlight = self:HasChanged(propertyName) and true or false
+        self:UpdateParamState(propertyName, paramType)
     end
 
     self.ResetFuncs[propertyName] = reset
@@ -487,7 +489,7 @@ function MaterialTab:RenderTextProperty(node, propertyName, propertyValue, prope
             textBox.Text = newValue
         end
 
-        self.ParamNodeRefs[propertyName].Highlight = self:HasChanged(propertyName) and true or false
+        self:UpdateParamState(propertyName, propertyType)
     end
     textBox.OnChange = function(sel)
         local newValue = sel.Text
@@ -505,7 +507,7 @@ function MaterialTab:RenderTextProperty(node, propertyName, propertyValue, prope
 
         self:SetParameter(propertyName, newValue, propertyType)
 
-        self.ParamNodeRefs[propertyName].Highlight = self:HasChanged(propertyName) and true or false
+        self:UpdateParamState(propertyName, propertyType)
     end
 
     self.UpdateFuncs[propertyName] = function(newValue)
@@ -513,7 +515,7 @@ function MaterialTab:RenderTextProperty(node, propertyName, propertyValue, prope
             textBox.Text = newValue
         end
 
-        self.ParamNodeRefs[propertyName].Highlight = self:HasChanged(propertyName) and true or false
+        self:UpdateParamState(propertyName, propertyType)
     end
     self.ResetFuncs[propertyName] = function()
         self:ResetValue(propertyName)
@@ -522,7 +524,7 @@ function MaterialTab:RenderTextProperty(node, propertyName, propertyValue, prope
             textBox.Text = newValue
         end
 
-        self.ParamNodeRefs[propertyName].Highlight = self:HasChanged(propertyName) and true or false
+        self:UpdateParamState(propertyName, propertyType)
     end
 
     return textBox
@@ -558,12 +560,23 @@ function MaterialTab:UpdateUIState()
     end
 
     for key, propNode in pairs(self.ParamNodeRefs) do
-        propNode.Highlight = self:HasChanged(key) and true or false
+        propNode.Selected = self:HasChanged(key) and true or false
     end
 
     for paramType, typeNode in pairs(self.ParamTypeNodeRefs) do
         typeNode.Framed = self:HasChangeInType(paramType)
     end
+end
+
+function MaterialTab:UpdateParamState(name, paramType)
+    if self.ParamNodeRefs[name] then
+        self.ParamNodeRefs[name].Selected = self:HasChanged(name) and true or false
+    end
+
+    if self.ParamTypeNodeRefs[paramType] then
+        self.ParamTypeNodeRefs[paramType].Framed = self:HasChangeInType(paramType)
+    end
+
 end
 
 function MaterialTab:HasChanges()

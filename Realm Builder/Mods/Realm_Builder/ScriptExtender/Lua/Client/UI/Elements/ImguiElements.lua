@@ -115,7 +115,7 @@ end
 --- @param isInteger? boolean
 --- @return RB_SliderWithStep
 function ImguiElements.AddSliderWithStep(parent, IDContext, defaultValue, min, max, step, isInteger)
-    local sliderProxy = {}
+    local sliderTable = {}
     if not IDContext then
         IDContext = RBUtils.Uuid_v4()
     end
@@ -218,14 +218,8 @@ function ImguiElements.AddSliderWithStep(parent, IDContext, defaultValue, min, m
         end
     end
 
-    setmetatable(sliderProxy, {
-        __index = function(_, k)
-            if k == "Visible" then
-                return slider.Visible
-            else
-                return slider[k]
-            end
-        end,
+    setmetatable(sliderTable, {
+        __index = slider,
         __newindex = function(_, k, v)
             if k == "Visible" then
                 for _, ele in ipairs(allEles) do
@@ -251,16 +245,13 @@ function ImguiElements.AddSliderWithStep(parent, IDContext, defaultValue, min, m
             elseif k == "HideResetButton" then
                 hideResetBtn = v
                 resetGroup.Visible = not v
-            elseif k == "Value" then
-                local toFunc = isInteger and RBUtils.ToVec4Int or RBUtils.ToVec4
-                slider.Value = toFunc(v)
             else
                 slider[k] = v
             end
         end
     })
 
-    return sliderProxy
+    return sliderTable
 end
 
 function ImguiElements.AddMenuButton(menu, text, onClick, isWindow)
@@ -303,7 +294,8 @@ function ImguiElements.RenderExportSettingPanel(parent, settings)
 
     local currentModInternalNameTooltip = modNameTooltip:AddText("Current Mod Internal Name:")
     currentModInternalNameTooltip:SetColor("Text", ColorUtils.HexToRGBA("FFFFBC51"))
-    local modIntenalNameTooltip = modNameTooltip:AddText(settings.ModName and RBUtils.ValidateFolderName(settings.ModName) or "")
+    local modIntenalNameTooltip = modNameTooltip:AddText(settings.ModName and
+    RBUtils.ValidateFolderName(settings.ModName) or "")
     modIntenalNameTooltip:SetColor("Text", ColorUtils.HexToRGBA("FFFFFFFF"))
     modIntenalNameTooltip.SameLine = true
 
@@ -422,14 +414,8 @@ function ImguiElements.AddNumberSliders(parent, label, getter, setter, config)
             value = { value }
         end
 
-        if config.IsInt then
-            for i = 1, #value do
-                value[i] = math.floor(value[i])
-            end
-        end
-
         for i, slider in ipairs(sliders) do
-            slider.Value = RBUtils.ToVec4(value[i])
+            slider.Value = { value[i], value[i], value[i], value[i] }
         end
         if colorPicker then
             colorPicker.Color = { value[1], value[2], value[3], value[4] or 1 }
@@ -440,8 +426,9 @@ function ImguiElements.AddNumberSliders(parent, label, getter, setter, config)
     if type(initValue) ~= "table" then
         initValue = { initValue }
     end
+    local initCnt = #initValue
 
-    if #initValue == 0 then
+    if initCnt == 0 then
         return function() end
     end
 
@@ -460,7 +447,7 @@ function ImguiElements.AddNumberSliders(parent, label, getter, setter, config)
     addLittleSpacer(displayNameCell)
     local resetChange = function()
         for i, slider in ipairs(sliders) do
-            slider.Value = RBUtils.ToVec4(initValue[i])
+            slider.Value = { initValue[i], initValue[i], initValue[i], initValue[i] }
         end
         if colorPicker then
             colorPicker.Color = { initValue[1], initValue[2], initValue[3], initValue[4] or 1 }
@@ -473,7 +460,7 @@ function ImguiElements.AddNumberSliders(parent, label, getter, setter, config)
     end
 
     local function renderSliders()
-        for i = 1, #initValue do
+        for i = 1, initCnt do
             local slider = ImguiElements.AddSliderWithStep(slidersCell, tostring(i), initValue[i], range.Min, range.Max,
                 range.Step,
                 isInt)
@@ -483,7 +470,7 @@ function ImguiElements.AddNumberSliders(parent, label, getter, setter, config)
                     currentValues[j] = s.Value[1]
                 end
                 if colorPicker then
-                    colorPicker.Color = { currentValues[1], currentValues[2], currentValues[3], #initValue == 4 and
+                    colorPicker.Color = { currentValues[1], currentValues[2], currentValues[3], initCnt == 4 and
                     currentValues[4] or 1 }
                 end
                 setter(currentValues)
@@ -492,17 +479,17 @@ function ImguiElements.AddNumberSliders(parent, label, getter, setter, config)
         end
     end
 
-    if #initValue >= 3 and #initValue <= 4 and not config.IsInt then
+    if initCnt >= 3 and initCnt <= 4 and not config.IsInt then
         colorPicker = slidersCell:AddColorEdit("##ColorPicker_" .. uuid)
-        colorPicker.NoAlpha = #initValue == 3
-        colorPicker.AlphaBar = #initValue == 4
-        colorPicker.Color = { initValue[1], initValue[2], initValue[3], #initValue == 4 and initValue[4] or 1 }
+        colorPicker.NoAlpha = initCnt == 3
+        colorPicker.AlphaBar = initCnt == 4
+        colorPicker.Color = { initValue[1], initValue[2], initValue[3], initCnt == 4 and initValue[4] or 1 }
 
         colorPicker.OnRightClick = function()
             resetChange()
         end
         colorPicker.OnChange = function()
-            setter({ colorPicker.Color[1], colorPicker.Color[2], colorPicker.Color[3], #initValue == 4 and
+            setter({ colorPicker.Color[1], colorPicker.Color[2], colorPicker.Color[3], initCnt == 4 and
             colorPicker.Color[4] or nil })
 
             for i, slider in ipairs(sliders) do
@@ -667,8 +654,12 @@ function ImguiElements.AddEditorByGetter(parent, label, getter, setter)
         end
     elseif RBTableUtils.IsArray(initValue) then
         updateFunc = ImguiElements.AddNumberSliders(parent, label, getter, setter,
-            { IsInt = math.type(initValue[1]) == "integer", Range = { Min = 0, Max = 100, Step = 1 }, ResetValue =
-            initValue })
+            {
+                IsInt = math.type(initValue[1]) == "integer",
+                Range = { Min = 0, Max = 100, Step = 1 },
+                ResetValue =
+                    initValue
+            })
     else
         --skip
     end
@@ -681,7 +672,8 @@ function ImguiElements.AddResetButton(parent, sameLine)
     group.SameLine = sameLine and true or false
 
     local button = nil
-    button = group:AddImageButton("##ResetButton_" .. RBUtils.Uuid_v4(), RB_ICONS.Arrow_CounterClockwise, IMAGESIZE.FRAME) --[[@as ExtuiImageButton]]
+    button = group:AddImageButton("##ResetButton_" .. RBUtils.Uuid_v4(), RB_ICONS.Arrow_CounterClockwise, IMAGESIZE
+    .FRAME) --[[@as ExtuiImageButton]]
 
     --button.PositionOffset = { 0, 4 }
     return button, group
@@ -698,7 +690,8 @@ end
 ---@param size number?
 ---@return ExtuiGroup
 function ImguiElements.AddIndent(parent, size)
-    local _, rightGroup = parent:AddDummy(size or (10 * SCALE_FACTOR), 1), parent:AddGroup("IndentGroup_" .. RBUtils.Uuid_v4())
+    local _, rightGroup = parent:AddDummy(size or (10 * SCALE_FACTOR), 1),
+        parent:AddGroup("IndentGroup_" .. RBUtils.Uuid_v4())
     rightGroup.SameLine = true
     return rightGroup
 end
@@ -893,5 +886,3 @@ function ImguiElements.AddStyleDebugWindow(extui, symbol)
         end
     end
 end
-
-

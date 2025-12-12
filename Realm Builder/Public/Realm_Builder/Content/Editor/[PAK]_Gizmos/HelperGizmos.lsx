@@ -76,7 +76,7 @@
 						</node>
 						<node id="Objects">
 							<attribute id="LOD" type="uint8" value="0" />
-							<attribute id="MaterialID" type="FixedString" value="4a7a369f-0c83-4a6f-b884-3ad06df5a474" />
+							<attribute id="MaterialID" type="FixedString" value="df7fa912-3d5b-43d4-bf2d-7182369cd2c5" />
 							<attribute id="ObjectID" type="FixedString" value="Gizmo_PointLight.Gizmo_PointLight.1" />
 						</node>
 					</children>
@@ -117,7 +117,7 @@
 						</node>
 						<node id="Objects">
 							<attribute id="LOD" type="uint8" value="0" />
-							<attribute id="MaterialID" type="FixedString" value="4a7a369f-0c83-4a6f-b884-3ad06df5a474" />
+							<attribute id="MaterialID" type="FixedString" value="df7fa912-3d5b-43d4-bf2d-7182369cd2c5" />
 							<attribute id="ObjectID" type="FixedString" value="Gizmo_SpotLight.Gizmo_SpotLight.1" />
 						</node>
 					</children>

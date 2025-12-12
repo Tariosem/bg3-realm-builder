@@ -329,11 +329,12 @@ function GizmoVisualizer:SetLineLength(guid, length, width)
     local visual = VisualHelpers.GetEntityVisual(entity)
     if not visual then return end
 
-    for _,obj in pairs(visual.ObjectDescs) do
+    local toSet = { width, width, length }
+    visual:SetWorldScale(toSet)
+    --[[for _,obj in pairs(visual.ObjectDescs) do
         local renderable = obj.Renderable
-        local toSet = { width, width, length }
         renderable:SetWorldScale(toSet)
-    end
+    end]]
     --Debug("SetLineLength: Set length of "..tostring(guid).." to "..tostring(length))
 end
 

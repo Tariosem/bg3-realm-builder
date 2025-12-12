@@ -301,6 +301,7 @@ function RBUtils.IsCamera(object)
     return object == CAMERA_SYMBOL or string.sub(object, 1, #CAMERA_SYMBOL) == CAMERA_SYMBOL
 end
 
+--- get user id from string like " 'CameraSymbol' .. UserID"
 function RBUtils.GetCamaraUserID(obj)
     if RBUtils.IsCamera(obj) then
         return tonumber(string.sub(obj, #CAMERA_SYMBOL + 1))

@@ -346,10 +346,16 @@ function TransformEditor:MakePointVisualization(gizmo, pointTransform, index)
         Rotation = pointTransform.RotationQuat,
         Duration = -1,
     }, function(response)
-        local tryCnt = 0
 
         for _, viz in pairs(response or {}) do
             table.insert(self.PointVisualizations, viz)
+        end
+
+        if not self.IsDragging then
+            for _, viz in ipairs(response or {}) do
+                gizmo.Visualizer:HideGizmo(viz)
+            end
+            return
         end
 
         RBUtils.WaitUntil(function()
@@ -426,13 +432,17 @@ function TransformEditor:MakeAxisLineVisualization(gizmo, ray, color, index)
             Duration = -1,
         }, function(response)
             local viz = response[1]
+            table.insert(self.LineVisualizations[index], viz)
+            if not self.IsDragging then
+                gizmo.Visualizer:SetLineLength(viz, 0)
+                return
+            end
             RBUtils.WaitUntil(function()
                 return VisualHelpers.GetEntityVisual(viz) ~= nil
             end, function()
                 gizmo.Visualizer:SetLineFxColor(viz, color)
                 gizmo.Visualizer:SetLineLength(viz, 200)
             end, 300)
-            table.insert(self.LineVisualizations[index], viz)
         end)
     end
     makeLine(startPoint, 100)
