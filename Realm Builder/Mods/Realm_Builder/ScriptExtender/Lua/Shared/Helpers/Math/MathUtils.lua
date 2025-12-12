@@ -361,6 +361,29 @@ end
 
 --- @param pivot vec3
 --- @param targetTransform Transform
+--- @param rotationQuat quat
+--- @return Transform newTransform
+function MathUtils.RotateAroundPivotQuat(pivot, targetTransform, rotationQuat)
+    local pivotPos = pivot
+    local targetPos = targetTransform.Translate
+
+    local toTarget = Ext.Math.Sub(targetPos, pivotPos)
+    local rotatedOffset = Ext.Math.QuatRotate(rotationQuat, toTarget)
+    local newPos = Ext.Math.Add(pivotPos, rotatedOffset)
+
+    local targetRotQuat = Quat.new(targetTransform.RotationQuat)
+    local newRotQuat = Ext.Math.QuatMul(rotationQuat, targetRotQuat)
+    newRotQuat = Ext.Math.QuatNormalize(newRotQuat)
+
+    return {
+        Translate = {newPos[1], newPos[2], newPos[3]},
+        RotationQuat = {newRotQuat[1], newRotQuat[2], newRotQuat[3], newRotQuat[4]},
+        --Scale = {targetTransform.Scale[1], targetTransform.Scale[2], targetTransform.Scale[3]},
+    }
+end
+
+--- @param pivot vec3
+--- @param targetTransform Transform
 --- @param scaleVec Vec3
 --- @return Transform newTransform
 function MathUtils.ScaleAroundPivot(pivot, targetTransform, scaleVec)

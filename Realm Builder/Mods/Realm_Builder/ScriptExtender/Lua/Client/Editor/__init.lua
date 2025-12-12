@@ -4,7 +4,7 @@ RBUtils.RequireFiles("Client/Editor/", {
     "Gizmo",
     "HistoryManager",
     "Commands",
-    "SpawnPipeline",
+    "SpawnCoroutine",
     "MovableProxy",
     "TransformEditor",
     "TransformOperator",

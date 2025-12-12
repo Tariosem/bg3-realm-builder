@@ -212,8 +212,6 @@ function CharacterMovableProxy:SetTransform(transform)
     end
 
     VisualHelpers.SetVisualTransform({self.Guid}, transforms)
-
-    local entity = Ext.Entity.Get(self.Guid) --[[@as EntityHandle]]
     
 end
 

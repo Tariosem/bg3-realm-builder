@@ -3,8 +3,8 @@
 local spawnQueue = {}
 local maxSpawningAtOnce = 500
 local spawningCnt = 0
-local isResuming = false
-local spawnPipeline
+local isWaitingForResune = false
+local spawnCoroutinue
 
 --[[
 NetChannel.Spawn:SetHandler(function(data, userID)
@@ -17,29 +17,29 @@ end)
 ]]
 
 local function safeResume(co)
-    if isResuming then
-        Warning("Spawn pipeline is already resuming, skipping nested resume.")
+    if isWaitingForResune then
+        Warning("Spawn coroutine is already resuming, skipping nested resume.")
         return
     end
     if coroutine.status(co) ~= "suspended" then
-        Warning("Spawn pipeline is not in a resumable state: " .. tostring(coroutine.status(co)))
+        Warning("Spawn coroutine is not in a resumable state: " .. tostring(coroutine.status(co)))
         return
     end
 
     local ok, err = coroutine.resume(co)
     if not ok then
-        Error(debug.traceback(co, "Error resuming spawn pipeline: " .. tostring(err)))
+        Error(debug.traceback(co, "Error resuming spawn coroutine: " .. tostring(err)))
     end
 end
 
-local function reviveSpawnPipeline()
-    spawnPipeline = coroutine.create(function()
+local function createSpawnCoroutinue()
+    spawnCoroutinue = coroutine.create(function()
         while true do
             if #spawnQueue == 0 then
-                Debug("Spawn pipeline idle, yielding...")
+                Debug("Spawn coroutine completed.")
                 coroutine.yield()
             else
-                Debug("Spawn pipeline processing queue, remaining items: " .. tostring(#spawnQueue))
+                Debug("Spawn coroutine processing queue. Remaining items: " .. tostring(#spawnQueue))
                 local spawnObj = table.remove(spawnQueue, 1)
                 local spawnFunc = spawnObj.func
                 local spawnCnt = spawnObj.cnt or 1
@@ -49,29 +49,29 @@ local function reviveSpawnPipeline()
         end
     end)
     if #spawnQueue > 0 then
-        safeResume(spawnPipeline)
+        safeResume(spawnCoroutinue)
     end
 end
 
-reviveSpawnPipeline()
+createSpawnCoroutinue()
 
-local function waitFor30TicksAndResume()
-    isResuming = true
-    Timer:Ticks(30, function(timerID)
-        isResuming = false
-        local ok, err = coroutine.resume(spawnPipeline)
+local function scheduleResumeAndYield(cnt)
+    isWaitingForResune = true
+    Timer:Ticks(cnt or 30, function(timerID)
+        isWaitingForResune = false
+        local ok, err = coroutine.resume(spawnCoroutinue)
         if not ok then
-            Error("Error resuming spawn pipeline: " .. tostring(err))
+            Error("Error resuming spawn coroutine: " .. tostring(err))
         end
     end)
     coroutine.yield()
 end
 
-local exceedNotif = Notification.new("Spawn Queue Full")
-exceedNotif.Pivot = { 0.7, 0 }
+local overflowNotif = Notification.new("Spawn Queue Full")
+overflowNotif.Pivot = { 0.7, 0 }
 local function push(func, cnt)
     if cnt + spawningCnt > maxSpawningAtOnce then
-        exceedNotif:Show("Spawn Queue Full",
+        overflowNotif:Show("Spawn Queue Full",
             "The spawn queue has reached its maximum capacity of " ..
             tostring(maxSpawningAtOnce) ..
             " spawning operations.\n Please wait for existing operations to complete before adding more.")
@@ -80,10 +80,10 @@ local function push(func, cnt)
     end
     spawningCnt = spawningCnt + (cnt or 1)
     table.insert(spawnQueue, { func = func, cnt = cnt or 1 })
-    if coroutine.status(spawnPipeline) == "suspended" then
-        safeResume(spawnPipeline)
+    if coroutine.status(spawnCoroutinue) == "suspended" then
+        safeResume(spawnCoroutinue)
     else
-        reviveSpawnPipeline()
+        createSpawnCoroutinue()
     end
 end
 
@@ -154,7 +154,7 @@ local function spawnPrefab(prefabObj, entInfo)
 
             if childTemplateObj.TemplateType ~= "item" and childTemplateObj.TemplateType ~= "character" then
                 -- Wait to make template overwirte work properly
-                waitFor30TicksAndResume()
+                scheduleResumeAndYield()
             end
             ::continue::
         end
@@ -201,7 +201,7 @@ function Commands.SpawnCommand(template, entInfo)
         end)
         if templateObj and templateObj.TemplateType ~= "item" and templateObj.TemplateType ~= "character" then
             -- Wait to make template overwirte work properly
-            waitFor30TicksAndResume()
+            scheduleResumeAndYield(30)
         end
     end, 1)
 end
@@ -302,7 +302,7 @@ function Commands.DuplicateCommand(targets, path)
 
             if nonItemNonCharacter[guid] then
                 -- Wait to make template overwirte work properly
-                waitFor30TicksAndResume()
+                scheduleResumeAndYield(30)
             end
         end
     end
@@ -377,7 +377,7 @@ function Commands.SpawnPreset(data)
         local templateObj = Ext.Template.GetTemplate(EntityHelpers.TakeTailTemplate(entData.TemplateId))
         if not templateObj or (templateObj.TemplateType ~= "item" and templateObj.TemplateType ~= "character") then
             -- Wait to make template overwirte work properly
-            waitFor30TicksAndResume()
+            scheduleResumeAndYield(30)
         end
     end
 

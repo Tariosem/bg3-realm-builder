@@ -642,14 +642,14 @@ function TransformEditor:SetupGizmo()
                     end
                     newScale = calculateScale(cachedScaleAxes[parent], baseScale)
                 else
-                    newScale = Vec3.new(baseScale[1] * delta[1],
+                    newScale = { baseScale[1] * delta[1],
                         baseScale[2] * delta[2],
-                        baseScale[3] * delta[3])
+                        baseScale[3] * delta[3] }
                 end
             else
-                newScale = Vec3.new(baseScale[1] * delta[1],
+                newScale = { baseScale[1] * delta[1],
                     baseScale[2] * delta[2],
-                    baseScale[3] * delta[3])
+                    baseScale[3] * delta[3] }
             end
 
             if individualPivotMode[self.PivotMode] or individualOriention[self.Space] then
@@ -684,15 +684,12 @@ function TransformEditor:SetupGizmo()
             deltaAxis = picRotInv:Rotate(deltaAxis)
         end
 
+
         if not (individualPivotMode[self.PivotMode] or individualOriention[self.Space]) then
+            local quat = Ext.Math.QuatRotateAxisAngle(Quat.Identity(), deltaAxis, deltaAngle)
             for _, proxy in self:SafeTraverseTarget() do
                 local startTransform = cachedStartTransform[proxy]
-                if not picPos then
-                    Debug("TransformEditor: OnDragRotate picPos is nil")
-                    return
-                end
-                local newTransform = MathUtils.RotateAroundPivot(picPos, startTransform, deltaAxis, deltaAngle)
-
+                local newTransform = MathUtils.RotateAroundPivotQuat(picPos, startTransform, quat)
                 proxy:SetTransform(newTransform)
                 ::continue::
             end
@@ -713,16 +710,11 @@ function TransformEditor:SetupGizmo()
                     local parentRot = parent:GetSavedTransform().RotationQuat
                     axis = Ext.Math.QuatRotate(parentRot, axis)
                 else
-                    axis = Vec3.new { 0, 0, 0 }
+                    goto continue
                 end
             end
 
-            local deltaQuat = Quat.Identity()
-            if Ext.Math.Length(axis) == 0 or angle == 0 then
-                deltaQuat = Quat.Identity()
-            else
-                deltaQuat = Ext.Math.QuatRotateAxisAngle(Quat.Identity(), axis, angle)
-            end
+            local deltaQuat = Ext.Math.QuatRotateAxisAngle(Quat.Identity(), axis, angle)
 
             newRot = Ext.Math.QuatMul(deltaQuat, curRot)
 

@@ -1,4 +1,4 @@
---- pure spaghetti code ahead, beware ---
+--- 
 
 --- @class IconBrowser
 --- @field panel ExtuiWindow
@@ -75,8 +75,8 @@ function IconBrowser:Render()
     self.browserOptions = self.panel:AddTable("Icons Browser", 6)
     
     self.topMenuBar = self.panel:AddMainMenu()
-    self.editMenu = self.topMenuBar:AddMenu("File")
-    self.uiParamMenu = self.topMenuBar:AddMenu("UI")
+    self.editMenu = self.topMenuBar:AddMenu(GetLoca("File"))
+    self.uiParamMenu = self.topMenuBar:AddMenu(GetLoca("UI"))
     
     self:RenderFileMenu()
     self:RenderUiConfigMenu()
@@ -118,12 +118,13 @@ function IconBrowser:SetupInputSubs()
 
         self:Search()
     end--)
+
     self.quickFavoriteKeySub = InputEvents.SubscribeKeyInput({ Key = "F" }, function(e)
         if not self.isValid then return UNSUBSCRIBE_SYMBOL end
 
         if self.panel.Open == false then return end
 
-        local tag = "Favorite"
+        local tag = GetLoca("Favorite")
 
         if e.Pressed and self.hoveredEntry then
             local entry = self.searchData[self.hoveredEntry]
@@ -157,7 +158,9 @@ function IconBrowser:RenderFileMenu()
     self.editMenu:Tooltip():AddText(GetLoca("Save custom tags, groups, and notes."))
     self.fileSave = self.editMenu:AddItem(GetLoca("Save"))
     self.fileLoad = self.editMenu:AddItem(GetLoca("Load"))
-    self.fileAutoSave = self.editMenu:AddItem("Auto Save" .. (self.AutoSave and " (On)" or " (Off)"))
+    local autoSaveOnText = GetLoca("Auto Save")
+    local autoSaveOffText = autoSaveOnText .. "(X)"
+    self.fileAutoSave = self.editMenu:AddItem(self.AutoSave and autoSaveOnText or autoSaveOffText)
 
     self.fileSave.OnClick = function()
         self:SaveChanges()
@@ -169,12 +172,13 @@ function IconBrowser:RenderFileMenu()
 
     StyleHelpers.SetAlphaByBool(self.fileAutoSave, self.AutoSave)
 
+
     self.fileAutoSave.OnClick = function()
         self.AutoSave = not self.AutoSave
         StyleHelpers.SetAlphaByBool(self.fileAutoSave, self.AutoSave)
         local config = self.GetConfig and self:GetConfig() or {}
         config.autoSave = self.AutoSave
-        self.fileAutoSave.Label = GetLoca("Auto Save") .. (self.AutoSave and " (On)" or " (Off)")
+        self.fileAutoSave.Label = self.AutoSave and autoSaveOnText or autoSaveOffText
         self:SaveToConfig()
     end
 end
@@ -294,7 +298,7 @@ function IconBrowser:RenderSearchOptionsMenu()
     self.searchInputContainer = self.optionRow:AddCell()
     self.searchInput = self.searchInputContainer:AddInputText("")
     self.searchInput.IDContext = "IconSearchInput"
-    self.searchInputContainer:AddText("Keywords").SameLine = true
+    self.searchInputContainer:AddText(GetLoca("Keywords")).SameLine = true
 
     self.searchInputContainer:Tooltip():AddText(GetLoca("Right-click to select search fields"))
 
@@ -340,7 +344,7 @@ function IconBrowser:RenderSearchOptionsMenu()
     end)
 
     for _, field in ipairs(fields) do
-        local selection = self.searchPopup:AddSelectable(field)
+        local selection = self.searchPopup:AddSelectable(GetLoca(field))
         selection.Selected = self.selectedFields[field] or false
         selection.DontClosePopups = true
         selection.OnClick = function()
@@ -355,7 +359,7 @@ function IconBrowser:RenderSearchOptionsMenu()
     self.noteInputContainer = self.optionRow:AddCell()
     self.noteInput = self.noteInputContainer:AddInputText("")
     self.noteInput.IDContext = "IconNoteInput"
-    self.noteInputContainer:AddText("Note").SameLine = true
+    self.noteInputContainer:AddText(GetLoca("Note")).SameLine = true
 
     self.tagsFilterContainer = self.optionRow:AddCell()
 
@@ -441,12 +445,13 @@ function IconBrowser:RenderMiscMenu()
         end
     end
 
+    local useButtonsText = GetLoca("Use Buttons")
+    local useImageButtonsText = GetLoca("Use Image Buttons")
     local function updateIconToNameText()
-        local base = GetLoca("Icon to Name")
         if self.iconToName then
-            return base .. " "
+            return useButtonsText
         else
-            return base .. " (X)"
+            return useImageButtonsText
         end
     end
 
