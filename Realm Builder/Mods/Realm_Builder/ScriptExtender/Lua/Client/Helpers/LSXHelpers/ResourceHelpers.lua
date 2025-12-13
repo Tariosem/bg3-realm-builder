@@ -1,4 +1,4 @@
-local lsattrNode = LSXHelpers.AttrNode
+local lsAttrNode = LSXHelpers.AttrNode
 ResourceHelpers = {}
 
 local function createParameterAttrNodes(paramObj, overrideValue, parameterName)
@@ -19,14 +19,14 @@ local function createParameterAttrNodes(paramObj, overrideValue, parameterName)
             value = overrideValue
         end
 
-        local attr = lsattrNode(k, valueType, value)
+        local attr = lsAttrNode(k, valueType, value)
 
         table.insert(attrs, attr)
     end
 
     local otherAttrs = {
-        lsattrNode("GroupName", "FixedString", ""),
-        lsattrNode("ExportAsPreset", "bool", true),
+        lsAttrNode("GroupName", "FixedString", ""),
+        lsAttrNode("ExportAsPreset", "bool", true),
     }
 
     RBTableUtils.MergeArrays(attrs, otherAttrs)
@@ -97,11 +97,11 @@ function ResourceHelpers.BuildMaterialResource(srcMat, uuid, params, customName)
 
     local sourceFile = LSXHelpers.GetPathAfterData(matRes.SourceFile or "")
     local baseAttr = {
-        lsattrNode("ID", "FixedString", uuid or srcMat),
-        lsattrNode("Name", "LSString", customName or matRes.Name or "Material_" .. uuid),
-        lsattrNode("SourceFile", "LSString", sourceFile),
-        lsattrNode("MaterialType", "uint8", matRes.MaterialType.Value or 0),
-        lsattrNode("DiffusionProfileUUID", "FixedString", matRes.DiffusionProfileUUID or ""),
+        lsAttrNode("ID", "FixedString", uuid or srcMat),
+        lsAttrNode("Name", "LSString", customName or matRes.Name or "Material_" .. uuid),
+        lsAttrNode("SourceFile", "LSString", sourceFile),
+        lsAttrNode("MaterialType", "uint8", matRes.MaterialType.Value or 0),
+        lsAttrNode("DiffusionProfileUUID", "FixedString", matRes.DiffusionProfileUUID or ""),
     }
     resNode:AppendChildren(baseAttr)
     resNode:SortChildren(function(a, b) return a:GetAttribute("id") < b:GetAttribute("id") end)
@@ -128,10 +128,10 @@ local function createPresetParamAttrNodes(parameterName, value)
     local valueField = "Value"
 
     attrs = {
-        lsattrNode("Custom", LSValueType.bool, false),
-        lsattrNode("Enabled", LSValueType.bool, true),
-        lsattrNode(valueField, valueType, value),
-        lsattrNode("Parameter", LSValueType.FixedString, parameterName),
+        lsAttrNode("Custom", LSValueType.bool, false),
+        lsAttrNode("Enabled", LSValueType.bool, true),
+        lsAttrNode(valueField, valueType, value),
+        lsAttrNode("Parameter", LSValueType.FixedString, parameterName),
     }
 
     return attrs
@@ -166,10 +166,10 @@ function ResourceHelpers.BuildMaterialPresetResourceNode(parameters, uuid, inter
     local root = XMLNode.new("node", { id = "Resource" })
 
     local baseAttr = {
-        lsattrNode("ID", LSValueType.FixedString, uuid),
-        lsattrNode("Name", LSValueType.LSString, internalName),
-        lsattrNode("Localized", LSValueType.bool, false),
-        lsattrNode("_OriginalFileVersion_", LSValueType.int64, "144115198813274414"),
+        lsAttrNode("ID", LSValueType.FixedString, uuid),
+        lsAttrNode("Name", LSValueType.LSString, internalName),
+        lsAttrNode("Localized", LSValueType.bool, false),
+        lsAttrNode("_OriginalFileVersion_", LSValueType.int64, "144115198813274414"),
     }
     root:AppendChildren(baseAttr)
 
@@ -178,7 +178,7 @@ function ResourceHelpers.BuildMaterialPresetResourceNode(parameters, uuid, inter
     local childrenNode = root:AppendChild(LSXHelpers.ChildrenNode())
 
     local presetsNode = childrenNode:AppendChild(XMLNode.new("node", { id = "Presets" }, {
-        lsattrNode("MaterialResource", LSValueType.FixedString, ""),
+        lsAttrNode("MaterialResource", LSValueType.FixedString, ""),
     }))
 
     local thirdChildrenWrapper = presetsNode:AppendChild(LSXHelpers.ChildrenNode())
@@ -186,9 +186,9 @@ function ResourceHelpers.BuildMaterialPresetResourceNode(parameters, uuid, inter
     local colorPresetNode = thirdChildrenWrapper:AppendChild(XMLNode.new("node", { id = "ColorPreset" }))
 
     local colorPresetAttrNodes = {
-        lsattrNode("ForcePresetValues", LSValueType.bool, false),
-        lsattrNode("GroupName", LSValueType.FixedString, ""),
-        lsattrNode("MaterialPresetResource", LSValueType.FixedString, ""),
+        lsAttrNode("ForcePresetValues", LSValueType.bool, false),
+        lsAttrNode("GroupName", LSValueType.FixedString, ""),
+        lsAttrNode("MaterialPresetResource", LSValueType.FixedString, ""),
     }
     colorPresetNode:AppendChildren(colorPresetAttrNodes)
 
@@ -339,9 +339,9 @@ function ResourceHelpers.BuildCharacterVisualResource(srcUuid, uuid, internalNam
     for _, slot in pairs(srcSet.Slots) do
         local slotNode = childrenNode:AppendChild(XMLNode.new("node", { id = "Slots", }))
         local visualId = overrideVisuals and overrideVisuals[slot.Slot] or slot.VisualResource
-        slotNode:AppendChild(lsattrNode("Bone", "FixedString", slot.Bone))
-        slotNode:AppendChild(lsattrNode("Slot", "FixedString", slot.Slot))
-        slotNode:AppendChild(lsattrNode("VisualResource", "FixedString", visualId))
+        slotNode:AppendChild(lsAttrNode("Bone", "FixedString", slot.Bone))
+        slotNode:AppendChild(lsAttrNode("Slot", "FixedString", slot.Slot))
+        slotNode:AppendChild(lsAttrNode("VisualResource", "FixedString", visualId))
     end
 
     return resourceNode
@@ -362,30 +362,30 @@ function ResourceHelpers.BuildVisualResource(srcUuid, uuid, internalName, overri
     local resourceNode = XMLNode.new("node", { id = "Resource", })
 
     local attributes = {
-        lsattrNode("ID", "FixedString", uuid),
-        lsattrNode("Name", "LSString", internalName),
-        lsattrNode("SourceFile", "LSString", LSXHelpers.GetPathAfterData(src.SourceFile or "")),
-        lsattrNode("AttachBone", "FixedString", src.AttachBone),
-        lsattrNode("BlueprintInstanceResourceID", "FixedString", src.BlueprintInstanceResourceID),
-        lsattrNode("BoundsMax", "fvec3", src.BoundsMax),
-        lsattrNode("BoundsMin", "fvec3", src.BoundsMin),
-        lsattrNode("HairPresetResourceId", "FixedString", src.HairPresetResourceId),
-        lsattrNode("HairType", "uint8", src.HairType),
-        lsattrNode("MaterialType", "uint8", Ext.Types.GetTypeInfo("MaterialType").EnumValues[src.MaterialType] or 0),
-        lsattrNode("NeedsSkeletonRemap", "bool", src.NeedsSkeletonRemap),
-        lsattrNode("RemapperSlotId", "FixedString", src.RemapperSlotId),
-        lsattrNode("ScalpMaterialId", "FixedString", src.ScalpMaterialId),
-        lsattrNode("SkeletonResource", "FixedString", src.SkeletonResource),
-        lsattrNode("SkeletonSlot", "FixedString", src.SkeletonSlot),
-        lsattrNode("Slot", "FixedString", src.Slot),
-        lsattrNode("SoftbodyResourceID", "FixedString", src.SoftbodyResourceID),
-        lsattrNode("SupportsVertexColorMask", "bool", src.SupportsVertexColorMask),
-        lsattrNode("Template", "FixedString", src.Template),
+        lsAttrNode("ID", "FixedString", uuid),
+        lsAttrNode("Name", "LSString", internalName),
+        lsAttrNode("SourceFile", "LSString", LSXHelpers.GetPathAfterData(src.SourceFile or "")),
+        lsAttrNode("AttachBone", "FixedString", src.AttachBone),
+        lsAttrNode("BlueprintInstanceResourceID", "FixedString", src.BlueprintInstanceResourceID),
+        lsAttrNode("BoundsMax", "fvec3", src.BoundsMax),
+        lsAttrNode("BoundsMin", "fvec3", src.BoundsMin),
+        lsAttrNode("HairPresetResourceId", "FixedString", src.HairPresetResourceId),
+        lsAttrNode("HairType", "uint8", src.HairType),
+        lsAttrNode("MaterialType", "uint8", Ext.Types.GetTypeInfo("MaterialType").EnumValues[src.MaterialType] or 0),
+        lsAttrNode("NeedsSkeletonRemap", "bool", src.NeedsSkeletonRemap),
+        lsAttrNode("RemapperSlotId", "FixedString", src.RemapperSlotId),
+        lsAttrNode("ScalpMaterialId", "FixedString", src.ScalpMaterialId),
+        lsAttrNode("SkeletonResource", "FixedString", src.SkeletonResource),
+        lsAttrNode("SkeletonSlot", "FixedString", src.SkeletonSlot),
+        lsAttrNode("Slot", "FixedString", src.Slot),
+        lsAttrNode("SoftbodyResourceID", "FixedString", src.SoftbodyResourceID),
+        lsAttrNode("SupportsVertexColorMask", "bool", src.SupportsVertexColorMask),
+        lsAttrNode("Template", "FixedString", src.Template),
     }
 
     if src.Cloth then
         local clothAttrs = {
-            lsattrNode("ClothColliderResourceID", "FixedString", src.Cloth.ClothColliderResourceID),
+            lsAttrNode("ClothColliderResourceID", "FixedString", src.Cloth.ClothColliderResourceID),
         }
         RBTableUtils.MergeArrays(attributes, clothAttrs)
     end
@@ -397,7 +397,7 @@ function ResourceHelpers.BuildVisualResource(srcUuid, uuid, internalName, overri
     -- AnimationWaterfall
     for _, aw in pairs(src.AnimationWaterfall) do
         local awNode = childrenNode:AppendChild(XMLNode.new("node", { id = "AnimationWaterfall", }))
-        awNode:AppendChild(lsattrNode("Object", "FixedString", aw))
+        awNode:AppendChild(lsAttrNode("Object", "FixedString", aw))
     end
 
     -- Objects
@@ -406,8 +406,8 @@ function ResourceHelpers.BuildVisualResource(srcUuid, uuid, internalName, overri
         local linkId = obj.ObjectID
         local baseMatId = obj.MaterialID
         local objNode = childrenNode:AppendChild(XMLNode.new("node", { id = "Objects", }))
-        objNode:AppendChild(lsattrNode("ObjectID", "FixedString", linkId))
-        objNode:AppendChild(lsattrNode("LOD", "uint8", obj.LOD))
+        objNode:AppendChild(lsAttrNode("ObjectID", "FixedString", linkId))
+        objNode:AppendChild(lsAttrNode("LOD", "uint8", obj.LOD))
         local overrideMatId = overrideObjectMat[linkId]
         local matId = overrideMatId or obj.MaterialID
 
@@ -423,7 +423,7 @@ function ResourceHelpers.BuildVisualResource(srcUuid, uuid, internalName, overri
             end
         end
 
-        objNode:AppendChild(lsattrNode("MaterialID", "FixedString", matId))
+        objNode:AppendChild(lsAttrNode("MaterialID", "FixedString", matId))
     end
 
     return resourceNode

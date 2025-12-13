@@ -53,7 +53,7 @@ function RB_FlagHelpers.SetFlag(entity, flag)
     return true
 end
 
-function RB_FlagHelpers.ClearFlag(entity, flag)
+function RB_FlagHelpers.RemoveFlag(entity, flag)
     if type(flag) == "string" then
         flag = RB_UserVars_Flags[flag]
     end
@@ -66,4 +66,24 @@ function RB_FlagHelpers.ClearFlag(entity, flag)
     entity.Vars[RB_FLAG_FIELD] = flags & (~flag)
     return true
 end
+
+function RB_FlagHelpers.ToggleFlag(entity, flag)
+    if RB_FlagHelpers.HasFlag(entity, flag) then
+        return RB_FlagHelpers.RemoveFlag(entity, flag)
+    else
+        return RB_FlagHelpers.SetFlag(entity, flag)
+    end
+end
+
+function RB_FlagHelpers.ClearFlags(entity)
+    if type(entity) == "string" then
+        entity = Ext.Entity.Get(entity) --[[@as EntityHandle]]
+    end
+    if not entity or not entity.Vars then return false end
+
+    entity.Vars[RB_FLAG_FIELD] = RB_UserVars_Flags.None
+    return true
+end
+
+
 

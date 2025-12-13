@@ -4,7 +4,7 @@ MATERIALPRESET_DRAGDROP_TYPE = "MaterialPreset"
 
 --- @class MaterialPresetData
 --- @field DisplayName string
---- @field UIColor number[]
+--- @field UIColor vec4
 --- @field Parameters RB_ParameterSet
 --- @field Deleted boolean -- temp dirty tag
 
@@ -22,7 +22,7 @@ MATERIALPRESET_DRAGDROP_TYPE = "MaterialPreset"
 --- @field ModuleUUID string
 --- @field FolderDefinitions table<string, CCMOD_FolderDefinition> -- folder name -> definition
 --- @field Folders table<string, table<string, any>> -- folder name -> preset GUID -> any
---- @field MaterialPresets table<string, MaterialPresetData[]>
+--- @field MaterialPresets table<string, MaterialPresetData> uuid -> MaterialPresetData
 
 --- @alias CCMod_Reference { ModuleUUID: string, Versions: table<string, any>, Cache: table<string, CCMod_Pack> } -- version -> CCMod_Pack
 

@@ -161,11 +161,7 @@ function GizmoVisualizer:Visualize3DCursor(guid, factor)
     local baseScale = (clampedDistance / 10.0)
     local scaleVec = {baseScale * factor, baseScale * factor, baseScale * factor}
 
-    local color = self.AxisLineColor["X"]
     visual:SetWorldScale(scaleVec)
-    for _,obj in ipairs(objs) do
-        obj.Renderable.ActiveMaterial:SetVector4("Color", color)
-    end
 end
 
 function GizmoVisualizer:HideGizmoAxis(axis, guid)

@@ -138,9 +138,9 @@ function ImguiElements.AddSliderWithStep(parent, IDContext, defaultValue, min, m
     local resetButton, resetGroup = ImguiElements.AddResetButton(parent, true)
     decreButton.UserData.Slider = slider
     increButton.UserData.Slider = slider
-    decreButton:SetStyle("ItemSpacing", 0, 0)
-    increButton:SetStyle("ItemSpacing", 0, 0)
-    slider:SetStyle("ItemSpacing", 0, 0)
+    decreButton:SetStyle("ItemSpacing", 0)
+    increButton:SetStyle("ItemSpacing", 0)
+    slider:SetStyle("ItemSpacing", 0)
 
     local allEles = { decreButton, slider, increButton, resetButton }
     increButton.IDContext = IDContext .. "_IncreButton"

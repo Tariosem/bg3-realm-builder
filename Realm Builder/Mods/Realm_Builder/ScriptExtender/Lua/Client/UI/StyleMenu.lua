@@ -96,6 +96,7 @@ function StyleMenu:RenderColorPickers()
     end
 
     local accentColorPicker = self.panel:AddColorEdit(GetLoca("Accent Color"))
+    accentColorPicker.HDR = true
     accentColorPicker.Color = UICONFIG.Theme.Color.Accent or {0.2, 0.2, 0.2, 0.85}
 
     local themeAlphaSlider = self.panel:AddSlider(GetLoca("Accent Alpha"), 1, 0, 1)
