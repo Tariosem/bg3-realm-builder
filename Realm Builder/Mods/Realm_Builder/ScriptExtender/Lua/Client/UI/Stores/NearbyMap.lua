@@ -1,6 +1,8 @@
 local nearByEntries = {
 }
 
+NearbyMap = NearbyMap or {}
+
 --- @type table<string,EntityHandle>
 SceneryRegistry = SceneryRegistry or {}
 
@@ -26,7 +28,7 @@ end
 
 ---@param pos Vec3?
 ---@param radius number?
-function UpdateNearbyMap(pos, radius)
+function NearbyMap.UpdateNearbyMap(pos, radius)
     if not pos then
         pos = { RBGetPosition(RBGetHostCharacter()) }
     end
@@ -49,7 +51,7 @@ function UpdateNearbyMap(pos, radius)
     end
 end
 
-function PopulateSceneryNearby(pos, radius, onComplete)
+function NearbyMap.PopulateSceneryNearby(pos, radius, onComplete)
     pos = pos or { RBGetPosition(RBGetHostCharacter()) }
     radius = radius or 18
     local thread
@@ -106,6 +108,6 @@ function PopulateSceneryNearby(pos, radius, onComplete)
 end
 
 --- @return NearbyEntry[]
-function GetAllNearbyEntries()
+function NearbyMap.GetAllNearbyEntries()
     return nearByEntries
 end

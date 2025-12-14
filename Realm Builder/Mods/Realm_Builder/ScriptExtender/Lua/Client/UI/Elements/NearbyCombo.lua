@@ -122,8 +122,8 @@ function NearbyCombo:SetSelected(guid)
 end
 
 function NearbyCombo:UpdateOptions()
-    UpdateNearbyMap(nil, self.Radius)
-    local opts = GetAllNearbyEntries()
+    NearbyMap.UpdateNearbyMap(nil, self.Radius)
+    local opts = NearbyMap.GetAllNearbyEntries()
     if not opts then opts = {} end
     table.sort(opts, function(a,b)
         if not a or not b then
@@ -181,14 +181,14 @@ function NearbyCombo:SetupComboEvents()
     end
 
     self.combo.OnClick = function (cmb)
-        UpdateNearbyMap({RBGetPosition(RBGetHostCharacter())}, self.Radius)
+        NearbyMap.UpdateNearbyMap({RBGetPosition(RBGetHostCharacter())}, self.Radius)
         self:UpdateOptions()
         self:RenderIcons()
         self.popup:Open()
     end
 
     self.combo.OnRightClick = function (cmb)
-        UpdateNearbyMap({RBGetPosition(RBGetHostCharacter())}, self.Radius)
+        NearbyMap.UpdateNearbyMap({RBGetPosition(RBGetHostCharacter())}, self.Radius)
         self:UpdateOptions()
         self:RenderIcons()
         self.popup:Open()
@@ -284,7 +284,7 @@ function NearbyCombo:RenderSelectionTable(parent)
         populateScenery.Label = GetLoca("Populate Scenery")
         populateScenery.IDContext = configPopup.IDContext .. "PopulateScenery"
         populateScenery.OnClick = function (chk)
-            PopulateSceneryNearby(nil,self.Radius, function ()
+            NearbyMap.PopulateSceneryNearby(nil,self.Radius, function ()
                 self:UpdateOptions()
                 self:RenderIcons()
             end)

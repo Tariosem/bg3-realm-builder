@@ -1,3 +1,12 @@
+--- @class RBTableUtils
+--- @field IsArray fun(t:table|userdata):boolean
+--- @field IsArrayOf fun(tbl:table, valueType:"number"|"string"|"boolean"|"table"|"userdata"|"function"|"thread"|"nil"):boolean
+--- @field MergeArrays fun(arr1:any[], arr2:any[]):any[]
+--- @field CountMap fun(map:any):integer
+--- @field ArrayReverse fun(arr:any[]):any[]
+--- @field EqualArrays fun(arr1:any[], arr2:any[]):boolean
+--- @field ToggleEntry fun(tbl:table, value:any):boolean
+--- @field NextFromList fun(list:any[], cur:any):any
 RBTableUtils = RBTableUtils or {}
 
 ---@param t table|userdata

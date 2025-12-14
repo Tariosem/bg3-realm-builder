@@ -191,16 +191,17 @@ RegisterConsoleCommand("rb_enable_visual_manager", function ()
     populateVisualResource()
     populateCCAVResource()
 
-    if RBMenu and RBMenu.browsers and not RBMenu.browsers.visual then
-        RBMenu.browsers.visual = RB_VisualManager:SetupVisualBrowser()
-        RBMenu.browsers.visual:CreateCachedSort("SourceFile")
+    local mainMenu = RB_GLOBALS.MainMenu
+    if mainMenu and mainMenu.browsers and not mainMenu.browsers.visual then
+        mainMenu.browsers.visual = RB_VisualManager:SetupVisualBrowser()
+        mainMenu.browsers.visual:CreateCachedSort("SourceFile")
         Debug("Visual Browser initialized.")
-        RBMenu.browsers.CCAV = RB_CCAVManager:SetupCCAVBrowser()
-        RBMenu.browsers.CCAV:CreateCachedSort("DisplayName")
+        mainMenu.browsers.CCAV = RB_CCAVManager:SetupCCAVBrowser()
+        mainMenu.browsers.CCAV:CreateCachedSort("DisplayName")
         Debug("CCAV Browser initialized.")
         
-        RBMenu.browserBtns["visual"].Visible = true
-        RBMenu.browserBtns["CCAV"].Visible = true
+        mainMenu.browserBtns["visual"].Visible = true
+        mainMenu.browserBtns["CCAV"].Visible = true
     end
 
 end, "Enables and populates the Visual Resource Manager.")

@@ -729,7 +729,7 @@ function SceneMenu:RenderPresetDetails(name)
             modText.SameLine = true
             authorText.SameLine = true
             if not Ext.Mod.IsModLoaded(modId) then
-                modText:SetColor("Text", UICONFIG.Misc.DangerButtonHoveredColor)
+                modText:SetColor("Text", RBUICONFIG.Misc.DangerButtonHoveredColor)
                 modText.Label = modText.Label .. " (Missing!)"
                 StyleHelpers.ApplyDangerButtonStyle(modInfoWarningButton)
             end

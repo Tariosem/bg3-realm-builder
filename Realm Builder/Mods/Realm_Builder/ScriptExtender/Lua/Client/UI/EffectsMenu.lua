@@ -17,7 +17,7 @@ function EffectsMenu:__init(parent)
     self.searchNote = ""
     self.nameAscend = true
 
-    self.autoSave = UICONFIG.EffectMenu.autoSave and UICONFIG.EffectMenu.autoSave or false
+    self.autoSave = RBUICONFIG.EffectMenu.autoSave and RBUICONFIG.EffectMenu.autoSave or false
     self:Load()
 end
 
@@ -48,7 +48,7 @@ function EffectsMenu:Render()
 
     local autoSaveOpe = function()
         self.autoSave = not self.autoSave
-        UICONFIG.EffectMenu.autoSave = self.autoSave
+        RBUICONFIG.EffectMenu.autoSave = self.autoSave
     end
 
     local stopAllOpe = function()

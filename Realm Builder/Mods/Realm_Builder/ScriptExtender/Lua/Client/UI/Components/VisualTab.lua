@@ -2081,7 +2081,7 @@ function VisualTab:Save(name, overwrite)
             goto continue
         end
 
-        local currentScale = VisualHelpers.GetRenderableScale(self.guid, objStart.DescIndex, objStart.AttachIndex)
+        local currentScale = {VisualHelpers.GetRenderableScale(self.guid, objStart.DescIndex, objStart.AttachIndex)}
         if RBTableUtils.EqualArrays(currentScale, objStart.Scale) == false then
             localTransforms[key] = {
                 Scale = currentScale
@@ -2150,7 +2150,7 @@ function VisualTab:ExportPreset()
             presetData.Materials[key] = params
         end
         local objStart = self.resetParams[key]
-        local currentScale = VisualHelpers.GetRenderableScale(self.guid, objStart.DescIndex, objStart.AttachIndex)
+        local currentScale = {VisualHelpers.GetRenderableScale(self.guid, objStart.DescIndex, objStart.AttachIndex)}
         if RBTableUtils.EqualArrays(currentScale, objStart.Scale) == false then
             presetData.Transforms[key] = {
                 Scale = currentScale

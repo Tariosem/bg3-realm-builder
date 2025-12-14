@@ -25,7 +25,6 @@
 --- @field SetUpLeaf fun(self:TreeList, selectable:ExtuiSelectable, key:any, item:any)
 --- @field SetUpTree fun(self:TreeList, tree:ExtuiSelectable, key:any, item:any)
 --- @field FilterFunc fun(self:TreeList, key:any, keyword:string):boolean
---- @field ShowAndShowPath fun(self:TreeList, key:any)
 --- @field ClearSelection fun(self:TreeList)
 --- @field ClearList fun(self:TreeList)
 --- @field SelectLogic fun(self:TreeList, key:any, parent:any)
@@ -157,13 +156,13 @@ function TreeList:RenderTopBar()
         self:Hide(searchInput.Text)
     end)
 
-    local settingPopup = rightA:AddPopup("##" .. self.label .. "SettingsPopupSettings")
+    --[[local settingPopup = rightA:AddPopup("##" .. self.label .. "SettingsPopupSettings")
     
     local openSettingsBtn = rightA:AddImageButton("##" .. self.label .. "SettingsBtn", RB_ICONS.Sliders, IMAGESIZE.ROW)
     openSettingsBtn.OnClick = function()
         settingPopup:Open()
     end
-    ImguiHelpers.SetupImageButton(openSettingsBtn)
+    ImguiHelpers.SetupImageButton(openSettingsBtn)]]
     --local alignedTable = ImguiElements.AddAlignedTable(self.panel)
     
 
@@ -180,7 +179,7 @@ function TreeList:Hide(keyword)
     end
 
     if keyword == nil or keyword == "" then
-        self:RecursiveShow(TreeTable.GetRootKey())
+        self:IterativeShow(TreeTable.GetRootKey())
         return
     end
 
@@ -193,62 +192,6 @@ function TreeList:Hide(keyword)
                 self.nodeRefs[parentKey].Visible = true
             end
         else
-        end
-    end
-end
-
-function TreeList:ShowAndShowPath(key)
-    if not self.nodeRefs[key] then return end
-    self.nodeRefs[key].Visible = true
-    local path = self.tree:GetPath(key)
-    for _,parentKey in pairs(path) do
-        self.nodeRefs[parentKey].Visible = true
-    end
-end
-
--- Depth-first
---- @param func fun(key:any, node:ExtuiTableCell)
-function TreeList:TraverseAllNodes(func)
-    local stack = {}
-    local root = self.tree:Find(TreeTable.GetRootKey())
-    for childKey,_ in pairs(root) do
-        table.insert(stack, childKey)
-    end
-    while #stack > 0 do
-        local current = table.remove(stack)
-        local node = self.tree:Find(current)
-        local nodeCell = self.nodeRefs[current]
-        if node and nodeCell then
-            func(current, nodeCell)
-            if not self.tree:IsLeaf(current) then
-                for childKey,_ in pairs(node) do
-                    table.insert(stack, childKey)
-                end
-            end
-        end
-    end
-end
-
-function TreeList:RecursiveHide(key)
-    local node = self.tree:Find(key)
-    if node and not self.tree:IsLeaf(key) then
-        for childKey,_ in pairs(node) do
-            if self.nodeRefs[childKey] then
-                self.nodeRefs[childKey].Visible = false
-            end
-            self:RecursiveHide(childKey)
-        end
-    end
-end
-
-function TreeList:RecursiveShow(key)
-    local node = self.tree:Find(key)
-    if node then
-        self.nodeRefs[key].Visible = true
-        if not self.collapsedTree[key] and not self.tree:IsLeaf(key) then
-            for childKey,_ in pairs(node) do
-                self:RecursiveShow(childKey)
-            end
         end
     end
 end

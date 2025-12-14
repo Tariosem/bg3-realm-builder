@@ -2,10 +2,6 @@ SCALE_FACTOR = 1.0
 
 UIHelpers = UIHelpers or {}
 
-function GetScaleFactor(scale)
-    SCALE_FACTOR = scale
-end
-
 ---@return integer width
 ---@return integer height
 function UIHelpers.GetScreenSize()
@@ -21,7 +17,7 @@ end
 
 --- @param value number
 --- @return number
-function ScaleUI(value)
+function RBScaleUI(value)
     return value * SCALE_FACTOR
 end
 
@@ -37,7 +33,7 @@ IMAGESIZE = {
 }
 
 UIConfig = {}
-UICONFIG = {
+RBUICONFIG = {
     Theme = {
         Color = {
             autoReload = false,
@@ -74,7 +70,7 @@ function UIConfig.SaveConfig(field)
         return
     end
 
-    local configData = Ext.Json.Stringify(UICONFIG)
+    local configData = Ext.Json.Stringify(RBUICONFIG)
     local filePath = FilePath.GetUIConfigPath()
     Ext.IO.SaveFile(filePath, configData)
 end
@@ -85,11 +81,11 @@ function UIConfig.LoadConfig()
     if configData then
         local saved = Ext.Json.Parse(configData)
         for key, v in pairs(saved) do
-            UICONFIG[key] = v
+            RBUICONFIG[key] = v
         end
     end
 
-    SetDebugLevel(UICONFIG.DEBUG_LEVEL or 4)
+    SetDebugLevel(RBUICONFIG.DEBUG_LEVEL or 4)
 end
 
 function UIConfig.SaveConfigField(field)
@@ -97,7 +93,7 @@ function UIConfig.SaveConfigField(field)
     local raw = Ext.IO.LoadFile(filePath)
     local data = raw and Ext.Json.Parse(raw) or {}
 
-    data[field] = UICONFIG[field]
+    data[field] = RBUICONFIG[field]
     local configData = Ext.Json.Stringify(data)
     Ext.IO.SaveFile(filePath, configData)
 end

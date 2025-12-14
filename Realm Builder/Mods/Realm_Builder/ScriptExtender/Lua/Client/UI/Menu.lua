@@ -321,11 +321,11 @@ function RealmBuilderMainMenu:Add()
 end
 
 --- @type RB_MainMenu
-RBMenu = nil
+RB_GLOBALS.MainMenu = nil
 EventsSubscriber.RegisterOnSessionLoaded(function()
-    if RBMenu == nil then
-        RBMenu = RealmBuilderMainMenu:Add()
-        RBMenu.panel.Open = false
+    if RB_GLOBALS.MainMenu == nil then
+        RB_GLOBALS.MainMenu = RealmBuilderMainMenu:Add()
+        RB_GLOBALS.MainMenu.panel.Open = false
     end
 end, 100)
 

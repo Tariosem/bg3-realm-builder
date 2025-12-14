@@ -10,7 +10,6 @@ local entityNameBlacklist = {
     ["Camera"] = true,
 }
 
-
 --- @class EntityData
 --- @field Guid string
 --- @field DisplayName string
@@ -33,6 +32,7 @@ local entityNameBlacklist = {
 --- @field Rotation Quat?
 --- @field Scale Vec3?
 --- @field Icon string?
+--- mostly for export use
 --- @field OverrideVisualUuid string?
 --- @field OriginalVisualUuid string?
 --- @field UseCustomVisualParameters boolean?
@@ -99,8 +99,8 @@ function EntityStore:SetupServerListeners()
             end
         end
         now = Ext.Timer.MonotonicTime()
-        if RBMenu then
-            RBMenu:NewEntityAdded(list)
+        if RB_GLOBALS.MainMenu then
+            RB_GLOBALS.MainMenu:NewEntityAdded(list)
         end
         --Debug(string.format("Notified UI of %d new entities in %.2f ms", #list, (Ext.Timer.MonotonicTime() - now)))
     end)
@@ -116,14 +116,14 @@ function EntityStore:SetupServerListeners()
                 EntityStore:RemoveEntity(guid)
             end
         end
-        RBMenu:EntityDeleted(data)
+        RB_GLOBALS.MainMenu:EntityDeleted(data)
     end)
 
     NetChannel.AttributeChanged:SetHandler(function(data)
         for _,guid in pairs(data.Guid) do
             if EntityDatas[guid] then
                 EntityDatas[guid].Visible = data.Attributes.Visible
-                RBMenu.entityMenu:UpdateEyeIcon(guid)
+                RB_GLOBALS.MainMenu.entityMenu:UpdateEyeIcon(guid)
             end
         end
     end)
@@ -371,7 +371,8 @@ function EntityStore:RegisterDisplayName(displayName, guid, discardName)
     local cnt = 1
     while DisplayNameToGuid[returnName] do
         cnt = cnt + 1
-        returnName = string.format("%s (%d)", displayName, cnt)
+        local suf = RBStringUtils.PadNumber(cnt, 3)
+        returnName = displayName .. "_" .. suf
     end
 
     if guid then

@@ -349,7 +349,7 @@ RegisterConsoleCommand("rb_debug_level", function(cmd, level)
     end
 
     if Ext.IsClient() then
-        UICONFIG.DEBUG_LEVEL = RB_DEBUG_LEVEL
+        RBUICONFIG.DEBUG_LEVEL = RB_DEBUG_LEVEL
     end
 end, debuglevelCommandDes)
 

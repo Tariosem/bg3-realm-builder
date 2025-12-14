@@ -59,13 +59,14 @@ function ItemBrowser:RenderIcon(entry, cell)
     iconImage.UserData = iconImage.UserData or {}
 
     local spawnRendered = false
-    iconImage.OnRightClick = function()
+    iconImage.OnRightClick = function(sle)
         if not spawnRendered then
             spawnPopup = cell:AddPopup("SpawnPopup##" .. entry.Uuid)
             self:RenderCustomizationTab(spawnPopup, entry, attributePopup)
             self:RenderItemSpawnTab(spawnPopup, iconImage, entry)
             spawnRendered = true
         end
+
         if not spawnPopup then return end
         spawnPopup:Open()
     end
@@ -112,10 +113,13 @@ function ItemBrowser:RenderIcon(entry, cell)
     end
 
 
-    iconImage.OnClick = function()
+    iconImage.OnClick = function(sel)
         if not popup then
             popup = cell:AddPopup("IconPopup")
             popup.IDContext = entry.Uuid .. "Popup" .. RBUtils.Uuid_v4()
+        end
+        if self.iconToName then
+            sel.Selected = false
         end
         self:RenderInfoPopup(popup, entry)
         popup:Open()

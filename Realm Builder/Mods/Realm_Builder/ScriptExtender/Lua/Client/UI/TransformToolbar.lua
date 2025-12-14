@@ -950,7 +950,7 @@ function TransformToolbar:CreateNearbyPopup()
     nearbyNotif.Pivot = Vec2.new(PickingUtils.GetCursorPos()) / Vec2.new(UIHelpers.GetScreenSize())
     nearbyNotif.Moveable = true
 
-    UpdateNearbyMap()
+    NearbyMap.UpdateNearbyMap()
 
     local tempSubs = {}
     ---@param panel ExtuiWindow

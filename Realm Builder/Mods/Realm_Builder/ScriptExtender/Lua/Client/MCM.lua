@@ -2,10 +2,10 @@ MCM = MCM
 if not MCM then return end
 
 local function toggleMainWindow()
-    if RBMenu and RBMenu.panel then
-        RBMenu.panel.Open = not RBMenu.panel.Open
+    if RB_GLOBALS.MainMenu and RB_GLOBALS.MainMenu.panel then
+        RB_GLOBALS.MainMenu.panel.Open = not RB_GLOBALS.MainMenu.panel.Open
     else
-        RBMenu = RealmBuilderMainMenu:Add()
+        RB_GLOBALS.MainMenu = RealmBuilderMainMenu:Add()
     end
     NetChannel.ManageEntity:SendToServer({ Action = "Scan" })
 end
@@ -19,21 +19,21 @@ MCM.EventButton.RegisterCallback("event_button_toggle_main_widnow", function()
 end)
 
 MCM.Keybinding.SetCallback("key_toggle_browser_menu", function()
-    if RBMenu and not RBMenu.browserMenu then
+    if RB_GLOBALS.MainMenu and not RB_GLOBALS.MainMenu.browserMenu then
         return
     end
 
-    RBMenu.browserMenu.Open = not RBMenu.browserMenu.Open
+    RB_GLOBALS.MainMenu.browserMenu.Open = not RB_GLOBALS.MainMenu.browserMenu.Open
 
     --browserMenu.Open = not browserMenu.Open
 end)
 
 MCM.Keybinding.SetCallback("key_toggle_transform_toolbar", function()
-    if not RBMenu and not RBMenu.transformBar then
+    if not RB_GLOBALS.MainMenu and not RB_GLOBALS.MainMenu.transformBar then
         return
     end
 
-    RBMenu.transformBar:Toggle()
+    RB_GLOBALS.MainMenu.transformBar:Toggle()
 end)
 
 MCM.EventButton.SetDisabled("event_button_toggle_main_widnow", true, GetLoca("Enabled after loading a save"))

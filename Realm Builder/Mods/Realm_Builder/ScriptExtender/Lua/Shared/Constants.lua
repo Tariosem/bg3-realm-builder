@@ -1,3 +1,4 @@
+--- some global instances
 RB_GLOBALS = RB_GLOBALS or {}
 
 GUID_NULL = "00000000-0000-0000-0000-000000000000"
