@@ -51,6 +51,7 @@ function CCAVManager:PopulateAll()
     })
 
     local raceCache = {}
+    local isModdedCache = {}
     local newSlot = {}
     for _,ccavId in pairs(ccavIds) do
         local ccav = Ext.StaticData.Get(ccavId, "CharacterCreationAppearanceVisual") --[[@as ResourceCharacterCreationAppearanceVisual]]
@@ -90,6 +91,9 @@ function CCAVManager:PopulateAll()
 
 
     self.populated = true
+    raceCache = nil
+    isModdedCache = nil
+    newSlot = nil
     RBPrintPurple("[Realm Builder] Populated " .. #ccavIds .. " Character Creation Appearance Visuals in" .. string.format(" %.2f", Ext.Timer.MonotonicTime() - now) .. " ms.")
 end
 

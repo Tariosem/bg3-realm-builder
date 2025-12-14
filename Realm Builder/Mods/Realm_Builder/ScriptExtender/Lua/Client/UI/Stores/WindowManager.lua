@@ -39,7 +39,8 @@ function WindowManager.RegisterWindow(guid, displayName, iType, instance, pos, s
         size = { screenWidth * 0.2, screenHeight * 0.6 }
     end
 
-    local basename = displayName .. "##" .. guid .. "-" .. iType
+    local localizedDisplayName = GetLoca(displayName)
+    local basename = localizedDisplayName .. "##" .. guid .. "-" .. iType
     local finalname = basename
 
     for _, win in ipairs(WindowMap[guid]) do
@@ -50,10 +51,8 @@ function WindowManager.RegisterWindow(guid, displayName, iType, instance, pos, s
         end
     end
 
-    local locaizedName = GetLoca(finalname)
-
     --- @type ExtuiWindow
-    local windowHandle = Ext.IMGUI.NewWindow(locaizedName, false)
+    local windowHandle = Ext.IMGUI.NewWindow(finalname)
 
     if WindowMap[guid] == nil then
         WindowMap[guid] = {}

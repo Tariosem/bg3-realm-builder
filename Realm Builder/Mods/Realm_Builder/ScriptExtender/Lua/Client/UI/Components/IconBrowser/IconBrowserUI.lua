@@ -527,8 +527,8 @@ function IconBrowser:CreateCachedSort(field)
     local cnt = 0
     local sortKeyArray = {}
     for uuid, entry in pairs(self.searchData) do
-    cnt = cnt + 1
-    local value = entry[field] or "Unknown"
+        cnt = cnt + 1
+        local value = entry[field] or "Unknown"
         sortKeyArray[cnt] = {uuid, value}
     end
 

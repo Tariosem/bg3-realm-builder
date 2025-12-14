@@ -19,6 +19,7 @@ function Keybinding:CreateIdentifier()
     if #self.Modifiers == 0 then
         return self.Key
     end
+    
     return self.Key .. "|" .. table.concat(self.Modifiers, "|")
 end
 

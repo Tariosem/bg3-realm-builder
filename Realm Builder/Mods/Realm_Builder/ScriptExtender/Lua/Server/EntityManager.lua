@@ -30,30 +30,6 @@ EntityManager = {
 --- @field SavedEntities table<string, boolean>
 --- @field DeleteOnNextSession table<string, boolean>
 
-Ext.Events.GameStateChanged:Subscribe(function (e)
-    Debug("GameStateChanged: " .. tostring(e.FromState) .. " -> " .. tostring(e.ToState))
-    if e.FromState == "LoadLevel" then
-        EntityManager:LoadFromModVar()
-        NetChannel.ClearHistory:Broadcast({})
-    end
-end)
-
-Ext.Events.ResetCompleted:Subscribe(function ()
-    EntityManager:LoadFromModVar()
-    NetChannel.ClearHistory:Broadcast({})
-end)
-
-Ext.Events.Shutdown:Subscribe(function ()
-    local allModVars = Ext.Vars.GetModVariables(ModuleUUID)
-    for _,guid in pairs(allModVars) do
-        if RB_FlagHelpers.HasFlag(guid, "IsGizmo") or RB_FlagHelpers.HasFlag(guid, "DeleteLater") then
-            Osi.RequestDeleteTemporary(guid)
-            Osi.RequestDelete(guid)
-        end
-    end
-    NetChannel.ClearHistory:Broadcast({})
-end)
-
 local initModVar = Ext.Vars.GetModVariables(ModuleUUID)
 if not initModVar then
     initModVar = {}
@@ -82,6 +58,32 @@ local function setModVar(modVar)
     allModVars.EntityManager = modVar
     Ext.Vars.DirtyModVariables(ModuleUUID)
 end
+
+Ext.Events.GameStateChanged:Subscribe(function (e)
+    Debug("GameStateChanged: " .. tostring(e.FromState) .. " -> " .. tostring(e.ToState))
+    if e.FromState == "LoadLevel" then
+        EntityManager:LoadFromModVar()
+        NetChannel.ClearHistory:Broadcast({})
+    end
+end)
+
+Ext.Events.ResetCompleted:Subscribe(function ()
+    EntityManager:LoadFromModVar()
+    NetChannel.ClearHistory:Broadcast({})
+end)
+
+Ext.Events.Shutdown:Subscribe(function ()
+    local modVars = getModVar()
+    for _,guid in pairs(modVars) do
+        if RB_FlagHelpers.HasFlag(guid, "IsGizmo") or RB_FlagHelpers.HasFlag(guid, "DeleteLater") then
+            Osi.RequestDeleteTemporary(guid)
+            Osi.RequestDelete(guid)
+        end
+    end
+    NetChannel.ClearHistory:Broadcast({})
+end)
+
+
 
 RegisterConsoleCommand("rb_dump_modvar", function ()
     local modVar = getModVar()

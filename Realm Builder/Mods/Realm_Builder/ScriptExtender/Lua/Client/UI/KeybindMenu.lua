@@ -98,11 +98,11 @@ function KeybindMenu:Render(parent)
     self.parent = parent or self.parent
 
     if self.isAttach and self.parent then
-        self.panel = parent:AddTabItem("Keybindings")
+        self.panel = parent:AddTabItem(GetLoca("Keybind"))
         self.isWindow = false
         self:OnAttach()
     else
-        self.panel = WindowManager.RegisterWindow("generic", "Key binding", "Menu", self)
+        self.panel = WindowManager.RegisterWindow("generic", "Keybind", "Menu", self)
         self.panel.AlwaysAutoResize = true
         self.isWindow = true
         self:OnDetach()
@@ -180,7 +180,9 @@ function KeybindMenu:RenderModule(module)
     local name = module.Name
     local row = self.rootTable:AddRow()
     local cell = row:AddCell()
-    local header = cell:AddCollapsingHeader(localizedNames[name] or name)
+    local localName = GetLoca(localizedNames[name] or name)
+    local header = cell:AddCollapsingHeader(localName)
+    header.DefaultOpen = true
     local tTable = header:AddTable(name .. "Events", 4)
     applyTableStyle(tTable)
     applyHeaderStyle(header)
@@ -255,7 +257,8 @@ function KeybindMenu:RenderEvent(row, moduleName, eventName, module, registry)
     --enableCheckBox:SetColor("FrameBgHovered", HexToRGBA("785575B5"))
     --enableCheckBox:SetColor("FrameBgActive", HexToRGBA("FF355081"))
 
-    eventCell:AddText(eventName)--:SetColor("Text", HexToRGBA("#FFFFFF"))
+    local localizedEventName = GetLoca(localizedNames[eventName] or eventName)
+    eventCell:AddText(localizedEventName)--:SetColor("Text", HexToRGBA("#FFFFFF"))
 
     if registry.Description then
         local desc = ImguiElements.AddIndent(eventCell):AddText(registry.Description)

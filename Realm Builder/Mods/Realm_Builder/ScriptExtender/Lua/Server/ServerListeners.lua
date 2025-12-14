@@ -435,7 +435,7 @@ end)
 
 
 NetChannel.GetAtmosphere:SetRequestHandler(function(data, userID)
-    local trigger = FindCurrentAtmosphereTrigger(data.Position)
+    local trigger = ServerEntityHelpers.FindCurrentAtmosphereTrigger(data.Position)
     if not trigger then
         return { Guid = "", ResourceUUIDs = {} }
     end
@@ -451,7 +451,7 @@ NetChannel.GetAtmosphere:SetRequestHandler(function(data, userID)
 end)
 
 NetChannel.GetLighting:SetRequestHandler(function(data, userID)
-    local trigger = FindCurrentLightingTrigger(data.Position)
+    local trigger = ServerEntityHelpers.FindCurrentLightingTrigger(data.Position)
     if not trigger then
         return { Guid = "", ResourceUUIDs = {} }
     end
@@ -494,7 +494,7 @@ NetChannel.SetAtmosphere:SetRequestHandler(function(data, userID)
     end
 
     if data.Apply then
-        local trigger = FindCurrentAtmosphereTrigger()
+        local trigger = ServerEntityHelpers.FindCurrentAtmosphereTrigger()
         if not trigger then
             Warning("No atmosphere trigger found to apply.")
             return false
@@ -523,7 +523,7 @@ NetChannel.SetLighting:SetRequestHandler(function(data, userID)
         end
 
         if data.Reset then
-            local trigger = FindCurrentLightingTrigger()
+            local trigger = ServerEntityHelpers.FindCurrentLightingTrigger()
             if trigger then
                 Osi.TriggerResetLighting(trigger.Uuid.EntityUuid)
                 return true
@@ -547,7 +547,7 @@ NetChannel.SetLighting:SetRequestHandler(function(data, userID)
     end
 
     if data.Apply then
-        local trigger = FindCurrentLightingTrigger()
+        local trigger = ServerEntityHelpers.FindCurrentLightingTrigger()
         if not trigger then
             Warning("No lighting trigger found to apply.")
             return false

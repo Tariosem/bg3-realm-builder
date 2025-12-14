@@ -91,7 +91,7 @@ function TransformToolbar:RegisterKeyInputEvents()
     end)
 
     ttMod:RegisterEvent("MultiSelect", function(e)
-        if not e.Pressed then return end
+        if e.Repeat then return end
 
         if not self.MultiSelecting then
             self.MultiSelecting = true

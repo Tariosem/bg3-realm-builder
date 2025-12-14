@@ -43,8 +43,8 @@ local function ExportUnseenStrings()
 
     local string, stringToHandle = LSXHelpers.GenerateLocalization(toSave, 1)
 
-    local path = "Realm_Builder/Localization/Realm_Builder_GeneratedLocalization.xml"
-    local stringToHandlePath = "Realm_Builder/Localization/GeneratedLocalization.lua"
+    local path = "Realm Builder/Localization/Realm_Builder.xml"
+    local stringToHandlePath = "Realm Builder/Localization/GeneratedLocalization.lua"
     local suc = Ext.IO.SaveFile(path, string)
     local luaFileContent = ""
     luaFileContent = luaFileContent .. "return {\n"

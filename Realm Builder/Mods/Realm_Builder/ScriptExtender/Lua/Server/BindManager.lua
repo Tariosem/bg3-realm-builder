@@ -5,7 +5,6 @@
 --- @field FollowParent boolean
 --- @field BindParent GUIDSTRING
 
-
 --- @class BindManager
 --- @field BindTree TreeTable
 --- @field BindStores table<string, BindInfo>

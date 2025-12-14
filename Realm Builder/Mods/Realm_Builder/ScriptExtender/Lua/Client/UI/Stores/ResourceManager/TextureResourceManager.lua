@@ -126,11 +126,7 @@ function TextureResourceManager:PopulateVirtualTextureResource(id)
     local res = Ext.Resource.Get(id, "VirtualTexture") --[[@as ResourceVirtualTextureResource]]
 
     if res then
-        local s = LSXHelpers.GetPathAfterData(res.RootPath or "")
         self.VirtualTextureResources[id] = {
-            SourceFile = s,
-            TileSetFileName = res.TileSetFileName or "",
-            RootPath = res.RootPath or ""
         }
     end
 end

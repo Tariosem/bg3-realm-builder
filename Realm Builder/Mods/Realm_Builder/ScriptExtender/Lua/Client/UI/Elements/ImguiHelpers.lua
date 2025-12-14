@@ -82,26 +82,11 @@ function ImguiHelpers.IsFocused(extui)
 end
 
 --- @param extui ExtuiStyledRenderable
---- @param alpha number?
-local function DisableAndSetAlpha(extui, alpha)
-    if not extui then return end
-    extui.Disabled = true
-    extui:SetStyle("Alpha", alpha or 0.6)
-end
-
-local function EnableAndSetAlpha(extui)
-    if not extui then return end
-    extui.Disabled = false
-    extui:SetStyle("Alpha", 1)
-end
-
---- @param extui ExtuiStyledRenderable
+--- @param disabled boolean
 function ImguiHelpers.SetImguiDisabled(extui, disabled)
-    if disabled then
-        DisableAndSetAlpha(extui)
-    else
-        EnableAndSetAlpha(extui)
-    end
+    if not extui then return end
+    extui.Disabled = disabled
+    extui:SetStyle("Alpha", disabled and 0.6 or 1)
 end
 
 --- @param parent ExtuiTreeParent

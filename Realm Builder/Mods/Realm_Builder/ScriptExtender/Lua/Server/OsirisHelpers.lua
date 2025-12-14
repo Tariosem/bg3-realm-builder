@@ -29,21 +29,21 @@ function OsirisHelpers.DrawLine(startPos, endPos, width, user)
         return nil
     end
     local dir = Ext.Math.Sub(startPos, endPos) -- beam's default direction is -z
-    local length = Ext.Math.Length(dir) -- beam's default length is 10
+    local length = Ext.Math.Length(dir)        -- beam's default length is 10
 
     local toScale = length / 10
 
     local fxHandle = Osi.CreateAt(RB_BEAM_ITEM_FX, 0, 0, 0, 1, 0, "") --[[@as string]]
     OsirisHelpers.TeleportTo(fxHandle, startPos[1], startPos[2], startPos[3])
     OsirisHelpers.RotateTo(fxHandle, table.unpack(MathUtils.DirectionToQuat(dir)))
-    Timer:Ticks(10, function (timerID)
+    Timer:Ticks(10, function(timerID)
         if not EntityHelpers.EntityExists(fxHandle) then return end
 
         NetChannel.SetVisualTransform:Broadcast({
             Guid = fxHandle,
             Transforms = {
                 [fxHandle] = {
-                    Scale = {0, 0, 0},
+                    Scale = { 0, 0, 0 },
                 }
             }
         })
@@ -52,7 +52,7 @@ function OsirisHelpers.DrawLine(startPos, endPos, width, user)
             Guid = fxHandle,
             Transforms = {
                 [fxHandle] = {
-                    Scale = {width or 1 , width or 1, toScale},
+                    Scale = { width or 1, width or 1, toScale },
                 }
             }
         }, user)
@@ -62,9 +62,9 @@ function OsirisHelpers.DrawLine(startPos, endPos, width, user)
 end
 
 local edges = {
-    {1,2}, {2,3}, {3,4}, {4,1},
-    {5,6}, {6,7}, {7,8}, {8,5},
-    {1,5}, {2,6}, {3,7}, {4,8}
+    { 1, 2 }, { 2, 3 }, { 3, 4 }, { 4, 1 },
+    { 5, 6 }, { 6, 7 }, { 7, 8 }, { 8, 5 },
+    { 1, 5 }, { 2, 6 }, { 3, 7 }, { 4, 8 }
 }
 
 ---@param min Vec3
@@ -73,16 +73,16 @@ local edges = {
 function OsirisHelpers.DrawBox(min, max, LineThickness, user)
     local spawned = {}
     local corners = {
-        {min[1], min[2], min[3]},
-        {max[1], min[2], min[3]},
-        {max[1], max[2], min[3]},
-        {min[1], max[2], min[3]},
-        {min[1], min[2], max[3]},
-        {max[1], min[2], max[3]},
-        {max[1], max[2], max[3]},
-        {min[1], max[2], max[3]},
+        { min[1], min[2], min[3] },
+        { max[1], min[2], min[3] },
+        { max[1], max[2], min[3] },
+        { min[1], max[2], min[3] },
+        { min[1], min[2], max[3] },
+        { max[1], min[2], max[3] },
+        { max[1], max[2], max[3] },
+        { min[1], max[2], max[3] },
     }
-    
+
     for _, edge in ipairs(edges) do
         local handle = OsirisHelpers.DrawLine(corners[edge[1]], corners[edge[2]], LineThickness, user)
         table.insert(spawned, handle)
@@ -100,13 +100,13 @@ function OsirisHelpers.DrawOrientedBox(center, halfSizes, rotation, LineThicknes
     --- @type Vec3[]
     local localCorners = {
         { -halfSizes[1], -halfSizes[2], -halfSizes[3] },
-        {  halfSizes[1], -halfSizes[2], -halfSizes[3] },
-        {  halfSizes[1],  halfSizes[2], -halfSizes[3] },
-        { -halfSizes[1],  halfSizes[2], -halfSizes[3] },
-        { -halfSizes[1], -halfSizes[2],  halfSizes[3] },
-        {  halfSizes[1], -halfSizes[2],  halfSizes[3] },
-        {  halfSizes[1],  halfSizes[2],  halfSizes[3] },
-        { -halfSizes[1],  halfSizes[2],  halfSizes[3] },
+        { halfSizes[1],  -halfSizes[2], -halfSizes[3] },
+        { halfSizes[1],  halfSizes[2],  -halfSizes[3] },
+        { -halfSizes[1], halfSizes[2],  -halfSizes[3] },
+        { -halfSizes[1], -halfSizes[2], halfSizes[3] },
+        { halfSizes[1],  -halfSizes[2], halfSizes[3] },
+        { halfSizes[1],  halfSizes[2],  halfSizes[3] },
+        { -halfSizes[1], halfSizes[2],  halfSizes[3] },
     }
 
     local worldCorners = {}
@@ -142,7 +142,7 @@ function OsirisHelpers.TeleportTo(uuid, x, y, z)
     if not rx or not ry or not rz then
         rx, ry, rz = 0, 0, 0
     end
-    
+
     Osi.ToTransform(uuid, x, y, z, rx, ry, rz)
 
     --Trace("Item teleported to position: " .. tostring(x) .. ", " .. tostring(y) .. ", " .. tostring(z))
@@ -171,7 +171,7 @@ function OsirisHelpers.RotateTo(guid, rx, ry, rz, w)
         return false
     end
     local transform = entity.Transform.Transform
-    transform.RotationQuat = {rx or 0, ry or 0, rz or 0, w or 1}
+    transform.RotationQuat = { rx or 0, ry or 0, rz or 0, w or 1 }
 
     --- @diagnostic disable-next-line: param-type-mismatch
     OsirisHelpers.TeleportTo(guid, RBGetPosition(guid))
@@ -190,7 +190,7 @@ function OsirisHelpers.ScaleTo(guid, sx, sy, sz)
         return false
     end
     local transform = entity.Transform.Transform
-    transform.Scale = {sx or 1, sy or 1, sz or 1}
+    transform.Scale = { sx or 1, sy or 1, sz or 1 }
 
     --- @diagnostic disable-next-line: param-type-mismatch
     OsirisHelpers.TeleportTo(guid, RBGetPosition(guid))
@@ -212,7 +212,6 @@ function OsirisHelpers.ToTransform(guid, transform)
 
     OsirisHelpers.TeleportTo(guid, transform.Translate[1], transform.Translate[2], transform.Translate[3])
     return true
-    
 end
 
 function OsirisHelpers.PreviewTemplate(templateId, x, y, z, p, yaw, r, w, visualPreset, duration)
@@ -248,19 +247,19 @@ function OsirisHelpers.PreviewTemplate(templateId, x, y, z, p, yaw, r, w, visual
     Osi.SetCanInteract(preview, 0)
     Osi.ClearTag(preview, RB_PROP_TAG)
     RB_FlagHelpers.SetFlag(preview, "DeleteLater")
-    
+
     if visualPreset then
-        Timer:After(500, function ()
-            NetChannel.ApplyVisualPreset:Broadcast({ Guid=preview, TemplateName=templateName, VisualPreset=visualPreset })
+        Timer:After(500, function()
+            NetChannel.ApplyVisualPreset:Broadcast({ Guid = preview, TemplateName = templateName, VisualPreset =
+            visualPreset })
         end)
     end
-    
+
     if duration > 0 then
-        Timer:After(duration, function ()
+        Timer:After(duration, function()
             Osi.RequestDelete(preview)
             Osi.RequestDeleteTemporary(preview)
         end)
     end
     return preview
 end
-

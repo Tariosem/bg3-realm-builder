@@ -20,7 +20,7 @@ function StyleMenu:Render()
         self.panel = self.parent:AddTabItem(GetLoca("Style"))
         self.isWindow = false
     else
-        self.panel = WindowManager.RegisterWindow("generic", GetLoca("Style"), "Menu", self, {STYLEMENU_WIDTH, STYLEMENU_HEIGHT})
+        self.panel = WindowManager.RegisterWindow("generic", "Style", "Menu", self, {STYLEMENU_WIDTH, STYLEMENU_HEIGHT})
         self.isWindow = true
     end
 

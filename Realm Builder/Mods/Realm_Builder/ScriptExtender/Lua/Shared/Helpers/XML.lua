@@ -25,12 +25,11 @@ LSValueType = {
 }
 
 local function escapeXML(s)
-    s = s:gsub("&", "&amp;")
-    s = s:gsub("<", "&lt;")
-    s = s:gsub(">", "&gt;")
-    s = s:gsub("\"", "&quot;")
-    s = s:gsub("'", "&apos;")
-    return s
+    return s:gsub("&", "&amp;")
+        :gsub("<", "&lt;")
+        :gsub(">", "&gt;")
+        :gsub("\"", "&quot;")
+        :gsub("'", "&apos;")
 end
 
 --- @param value any
@@ -317,7 +316,7 @@ function XMLNode:__stringify(stringifyOpts, co)
                 -- push exit frame
                 top = top + 1
                 stack[top] = { node, false, curDepth }
-                
+
                 -- push children in reverse so they are processed in order
                 for i = #children, 1, -1 do
                     if curDepth + 1 > stringifyOpts.MaxDepth then
@@ -345,7 +344,7 @@ function XMLNode:__stringify(stringifyOpts, co)
             table.insert(lines, pad .. string.format('</%s>', node.__name or 'Node'))
         end
 
-        
+
         if isInCoroutine then
             local now = Ext.Timer.MicrosecTime()
             if now - lastYieldTime >= 1 then
@@ -355,7 +354,7 @@ function XMLNode:__stringify(stringifyOpts, co)
                         ok, err = coroutine.resume(co)
                         if ok then return end
                     end
-                    throwXMLStringifyError(self, 
+                    throwXMLStringifyError(self,
                         "XMLNode:Stringify coroutine resume failed: " .. tostring(err or "unknown error"))
                 end)
                 lastYieldTime = now
