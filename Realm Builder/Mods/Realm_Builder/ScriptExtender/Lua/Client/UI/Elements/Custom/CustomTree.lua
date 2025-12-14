@@ -1,3 +1,6 @@
+--- a custom tree UI element
+--- right click to expand all
+
 local treeOpenIcon = RB_ICONS.Menu_Down
 local treeClosedIcon = RB_ICONS.Menu_Right
 local treeOpen = RB_ICON_UV01[treeOpenIcon]

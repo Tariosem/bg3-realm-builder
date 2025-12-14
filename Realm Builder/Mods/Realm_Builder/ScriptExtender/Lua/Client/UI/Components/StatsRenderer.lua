@@ -119,7 +119,7 @@ local function RenderStatsObjectTitle(statsObj, parent, statType, isTooltip)
     local descRender = StatsParser:ParseDesc(statsObj.Description or nil, nil, statsObj.DescriptionParams, nil, isTooltip)
 
     local displayName = GetLoca(statsObj.DisplayName or "Unknown", "Unknown")
-    local icon = CheckIcon(statsObj.Icon or "Item_Unknown")
+    local icon = RBCheckIcon(statsObj.Icon or "Item_Unknown")
     local table = parent:AddTable(statsObj.DisplayName or "Unknown", 2)
     table.ColumnDefs[1] = { WidthStretch = true }
     table.ColumnDefs[2] = { FixedWidth = true }
@@ -232,7 +232,7 @@ function ImguiElements.RenderStatsObject(statsObj, type, nameOverride)
         return function() end
     end
 
-    local icon = CheckIcon(statsObj.Icon or "Item_Unknown")
+    local icon = RBCheckIcon(statsObj.Icon or "Item_Unknown")
     
     local function render(parent, useTextLink)
         --- @type ExtuiImageButton

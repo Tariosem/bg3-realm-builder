@@ -51,49 +51,49 @@ local mapTemplatePath = mapModsPath .. "%s/Mods/%s/Levels/%s/%s/%s.lsx"
 
 local mapModCachePath = mapModsPath .. "Map_Mod_Uuids.json"
 
-RealmPath = {}
+FilePath = {}
 
-function RealmPath.GetUIConfigPath()
+function FilePath.GetUIConfigPath()
     return configPath
 end
 
-function RealmPath.GetVisualPresetsPath(templateName)
+function FilePath.GetVisualPresetsPath(templateName)
     return visualPresetsPath .. templateName .. ".json"
 end
 
-function RealmPath.GetCustomEffectPath(displayName)
+function FilePath.GetCustomEffectPath(displayName)
     return effPath .. displayName .. ".json"
 end
 
-function RealmPath.GetPresetPath(presetName)
+function FilePath.GetPresetPath(presetName)
     return presetPath .. presetName .. ".json"
 end
 
-function RealmPath.GetPresetReferencePath()
+function FilePath.GetPresetReferencePath()
     return presetRefPath
 end
 
-function RealmPath.GetVisualReferencePath()
+function FilePath.GetVisualReferencePath()
     return visRefPath
 end
 
-function RealmPath.GetEffectReferencePath()
+function FilePath.GetEffectReferencePath()
     return effRefPath
 end
 
-function RealmPath.GetLocalizationPath()
+function FilePath.GetLocalizationPath()
     return localGenPath .. ".json"
 end
 
-function RealmPath.GetKeybindPath()
+function FilePath.GetKeybindPath()
     return keybindPath
 end
 
-function RealmPath.GetCCAModMetaPath(modName, modFolderName)
+function FilePath.GetCCAModMetaPath(modName, modFolderName)
     return string.format(ccaModMetaFile, modName, modFolderName)
 end
 
-function RealmPath.GetPrefabPath(internalName, uuid)
+function FilePath.GetPrefabPath(internalName, uuid)
     local fileName = string.format("%s_%s.lsx", internalName, uuid)
     return generatedPrefabPath .. fileName
 end
@@ -101,11 +101,11 @@ end
 ---@param modName string
 ---@param lang string
 ---@return string
-function RealmPath.GetCCALocalizationPath(modName, modFolderName, lang)
+function FilePath.GetCCALocalizationPath(modName, modFolderName, lang)
     return string.format(ccaLocalizationFile, modName, lang, modFolderName)
 end
 
-function RealmPath.GetCCAModCachePath(modName, version)
+function FilePath.GetCCAModCachePath(modName, version)
     local versionStr = type(version) == "table" and RBUtils.BuildVersionString(version[1], version[2], version[3], version[4]) or version
 
     local fileName = string.format("%s_%s_Cache.json", modName, versionStr)
@@ -113,11 +113,11 @@ function RealmPath.GetCCAModCachePath(modName, version)
     return string.format(ccModCachePath .. fileName)
 end
 
-function RealmPath.GetCCAModCacheRefPath()
+function FilePath.GetCCAModCacheRefPath()
     return ccModCacheRefPath
 end
 
-function RealmPath.GetCCAMaterialPresetsFile(presetType, modName, modFolderName, customName)
+function FilePath.GetCCAMaterialPresetsFile(presetType, modName, modFolderName, customName)
     local ccaMatPresetPath = {
         CharacterCreationEyeColors = ccaEyeColorPath,
         CharacterCreationHairColors = ccaHairColorPath,
@@ -136,7 +136,7 @@ function RealmPath.GetCCAMaterialPresetsFile(presetType, modName, modFolderName,
     return filePath
 end
 
-function RealmPath.GetCCAPresetsFile(presetType, modName, modFolderName)
+function FilePath.GetCCAPresetsFile(presetType, modName, modFolderName)
     local ccaPresetPath = {
         CharacterCreationEyeColors = ccaEyeColorFile,
         CharacterCreationHairColors = ccaHairColorFile,
@@ -151,19 +151,19 @@ function RealmPath.GetCCAPresetsFile(presetType, modName, modFolderName)
     return string.format(ccaPresetPath[presetType], modName, modFolderName)
 end
 
-function RealmPath.GetCCASkinColorPath(modName)
+function FilePath.GetCCASkinColorPath(modName)
     return string.format(ccaSkinColorFile, modName, modName)
 end
 
-function RealmPath.GetConfigPath()
+function FilePath.GetConfigPath()
     return configPath
 end
 
-function RealmPath.GetMapModMetaPath(modName)
+function FilePath.GetMapModMetaPath(modName)
     return string.format(mapModMetaFile, modName, modName)
 end
 
-function RealmPath.GetMapModLocalizationPath(modName, lang)
+function FilePath.GetMapModLocalizationPath(modName, lang)
     return string.format(mapModLocalizationFile, modName, lang, modName)
 end
 
@@ -174,7 +174,7 @@ local templateTypeToFolder = {
     trigger = "Triggers",
 }
 
-function RealmPath.GetTemplatePath(modName, levelName, guid, templateType)
+function FilePath.GetTemplatePath(modName, levelName, guid, templateType)
     templateType = templateTypeToFolder[templateType]
     if not templateType then
         Error("Invalid template type: " .. tostring(templateType))
@@ -183,42 +183,42 @@ function RealmPath.GetTemplatePath(modName, levelName, guid, templateType)
     return string.format(mapTemplatePath, modName, modName, levelName, templateType, guid)
 end
 
-function RealmPath.GetCharacterVisualPath(modName, visualName)
+function FilePath.GetCharacterVisualPath(modName, visualName)
     return string.format(mapCharacterVisualPath, modName, modName, visualName)
 end
 
-function RealmPath.GetCharacterPresetPath(modName, presetName)
+function FilePath.GetCharacterPresetPath(modName, presetName)
     return string.format(mapCharacterPresetPath, modName, modName, presetName)
 end
 
-function RealmPath.GetRootTemplatePath(modName, templateName)
+function FilePath.GetRootTemplatePath(modName, templateName)
     return string.format(mapItemRootTemplatePath, modName, modName, templateName)
 end
 
-function RealmPath.GetItemVisualPath(modName, visualName)
+function FilePath.GetItemVisualPath(modName, visualName)
     return string.format(mapItemVisualPath, modName, modName, visualName)
 end
 
-function RealmPath.GetItemPresetPath(modName, presetName)
+function FilePath.GetItemPresetPath(modName, presetName)
     return string.format(mapItemPresetPath, modName, modName, presetName)
 end
 
-function RealmPath.GetMapModCachePath()
+function FilePath.GetMapModCachePath()
     return mapModCachePath
 end
 
-function RealmPath.GetBrowserSettingPath(browserName)
+function FilePath.GetBrowserSettingPath(browserName)
     return string.format(browserSettingPath, browserName)
 end
 
-function RealmPath.GetMapModLogPath(timeStamp)
+function FilePath.GetMapModLogPath(timeStamp)
     return string.format(mapModLogPath, timeStamp)
 end
 
-function RealmPath.GetCCModLogPath(timeStamp)
+function FilePath.GetCCModLogPath(timeStamp)
     return string.format(ccaModLogPath, timeStamp)
 end
 
-function RealmPath.GetXMLErrorLogPath(timeStamp)
+function FilePath.GetXMLErrorLogPath(timeStamp)
     return string.format(xmlErrorLogPath, timeStamp)
 end

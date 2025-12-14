@@ -1,4 +1,3 @@
-----@diagnostic disable: param-type-mismatch
 local EFFECTSMENU_WIDTH = 1000 * SCALE_FACTOR
 local EFFECTSMENU_HEIGHT = 1200 * SCALE_FACTOR
 
@@ -66,8 +65,8 @@ function EffectsMenu:Render()
     local detachCell = nil
     if self.isWindow then
         self.mainMenu = self.panel:AddMainMenu()
-        self.fileMenu = self.mainMenu:AddMenu(GetLoca("File"))
-        self.debugMenu = self.mainMenu:AddMenu(GetLoca("Debug"))
+        self.fileMenu = self.mainMenu:AddMenu(GetLoca("File")) --[[@as ExtuiMenu]]
+        self.debugMenu = self.mainMenu:AddMenu(GetLoca("Debug")) --[[@as ExtuiMenu]]
     else
 
         local menuTable = self.panel:AddTable("EffectsMenuMainMenuTable", 6)
@@ -412,7 +411,7 @@ function EffectsMenu:Save(diaplayName)
 
     for name, effect in pairs(toSave) do
         if not effect then goto continue end
-        local filePath = RealmPath.GetCustomEffectPath(effect.DisplayName)
+        local filePath = FilePath.GetCustomEffectPath(effect.DisplayName)
         local jsonData = Ext.Json.Stringify(effect)
         if not Ext.IO.SaveFile(filePath, jsonData) then
             Error("[EffectsMenu] Failed to save custom effect: " .. effect.DisplayName)
@@ -426,7 +425,7 @@ function EffectsMenu:Save(diaplayName)
         toRef[effect.DisplayName] = {}
     end
 
-    local refFilePath = RealmPath.GetEffectReferencePath()
+    local refFilePath = FilePath.GetEffectReferencePath()
     local refData = Ext.Json.Stringify(toRef)
     if not Ext.IO.SaveFile(refFilePath, refData) then
         Error("[EffectsMenu] Failed to save custom effects reference file: " .. refFilePath)
@@ -435,7 +434,7 @@ function EffectsMenu:Save(diaplayName)
 end
 
 function EffectsMenu:ClearRefs()
-    local refFilePath = RealmPath.GetEffectReferencePath()
+    local refFilePath = FilePath.GetEffectReferencePath()
     if not Ext.IO.SaveFile(refFilePath, "{}") then
         Error("[EffectsMenu] Failed to clear custom effects reference file: " .. refFilePath)
         return false
@@ -443,7 +442,7 @@ function EffectsMenu:ClearRefs()
 end
 
 function EffectsMenu:ClearRef(name)
-    local refFilePath = RealmPath.GetEffectReferencePath()
+    local refFilePath = FilePath.GetEffectReferencePath()
     local refData = Ext.IO.LoadFile(refFilePath)
     if not refData then
         --Warning("[EffectsMenu] No custom effects reference file found at: " .. refFilePath)
@@ -477,7 +476,7 @@ function EffectsMenu:ClearRef(name)
 end
 
 function EffectsMenu:Load()
-    local refFilePath = RealmPath.GetEffectReferencePath()
+    local refFilePath = FilePath.GetEffectReferencePath()
     local refData = Ext.IO.LoadFile(refFilePath)
     if not refData then
         --Warning("[EffectsMenu] No custom effects reference file found at: " .. refFilePath)
@@ -492,7 +491,7 @@ function EffectsMenu:Load()
 
     self.customEffects = {}
     for displayName, _ in pairs(toRef) do
-        local filePath = RealmPath.GetCustomEffectPath(displayName)
+        local filePath = FilePath.GetCustomEffectPath(displayName)
         local jsonData = Ext.IO.LoadFile(filePath)
         if jsonData then
             local effect = Ext.Json.Parse(jsonData)

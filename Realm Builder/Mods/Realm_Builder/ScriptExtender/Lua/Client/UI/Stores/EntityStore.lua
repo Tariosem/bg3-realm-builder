@@ -152,8 +152,8 @@ function EntityStore:SetupServerListeners()
                 local guid = info.Guid
                 local parent = info.BindParent
                 panel:AddText(string.format("%s => %s", 
-                    GetName(guid) or guid, 
-                    GetName(parent) or (parent and parent or "Unbound"
+                    RBGetName(guid) or guid, 
+                    RBGetName(parent) or (parent and parent or "Unbound"
                 )))
                 panel:AddText("Attributes: " .. (info.KeepLookingAt and "KeepLookingAt " or "") .. (info.FollowParent and "FollowParent" or ""))
             end
@@ -500,7 +500,7 @@ function EntityStore:GetExportCopy(guids)
 
             local hasIcon = template.TemplateType == "character" or template.TemplateType == "item"
             data.Scale = math.min(data.Scale[1], data.Scale[2], data.Scale[3])
-            data.DisplayIcon = GetIcon(guid)
+            data.DisplayIcon = RBGetIcon(guid)
             data.Icon = hasIcon and template.Icon or nil
             data.LevelName = entity.Level and entity.Level.LevelName or hostLevel
         

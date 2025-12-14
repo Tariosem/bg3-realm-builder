@@ -514,7 +514,7 @@ local function throwExportError(message, exportSettings, progressCallback, co)
     Error(stack)
     progressCallback(-1, message)
     local time = RBUtils.GetFormatTime()
-    local suc = Ext.IO.SaveFile(RealmPath.GetMapModLogPath(time),
+    local suc = Ext.IO.SaveFile(FilePath.GetMapModLogPath(time),
         Ext.Json.Stringify({
             Time = Ext.Timer.ClockTime(),
             Message = message,
@@ -522,7 +522,7 @@ local function throwExportError(message, exportSettings, progressCallback, co)
             Stack = stack,
         }, { Beautify = true, StringifyInternalTypes = true }))
     if not suc then
-        Warning("Failed to save export error log file at " .. RealmPath.GetMapModLogPath(time))
+        Warning("Failed to save export error log file at " .. FilePath.GetMapModLogPath(time))
     end
 end
 
@@ -615,7 +615,7 @@ function TemplateExportMenu:__export(exportSettings, progressCallback)
 
     local modInternalName = RBUtils.ValidateFolderName(exportSettings.ModName)
     local modUuid = nil
-    local modCache = RealmPath.GetMapModCachePath()
+    local modCache = FilePath.GetMapModCachePath()
     local file = Ext.IO.LoadFile(modCache)
     local modCachedUuids = Ext.Json.Parse(file or "{}")
     modUuid = modCachedUuids[modInternalName]
@@ -634,7 +634,7 @@ function TemplateExportMenu:__export(exportSettings, progressCallback)
     local modMetaNode = LSXHelpers.BuildModMeta(modUuid, exportSettings.ModName, modInternalName,
         exportSettings.Author, exportSettings.Version, exportSettings.Description)
 
-    local modMetaPath = RealmPath.GetMapModMetaPath(modInternalName)
+    local modMetaPath = FilePath.GetMapModMetaPath(modInternalName)
     saveFile(modMetaPath, modMetaNode:Stringify({ AutoFindRoot = true }))
     advance("Building mod meta...")
 
@@ -655,7 +655,7 @@ function TemplateExportMenu:__export(exportSettings, progressCallback)
     else
         local locFile, stringToHandles = LSXHelpers.GenerateLocalization(needNames, 1)
 
-        local locPath = RealmPath.GetMapModLocalizationPath(modInternalName, "English")
+        local locPath = FilePath.GetMapModLocalizationPath(modInternalName, "English")
         saveFile(locPath, locFile)
 
         for name, guids in pairs(nameToGuids) do
@@ -699,7 +699,7 @@ function TemplateExportMenu:__export(exportSettings, progressCallback)
                 return
             end
             presetBank:AppendChild(presetNode)
-            local presetPath = RealmPath.GetCharacterPresetPath(modInternalName, presetUuid)
+            local presetPath = FilePath.GetCharacterPresetPath(modInternalName, presetUuid)
             saveFile(presetPath, presetNode:Stringify({ AutoFindRoot = true }))
 
             --- build visual resource
@@ -712,7 +712,7 @@ function TemplateExportMenu:__export(exportSettings, progressCallback)
                 throwError("Failed to build character visual resource for entity " .. entData.DisplayName)
                 return
             end
-            local visualPath = RealmPath.GetCharacterVisualPath(modInternalName, overrideVisualID)
+            local visualPath = FilePath.GetCharacterVisualPath(modInternalName, overrideVisualID)
             saveFile(visualPath, bank:Stringify({ AutoFindRoot = true }))
 
             entData.OverrideVisualUuid = overrideVisualID
@@ -797,7 +797,7 @@ function TemplateExportMenu:__export(exportSettings, progressCallback)
                     end
                 end
 
-                local matPath = RealmPath.GetItemPresetPath(modInternalName, overrideMatId)
+                local matPath = FilePath.GetItemPresetPath(modInternalName, overrideMatId)
                     saveFile(matPath, matBank:Stringify({ AutoFindRoot = true }))
                 end
 
@@ -807,7 +807,7 @@ function TemplateExportMenu:__export(exportSettings, progressCallback)
                 local visual = ResourceHelpers.BuildVisualResource(vres, overrideVisualID,
                     visualInternalName, linkIdToMatId)
                 visualBank:AppendChild(visual)
-                local visualPath = RealmPath.GetItemVisualPath(modInternalName, overrideVisualID)
+                local visualPath = FilePath.GetItemVisualPath(modInternalName, overrideVisualID)
                 saveFile(visualPath, visualBank:Stringify({ AutoFindRoot = true }))
 
                 --- build root template with visual override
@@ -816,7 +816,7 @@ function TemplateExportMenu:__export(exportSettings, progressCallback)
                 local rootTemplate = LSXHelpers.BuildRootTemplate(entData.TemplateId, overrideTemplateID,
                     overrideTemplateInternalName, { VisualTemplate = overrideVisualID })
 
-                local overrideTemplatePath = RealmPath.GetRootTemplatePath(modInternalName, overrideTemplateID)
+                local overrideTemplatePath = FilePath.GetRootTemplatePath(modInternalName, overrideTemplateID)
                 --- @diagnostic disable-next-line
                 saveFile(overrideTemplatePath, rootTemplate:Stringify({ AutoFindRoot = true }))
 
@@ -842,7 +842,7 @@ function TemplateExportMenu:__export(exportSettings, progressCallback)
         local levelName = entData.LevelName
 
         local templateInternalName = intenalNameMap[guid]
-        local templatePath = RealmPath.GetTemplatePath(modInternalName, levelName, guid, entData.TemplateType)
+        local templatePath = FilePath.GetTemplatePath(modInternalName, levelName, guid, entData.TemplateType)
         if not templatePath then
             throwError("Failed to get template path for entity " .. guid)
             return
@@ -857,7 +857,7 @@ function TemplateExportMenu:__export(exportSettings, progressCallback)
         saveFile(templatePath, templateNode:Stringify({ AutoFindRoot = true }))
 
         for _, other in ipairs(others or {}) do
-            local otherPath = RealmPath.GetTemplatePath(modInternalName, levelName, other.Uuid, other.TemplateType)
+            local otherPath = FilePath.GetTemplatePath(modInternalName, levelName, other.Uuid, other.TemplateType)
             saveFile(otherPath, other.XMLNode:Stringify({ AutoFindRoot = true }))
         end
 

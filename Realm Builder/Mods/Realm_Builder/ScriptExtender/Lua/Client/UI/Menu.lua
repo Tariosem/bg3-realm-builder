@@ -63,7 +63,7 @@ function RealmBuilderMainMenu:RegisterEvents()
         local host = RBGetHostCharacter()
 
         if IsInCharacterCreationMirror() then
-            VisualTab.new(host, GetName(host), nil, nil):Render()
+            VisualTab.new(host, RBGetName(host), nil, nil):Render()
             return
         end
 
@@ -75,7 +75,7 @@ function RealmBuilderMainMenu:RegisterEvents()
         end
 
         if pickId then
-            VisualTab.new(pickId, GetName(pickId), nil, nil):Render()
+            VisualTab.new(pickId, RBGetName(pickId), nil, nil):Render()
         elseif pick.Visual then
             VisualHelpers.RegisterVisual(pick)
             if pick.Scenery then

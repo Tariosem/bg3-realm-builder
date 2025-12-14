@@ -164,8 +164,8 @@ function ItemMovableProxy:GetParent()
 end
 
 function ItemMovableProxy:Render(parent)
-    local icon = GetIcon(self.Guid)
-    local name = GetName(self.Guid) or "Item"
+    local icon = RBGetIcon(self.Guid)
+    local name = RBGetName(self.Guid) or "Item"
 
     local group = parent:AddGroup(name)
     group:AddImage(icon, IMAGESIZE.SMALL)

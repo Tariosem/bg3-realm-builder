@@ -75,12 +75,12 @@ function UIConfig.SaveConfig(field)
     end
 
     local configData = Ext.Json.Stringify(UICONFIG)
-    local filePath = RealmPath.GetUIConfigPath()
+    local filePath = FilePath.GetUIConfigPath()
     Ext.IO.SaveFile(filePath, configData)
 end
 
 function UIConfig.LoadConfig()
-    local filePath = RealmPath.GetUIConfigPath()
+    local filePath = FilePath.GetUIConfigPath()
     local configData = Ext.IO.LoadFile(filePath)
     if configData then
         local saved = Ext.Json.Parse(configData)
@@ -93,7 +93,7 @@ function UIConfig.LoadConfig()
 end
 
 function UIConfig.SaveConfigField(field)
-    local filePath = RealmPath.GetUIConfigPath()
+    local filePath = FilePath.GetUIConfigPath()
     local raw = Ext.IO.LoadFile(filePath)
     local data = raw and Ext.Json.Parse(raw) or {}
 

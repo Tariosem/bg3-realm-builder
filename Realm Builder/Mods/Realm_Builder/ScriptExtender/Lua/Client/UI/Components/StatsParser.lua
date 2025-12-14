@@ -471,7 +471,7 @@ function StatsParser:ParsePassives(passives)
             local desc = statsObj.Description
             local descRef = statsObj.DescriptionRef
             local descParams = statsObj.DescriptionParams
-            local icon = CheckIcon(statsObj.Icon or "Item_Unknown")
+            local icon = RBCheckIcon(statsObj.Icon or "Item_Unknown")
 
             local renderDesc = self:ParseDesc(desc, descRef, descParams)
             local function render(parent)

@@ -42,7 +42,7 @@ function UpdateNearbyMap(pos, radius)
 
     for _, entry in pairs(entries) do
         local guid = entry.Guid
-        local displayName = GetName(guid)
+        local displayName = RBGetName(guid)
         entry.DisplayName = displayName
         entry.Entity = nil
         table.insert(nearByEntries, entry)

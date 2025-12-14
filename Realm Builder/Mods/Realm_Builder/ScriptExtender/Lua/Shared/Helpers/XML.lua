@@ -1,7 +1,7 @@
 local Debug = Debug or print
 local Error = Error or print
 local Warning = Warning or print
-local RealmPath = RealmPath or {}
+local RealmPath = FilePath or {}
 
 --- @enum LSValueType
 LSValueType = {
@@ -184,13 +184,13 @@ end
 function XMLNode:Stringify(opts, co)
     opts = validateStringifyOptions(opts or {})
 
-    if not opts.AutoFindRoot then
-        return self:__stringify(opts)
-    end
-
     if co and (type(co) ~= "thread" or coroutine.status(co) == "dead") then
         co = nil
         Warning("XMLNode:Stringify: Coroutine is invalid.")
+    end
+
+    if not opts.AutoFindRoot then
+        return self:__stringify(opts, co)
     end
 
     local seen = {}

@@ -55,7 +55,7 @@ function CustomEffectTab:RenderProfile()
     end)
 
     self.iconNameButton = ImguiElements.AddSelectableButton(l2, GetLoca("Icon"), function()
-        local icon = CheckIcon(self.iconNameInput.Text, self.icon)
+        local icon = RBCheckIcon(self.iconNameInput.Text, self.icon)
         if icon and icon ~= "" then
             self.icon = icon
             self.iconImage:Destroy()

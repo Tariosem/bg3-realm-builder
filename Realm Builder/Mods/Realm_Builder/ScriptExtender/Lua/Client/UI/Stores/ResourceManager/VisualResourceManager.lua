@@ -73,13 +73,13 @@ function CCAVManager:PopulateAll()
                 end
             end
         end
+        self:AddTagToData(ccavId, ccav.SlotName)
         local bodyTypeTag = bodyTypeToBodyShapeToTag[ccav.BodyType] and bodyTypeToBodyShapeToTag[ccav.BodyType][ccav.BodyShape]
         if not bodyTypeTag then
             Warning("[Realm Builder] Unknown BodyType/BodyShape combination for CCAV " .. ccavId .. ": BodyType=" .. tostring(ccav.BodyType) .. ", BodyShape=" .. tostring(ccav.BodyShape))
             goto continue
         end
         self:AddTagToData(ccavId, bodyTypeTag[1])
-        self:AddTagToData(ccavId, ccav.SlotName)
         if not newSlot[ccav.SlotName] then
             newSlot[ccav.SlotName] = true
             self.tagTree:AddLeaf(ccav.SlotName, 0, "Slots")
@@ -143,7 +143,7 @@ function CCAVManager:CreateDynamicTags(uuid)
         return false
     end
 
-    local lastDynamicTag = GetName(uuid) .. "'s Visuals"
+    local lastDynamicTag = RBGetName(uuid) .. "'s Visuals"
     self.lastDynamicTag = lastDynamicTag
 
     local uniqueVisuals = {}

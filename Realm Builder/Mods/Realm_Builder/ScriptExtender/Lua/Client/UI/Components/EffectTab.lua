@@ -307,8 +307,8 @@ function EffectTab:CreatePicker(fieldName, labelText, parent)
                 if i > 1 then
                     cell:AddText(", ").SameLine = true
                 end
-                local tempImage = cell:AddImage(GetIcon(guid), IMAGESIZE.ROW)
-                local tempText = cell:AddText(GetName(guid) or "")
+                local tempImage = cell:AddImage(RBGetIcon(guid), IMAGESIZE.ROW)
+                local tempText = cell:AddText(RBGetName(guid) or "")
                 if i > 1  and i % 4 ~= 0 then
                     tempImage.SameLine = true
                 end

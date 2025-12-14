@@ -10,7 +10,7 @@ local originIconPrefix = ECMODLoaded and "EC_Portrait_" or nil
 local defaultPartyMemberIcon = RB_ICONS.Character_Fill
 local windowForCheckIcon = GLOBAL_DEBUG_WINDOW
 
-function CheckIcon(icon, fallback)
+function RBCheckIcon(icon, fallback)
     if not windowForCheckIcon then
         return "Item_Unknown"
     end
@@ -25,7 +25,7 @@ function CheckIcon(icon, fallback)
     return isValid and icon or fallback or "Item_Unknown"
 end
 
-function GetIcon(guid)
+function RBGetIcon(guid)
     if not guid or guid == "" then
         return defaultIcon
     end
@@ -46,7 +46,7 @@ function GetIcon(guid)
 
     if stored and stored.TemplateId then
         local icon = GetIconForTemplateId(stored.TemplateId)
-        return CheckIcon(icon, defaultIcon)
+        return RBCheckIcon(icon, defaultIcon)
     end
 
     if not RBUtils.IsUuid(guid) then
@@ -79,14 +79,14 @@ function GetIcon(guid)
     if entity.Icon then
         local icon = entity.Icon.Icon
         if icon and icon ~= "" and not ICON_BLACKLIST[icon] then
-            return CheckIcon(icon, defaultIcon)
+            return RBCheckIcon(icon, defaultIcon)
         end
     end
 
     if entity.GameObjectVisual then
         local icon = entity.GameObjectVisual.Icon
         if icon and icon ~= "" and not ICON_BLACKLIST[icon] then
-            return CheckIcon(icon, defaultIcon)
+            return RBCheckIcon(icon, defaultIcon)
         end
     end
 
@@ -95,7 +95,7 @@ end
 
 ---@param guid GUIDSTRING
 ---@return string
-function GetName(guid)
+function RBGetName(guid)
     local outlineName = EntityStore:GetPropNameFromGuid(guid)
     if outlineName then
         return outlineName
@@ -146,16 +146,6 @@ function GetIconForTemplateId(uuid)
     return "Item_Unknown"
 end
 
-function GetDisplayNameForEntity(entity)
-    if type(entity) == "string" then
-        entity = Ext.Entity.Get(entity)
-    end
-    if entity.DisplayName then
-        return entity.DisplayName.Name:Get()
-    end
-    return nil
-end
-
 function GetDisplayNameForTemplateId(uuid)
     uuid = EntityHelpers.TakeTailTemplate(uuid)
     local template = Ext.Template.GetTemplate(uuid)
@@ -182,32 +172,4 @@ function GetTemplateNameForGuid(guid)
         return nil
     end
     return template.Name
-end
-
----@param guid GUIDSTRING
----@param duration integer in ms
----@param speed number in seconds per full rotation
----@param turns number of full rotations
----@return RunningAnimation|nil
-function RotatingEntity(guid, duration, speed, turns)
-    local movable = MovableProxy.CreateByGuid(guid)
-    if not movable then return nil end
-
-    movable:SaveTransform()
-
-    speed = speed or 30
-    duration = duration or 10000
-    turns = turns or duration / (1000 * speed)
-    local angle = 0
-    local toAngle = math.pi * 2 * turns
-
-    local anim = AnimateValue(90, angle, toAngle, duration, AnimationEasing.Linear, function ()
-        movable:RestoreTransform()
-    end, function (value, eased)
-        value = value % (math.pi * 2)
-        local quat = Ext.Math.QuatFromEuler({0, value, 0})
-        movable:SetWorldRotation(quat)
-    end)
-    
-    return anim
 end

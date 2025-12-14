@@ -7,10 +7,10 @@ local ClientVisualPresetData = {}
 local ClientOriginalVisualData = {}
 
 local function LoadVisualPresetData()
-    local refFile = RealmPath.GetVisualReferencePath()
+    local refFile = FilePath.GetVisualReferencePath()
     local refData = Ext.Json.Parse(Ext.IO.LoadFile(refFile) or "{}")
     for templateName, data in pairs(refData) do
-        local visualPresetFile = RealmPath.GetVisualPresetsPath(templateName)
+        local visualPresetFile = FilePath.GetVisualPresetsPath(templateName)
         local visualPresetData = Ext.Json.Parse(Ext.IO.LoadFile(visualPresetFile) or "{}")
         if visualPresetData then
             ClientVisualPresetData[templateName] = visualPresetData
@@ -218,7 +218,7 @@ function VisualTab:Render(retryCnt)
         return
     end
 
-    self.displayName = self.displayName or GetName(self.guid)
+    self.displayName = self.displayName or RBGetName(self.guid)
 
     if self.parent and self.isAttach then
         self:OnAttach()
@@ -372,7 +372,7 @@ end
 
 function VisualTab:RenderPresetsCell(parent)
     if self:GetEntity(self.guid) and not self.isAttach then
-        local icon = GetIcon(self.guid) or "Item_Unknown"
+        local icon = RBGetIcon(self.guid) or "Item_Unknown"
         self.symbol = parent:AddImage(icon)
         self.symbol.ImageData.Size = { 64 * SCALE_FACTOR, 64 * SCALE_FACTOR }
         if EntityStore[self.guid] and EntityStore[self.guid].IconTintColor then
@@ -2055,7 +2055,7 @@ function VisualTab:Save(name, overwrite)
 
     local saveName = name or self.displayName or "Unnamed"
 
-    local filePath = RealmPath.GetVisualPresetsPath(templateName)
+    local filePath = FilePath.GetVisualPresetsPath(templateName)
     local oriFile = Ext.Json.Parse(Ext.IO.LoadFile(filePath) or "{}")
 
     local localTransforms = {}
@@ -2105,7 +2105,7 @@ function VisualTab:Save(name, overwrite)
         return false
     end
 
-    local refFilePath = RealmPath.GetVisualReferencePath()
+    local refFilePath = FilePath.GetVisualReferencePath()
     local refFile = Ext.Json.Parse(Ext.IO.LoadFile(refFilePath) or "{}")
 
     refFile[templateName] = refFile[templateName] or {}
@@ -2169,7 +2169,7 @@ function VisualTab:Load(notoverwrite)
         return false
     end
 
-    local filePath = RealmPath.GetVisualPresetsPath(templateName)
+    local filePath = FilePath.GetVisualPresetsPath(templateName)
     local fileContent = Ext.IO.LoadFile(filePath)
 
     if not fileContent then
@@ -2195,7 +2195,7 @@ function VisualTab:Load(notoverwrite)
         self.saveInput.OnChange()
     end
 
-    local refFilePath = RealmPath.GetVisualReferencePath()
+    local refFilePath = FilePath.GetVisualReferencePath()
     local refFile = Ext.Json.Parse(Ext.IO.LoadFile(refFilePath) or "{}")
     if not refFile[templateName] then
         refFile[templateName] = {}
@@ -2217,7 +2217,7 @@ function VisualTab:Remove(name)
         return false
     end
 
-    local filePath = RealmPath.GetVisualPresetsPath(templateName)
+    local filePath = FilePath.GetVisualPresetsPath(templateName)
 
     local oriFile = Ext.Json.Parse(Ext.IO.LoadFile(filePath) or "{}")
     if not oriFile or type(oriFile) ~= "table" then
@@ -2247,7 +2247,7 @@ function VisualTab:Remove(name)
     end
 
     if #self.savedPresets == 0 then
-        local refFilePath = RealmPath.GetVisualReferencePath()
+        local refFilePath = FilePath.GetVisualReferencePath()
         local refFile = Ext.Json.Parse(Ext.IO.LoadFile(refFilePath) or "{}")
         if refFile[templateName] then
             refFile[templateName] = nil

@@ -1,140 +1,140 @@
 --- @enum BonesAlias
 local BoneAlias = {
-    body = "Dummy_BodyFX",
-    head = "Dummy_HeadFX",
-    headend = "HeadEnd_M_endBone",
-    mouth = "Dummy_MouthFX",
-    lefteye = "Dummy_EyeFX_01",
-    righteye = "Dummy_EyeFX_02",
-    neck = "Dummy_NeckFX",
-    status = "Dummy_StatusFX",
+    body               = "Dummy_BodyFX",
+    head               = "Dummy_HeadFX",
+    headend            = "HeadEnd_M_endBone",
+    mouth              = "Dummy_MouthFX",
+    lefteye            = "Dummy_EyeFX_01",
+    righteye           = "Dummy_EyeFX_02",
+    neck               = "Dummy_NeckFX",
+    status             = "Dummy_StatusFX",
 
-    lefthand = "Dummy_L_HandFX",
-    righthand = "Dummy_R_HandFX",
+    lefthand           = "Dummy_L_HandFX",
+    righthand          = "Dummy_R_HandFX",
 
-    root = "Dummy_Root",
-    root_m = "Root_M",
+    root               = "Dummy_Root",
+    root_m             = "Root_M",
 
-    leftfootik = "Dummy_L_Foot_IK",
-    rightfootik = "Dummy_R_Foot_IK",
-    lefthandik = "Dummy_L_Hand_IK",
-    righthandik = "Dummy_R_Hand_IK",
+    leftfootik         = "Dummy_L_Foot_IK",
+    rightfootik        = "Dummy_R_Foot_IK",
+    lefthandik         = "Dummy_L_Hand_IK",
+    righthandik        = "Dummy_R_Hand_IK",
 
-    hipright = "Hip_R",
-    hipleft = "Hip_L",
-    kneeright = "Knee_R",
-    kneeleft = "Knee_L",
-    ankleright = "Ankle_R",
-    ankleleft = "Ankle_L",
-    toesright = "Toes_R",
-    toesleft = "Toes_L",
-    toesrightend = "ToesEnd_R_endBone",
-    toesleftend = "ToesEnd_L_endBone",
+    hipright           = "Hip_R",
+    hipleft            = "Hip_L",
+    kneeright          = "Knee_R",
+    kneeleft           = "Knee_L",
+    ankleright         = "Ankle_R",
+    ankleleft          = "Ankle_L",
+    toesright          = "Toes_R",
+    toesleft           = "Toes_L",
+    toesrightend       = "ToesEnd_R_endBone",
+    toesleftend        = "ToesEnd_L_endBone",
 
-    spine = "Spine1_M",
-    spine1 = "Spine1_M",
-    spine2 = "Spine2_M",
-    chest = "Dummy_ChestFX",
+    spine              = "Spine1_M",
+    spine1             = "Spine1_M",
+    spine2             = "Spine2_M",
+    chest              = "Dummy_ChestFX",
 
-    rightscapula = "Scapula_R",
-    leftscapula = "Scapula_L",
-    rightshoulder = "Shoulder_R",
-    leftshoulder = "Shoulder_L",
-    rightelbow = "Elbow_R",
-    leftelbow = "Elbow_L",
-    rightwrist = "Wrist_R",
-    leftwrist = "Wrist_L",
+    rightscapula       = "Scapula_R",
+    leftscapula        = "Scapula_L",
+    rightshoulder      = "Shoulder_R",
+    leftshoulder       = "Shoulder_L",
+    rightelbow         = "Elbow_R",
+    leftelbow          = "Elbow_L",
+    rightwrist         = "Wrist_R",
+    leftwrist          = "Wrist_L",
 
-    hit = "Dummy_HitImpactFX",
-    followphysics = "Dummy_FollowPhysics",
-    customanim = "Dummy_Custom_Anim",
-    playerlight = "Dummy_Playerlight",
-    overhead = "Dummy_OverheadFX",
-    cast = "Dummy_CastFX",
-    tentacleright = "Dummy_R_TentacleFX",
-    tentacleleft = "Dummy_L_TentacleFX",
-    lefttenetacle = "Dummy_L_TentacleFX",
-    righttentacle = "Dummy_R_TentacleFX",
+    hit                = "Dummy_HitImpactFX",
+    followphysics      = "Dummy_FollowPhysics",
+    customanim         = "Dummy_Custom_Anim",
+    playerlight        = "Dummy_Playerlight",
+    overhead           = "Dummy_OverheadFX",
+    cast               = "Dummy_CastFX",
+    tentacleright      = "Dummy_R_TentacleFX",
+    tentacleleft       = "Dummy_L_TentacleFX",
+    lefttenetacle      = "Dummy_L_TentacleFX",
+    righttentacle      = "Dummy_R_TentacleFX",
 
     -- Right hand fingers
-    rightringfinger0 = "RingFinger0_R",
-    rightringfinger1 = "RingFinger1_R",
-    rightringfinger2 = "RingFinger2_R",
-    rightringfinger3 = "RingFinger3_R",
-    rightringfinger  = "RingFinger4_R_endBone",
+    rightringfinger0   = "RingFinger0_R",
+    rightringfinger1   = "RingFinger1_R",
+    rightringfinger2   = "RingFinger2_R",
+    rightringfinger3   = "RingFinger3_R",
+    rightringfinger    = "RingFinger4_R_endBone",
 
-    rightthumbfinger1 = "ThumbFinger1_R",
-    rightthumbfinger2 = "ThumbFinger2_R",
-    rightthumbfinger3 = "ThumbFinger3_R",
-    rightthumbfinger  = "ThumbFinger4_R_endBone",
+    rightthumbfinger1  = "ThumbFinger1_R",
+    rightthumbfinger2  = "ThumbFinger2_R",
+    rightthumbfinger3  = "ThumbFinger3_R",
+    rightthumbfinger   = "ThumbFinger4_R_endBone",
 
-    rightpinkyfinger0 = "PinkyFinger0_R",
-    rightpinkyfinger1 = "PinkyFinger1_R",
-    rightpinkyfinger2 = "PinkyFinger2_R",
-    rightpinkyfinger3 = "PinkyFinger3_R",
-    rightpinkyfinger  = "PinkyFinger4_R_endBone",
+    rightpinkyfinger0  = "PinkyFinger0_R",
+    rightpinkyfinger1  = "PinkyFinger1_R",
+    rightpinkyfinger2  = "PinkyFinger2_R",
+    rightpinkyfinger3  = "PinkyFinger3_R",
+    rightpinkyfinger   = "PinkyFinger4_R_endBone",
 
     rightmiddlefinger1 = "MiddleFinger1_R",
     rightmiddlefinger2 = "MiddleFinger2_R",
     rightmiddlefinger3 = "MiddleFinger3_R",
     rightmiddlefinger  = "MiddleFinger4_R_endBone",
 
-    rightindexfinger1 = "IndexFinger1_R",
-    rightindexfinger2 = "IndexFinger2_R",
-    rightindexfinger3 = "IndexFinger3_R",
-    rightindexfinger  = "IndexFinger4_R_endBone",
+    rightindexfinger1  = "IndexFinger1_R",
+    rightindexfinger2  = "IndexFinger2_R",
+    rightindexfinger3  = "IndexFinger3_R",
+    rightindexfinger   = "IndexFinger4_R_endBone",
 
     -- Left hand fingers
-    leftringfinger0 = "RingFinger0_L",
-    leftringfinger1 = "RingFinger1_L",
-    leftringfinger2 = "RingFinger2_L",
-    leftringfinger3 = "RingFinger3_L",
-    leftringfinger  = "RingFinger4_L_endBone",
+    leftringfinger0    = "RingFinger0_L",
+    leftringfinger1    = "RingFinger1_L",
+    leftringfinger2    = "RingFinger2_L",
+    leftringfinger3    = "RingFinger3_L",
+    leftringfinger     = "RingFinger4_L_endBone",
 
-    leftthumbfinger1 = "ThumbFinger1_L",
-    leftthumbfinger2 = "ThumbFinger2_L",
-    leftthumbfinger3 = "ThumbFinger3_L",
-    leftthumbfinger  = "ThumbFinger4_L_endBone",
+    leftthumbfinger1   = "ThumbFinger1_L",
+    leftthumbfinger2   = "ThumbFinger2_L",
+    leftthumbfinger3   = "ThumbFinger3_L",
+    leftthumbfinger    = "ThumbFinger4_L_endBone",
 
-    leftpinkyfinger0 = "PinkyFinger0_L",
-    leftpinkyfinger1 = "PinkyFinger1_L",
-    leftpinkyfinger2 = "PinkyFinger2_L",
-    leftpinkyfinger3 = "PinkyFinger3_L",
-    leftpinkyfinger  = "PinkyFinger4_L_endBone",
+    leftpinkyfinger0   = "PinkyFinger0_L",
+    leftpinkyfinger1   = "PinkyFinger1_L",
+    leftpinkyfinger2   = "PinkyFinger2_L",
+    leftpinkyfinger3   = "PinkyFinger3_L",
+    leftpinkyfinger    = "PinkyFinger4_L_endBone",
 
-    leftmiddlefinger1 = "MiddleFinger1_L",
-    leftmiddlefinger2 = "MiddleFinger2_L",
-    leftmiddlefinger3 = "MiddleFinger3_L",
-    leftmiddlefinger  = "MiddleFinger4_L_endBone",
+    leftmiddlefinger1  = "MiddleFinger1_L",
+    leftmiddlefinger2  = "MiddleFinger2_L",
+    leftmiddlefinger3  = "MiddleFinger3_L",
+    leftmiddlefinger   = "MiddleFinger4_L_endBone",
 
-    leftindexfinger1 = "IndexFinger1_L",
-    leftindexfinger2 = "IndexFinger2_L",
-    leftindexfinger3 = "IndexFinger3_L",
-    leftindexfinger  = "IndexFinger4_L_endBone",
+    leftindexfinger1   = "IndexFinger1_L",
+    leftindexfinger2   = "IndexFinger2_L",
+    leftindexfinger3   = "IndexFinger3_L",
+    leftindexfinger    = "IndexFinger4_L_endBone",
 
     --Tail
-    tail0 = "Tail0_M",
-    tail1 = "Tail1_M",
-    tail2 = "Tail2_M",
-    tail3 = "Tail3_M",
-    tail4 = "Tail4_M",
-    tail5 = "Tail5_M",
-    tail6 = "Tail6_M",
-    tail7 = "Tail7_M",
-    tail = "Tail8_endBone",
+    tail0              = "Tail0_M",
+    tail1              = "Tail1_M",
+    tail2              = "Tail2_M",
+    tail3              = "Tail3_M",
+    tail4              = "Tail4_M",
+    tail5              = "Tail5_M",
+    tail6              = "Tail6_M",
+    tail7              = "Tail7_M",
+    tail               = "Tail8_endBone",
 
     -- Sheath bones
-    sheathmusic       = "Dummy_Sheath_Music",
-    sheathupperleft   = "Dummy_Sheath_Upper_L",
-    sheathupperright  = "Dummy_Sheath_Upper_R",
-    sheathlowerleft   = "Dummy_Sheath_Lower_L",
-    sheathlowerright  = "Dummy_Sheath_Lower_R",
-    sheathhipleft     = "Dummy_Sheath_Hip_L",
-    sheathhipright    = "Dummy_Sheath_Hip_R",
-    sheathshield      = "Dummy_Sheath_Shield",
-    sheathranged      = "Dummy_Sheath_Ranged",
+    sheathmusic        = "Dummy_Sheath_Music",
+    sheathupperleft    = "Dummy_Sheath_Upper_L",
+    sheathupperright   = "Dummy_Sheath_Upper_R",
+    sheathlowerleft    = "Dummy_Sheath_Lower_L",
+    sheathlowerright   = "Dummy_Sheath_Lower_R",
+    sheathhipleft      = "Dummy_Sheath_Hip_L",
+    sheathhipright     = "Dummy_Sheath_Hip_R",
+    sheathshield       = "Dummy_Sheath_Shield",
+    sheathranged       = "Dummy_Sheath_Ranged",
 
-    wing            = "Dummy_WingFX",
+    wing               = "Dummy_WingFX",
 }
 
 --- @enum Bones
@@ -290,7 +290,7 @@ function BoneHelpers.FindBestMatchBone(input)
     ---
 
     local cleanInput = RBStringUtils.ToLowerAlphaOnly(input)
-    
+
     local aliasMatch = BoneAlias[cleanInput]
     if aliasMatch then
         return aliasMatch, { aliasMatch }
@@ -324,7 +324,7 @@ function BoneHelpers.FindBestMatchBone(input)
         local lname = name:lower()
         local dist = RBStringUtils.Levenshtein(input, lname)
 
-        table.insert(scores, {name = name, score = dist})
+        table.insert(scores, { name = name, score = dist })
     end
 
     table.sort(scores, function(a, b)
@@ -355,7 +355,7 @@ function BoneHelpers.ParseBoneList(bonestr, dontFindMatch)
     if not bonestr or type(bonestr) ~= "string" or bonestr == "" then
         return ""
     end
-    
+
     local results = {}
 
     for bone in bonestr:gmatch("([^,]+)") do
@@ -369,6 +369,6 @@ function BoneHelpers.ParseBoneList(bonestr, dontFindMatch)
             table.insert(results, trimmedBone)
         end
     end
-    
+
     return table.concat(results, ",")
 end

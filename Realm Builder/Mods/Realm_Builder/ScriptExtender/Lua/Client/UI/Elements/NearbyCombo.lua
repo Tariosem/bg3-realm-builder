@@ -112,7 +112,7 @@ function NearbyCombo:SetSelected(guid)
         self.combo.SelectedIndex = -1
         return
     end
-    local name = GetName(guid)
+    local name = RBGetName(guid)
     if not name then return end
     self.Selected = guid
     ImguiHelpers.SetCombo(self.combo, name, nil, true)
@@ -303,7 +303,7 @@ function NearbyCombo:UpdateImage()
     local reserved = self.combo.UserData.ImageReservedSpace
     if reserved then
         ImguiHelpers.DestroyAllChildren(reserved)
-        reserved:AddImage(GetIcon(self.Selected), IMAGESIZE.FRAME)
+        reserved:AddImage(RBGetIcon(self.Selected), IMAGESIZE.FRAME)
     end
 end
 
@@ -326,7 +326,7 @@ function NearbyCombo:RenderIcons()
         row.Visible = false
     end
     for _,entry in ipairs(self.Options) do
-        local icon = GetIcon(entry.Guid)
+        local icon = RBGetIcon(entry.Guid)
         local displayName = entry.DisplayName
 
         local row = nil

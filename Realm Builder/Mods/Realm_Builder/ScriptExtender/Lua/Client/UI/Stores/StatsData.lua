@@ -113,7 +113,7 @@ function GetEffectInfo(effectUuid)
         info.Icon = "Item_Unknown"
     end
 
-    info.Icon = CheckIcon(info.Icon, "Item_Unknown")
+    info.Icon = RBCheckIcon(info.Icon, "Item_Unknown")
 
     return info
 end

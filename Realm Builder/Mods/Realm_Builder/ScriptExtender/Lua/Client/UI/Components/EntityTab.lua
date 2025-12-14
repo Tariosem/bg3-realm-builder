@@ -54,7 +54,7 @@ function EntityTab:__init(guid, templateId, parent, initAttach)
         end)
     end
 
-    self.displayName = GetName(guid) or ("Entity " .. tostring(guid))
+    self.displayName = RBGetName(guid) or ("Entity " .. tostring(guid))
 
     self.parent = parent or nil
     self.panel = nil
@@ -71,7 +71,7 @@ function EntityTab:Render()
 
     self.panel = nil
 
-    self.displayName = GetName(self.guid) or self.displayName
+    self.displayName = RBGetName(self.guid) or self.displayName
 
     if self.parent and self.isAttach then
         self.panel = self.parent:AddChildWindow(self.guid)
@@ -695,7 +695,7 @@ function EntityTab:RenderCharacterTab()
         local currentIndex = 0
         for _,uuid in pairs(allPMs) do
             if uuid == self.guid then goto continue end
-            local name = GetName(uuid) or ("Character " .. tostring(uuid))
+            local name = RBGetName(uuid) or ("Character " .. tostring(uuid))
             local cnt = 1
             while nameToUuid[name] do
                 name = name .. " (" .. tostring(cnt) .. ")"

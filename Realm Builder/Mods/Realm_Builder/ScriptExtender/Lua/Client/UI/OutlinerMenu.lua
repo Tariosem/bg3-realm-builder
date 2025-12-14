@@ -200,7 +200,7 @@ function OutlinerMenu:RenderTreeList()
         end
         local displayName = propData and propData.DisplayName or key
 
-        local icon = GetIcon(propData.Guid)
+        local icon = RBGetIcon(propData.Guid)
         local image = node:AddImageButton(propData.Guid, icon, IMAGESIZE.ROW) --[[@as ExtuiImageButton]]
         local selectable = node:AddSelectable(displayName .. "##" .. key) --[[@as ExtuiSelectable]]
         self:SetupLeaf(selectable, key, node)
@@ -946,7 +946,7 @@ function OutlinerMenu:SetupCollectionSelectablePopup(openKey)
 
         local xmlNode = LSXHelpers.BuildPrefabTemplate(generated, internalName, childTemplateArr, childRelativeTransforms)
 
-        local filePath = RealmPath.GetPrefabPath(internalName, generated)
+        local filePath = FilePath.GetPrefabPath(internalName, generated)
         
         local ok, err = Ext.IO.SaveFile(filePath, xmlNode:Stringify({ AutoFindRoot = true }))
         if not ok then

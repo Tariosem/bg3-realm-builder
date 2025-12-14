@@ -21,7 +21,7 @@ function IconBrowser:SaveChanges()
 end
 
 function IconBrowser:LoadChanges()
-    local data = Ext.IO.LoadFile(RealmPath.GetBrowserSettingPath(self.displayName))
+    local data = Ext.IO.LoadFile(FilePath.GetBrowserSettingPath(self.displayName))
     if not data or data == "" then
         --Error("Failed to load changes: " .. tostring(data))
         return
@@ -71,7 +71,7 @@ function IconBrowser:SaveToConfig()
 end
 
 function IconBrowser:SaveToFile(field, content)
-    local filePath = RealmPath.GetBrowserSettingPath(self.displayName)
+    local filePath = FilePath.GetBrowserSettingPath(self.displayName)
 
     local fileContent = Ext.IO.LoadFile(filePath)
     if not fileContent or fileContent == "" then

@@ -157,7 +157,7 @@ function ItemBrowser:SetupTemplatePreview(entry)
         midAlighTab.ColumnDefs[3] = { WidthStretch = true }
         local row = midAlighTab:AddRow()
         local _, midCell, _ = row:AddCell(), row:AddCell(), row:AddCell()
-        local icon = CheckIcon(entry.Icon or "Item_Unknown")
+        local icon = RBCheckIcon(entry.Icon or "Item_Unknown")
         local image = midCell:AddImage(icon, RBUtils.ToVec2(64 * SCALE_FACTOR))
         midCell:AddText(GetLoca(entry.DisplayName) or "Unknown").SameLine = true
 

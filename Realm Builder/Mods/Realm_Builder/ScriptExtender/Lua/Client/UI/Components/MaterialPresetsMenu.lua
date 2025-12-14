@@ -506,7 +506,7 @@ function MaterialPresetsMenu:RenderFolderRow(presetTab, folderName, openedFolder
 end
 
 function MaterialPresetsMenu:LoadSaveFromCache()
-    local locStr = Ext.IO.LoadFile(RealmPath.GetCCAModCacheRefPath())
+    local locStr = Ext.IO.LoadFile(FilePath.GetCCAModCacheRefPath())
     local cache = locStr and Ext.Json.Parse(locStr) or {}
     self.cachedMods = {}
 
@@ -1038,7 +1038,7 @@ function MaterialPresetsMenu:ImportFromFile(modName, version)
     end
 
     local moduleID = self.cachedMods and self.cachedMods[modName] and self.cachedMods[modName].ModuleUUID or nil
-    local filePath = RealmPath.GetCCAModCachePath(moduleID, version)
+    local filePath = FilePath.GetCCAModCachePath(moduleID, version)
 
     local jsonStr = Ext.IO.LoadFile(filePath)
 
@@ -1078,7 +1078,7 @@ function MaterialPresetsMenu:ExportToMod(modPack, progressCallback)
             Stack = debug.traceback(),
             ModPack = modPack,
         }
-        Ext.IO.SaveFile(RealmPath.GetCCModLogPath(time),
+        Ext.IO.SaveFile(FilePath.GetCCModLogPath(time),
             Ext.Json.Stringify(errorLog, { Beautify = true, StringifyInternalTypes = true }))
     end
 end
@@ -1138,7 +1138,7 @@ function MaterialPresetsMenu:__exportToMod(modPack, progressCallback, exportThre
         Error(debug.traceback(message))
         progressCallback(progress, message)
         local time = RBUtils.GetFormatTime()
-        Ext.IO.SaveFile(RealmPath.GetCCModLogPath(time),
+        Ext.IO.SaveFile(FilePath.GetCCModLogPath(time),
             Ext.Json.Stringify({
                 Time = Ext.Timer.ClockTime(),
                 Error = tostring(message),
@@ -1204,7 +1204,7 @@ function MaterialPresetsMenu:__exportToMod(modPack, progressCallback, exportThre
 
     --- build mod meta.lsx
     local metaLsx = LSXHelpers.BuildModMeta(modUuid, displayModName, modFolderName, authorName, version, description)
-    local mataFilePath = RealmPath.GetCCAModMetaPath(modFolderDisplayName, modFolderName)
+    local mataFilePath = FilePath.GetCCAModMetaPath(modFolderDisplayName, modFolderName)
 
     if not saveFile(mataFilePath, metaLsx:Stringify({ Indent = 4 })) then
         return
@@ -1222,7 +1222,7 @@ function MaterialPresetsMenu:__exportToMod(modPack, progressCallback, exportThre
 
     local locaLsx, stringToHandles = LSXHelpers.GenerateLocalization(names, 1)
 
-    local locaFilePath = RealmPath.GetCCALocalizationPath(modFolderDisplayName, modFolderName, "English") -- currently assume English only
+    local locaFilePath = FilePath.GetCCALocalizationPath(modFolderDisplayName, modFolderName, "English") -- currently assume English only
 
     if not saveFile(locaFilePath, locaLsx) then
         return
@@ -1268,7 +1268,7 @@ function MaterialPresetsMenu:__exportToMod(modPack, progressCallback, exportThre
         local def = folderDefs[folderName]
         if bank:CountChildren() > 0 then
             local presetType = def.ExportType
-            local matPresetFile = RealmPath.GetCCAMaterialPresetsFile(presetType, modFolderDisplayName, modFolderName,
+            local matPresetFile = FilePath.GetCCAMaterialPresetsFile(presetType, modFolderDisplayName, modFolderName,
                 folderName) --[[@as string]]
 
             if not saveFile(matPresetFile, bank:Stringify({  Indent = 4, AutoFindRoot = true }, exportThread)) then
@@ -1344,7 +1344,7 @@ function MaterialPresetsMenu:__exportToMod(modPack, progressCallback, exportThre
     -- export CC presets definition file
     for presetType, def in pairs(ccaDefNode) do
         if def:CountChildren() > 0 then
-            local ccaFilePath = RealmPath.GetCCAPresetsFile(presetType, modFolderDisplayName, modFolderName) --[[@as string]]
+            local ccaFilePath = FilePath.GetCCAPresetsFile(presetType, modFolderDisplayName, modFolderName) --[[@as string]]
 
             if not saveFile(ccaFilePath, def:Stringify({ Indent = 4, AutoFindRoot = true })) then
                 return
@@ -1360,7 +1360,7 @@ function MaterialPresetsMenu:__exportToMod(modPack, progressCallback, exportThre
     suc = self:SaveModCache(modPack)
     if not suc then
         throwError("ExportToMod: Failed to save CCA mod cache file at " ..
-            RealmPath.GetCCAModCachePath(modFolderName, version))
+            FilePath.GetCCAModCachePath(modFolderName, version))
         return
     end
 
@@ -1384,7 +1384,7 @@ function MaterialPresetsMenu:SaveModCache(modPack)
     local version = modPack.Version
     local moduleID = modPack.ModuleUUID
     local jsonStr = Ext.Json.Stringify(cacheFile, { Indent = 4 })
-    local filePath = RealmPath.GetCCAModCachePath(moduleID, version)
+    local filePath = FilePath.GetCCAModCachePath(moduleID, version)
 
     self.cachedMods[modInternalName] = self.cachedMods[modInternalName] or {}
     self.cachedMods[modInternalName].ModuleUUID = moduleID
@@ -1415,7 +1415,7 @@ function MaterialPresetsMenu:SaveModCacheRef(modUuid)
         end
     end
 
-    return Ext.IO.SaveFile(RealmPath.GetCCAModCacheRefPath(), Ext.Json.Stringify(allRefs, { Indent = 4 }))
+    return Ext.IO.SaveFile(FilePath.GetCCAModCacheRefPath(), Ext.Json.Stringify(allRefs, { Indent = 4 }))
 end
 
 function MaterialPresetsMenu:RenderCCMaterialPresets(header)

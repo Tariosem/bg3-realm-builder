@@ -138,6 +138,7 @@ function Notification:BuildContent()
             Timer:Cancel(self.fadeOutTimer)
             self.fadeOutTimer = nil
         end
+        if self.ClickToDismiss then return end
         self:Dismiss()
     end
     titleText:SetColor("Text", {1,1,1,1})

@@ -3,7 +3,7 @@
 --- @field Shake fun(gui: ExtuiStyledRenderable, dur: number|nil, freq: number|nil, amp: number|nil, fps: number|nil): RunningAnimation?
 --- @field PulseBorder fun(gui: ExtuiStyledRenderable, originalSize: number|nil, dur: number|nil, freq: number|nil, amp: number|nil, fps: number|nil): RunningAnimation?
 --- @field Blend fun(gui: ExtuiColorEdit, fromColor: vec3, toColor: vec3, dur: number?, fps: integer?): RunningAnimation?
---- @field FlashColor fun(gui: ExtuiStyledRenderable, flashColor: vec3?, dur: number?, fps: integer?, originalColor: vec3?): RunningAnimation?
+--- @field FlashColor fun(gui: ExtuiColorEdit, flashColor: vec3?, dur: number?, fps: integer?, originalColor: vec3?): RunningAnimation?
 GuiAnim = {}
 
 ---@param gui ExtuiStyledRenderable
@@ -144,7 +144,7 @@ function GuiAnim.Blend(gui, fromColor, toColor, dur, fps)
     return anim
 end
 
----@param gui ExtuiStyledRenderable
+---@param gui ExtuiColorEdit
 ---@param flashColor vec3?
 ---@param dur number?
 ---@param fps integer?

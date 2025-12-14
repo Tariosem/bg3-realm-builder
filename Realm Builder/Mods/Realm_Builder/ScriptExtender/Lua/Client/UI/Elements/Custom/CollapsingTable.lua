@@ -37,7 +37,8 @@ local function RenderCollapseingTableConfig(parent, table)
     local expandTimeSlider = panel:AddSlider(GetLoca("Expand Time (s)"), (ud.ExpandTime or 400) / 1000, 0.1, 5)
     local sidebarWidthSlider = ImguiHelpers.SafeAddSliderInt(panel, GetLoca("Sidebar Width"),
         ud.SideBarWidth or math.floor(200 * SCALE_FACTOR), 100, 800)
-    local animationFPSSlider = ImguiHelpers.SafeAddSliderInt(panel, GetLoca("Animation FPS"), ud.AnimationFPS or 90, 10, 144)
+    local animationFPSSlider = ImguiHelpers.SafeAddSliderInt(panel, GetLoca("Animation FPS"), ud.AnimationFPS or 90, 10,
+    144)
     local hoverToExpandCheckbox = panel:AddCheckbox(GetLoca("Hover to Expand"))
     local disableOuterCollapseCheckbox = panel:AddCheckbox(GetLoca("Disable Outer Collapse"))
     local autoCollapseSlider = ImguiHelpers.SafeAddSliderInt(panel, GetLoca("Auto Collapse (s, 0 to disable)"),

@@ -1,5 +1,3 @@
---- I don't even know what I'm doing here
-
 --- @class TransformGizmo
 --- @field Editor TransformEditor
 --- @field Mode TransformEditorMode

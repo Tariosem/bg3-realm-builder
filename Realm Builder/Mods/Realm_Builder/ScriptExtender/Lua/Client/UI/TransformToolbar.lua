@@ -780,7 +780,7 @@ end
 
 function TransformToolbar:CreateBindPopup(guid)
     self.BindPopupCache = self.BindPopupCache or {}
-    local notif = self.BindPopupCache[guid] or Notification.new(GetName(guid))
+    local notif = self.BindPopupCache[guid] or Notification.new(RBGetName(guid))
     if not self.BindPopupCache[guid] then
         self.BindPopupCache[guid] = notif
     end
@@ -806,7 +806,7 @@ function TransformToolbar:CreateBindPopup(guid)
 
         local info = EntityStore:GetBindInfo(guid)
         local curParent = info and info.BindParent or nil
-        local image = left:AddImage(GetIcon(curParent), IMAGESIZE.SMALL)
+        local image = left:AddImage(RBGetIcon(curParent), IMAGESIZE.SMALL)
         image.SameLine = true
 
         local right = row1:AddCell()
@@ -822,7 +822,7 @@ function TransformToolbar:CreateBindPopup(guid)
             if selectedGuid == curParent then return end
             Commands.Bind({ guid }, selectedGuid)
             image:Destroy()
-            image = left:AddImage(GetIcon(selectedGuid), IMAGESIZE.SMALL)
+            image = left:AddImage(RBGetIcon(selectedGuid), IMAGESIZE.SMALL)
             image.SameLine = true
         end
 
@@ -842,7 +842,7 @@ function TransformToolbar:CreateBindPopup(guid)
             Commands.Unbind({ guid })
             nearByCombo.SelectedIndex = -1
             image:Destroy()
-            image = left:AddImage(GetIcon(), IMAGESIZE.SMALL)
+            image = left:AddImage(RBGetIcon(), IMAGESIZE.SMALL)
             image.SameLine = true
         end
 
@@ -920,11 +920,11 @@ function TransformToolbar:CreateBindPopup(guid)
             nearByCombo:SetSelected(d.BindParent)
             if d.BindParent then
                 image:Destroy()
-                image = left:AddImage(GetIcon(d.BindParent), IMAGESIZE.SMALL)
+                image = left:AddImage(RBGetIcon(d.BindParent), IMAGESIZE.SMALL)
                 image.SameLine = true
             else
                 image:Destroy()
-                image = left:AddImage(GetIcon(), IMAGESIZE.SMALL)
+                image = left:AddImage(RBGetIcon(), IMAGESIZE.SMALL)
                 image.SameLine = true
             end
         end)
@@ -984,7 +984,7 @@ function TransformToolbar:CreateNearbyPopup()
                         visualTab:Refresh()
                         return
                     end
-                    local visualTab = VisualTab.new(selected, GetName(selected), nil, nil)
+                    local visualTab = VisualTab.new(selected, RBGetName(selected), nil, nil)
                     visualTab.isAttach = false
                     visualTab:Refresh()
                 end
