@@ -42,7 +42,7 @@ function Quat:Sanitize(default, limit)
     default = Quat.new(default or {0, 0, 0, 1})
     for i = 1, 4 do
         local v = self[i]
-        if type(v) ~= "number" or v ~= v or v == math.huge or v == -math.huge or v > limit or v < -limit then
+        if Ext.Math.IsInf(v) or Ext.Math.IsNaN(v) or (limit and (v > limit or v < -limit)) then
             self = default
             break
         end

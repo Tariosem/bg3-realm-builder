@@ -15,32 +15,49 @@
 --- @field ApplyWarningTooitipStyle fun(tooltip:ExtuiStyledRenderable)
 StyleHelpers = StyleHelpers or {}
 
+local colorConfig = {
+    DangerButtonColor = {0.6, 0.2, 0.2, 0.8},
+    DangerButtonHoveredColor = {1, 0.2, 0.2, 0.9},
+    DangerButtonActiveColor = {0.8, 0.1, 0.1, 0.9},
+    DangerButtonTextColor = {1, 1, 1, 1},
+
+    ConfirmButtonColor = {0.2, 0.6, 0.2, 0.8},
+    ConfirmButtonHoveredColor = {0.3, 0.8, 0.3, 0.9},
+    ConfirmButtonActiveColor = {0.1, 0.7, 0.1, 0.9},
+    ConfirmButtonTextColor = {1, 1, 1, 1},
+
+    InfoButtonColor = {0.3, 0.4, 0.5, 0.8},
+    InfoButtonHoveredColor = {0.3, 0.6, 1, 0.9},
+    InfoButtonActiveColor = {0.1, 0.5, 0.8, 0.9},
+    InfoButtonTextColor = {1, 1, 1, 1}
+}
+
 function StyleHelpers.ApplyInfoButtonStyle(button)
-    button:SetColor("Button", RBUICONFIG.Misc.InfoButtonColor)
-    button:SetColor("ButtonHovered", RBUICONFIG.Misc.InfoButtonHoveredColor)
-    button:SetColor("ButtonActive", RBUICONFIG.Misc.InfoButtonActiveColor)
-    button:SetColor("Text", RBUICONFIG.Misc.InfoButtonTextColor)
+    button:SetColor("Button", colorConfig.InfoButtonColor)
+    button:SetColor("ButtonHovered", colorConfig.InfoButtonHoveredColor)
+    button:SetColor("ButtonActive", colorConfig.InfoButtonActiveColor)
+    button:SetColor("Text", colorConfig.InfoButtonTextColor)
 end
 
 ---@param button ExtuiButton
 function StyleHelpers.ApplyDangerButtonStyle(button)
-    button:SetColor("Button", RBUICONFIG.Misc.DangerButtonColor)
-    button:SetColor("ButtonHovered", RBUICONFIG.Misc.DangerButtonHoveredColor)
-    button:SetColor("ButtonActive", RBUICONFIG.Misc.DangerButtonActiveColor)
-    button:SetColor("Text", RBUICONFIG.Misc.DangerButtonTextColor)
+    button:SetColor("Button", colorConfig.DangerButtonColor)
+    button:SetColor("ButtonHovered", colorConfig.DangerButtonHoveredColor)
+    button:SetColor("ButtonActive", colorConfig.DangerButtonActiveColor)
+    button:SetColor("Text", colorConfig.DangerButtonTextColor)
 end
 
 --- @param s ExtuiSelectable|ExtuiStyledRenderable
 function StyleHelpers.ApplyDangerSelectableStyle(s)
-    s:SetColor("HeaderHovered", RBUICONFIG.Misc.DangerButtonColor)
-    s:SetColor("Text", RBUICONFIG.Misc.DangerButtonHoveredColor)
+    s:SetColor("HeaderHovered", colorConfig.DangerButtonColor)
+    s:SetColor("Text", colorConfig.DangerButtonHoveredColor)
 end
 
 function StyleHelpers.ApplyConfirmButtonStyle(button)
-    button:SetColor("Button", RBUICONFIG.Misc.ConfirmButtonColor)
-    button:SetColor("ButtonHovered", RBUICONFIG.Misc.ConfirmButtonHoveredColor)
-    button:SetColor("ButtonActive", RBUICONFIG.Misc.ConfirmButtonActiveColor)
-    button:SetColor("Text", RBUICONFIG.Misc.ConfirmButtonTextColor)
+    button:SetColor("Button", colorConfig.ConfirmButtonColor)
+    button:SetColor("ButtonHovered", colorConfig.ConfirmButtonHoveredColor)
+    button:SetColor("ButtonActive", colorConfig.ConfirmButtonActiveColor)
+    button:SetColor("Text", colorConfig.ConfirmButtonTextColor)
 end
 
 --- @param s ExtuiRenderable

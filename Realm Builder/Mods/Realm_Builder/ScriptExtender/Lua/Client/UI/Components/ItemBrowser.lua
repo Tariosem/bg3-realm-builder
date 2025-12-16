@@ -78,7 +78,7 @@ function ItemBrowser:RenderIcon(entry, cell)
     iconImage.OnDragEnd = function()
         if self.IsPreviewing then return end
 
-        self:SetupTemplatePreview(entry)
+        self:BeginPlacementPreview(entry)
     end
 
     local renderedTooltip = false
@@ -139,22 +139,24 @@ function ItemBrowser:RenderIcon(entry, cell)
 end
 
 --- @param entry RB_Item
-function ItemBrowser:SetupTemplatePreview(entry)
-    Timer:Ticks(20, function(timerID)
-        local spawnPos, spawnRot = PickingUtils.GetPickingHitPosAndRot()
-        if not spawnPos or not spawnRot then return end
-        Commands.SpawnCommand(entry.TemplateId, { Position=spawnPos, Rotation=spawnRot })
-    end)
-
-    if true then return end
-
+function ItemBrowser:BeginPlacementPreview(entry)
+    if SpawnCoroutinueInspector.GetSpawningCount() > 0 then
+        local WarningNotif = Notification.new("Cannot preview item while spawning is in progress.")
+        WarningNotif.Pivot = { 0.5, 0 }
+        WarningNotif.Duration = 3000
+        WarningNotif:Show("Placement Preview Warning", function (panel)
+            StyleHelpers.ApplyWarningTooltipStyle(panel)
+            panel:AddText("Cannot preview placement while spawning is in progress.")
+        end)
+        Warning("[IconBrowser] Cannot preview item while spawning is in progress.")
+        return
+    end
     self.IsPreviewing = true
-
     local notif = Notification.new("Is Previewing Item...")
     notif.Pivot = { 0.5, 0 }
-    notif.Duration = 5000
+    notif.AutoFadeOut = false
 
-    notif:Show("Item Preview", function(panel)
+    notif:Show("Placement Preview", function(panel)
         local midAlighTab = panel:AddTable("Midddd", 3)
         midAlighTab.ColumnDefs[1] = { WidthStretch = true }
         midAlighTab.ColumnDefs[2] = { WidthFixed = true }
@@ -162,12 +164,17 @@ function ItemBrowser:SetupTemplatePreview(entry)
         local row = midAlighTab:AddRow()
         local _, midCell, _ = row:AddCell(), row:AddCell(), row:AddCell()
         local icon = RBCheckIcon(entry.Icon or "Item_Unknown")
-        local image = midCell:AddImage(icon, RBUtils.ToVec2(64 * SCALE_FACTOR))
-        midCell:AddText(GetLoca(entry.DisplayName) or "Unknown").SameLine = true
+        local image = nil
+        if icon == "Item_Unknown" then
+        else
+            image = midCell:AddImage(icon, RBUtils.ToVec2(64 * SCALE_FACTOR))
+        end
+        local displayName = entry[self.iconTooltipName]
+        midCell:AddText(displayName).SameLine = image and true or false
 
-        panel:AddText(GetLoca("Left click to spawn the item at the previewed location.")).Font = "Tiny"
+        panel:AddText(GetLoca("Left click to spawn the template at the previewed location.")).Font = "Tiny"
         panel:AddText(GetLoca("Scroll mouse wheel to rotate the item.")).Font = "Tiny"
-        local caution = panel:AddText(GetLoca("Press ESCAPE or BACKSPACE to cancel the preview."))
+        local caution = panel:AddText(GetLoca("Press [ESCAPE] or [BACKSPACE] to cancel the preview."))
         caution:SetColor("Text", ColorUtils.HexToRGBA("FFFFFFFF"))
         caution.Font = "Large"
     end)
@@ -179,10 +186,37 @@ function ItemBrowser:SetupTemplatePreview(entry)
     local cancelSub = nil
     local rotationOffset = Quat.new(0, 0, 0, 1)
 
-    local startPos, startRot = PickingUtils.GetPickingHitPosAndRot()
+    local function getPicPosAndRot()
+        local mouseRay = ScreenToWorldRay()
+        if not mouseRay then return nil, nil end
+
+        local hit = mouseRay:IntersectAll()
+        if not hit or #hit == 0 then
+            return nil, nil
+        end
+
+        local closestNonPreview = nil --[[@type Hit]]
+        for _, h in ipairs(hit) do
+            local target = h.Target --[[@as EntityHandle]]
+            local targetUuid = target.Uuid and target.Uuid.EntityUuid
+            if not targetUuid or targetUuid ~= previewItem then
+                closestNonPreview = h
+                break
+            end
+        end
+
+        if closestNonPreview then
+            local hitPos = closestNonPreview.Position --[[@as Vec3]]
+            local hitRot = MathUtils.DirectionToQuat(closestNonPreview.Normal, nil, "Y")
+            return hitPos, hitRot
+        end
+        return nil, nil
+    end
+
+    local startPos, startRot = getPicPosAndRot()
 
     NetChannel.SpawnPreview:RequestToServer({
-        TemplateId = entry.TemplateId,
+        TemplateId = entry.Uuid,
         Position = startPos,
         Rotation = startRot,
     }, function(response)
@@ -198,46 +232,12 @@ function ItemBrowser:SetupTemplatePreview(entry)
         stickTimer = Timer:EveryFrame(function(timerID)
             if not previewItem then return UNSUBSCRIBE_SYMBOL end
 
-            local hitPos, hitRot = nil, nil
+            local hitPos, hitRot = getPicPosAndRot()
+            if not hitPos or not hitRot then return end
 
-            local hitOnPreview = PickingUtils.GetPickingGuid() == previewItem
-            if hitOnPreview then
-                local mouseRay = ScreenToWorldRay()
-                if not mouseRay then return end
-                local planeNormal = Quat.new({ RBGetRotation(previewItem) }):Rotate(GLOBAL_COORDINATE.Y)
-
-                local hit = mouseRay:IntersectPlane({ RBGetPosition(previewItem) }, planeNormal)
-
-                if not hit then return end
-                hitPos = hit.Position
-            else
-                hitPos, hitRot = PickingUtils.GetPickingHitPosAndRot()
-            end
-
-
-            if not hitPos then hitPos = startPos or Vec3.new(0, 0, 0) end
-            if not hitRot then
-                if dirtyRotation then
-                    hitRot = RBUtils.DeepCopy(dirtyRotation)
-                    dirtyRotation = nil
-                else
-                    hitRot = { RBGetRotation(previewItem) }
-                end
-            end
-
-            if not hitOnPreview or rotatedirty then
+            if rotationOffset then
                 hitRot = Ext.Math.QuatMul(hitRot, rotationOffset)
-                dirtyRotation = RBUtils.DeepCopy(hitRot)
-                rotatedirty = false
             end
-
-            local selectedGuid = self.selectedGuid or RBGetHostCharacter()
-
-            hitPos = Vec3.new(hitPos)
-            hitRot = Quat.new(hitRot)
-
-            hitPos:Sanitize({ RBGetPosition(selectedGuid) })
-            hitRot:Sanitize({ RBGetRotation(selectedGuid) })
 
             NetChannel.SetTransform:SendToServer({
                 Guid = previewItem,
@@ -266,14 +266,14 @@ function ItemBrowser:SetupTemplatePreview(entry)
             end
         end)
 
+        local deg15 = math.rad(15)
         mouseWheelSub = InputEvents.SubscribeMouseWheel({}, function(e)
             if not previewItem then return UNSUBSCRIBE_SYMBOL end
             if e.ScrollY == 0 then return end
 
-            local angle = math.rad(15) * (e.ScrollY > 0 and 1 or -1)
+            local angle = deg15 * (e.ScrollY > 0 and 1 or -1)
             local quatOffset = Quat.new(Ext.Math.QuatFromEuler({ 0, angle, 0 }))
             rotationOffset = Ext.Math.QuatMul(quatOffset, rotationOffset)
-            rotatedirty = true
         end)
 
         cancelSub = InputEvents.SubscribeKeyInput({}, function(e)

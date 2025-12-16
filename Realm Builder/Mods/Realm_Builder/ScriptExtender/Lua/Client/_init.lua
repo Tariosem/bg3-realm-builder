@@ -54,63 +54,6 @@ RegisterDebugWindow("Realm Builder Debug", function(panel)
     end
 end)
 
-local PhysicsGroupFlags = Ext.Enums.PhysicsGroupFlags
-local PhysicsType = Ext.Enums.PhysicsType
-
-local configurableIntersect = {
-    PhysicsType = PhysicsType.Dynamic | PhysicsType.Static,
-    PhysicsGroupFlags = PhysicsGroupFlags.Item
-        | PhysicsGroupFlags.Character
-        | PhysicsGroupFlags.Scenery
-        | PhysicsGroupFlags.VisibleItem,
-    PhysicsGroupFlagsExclude = PhysicsGroupFlags.Terrain,
-    Function = "RaycastClosest"
-}
-
---- @return PhxPhysicsHit
-function Ray:IntersectDebug()
-    return Ext.Level[configurableIntersect.Function](self.Origin, self.Direction, configurableIntersect.PhysicsType,
-        configurableIntersect.PhysicsGroupFlags, configurableIntersect.PhysicsGroupFlagsExclude, 1)
-end
-
-if false and GLOBAL_DEBUG_WINDOW then
-    local header = GLOBAL_DEBUG_WINDOW:AddCollapsingHeader("Raycast Options")
-
-    local funcCombo = header:AddCombo("Function")
-    funcCombo.Options = { "RaycastClosest", "RaycastAll" }
-    funcCombo.OnChange = function(ev)
-        configurableIntersect.Function = ImguiHelpers.GetCombo(ev)
-    end
-
-    --- @type RadioButtonOption[]
-    local options = ImguiHelpers.CreateRadioButtonOptionFromEnum("PhysicsGroupFlags")
-
-    local separator = header:AddSeparatorText("Include Groups")
-    local includeGroup = ImguiElements.AddBitmaskRadioButtons(header, options, configurableIntersect.PhysicsGroupFlags)
-
-    includeGroup.OnChange = function(radioBtn, value)
-        configurableIntersect.PhysicsGroupFlags = value
-    end
-
-    local excludeSeparator = header:AddSeparatorText("Exclude Groups")
-    local excludeGroup = ImguiElements.AddBitmaskRadioButtons(header, options,
-        configurableIntersect.PhysicsGroupFlagsExclude)
-
-    excludeGroup.OnChange = function(radioBtn, value)
-        configurableIntersect.PhysicsGroupFlagsExclude = value
-    end
-
-    local debugBtn = header:AddButton("Debug Raycast")
-    debugBtn.OnClick = function()
-        local ray = ScreenToWorldRay()
-        if not ray then
-            return
-        end
-        local hit = ray:IntersectDebug()
-        _D(hit)
-    end
-end
-
 RB_CharacterManager = CharacterManager.new()
 RB_ItemManager = ItemManager.new()
 RB_MultiEffectManager = MultiEffectManager.new()
@@ -119,17 +62,6 @@ RB_CCAVManager = CCAVManager.new()
 RB_SceneryManager = SceneryManager.new()
 RB_TileConstructionManager = TileConstructionManager.new()
 RB_PrefabManager = PrefabManager.new()
-
-
---- @param uuid GUIDSTRING
---- @return GameObjectTemplate|ResourceMultiEffectInfo|ResourceEffectInfo|nil
-function GetDataFromUuid(uuid)
-    if not uuid or uuid == "" then
-        return nil
-    end
-    EntityHelpers.TakeTailTemplate(uuid)
-    return RB_ItemManager.Data[uuid] or RB_MultiEffectManager.Data[uuid] or {}
-end
 
 --- @return table<string, integer>, integer
 local function PopulateAllTemplates()
@@ -208,6 +140,7 @@ end
 
 local function Realm_Builder_Population()
     local now = Ext.Timer:MonotonicTime()
+    local memNow = Ext.Utils.GetMemoryUsage()
     local cnts, sumCnt = PopulateAllTemplates()
     local itemsFinished = Ext.Timer:MonotonicTime()
     local effectCnt = RB_MultiEffectManager:PopulateAllEffects()
@@ -227,6 +160,10 @@ local function Realm_Builder_Population()
         RBPrintPurple("[Realm Builder] Populating Effects took " ..
         (effectsFinished - itemsFinished) .. " ms for " .. effectCnt .. " effects")
     end
+
+    local memAfter = Ext.Utils.GetMemoryUsage()
+    local memDiff = memAfter - memNow
+    RBPrintPurple("[Realm Builder] Memory used for population: " .. (memDiff / 1024 / 1024) .. " MB")
 end
 
 EventsSubscriber.RegisterOnSessionLoaded(Realm_Builder_Population, 0)

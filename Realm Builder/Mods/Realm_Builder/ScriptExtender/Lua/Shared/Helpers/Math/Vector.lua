@@ -96,7 +96,7 @@ function Vector:IsSanitized(limit)
     limit = limit or 1e5
     for i = 1, #self do
         local v = self[i]
-        if type(v) ~= "number" or v ~= v or v == math.huge or v == -math.huge or math.abs(v) > limit then
+        if Ext.Math.IsNaN(v) or Ext.Math.IsInf(v) or math.abs(v) > limit then
             return false
         end
     end
@@ -108,7 +108,7 @@ function Vector:Sanitize(defaultVec, limit)
     defaultVec = Vector.new(defaultVec or { 0, 0, 0 }, #self)
     for i = 1, #self do
         local v = self[i]
-        if type(v) ~= "number" or v ~= v or v == math.huge or v == -math.huge or math.abs(v) > limit then
+        if Ext.Math.IsNaN(v) or Ext.Math.IsInf(v) or math.abs(v) > limit then
             self[i] = defaultVec[i]
         end
     end

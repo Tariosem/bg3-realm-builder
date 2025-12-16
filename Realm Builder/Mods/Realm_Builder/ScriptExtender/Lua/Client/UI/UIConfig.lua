@@ -45,22 +45,6 @@ RBUICONFIG = {
     EffectMenu = {
         AutoSave = true,
     },
-    Misc = {
-        DangerButtonColor = {0.6, 0.2, 0.2, 0.8},
-        DangerButtonHoveredColor = {1, 0.2, 0.2, 0.9},
-        DangerButtonActiveColor = {0.8, 0.1, 0.1, 0.9},
-        DangerButtonTextColor = {1, 1, 1, 1},
-
-        ConfirmButtonColor = {0.2, 0.6, 0.2, 0.8},
-        ConfirmButtonHoveredColor = {0.3, 0.8, 0.3, 0.9},
-        ConfirmButtonActiveColor = {0.1, 0.7, 0.1, 0.9},
-        ConfirmButtonTextColor = {1, 1, 1, 1},
-
-        InfoButtonColor = {0.3, 0.4, 0.5, 0.8},
-        InfoButtonHoveredColor = {0.3, 0.6, 1, 0.9},
-        InfoButtonActiveColor = {0.1, 0.5, 0.8, 0.9},
-        InfoButtonTextColor = {1, 1, 1, 1}
-    },
     DEBUG_LEVEL = 4
 }
 

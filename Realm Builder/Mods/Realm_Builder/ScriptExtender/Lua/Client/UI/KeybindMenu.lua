@@ -94,7 +94,6 @@ local localizedNames = {
 }
 
 function KeybindMenu:Render(parent)
-
     self.parent = parent or self.parent
 
     if self.isAttach and self.parent then
@@ -112,7 +111,7 @@ function KeybindMenu:Render(parent)
     self.rootTable = self.panel:AddTable("KetbindMenu", 1)
 
     self.isVisible = true
-    
+
     self:RenderContents()
 end
 
@@ -127,7 +126,6 @@ function KeybindMenu:RenderFileMenu()
     loadBtn.OnClick = function()
         KeybindManager:LoadFromFile()
     end
-
 end
 
 function KeybindMenu:RenderContents()
@@ -157,10 +155,10 @@ end
 local function applyTableStyle(t)
     t.RowBg = true
     t.Borders = true
-    t.ColumnDefs[1] = {WidthFixed = true}
-    t.ColumnDefs[2] = {WidthStretch = true}
-    t.ColumnDefs[3] = {WidthFixed = true}
-    t.ColumnDefs[4] = {WidthFixed = true}
+    t.ColumnDefs[1] = { WidthFixed = true }
+    t.ColumnDefs[2] = { WidthStretch = true }
+    t.ColumnDefs[3] = { WidthFixed = true }
+    t.ColumnDefs[4] = { WidthFixed = true }
 
     --t:SetColor("TableRowBg", HexToRGBA("#2C2C2C"))
     --t:SetColor("TableRowBgAlt", HexToRGBA("#3C3C3C"))
@@ -183,7 +181,7 @@ function KeybindMenu:RenderModule(module)
     local localName = GetLoca(localizedNames[name] or name)
     local header = cell:AddCollapsingHeader(localName)
     header.DefaultOpen = true
-    local tTable = header:AddTable(name .. "Events", 4)
+    local tTable = header:AddTable("", 4)
     applyTableStyle(tTable)
     applyHeaderStyle(header)
 
@@ -233,7 +231,7 @@ local function getPresentation(keybind)
 end
 
 local conflictNotif = Notification.new("Keybind Conflict")
-conflictNotif.Pivot = {0.5, 0.5}
+conflictNotif.Pivot = { 0.5, 0.5 }
 conflictNotif.ClickToDismiss = true
 conflictNotif.ChangeDirectionWhenFadeOut = true
 
@@ -258,7 +256,7 @@ function KeybindMenu:RenderEvent(row, moduleName, eventName, module, registry)
     --enableCheckBox:SetColor("FrameBgActive", HexToRGBA("FF355081"))
 
     local localizedEventName = GetLoca(localizedNames[eventName] or eventName)
-    eventCell:AddText(localizedEventName)--:SetColor("Text", HexToRGBA("#FFFFFF"))
+    eventCell:AddText(localizedEventName) --:SetColor("Text", HexToRGBA("#FFFFFF"))
 
     if registry.Description then
         local desc = ImguiElements.AddIndent(eventCell):AddText(registry.Description)
@@ -281,18 +279,18 @@ function KeybindMenu:RenderEvent(row, moduleName, eventName, module, registry)
         module:RebindByInput(eventName, function(newKeybind, conflictModule, conflictEvent)
             if not newKeybind then
                 local conflictKeybind = KeybindManager:GetKeyByEvent(conflictModule, conflictEvent)
-                conflictNotif:Show("Keybind Conflict", function (panel)
+                conflictNotif:Show("Keybind Conflict", function(panel)
                     local notigSel = panel:AddSelectable(getPresentation(conflictKeybind or {}))
                     notigSel.Font = "Large"
-                    notigSel:SetColor("Text", {1, 1, 1, 1})
+                    notigSel:SetColor("Text", { 1, 1, 1, 1 })
                     notigSel:SetStyle("SelectableTextAlign", 0.5, 0)
                     notigSel.SelectableDisabled = true
-                    panel:AddText("Is already bound to "):SetColor("Text", {1, 1, 1, 1})
+                    panel:AddText("Is already bound to "):SetColor("Text", { 1, 1, 1, 1 })
                     local modTex = panel:AddBulletText(conflictModule)
-                    modTex:SetColor("Text", {0.7, 0.7, 0.7, 1})
+                    modTex:SetColor("Text", { 0.7, 0.7, 0.7, 1 })
                     modTex.Font = "Large"
                     local tex = panel:AddText(conflictEvent)
-                    tex:SetColor("Text", {1,1,1,1})
+                    tex:SetColor("Text", { 1, 1, 1, 1 })
                     tex.SameLine = true
                     tex.Font = "Large"
                 end)

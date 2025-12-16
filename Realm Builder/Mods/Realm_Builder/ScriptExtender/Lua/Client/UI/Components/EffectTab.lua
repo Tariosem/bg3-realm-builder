@@ -7,7 +7,7 @@ EffectTab = _Class("EffectTab")
 --- @class EffectTab
 function EffectTab:__init(uuid, parent, displayName)
     self.guid = uuid or ""
-    local templateData = GetDataFromUuid(self.guid) or {}
+    local templateData = RB_MultiEffectManager.Data[self.guid] or nil
     self.displayName = displayName or templateData.DisplayName or "Unknown"
 
     self.panel = nil
@@ -112,7 +112,7 @@ function EffectTab:RenderEffectsTab()
 end
 
 function EffectTab:RenderEffects()
-    local FxNames = GetDataFromUuid(self.guid).FxNames or {}
+    local FxNames = MultiEffectManager.Data[self.guid] and MultiEffectManager.Data[self.guid].FxNames or {}
 
     self.effectsTimelineWin = self.effectsInfoTab:AddChildWindow("EffectsTimeline")
 

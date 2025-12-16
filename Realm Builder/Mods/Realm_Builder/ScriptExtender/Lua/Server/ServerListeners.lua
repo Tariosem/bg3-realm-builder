@@ -114,6 +114,7 @@ end)
 
 NetChannel.SpawnPreview:SetRequestHandler(function(data, userID)
     local template = data.TemplateId
+    local templateId = EntityHelpers.TakeTailTemplate(template)
     local position = data.Position
     local rotation = data.Rotation
     if not position or #position ~= 3 then
@@ -123,7 +124,13 @@ NetChannel.SpawnPreview:SetRequestHandler(function(data, userID)
         rotation = { 0, 0, 0, 1 }
     end
 
-    local preview = Osi.CreateAt(template, position[1], position[2], position[3], 0, 0, "") --[[@as string]]
+    local templateObj = Ext.Template.GetTemplate(templateId)
+    local spawnTemplate = EntityManager.TemplateTrick(templateObj, templateId)
+    if not spawnTemplate then
+        return { Guid = nil, TemplateId = template }
+    end
+
+    local preview = Osi.CreateAt(spawnTemplate, position[1], position[2], position[3], 1, 0, "") --[[@as string]]
     if not preview then return { Guid = nil, TemplateId = template } end
     RB_FlagHelpers.SetFlag(preview, "DeleteLater")
     OsirisHelpers.RotateTo(preview, rotation[1], rotation[2], rotation[3], rotation[4])

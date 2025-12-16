@@ -95,12 +95,12 @@ end
 
 --- @param direction Vec3
 --- @param up? Vec3
---- @param forwardAxis? TransformAxis|Vec3
+--- @param alignedAxis? TransformAxis|Vec3
 --- @return quat
-function MathUtils.DirectionToQuat(direction, up, forwardAxis)
+function MathUtils.DirectionToQuat(direction, up, alignedAxis)
     direction = Ext.Math.Normalize(direction)
     up = up and Ext.Math.Normalize(up) or GLOBAL_COORDINATE.Y
-    forwardAxis = forwardAxis and type(forwardAxis) == "string" and forwardAxis:upper() or forwardAxis or "Z"
+    alignedAxis = alignedAxis and type(alignedAxis) == "string" and alignedAxis:upper() or alignedAxis or "Z"
 
     if math.abs(Ext.Math.Dot(direction, up)) > 0.999 then
         up = GLOBAL_COORDINATE.X
@@ -122,13 +122,13 @@ function MathUtils.DirectionToQuat(direction, up, forwardAxis)
 
     local quat = Ext.Math.Mat3ToQuat(mat)
 
-    if forwardAxis ~= "Z" then
-        if forwardAxis == "X" then
+    if alignedAxis ~= "Z" then
+        if alignedAxis == "X" then
             quat = Ext.Math.QuatRotateAxisAngle(quat, GLOBAL_COORDINATE.Y, -math.pi/2)
-        elseif forwardAxis == "Y" then
+        elseif alignedAxis == "Y" then
             quat = Ext.Math.QuatRotateAxisAngle(quat, GLOBAL_COORDINATE.X, math.pi/2)
-        elseif type(forwardAxis) == "table" and #forwardAxis == 3 then
-            local targetForward = Ext.Math.Normalize(forwardAxis)
+        elseif type(alignedAxis) == "table" and #alignedAxis == 3 then
+            local targetForward = Ext.Math.Normalize(alignedAxis)
             local currentForward = GLOBAL_COORDINATE.Z
             
             local axis = Ext.Math.Cross(currentForward, targetForward)
@@ -141,7 +141,7 @@ function MathUtils.DirectionToQuat(direction, up, forwardAxis)
                 quat = Ext.Math.QuatRotateAxisAngle(quat, axis, angle)
             end
         else
-            Warning("Invalid forwardAxis: " .. tostring(forwardAxis))
+            Warning("Invalid forwardAxis: " .. tostring(alignedAxis))
         end
     end
 

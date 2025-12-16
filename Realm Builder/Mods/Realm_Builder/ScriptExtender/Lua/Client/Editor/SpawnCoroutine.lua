@@ -383,3 +383,23 @@ function Commands.SpawnPreset(data)
 
     push(threadFunc, RBTableUtils.CountMap(data.Spawned))
 end
+
+SpawnCoroutinueInspector = {}
+
+function SpawnCoroutinueInspector.GetQueueLength()
+    return #spawnQueue
+end
+
+function SpawnCoroutinueInspector.GetSpawningCount()
+    return spawningCnt
+end
+
+function SpawnCoroutinueInspector.IsWaitingForResume()
+    return isWaitingForResune
+end
+
+function SpawnCoroutinueInspector.IsRunning()
+    return coroutine.status(spawnCoroutinue) == "running"
+end
+
+

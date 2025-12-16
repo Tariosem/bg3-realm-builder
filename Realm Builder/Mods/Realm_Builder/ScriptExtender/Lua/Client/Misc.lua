@@ -70,7 +70,7 @@ RegisterDebugWindow("Misc", function(panel)
                 return
             end
         end)
-        self.Stop = function ()
+        self.Stop = function()
             --- @diagnostic disable-next-line
             NetChannel.Delete:SendToServer({ Guid = marker })
             Ext.Events.Tick:Unsubscribe(id)
@@ -158,7 +158,7 @@ RegisterDebugWindow("Misc", function(panel)
                     Ext.UI.GetRoot():Find("ContentRoot"):Child(21).DataContext.RecallCameraTransform:Execute()
                 end)
             end
-            btn.OnRightClick = function ()
+            btn.OnRightClick = function()
                 table.remove(savedQueue, i)
                 refreshSavedList()
             end
@@ -172,7 +172,7 @@ RegisterDebugWindow("Misc", function(panel)
         local copy = {
             Translate = Vec3.new(camTransform.Translate),
             RotationQuat = Quat.new(camTransform.RotationQuat),
-            Scale = Vec3.new(1,1,1)
+            Scale = Vec3.new(1, 1, 1)
         }
         table.insert(savedQueue, {
             Transform = copy,
@@ -185,5 +185,133 @@ RegisterDebugWindow("Misc", function(panel)
     end
     refreshSavedList()
     --#endregion Photo Mode Camera Saver
-    
+end)
+
+
+local PhysicsGroupFlags = Ext.Enums.PhysicsGroupFlags
+local PhysicsType = Ext.Enums.PhysicsType
+
+local configurableIntersect = {
+    Distance = 50,
+    PhysicsType = PhysicsType.Dynamic | PhysicsType.Static,
+    PhysicsGroupFlags = PhysicsGroupFlags.Item
+        | PhysicsGroupFlags.Character
+        | PhysicsGroupFlags.Scenery
+        | PhysicsGroupFlags.VisibleItem,
+    PhysicsGroupFlagsExclude = PhysicsGroupFlags.Terrain,
+    Function = "RaycastClosest"
+}
+
+--- @return PhxPhysicsHit|PhxPhysicsHitAll
+function Ray:IntersectDebug()
+    return Ext.Level[configurableIntersect.Function](self.Origin, self:At(configurableIntersect.Distance),
+        configurableIntersect.PhysicsType,
+        configurableIntersect.PhysicsGroupFlags, configurableIntersect.PhysicsGroupFlagsExclude, 1)
+end
+
+RegisterDebugWindow("Raycast Debugger", function(panel)
+    local aligned = ImguiElements.AddAlignedTable(panel)
+    local funcCombo = aligned:AddCombo("Function")
+    funcCombo.Options = { "RaycastClosest", "RaycastAll" }
+    funcCombo.SelectedIndex = 0
+    funcCombo.OnChange = function(ev)
+        configurableIntersect.Function = ImguiHelpers.GetCombo(ev)
+    end
+
+    local distance = aligned:AddSliderWithStep("Distance", configurableIntersect.Distance, 1, 500, 1, false)
+
+    local physTypeOptions = ImguiHelpers.CreateRadioButtonOptionFromBitmask("PhysicsType")
+    local ptC = aligned:AddNewLine("Physic Type")
+
+
+    local physTypeRadio = ImguiElements.AddBitmaskRadioButtons(ptC, physTypeOptions, configurableIntersect.PhysicsType)
+    physTypeRadio.OnChange = function(radioBtn, value)
+        configurableIntersect.PhysicsType = value
+    end
+
+
+    --- @type RadioButtonOption[]
+    local options = ImguiHelpers.CreateRadioButtonOptionFromBitmask("PhysicsGroupFlags")
+    local includeCell = aligned:AddNewLine("Include Groups")
+    local includeAll = includeCell:AddButton("Include All")
+    local unincludeAll = includeCell:AddButton("Uninclude All")
+    local includeGroup = ImguiElements.AddBitmaskRadioButtons(includeCell, options,
+        configurableIntersect.PhysicsGroupFlags)
+    includeGroup.OnChange = function(radioBtn, value)
+        configurableIntersect.PhysicsGroupFlags = value
+    end
+    includeAll.OnClick = function()
+        configurableIntersect.PhysicsGroupFlags = 0xFFFFFFFF
+        includeGroup.Value = configurableIntersect.PhysicsGroupFlags
+    end
+    unincludeAll.OnClick = function()
+        configurableIntersect.PhysicsGroupFlags = 0
+        includeGroup.Value = configurableIntersect.PhysicsGroupFlags
+    end
+
+    local excludeCell = aligned:AddNewLine("Exclude Groups")
+    local excludeGroup = ImguiElements.AddBitmaskRadioButtons(excludeCell, options,
+        configurableIntersect.PhysicsGroupFlagsExclude)
+
+    excludeGroup.OnChange = function(radioBtn, value)
+        configurableIntersect.PhysicsGroupFlagsExclude = value
+    end
+
+    local wrappos = 8
+    includeGroup.WrapPos = wrappos
+    excludeGroup.WrapPos = wrappos
+
+    local inGameWin = Notification.new("In-Game Raycast Debugger")
+    inGameWin.AutoFadeOut = false
+    local debugBtn = panel:AddButton("Debug Raycast")
+    debugBtn.OnClick = function()
+        local ray = ScreenToWorldRay()
+        if not ray then
+            return
+        end
+        local hit = ray:IntersectDebug()
+        if hit then
+            inGameWin:Show("Raycast Hit!", function(panel)
+                local text = Ext.DumpExport(hit)
+                panel:AddText(text)
+            end)
+            if configurableIntersect.Function == "RaycastAll" then
+                local cnt = #hit.Distances
+                for i=1, cnt do
+                    local pos = hit.Positions[i]
+                    local quat = MathUtils.DirectionToQuat(hit.Normals[i], nil, "Y")
+                    NetChannel.Visualize:RequestToServer({
+                        Type = "Point",
+                        Position = pos,
+                        Rotation = quat,
+                        Duration = 1000,
+                    }, function (response)
+                        
+                    end)
+                end
+            else
+                if hit.Position and hit.Normal then
+                    local pos = hit.Position
+                    local quat = MathUtils.DirectionToQuat(hit.Normal, nil, "Y")
+                    NetChannel.Visualize:RequestToServer({
+                        Type = "Point",
+                        Position = pos,
+                        Rotation = quat,
+                        Duration = 1000,
+                    }, function (response)
+                        
+                    end)
+                end
+            end
+        else
+            inGameWin:Show("Raycast Missed!",
+                "Origin: " .. tostring(ray.Origin) .. "\nDirection: " .. tostring(ray.Direction))
+        end
+    end
+    InputEvents.SubscribeKeyInput({}, function(e)
+        if e.Key ~= "F2" or e.Event == "KeyUp" then
+            return
+        end
+        debugBtn.OnClick()
+    end)
 end)

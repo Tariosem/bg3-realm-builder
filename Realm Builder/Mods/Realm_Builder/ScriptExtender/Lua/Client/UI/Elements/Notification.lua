@@ -316,6 +316,7 @@ function Notification:QuickDismiss()
                 panel = nil
             end,
             function(t, eased)
+                if not panel then return end
                 panel:SetStyle("Alpha", 1 - eased)
             end
         )

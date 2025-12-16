@@ -45,21 +45,6 @@ function MovableProxy:SetWorldScale(scale)
 end
 
 function MovableProxy:GetTransform()
-    if self.__getTransform then
-        local transform = self:__getTransform()
-        if not transform then
-            return {
-                Translate = Vec3.new(0,0,0),
-                RotationQuat = Quat.new(0,0,0,1),
-                Scale = Vec3.new(1,1,1)
-            }
-        end
-        return {
-            Translate = Vec3.new(transform.Translate),
-            RotationQuat = Quat.new(transform.RotationQuat),
-            Scale = Vec3.new(transform.Scale)
-        }
-    end
     return {
         Translate = Vec3.new(0,0,0),
         RotationQuat = Quat.new(0,0,0,1),
@@ -114,10 +99,10 @@ function MovableProxy:IsValid()
     return false
 end
 
---- @class RB_ItemMovableProxy : RB_MovableProxy
+--- @class ItemMovableProxy : RB_MovableProxy
 --- @field Guid GUIDSTRING
---- @field new fun(guid: GUIDSTRING):RB_ItemMovableProxy
-ItemMovableProxy = _Class("RB_ItemMovableProxy", MovableProxy)
+--- @field new fun(guid: GUIDSTRING):ItemMovableProxy
+ItemMovableProxy = _Class("ItemMovableProxy", MovableProxy)
 
 function ItemMovableProxy:__init(guid)
     self.Guid = guid
@@ -180,10 +165,10 @@ function ItemMovableProxy:IsValid()
     return true
 end
 
---- @class RB_CharacterMovableProxy : RB_MovableProxy
+--- @class CharacterMovableProxy : RB_MovableProxy
 --- @field Guid GUIDSTRING
---- @field new fun(guid: GUIDSTRING):RB_CharacterMovableProxy
-CharacterMovableProxy = _Class("RB_CharacterMovableProxy", MovableProxy)
+--- @field new fun(guid: GUIDSTRING):CharacterMovableProxy
+CharacterMovableProxy = _Class("CharacterMovableProxy", MovableProxy)
 
 function CharacterMovableProxy:__init(guid)
     self.Guid = guid
@@ -219,17 +204,21 @@ CharacterMovableProxy.GetParent = ItemMovableProxy.GetParent
 CharacterMovableProxy.Render = ItemMovableProxy.Render
 CharacterMovableProxy.IsValid = ItemMovableProxy.IsValid
 
---- @class RB_SceneryMovableProxy : RB_MovableProxy
+--- @class SceneryMovableProxy : RB_MovableProxy
 --- @field Entity EntityHandle
---- @field new fun(sceneryEntity: EclScenery):RB_SceneryMovableProxy
-SceneryMovableProxy = _Class("RB_SceneryMovableProxy", MovableProxy)
+--- @field new fun(sceneryEntity: EclScenery):SceneryMovableProxy
+SceneryMovableProxy = _Class("SceneryMovableProxy", MovableProxy)
 
 function SceneryMovableProxy:__init(sceneryEntity)
     self.Entity = Ext.Entity.Get(sceneryEntity.Entity) --[[@as EntityHandle]]
 end
 
-function SceneryMovableProxy:__getTransform()
-    return VisualHelpers.GetVisualTransform(self.Entity)
+function SceneryMovableProxy:GetTransform()
+    return VisualHelpers.GetVisualTransform(self.Entity) or {
+        Translate = Vec3.new(0,0,0),
+        RotationQuat = Quat.new(0,0,0,1),
+        Scale = Vec3.new(1,1,1)
+    }
 end
 
 function SceneryMovableProxy:SetTransform(transform)
@@ -268,10 +257,10 @@ function SceneryMovableProxy:Render(parent)
     uuid.Font = "Tiny"
 end
 
---- @class RB_RenderableMovableProxy : RB_MovableProxy
---- @field Instance fun(self: RB_RenderableMovableProxy):RenderableObject
---- @field new fun(instanceFunc: fun():RenderableObject):RB_RenderableMovableProxy
-RenderableMovableProxy = _Class("RB_RenderableMovableProxy", MovableProxy)
+--- @class RenderableMovableProxy : RB_MovableProxy
+--- @field Instance fun(self: RenderableMovableProxy):RenderableObject
+--- @field new fun(instanceFunc: fun():RenderableObject):RenderableMovableProxy
+RenderableMovableProxy = _Class("RenderableMovableProxy", MovableProxy)
 
 function RenderableMovableProxy:__init(instanceFunc)
     self.Instance = instanceFunc

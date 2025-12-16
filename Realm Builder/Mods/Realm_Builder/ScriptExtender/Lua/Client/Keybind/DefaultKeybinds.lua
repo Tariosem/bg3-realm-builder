@@ -9,7 +9,7 @@ return {
     },
 
     TransformToolbar = {
-        ["MultiSelect"] = { Key = "LSHIFT" },
+        ["MultiSelect"] = { Key = "LCTRL" },
         ["Select"] = { Key = "MMB" },
         ["ClearSelection"] = { Key = "ESCAPE" },
         ["Duplicate"] = { Key = "D", Modifiers = { "SHIFT" } },
@@ -38,5 +38,5 @@ return {
         ["Unbind"] = { Key = "U" },
         ["Snap"] = { Key = "S", Modifiers = { "CTRL" } },
     },
-    
+
 }

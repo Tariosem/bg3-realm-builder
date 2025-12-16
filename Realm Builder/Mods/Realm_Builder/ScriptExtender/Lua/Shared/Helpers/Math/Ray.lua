@@ -1,3 +1,5 @@
+local PhysicsGroupFlags = Ext.Enums.PhysicsGroupFlags
+local PhysicsType = Ext.Enums.PhysicsType
 --- @class Ray
 --- @field Origin Vec3
 --- @field Direction Vec3
@@ -337,6 +339,35 @@ function Ray:IntersectEntity(entity)
     local AABound = entity and entity.Visual and entity.Visual.Visual and entity.Visual.Visual.WorldBound
     if not AABound then return nil end
     return self:IntersectAABB(Vec3.new(AABound.Min), Vec3.new(AABound.Max))
+end
+
+
+local allInclude = 0
+
+for _, flag in pairs(PhysicsGroupFlags) do
+    allInclude = allInclude | flag
+end
+
+local allPhyType = PhysicsType.Dynamic | PhysicsType.Static
+
+--- @param dis number?
+--- @return Hit[]
+function Ray:IntersectAll(dis)
+    dis = dis or 1000.0
+    local simp = {} --simplified hits
+    --- @diagnostic disable-next-line
+    local hits = Ext.Level.RaycastAll(self.Origin, self:At(dis), allPhyType, allInclude, 0, 1) 
+    local hitCnt = #hits.Distances
+    for i=1, hitCnt do
+        table.insert(simp, Hit.new(
+            Vec3.new(hits.Positions[i]),
+            Vec3.new(hits.Normals[i]),
+            hits.Distances[i],
+            hits.Shapes[i].PhysicsObject.Entity
+        ))
+    end
+    table.sort(simp, function(a,b) return a.Distance < b.Distance end)
+    return simp
 end
 
 function Ray:Debug()
