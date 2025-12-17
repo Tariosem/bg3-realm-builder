@@ -178,6 +178,7 @@ function Timer:ClientOnTicks(ticks, callback, user)
     if Ext.IsClient() then
         return self:Ticks(ticks, callback)
     end
+    user = user or 1
     clientTimerId = clientTimerId + 1
     local timerID = clientTimerId
     self._serverClientCallbacks[timerID] = callback
@@ -189,6 +190,7 @@ function Timer:ClientAfter(ms, callback, user)
     if Ext.IsClient() then
         return self:After(ms, callback)
     end
+    user = user or 1
     clientTimerId = clientTimerId + 1
     local timerID = clientTimerId
     self._serverClientCallbacks[timerID] = callback

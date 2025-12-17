@@ -1,20 +1,10 @@
---- @class ServerEntityData
---- @field TemplateId string
---- @field Guid string
---- @field Gravity boolean
---- @field CanInteract boolean
---- @field Visible boolean
---- @field Movable boolean
---- @field Persistent boolean
---- @field VisualPreset string|nil
-
 --- @class EntityManager
---- @field SavedEntities table<string, ServerEntityData>
+--- @field SavedEntities table<string, EntityData>
 --- @field CachedTransforms table<string, Transform>
---- @field CachedEntityData table<string, ServerEntityData>
+--- @field CachedEntityData table<string, EntityData>
 --- @field CreateAt fun(self: EntityManager, TemplateId: string, x:number?, y:number?, z:number?, rx:number?, ry:number?, rz:number?, w:number?): string|nil
 --- @field AddEntity fun(self: EntityManager, guid: string): string|nil
---- @field SetEntity fun(self: EntityManager, guid: string, entInfo: ServerEntityData)
+--- @field SetEntity fun(self: EntityManager, guid: string, entInfo: EntityData)
 --- @field LoadFromModVar fun(self: EntityManager):any
 --- @field DeleteEntities fun(self: EntityManager, guid: string, doBroadcast: boolean?): boolean
 --- @field DeleteEntityByTemplateId fun(self: EntityManager, TemplateId: string): string[]
@@ -204,8 +194,15 @@ function EntityManager.TemplateTrick(templateObj, templateId)
             end
             spawnTemplate = templateObj.Name .. "-" .. templateObj.Id
         else
-            Error("Invalid TemplateId: " .. tostring(templateId))
-            return nil, 0
+            local effectRes = Ext.Resource.Get(templateId, "Effect") --[[@as ResourceEffectResource]]
+            if effectRes then
+                templateObj = Ext.Template.GetTemplate(INVISIBLE_HELPER_PREVIEW) --[[@as ItemTemplate]]
+                templateObj.EffectTemplate = templateId
+                spawnTemplate = templateObj.Name .. "-" .. templateObj.Id
+            else
+                Error("Invalid TemplateId: " .. tostring(templateId))
+                return nil, 0
+            end
         end
     else
         tempoFlag = templateObj.TemplateType == "character" and 1 or 0
@@ -494,7 +491,7 @@ function EntityManager:GetEntityForClients(guid)
 end
 
 --- @param guids GUIDSTRING|GUIDSTRING[]
---- @return ServerEntityData[]
+--- @return EntityData[]
 function EntityManager:GetEntities(guids)
     local list = RBUtils.NormalizeGuidList(guids)
     local items = {}

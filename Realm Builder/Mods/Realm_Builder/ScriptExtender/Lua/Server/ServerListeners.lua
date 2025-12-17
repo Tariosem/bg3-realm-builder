@@ -1,6 +1,5 @@
 local function spawnHandler(data)
     local template = data.TemplateId
-    local spawnTemplate = template
     local entInfo = data.EntInfo or {}
     local position = entInfo.Position
     local rotation = entInfo.Rotation
@@ -25,7 +24,7 @@ local function spawnHandler(data)
         return { Guid = previewItem, TemplateId = template }
     end
 
-    local newGuid = EntityManager:CreateAt(spawnTemplate, position[1], position[2], position[3], rotation[1], rotation
+    local newGuid = EntityManager:CreateAt(template, position[1], position[2], position[3], rotation[1], rotation
     [2], rotation[3], rotation[4])
 
     if not newGuid then
@@ -52,14 +51,6 @@ local function spawnHandler(data)
 
     return { Guid = newGuid }
 end
-
-NetChannel.Spawn:SetHandler(function(data, userID)
-    spawnHandler(data)
-end)
-
-NetChannel.Spawn:SetRequestHandler(function(data, userID)
-    return spawnHandler(data)
-end)
 
 local deleteHandler = function(data)
     local guids = RBUtils.NormalizeGuidList(data.Guid)

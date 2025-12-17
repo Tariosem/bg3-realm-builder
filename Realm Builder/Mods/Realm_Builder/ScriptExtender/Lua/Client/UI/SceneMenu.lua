@@ -922,6 +922,7 @@ function SceneMenu:RenderPresetObjectInfo(parent, entInfo, presetName, presetTyp
             return nil
         end
 
+        --- @type SpawnData
         local data = {
             Type = "Preview",
             EntInfo = {

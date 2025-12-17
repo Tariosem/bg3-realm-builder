@@ -10,6 +10,7 @@ RB_GLOBALS.EffectManager = EffectsManager:init("EffectsManager") --[[@as Effects
 
 RBUtils.RequireFiles("Server/", {
     "ServerListeners",
+    "ServerSpawn",
 })
 
 --Ext.Require("Server/Test/_init.lua") 

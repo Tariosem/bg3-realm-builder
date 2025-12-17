@@ -309,6 +309,16 @@ function RBUtils.GetCamaraUserID(obj)
     return nil
 end
 
+function RBUtils.IsItemOrCharacterTemplate(templateId)
+    if not templateId or type(templateId) ~= "string" then
+        return false
+    end
+
+    local templateObj = Ext.Template.GetTemplate(EntityHelpers.TakeTailTemplate(templateId))
+    local templateType = templateObj and templateObj.TemplateType or ""
+    return templateType == "item" or templateType == "character"
+end
+
 ---@param func fun(...:any)
 ---@param delay number ms
 ---@return function
@@ -353,6 +363,8 @@ function RBUtils.WaitUntil(check, doSomething, timeOutFrame)
         end
     end)
 end
+
+
 
 function RBUtils.GetFormatTime()
     local clockTime = Ext.Timer.ClockTime()

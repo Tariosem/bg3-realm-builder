@@ -33,13 +33,15 @@ NetChannel.Delete = Ext.Net.CreateChannel(ModuleUUID, "Delete")
 --- @field SendToServer fun(channel:self , data: {Guid: GUIDSTRING[]|GUIDSTRING})
 NetChannel.Restore = Ext.Net.CreateChannel(ModuleUUID, "Restore")
 
---- @class SpawnPostData
+--- @class SpawnData
 --- @field TemplateId string
 --- @field EntInfo EntityData?
+--- @field RequestId integer?
 --- @field Type "Preview"|"Spawn"
 
 --- @class SpawnChannel : NetChannel
---- @field RequestToServer fun(channel:self , data: SpawnPostData, callback: fun(response: {Guid: GUIDSTRING, TemplateId: string}))
+--- @field RequestToServer fun(channel:self , data: SpawnData, callback: fun(response: {Guid: GUIDSTRING, TemplateId: string}))
+--- @field SendToServer fun(channel:self , data: SpawnData)
 NetChannel.Spawn = Ext.Net.CreateChannel(ModuleUUID, "Spawn")
 
 --- @class ManageEntityChannel : NetChannel

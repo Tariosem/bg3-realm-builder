@@ -41,7 +41,7 @@ local entityNameBlacklist = {
 --- @field VisualObjectMaterialOverride RB_ObjectEdit? -- item only
 
 --- @class EntityStore
---- @field AddEntity fun(self:EntityStore, guid:string, data:EntityData|ServerEntityData)
+--- @field AddEntity fun(self:EntityStore, guid:string, data:EntityData|EntityData)
 --- @field RemoveEntity fun(self:EntityStore, guid:string)
 --- @field SetEntity fun(self:EntityStore, guid:string, data:EntityData)
 --- @field GetEntity fun(self:EntityStore, guid:string):EntityHandle?

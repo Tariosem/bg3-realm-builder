@@ -1,91 +1,32 @@
 --- workaround for spawning scenery
---- @type ({func:fun(), cnt:number})[]
-local spawnQueue = {}
-local maxSpawningAtOnce = 500
-local spawningCnt = 0
-local isWaitingForResune = false
-local spawnCoroutinue
+local isSpawning = false
+local spawnIdCallbacks = {}
+local spawnId = 0
 
-local function safeResume(co)
-    if isWaitingForResune then
-        Warning("Spawn coroutine is already resuming, skipping nested resume.")
-        return
-    end
-    if coroutine.status(co) ~= "suspended" then
-        Warning("Spawn coroutine is not in a resumable state: " .. tostring(coroutine.status(co)))
-        return
-    end
-
-    local ok, err = coroutine.resume(co)
-    if not ok then
-        Error(debug.traceback(co, "Error resuming spawn coroutine: " .. tostring(err)))
-    end
-end
-
-local function createSpawnCoroutinue()
-    spawnCoroutinue = coroutine.create(function()
-        while true do
-            if #spawnQueue == 0 then
-                Debug("Spawn coroutine completed.")
-                coroutine.yield()
-            else
-                Debug("Spawn coroutine processing queue. Remaining items: " .. tostring(#spawnQueue))
-                local spawnObj = table.remove(spawnQueue, 1)
-                local spawnFunc = spawnObj.func
-                local spawnCnt = spawnObj.cnt or 1
-                spawnFunc()
-                spawningCnt = spawningCnt - spawnCnt
-            end
-        end
-    end)
-    if #spawnQueue > 0 then
-        safeResume(spawnCoroutinue)
-    end
-end
-
-createSpawnCoroutinue()
-
-local function scheduleResumeAndYield(cnt)
-    isWaitingForResune = true
-    Timer:Ticks(cnt or 30, function(timerID)
-        isWaitingForResune = false
-        local ok, err = coroutine.resume(spawnCoroutinue)
-        if not ok then
-            Error("Error resuming spawn coroutine: " .. tostring(err))
-        end
-    end)
-    coroutine.yield()
-end
-
-local overflowNotif = Notification.new("Spawn Queue Full")
-overflowNotif.Pivot = { 0.7, 0 }
-local function push(func, cnt)
-    if cnt + spawningCnt > maxSpawningAtOnce then
-        overflowNotif:Show("Spawn Queue Full",
-            "The spawn queue has reached its maximum capacity of " ..
-            tostring(maxSpawningAtOnce) ..
-            " spawning operations.\n Please wait for existing operations to complete before adding more.")
-        Warning("Try again later, too many spawning operations in the queue.")
-        return
-    end
-    spawningCnt = spawningCnt + (cnt or 1)
-    table.insert(spawnQueue, { func = func, cnt = cnt or 1 })
-    if coroutine.status(spawnCoroutinue) == "suspended" then
-        safeResume(spawnCoroutinue)
-    else
-        createSpawnCoroutinue()
-    end
-end
-
-local function spawnHandler(templateId, entInfo, callback)
-    NetChannel.Spawn:RequestToServer({
-        TemplateId = templateId,
-        EntInfo = entInfo
-    }, function(response)
+NetChannel.Spawn:SetHandler(function(data, userID)
+    if data.RequestId then
+        local callback = spawnIdCallbacks[data.RequestId]
         if callback then
-            callback(response)
+            callback(data)
         end
-    end)
+    end
+    if data.Idle ~= nil then
+        isSpawning = not data.Idle
+    end
+    if data.Overflow then
+        
+    end
+end)
+
+local function getSpawnId()
+    spawnId = spawnId + 1
+    return spawnId
+end
+
+--- @param id integer
+--- @param callback fun(data: {Guid: GUIDSTRING, RequestId: integer})?
+local function setSpawnIdCallback(id, callback)
+    spawnIdCallbacks[id] = callback
 end
 
 --- @param prefabObj PrefabTemplate
@@ -98,6 +39,7 @@ local function spawnPrefab(prefabObj, entInfo)
     }
     local spawned = {}
 
+    local reqId = getSpawnId()
     local cnt = 1
     local folderName = prefabObj.Name
 
@@ -113,53 +55,52 @@ local function spawnPrefab(prefabObj, entInfo)
         })
     end
 
-    push(function()
-        while EntityStore.Tree:Find(folderName) do
-            folderName = prefabObj.Name .. "_" .. tostring(cnt)
-            cnt = cnt + 1
+    setSpawnIdCallback(reqId, function(data)
+        table.insert(spawned, data.Guid)
+        if #spawned == #prefabObj.Children then
+            pushCommand()
+            setSpawnIdCallback(reqId, nil)
         end
-        local entPath = { folderName }
-        for i, child in pairs(prefabObj.Children or {}) do
-            local childTemplateId = child
-            local childTemplateObj = Ext.Template.GetTemplate(childTemplateId)
-            if not childTemplateObj then
-                Warning("[spawnPrefab] Child template not found: " .. tostring(childTemplateId))
-                goto continue
-            end
-            local childEntInfo = {}
+    end)
 
-            childEntInfo.Position = prefabObj.ChildrenTransforms[i].Translate or { 0, 0, 0 }
-            childEntInfo.Rotation = prefabObj.ChildrenTransforms[i].RotationQuat or { 0, 0, 0, 1 }
-
-            -- Calculate relative position/rotation
-            local pos, rot = MathUtils.GetLocalRelativeTransform(pivotTransform, childEntInfo.Position, childEntInfo.Rotation)
-            if not pos or not rot then
-                Warning("[spawnPrefab] Failed to calculate relative transform for prefab child.")
-                pos = pivotTransform.Translate
-                rot = pivotTransform.RotationQuat
-            end
-            childEntInfo.Position = pos
-            childEntInfo.Rotation = rot
-            childEntInfo.Scale = prefabObj.ChildrenTransforms[i].Scale
-            childEntInfo.Path = entPath
-
-            NetChannel.Spawn:RequestToServer({
-                TemplateId = childTemplateId,
-                EntInfo = childEntInfo
-            }, function(response)
-                table.insert(spawned, response.Guid)
-                if #spawned == #prefabObj.Children then
-                    pushCommand()
-                end
-            end)
-
-            if childTemplateObj.TemplateType ~= "item" and childTemplateObj.TemplateType ~= "character" then
-                -- Wait to make template overwirte work properly
-                scheduleResumeAndYield()
-            end
-            ::continue::
+    while EntityStore.Tree:Find(folderName) do
+        folderName = prefabObj.Name .. "_" .. tostring(cnt)
+        cnt = cnt + 1
+    end
+    local entPath = { folderName }
+    for i, child in pairs(prefabObj.Children or {}) do
+        local childTemplateId = child
+        local childTemplateObj = Ext.Template.GetTemplate(childTemplateId)
+        if not childTemplateObj then
+            Warning("[spawnPrefab] Child template not found: " .. tostring(childTemplateId))
+            goto continue
         end
-    end, #prefabObj.Children)
+        local childEntInfo = {}
+
+        childEntInfo.Position = prefabObj.ChildrenTransforms[i].Translate or { 0, 0, 0 }
+        childEntInfo.Rotation = prefabObj.ChildrenTransforms[i].RotationQuat or { 0, 0, 0, 1 }
+
+        -- Calculate relative position/rotation
+        local pos, rot = MathUtils.GetLocalRelativeTransform(pivotTransform, childEntInfo.Position, childEntInfo.Rotation)
+        if not pos or not rot then
+            Warning("[spawnPrefab] Failed to calculate relative transform for prefab child.")
+            pos = pivotTransform.Translate
+            rot = pivotTransform.RotationQuat
+        end
+        childEntInfo.Position = pos
+        childEntInfo.Rotation = rot
+        childEntInfo.Scale = prefabObj.ChildrenTransforms[i].Scale
+        childEntInfo.Path = entPath
+
+
+        NetChannel.Spawn:SendToServer({
+            TemplateId = childTemplateId,
+            EntInfo = childEntInfo,
+            RequestId = reqId
+        })
+    
+        ::continue::
+    end
 end
 
 ---@param template string
@@ -187,24 +128,22 @@ function Commands.SpawnCommand(template, entInfo)
         packedData.EntInfo.DisplayName = RBStringUtils.GetLastPath(isVisual.SourceFile)
     end
 
-    push(function()
-        NetChannel.Spawn:RequestToServer(packedData, function(response)
-            spawnedGuid = response.Guid
-            HistoryManager:PushCommand({
-                Undo = function()
-                    NetChannel.Delete:SendToServer({ Guid = spawnedGuid })
-                end,
-                Redo = function()
-                    NetChannel.Restore:SendToServer({ Guid = spawnedGuid })
-                end,
-                Description = "Spawn Entity"
-            })
-        end)
-        if templateObj and templateObj.TemplateType ~= "item" and templateObj.TemplateType ~= "character" then
-            -- Wait to make template overwirte work properly
-            scheduleResumeAndYield(30)
-        end
-    end, 1)
+    local reqId = getSpawnId()
+    setSpawnIdCallback(reqId, function(data)
+        spawnedGuid = data.Guid
+        HistoryManager:PushCommand({
+            Undo = function()
+                NetChannel.Delete:SendToServer({ Guid = spawnedGuid })
+            end,
+            Redo = function()
+                NetChannel.Restore:SendToServer({ Guid = spawnedGuid })
+            end,
+            Description = "Spawn Entity"
+        })
+    end)
+    packedData.RequestId = reqId
+
+    NetChannel.Spawn:SendToServer(packedData)
 end
 
 --- @param targets GUIDSTRING[]
@@ -218,18 +157,13 @@ function Commands.DuplicateCommand(targets, path)
     local spawnedDuplications = {}
     local templateMap = {}
     local originStats = {}
-    local nonItemNonCharacter = {}
+
 
     local toGet = {}
-
     for _, guid in pairs(targets) do
         local stored = EntityStore:GetStoredData(guid)
         if stored then
             templateMap[guid] = stored.TemplateId
-            local templateObj = Ext.Template.GetTemplate(EntityHelpers.TakeTailTemplate(stored.TemplateId))
-            if not templateObj or (templateObj.TemplateType ~= "item" and templateObj.TemplateType ~= "character") then
-                nonItemNonCharacter[guid] = true
-            end
             originStats[guid] = RBUtils.DeepCopy(stored)
             originStats[guid].DisplayName = nil
             if path then
@@ -253,9 +187,11 @@ function Commands.DuplicateCommand(targets, path)
                 table.insert(toDuplicate, guid)
             end
         end
-        push(function()
-            spawn()
-        end, #toDuplicate)
+        if #toDuplicate == 0 then
+            Warning("[DuplicateCommand] No valid entities to duplicate.")
+            return
+        end
+        spawn()
     end)
 
     local function selectAndPushCommand()
@@ -283,6 +219,15 @@ function Commands.DuplicateCommand(targets, path)
         end)
     end
 
+    local reqId = getSpawnId()
+    setSpawnIdCallback(reqId, function(data)
+        table.insert(spawnedDuplications, data.Guid)
+        if #spawnedDuplications == #toDuplicate then
+            selectAndPushCommand()
+            setSpawnIdCallback(reqId, nil)
+        end
+    end)
+
     function spawn()
         for guid, templateId in pairs(templateMap) do
             local transform = oriTransforms[guid]
@@ -291,20 +236,10 @@ function Commands.DuplicateCommand(targets, path)
             entData.Path = path
             entData.Position = transform.Translate
             entData.Rotation = transform.RotationQuat
-            NetChannel.Spawn:RequestToServer({
+            NetChannel.Spawn:SendToServer({
                 TemplateId = templateId,
                 EntInfo = entData
-            }, function(response)
-                table.insert(spawnedDuplications, response.Guid)
-                if #spawnedDuplications == RBTableUtils.CountMap(templateMap) then
-                    selectAndPushCommand()
-                end
-            end)
-
-            if nonItemNonCharacter[guid] then
-                -- Wait to make template overwirte work properly
-                scheduleResumeAndYield(30)
-            end
+            })
         end
     end
 end
@@ -313,18 +248,12 @@ end
 function Commands.SpawnPreset(data)
     local spawnedGuids = {}
     local tree = TreeTable.FromTableStatic(data.Tree)
+    local toSpawnCnt = RBTableUtils.CountMap(data.Spawned)
     local pivotTransform = {
         Translate = Vec3.new(data.Position),
         RotationQuat = Quat.new(data.Rotation),
         Scale = Vec3.new(1, 1, 1)
     }
-
-    local spawnNode
-    local function threadFunc()
-        for savedGuid, entData in pairs(data.Spawned) do
-            spawnNode(entData, savedGuid)
-        end
-    end
 
     local function pushCommand()
         HistoryManager:PushCommand({
@@ -337,8 +266,16 @@ function Commands.SpawnPreset(data)
             Description = "Spawn Preset"
         })
     end
+    local reqId = getSpawnId()
+    setSpawnIdCallback(reqId, function(data)
+        table.insert(spawnedGuids, data.Guid)
+        if #spawnedGuids == toSpawnCnt then
+            pushCommand()
+            setSpawnIdCallback(reqId, nil)
+        end
+    end)
 
-    function spawnNode(entData, savedGuid)
+    local function spawnNode(entData, savedGuid)
         local pos, rot = entData.Position, entData.Rotation or Quat.Identity()
         if data.PresetType == "Relative" then
             --- @diagnostic disable-next-line
@@ -363,44 +300,20 @@ function Commands.SpawnPreset(data)
             entData.Group = data.Name
         end
 
-        NetChannel.Spawn:RequestToServer({
+        NetChannel.Spawn:SendToServer({
             TemplateId = entData.TemplateId,
             EntInfo = entData or {},
             Type = data.SpawnType
-        }, function(response)
-            local newGuid = response.Guid
-            table.insert(spawnedGuids, newGuid)
-            if #spawnedGuids == RBTableUtils.CountMap(data.Spawned) then
-                pushCommand()
-            end
-        end)
-
-        local templateObj = Ext.Template.GetTemplate(EntityHelpers.TakeTailTemplate(entData.TemplateId))
-        if not templateObj or (templateObj.TemplateType ~= "item" and templateObj.TemplateType ~= "character") then
-            -- Wait to make template overwirte work properly
-            scheduleResumeAndYield(30)
-        end
+        })
     end
 
-    push(threadFunc, RBTableUtils.CountMap(data.Spawned))
+    for savedGuid, entData in pairs(data.Spawned) do
+        spawnNode(entData, savedGuid)
+    end
 end
 
-SpawnCoroutinueInspector = {}
+SpawnInspector = {}
 
-function SpawnCoroutinueInspector.GetQueueLength()
-    return #spawnQueue
+function SpawnInspector.IsSpawningInProgress()
+    return isSpawning
 end
-
-function SpawnCoroutinueInspector.GetSpawningCount()
-    return spawningCnt
-end
-
-function SpawnCoroutinueInspector.IsWaitingForResume()
-    return isWaitingForResune
-end
-
-function SpawnCoroutinueInspector.IsRunning()
-    return coroutine.status(spawnCoroutinue) == "running"
-end
-
-

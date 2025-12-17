@@ -8,7 +8,7 @@ PlacementPreview = {}
 
 --- @param entry RB_Item
 function PlacementPreview:BeginPlacementPreview(entry, entryDisplayName)
-    if SpawnCoroutinueInspector.GetSpawningCount() > 0 then
+    if SpawnInspector.IsSpawningInProgress() then
         local WarningNotif = Notification.new("Cannot preview item while spawning is in progress.")
         WarningNotif.Pivot = { 0.5, 0 }
         WarningNotif.Duration = 3000

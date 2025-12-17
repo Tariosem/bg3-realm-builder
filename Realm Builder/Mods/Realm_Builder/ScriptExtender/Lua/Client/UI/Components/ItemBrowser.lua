@@ -293,34 +293,21 @@ function ItemBrowser:RenderItemSpawnTab(popup, iconImage, entry)
     local spawnButton = spawnTab:AddButton(GetLoca("Spawn"))
     local target = self.selectedGuid or RBGetHostCharacter()
 
-    local function spawnHandle(isPreview)
-        if isPreview then
-            local data = {
-                TemplateId = entry.TemplateId,
-                Type = "Preview",
-                EntInfo = {
-                    Position = { RBGetPosition(target) },
-                    Rotation = { RBGetRotation(target) }
-                }
+    local function spawnHandle()
+        local data = {
+            Guid = entry.Uuid,
+            TemplateId = entry.TemplateId,
+            Type = "Spawn",
+            EntInfo = {
+                Position = { RBGetPosition(target) },
+                Rotation = { RBGetRotation(target) }
             }
-
-            NetChannel.Spawn:SendToServer(data)
-        else
-            local data = {
-                Guid = entry.Uuid,
-                TemplateId = entry.TemplateId,
-                Type = "Spawn",
-                EntInfo = {
-                    Position = { RBGetPosition(target) },
-                    Rotation = { RBGetRotation(target) }
-                }
-            }
-            Commands.SpawnCommand(entry.TemplateId, data.EntInfo)
-        end
+        }
+        Commands.SpawnCommand(entry.TemplateId, data.EntInfo)
     end
 
     StyleHelpers.ApplyConfirmButtonStyle(spawnButton)
-    spawnButton.OnClick = function() spawnHandle(false) end
+    spawnButton.OnClick = function() spawnHandle() end
 
     if not entry.CanBePickedUp then return iconImage end
 

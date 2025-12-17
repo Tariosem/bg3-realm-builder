@@ -48,7 +48,7 @@ NetChannel.ApplyVisualPreset:SetHandler(function(data, userID)
     VisualHelpers.ApplyVisualParams(guid, preset)
 end)
 
-NetChannel.ClientTimer:SetRequestHandler(function (data, userID)
+NetChannel.ClientTimer:SetHandler(function (data, userID)
     if not data.TimerID then
         Warning("ClientTimer: No TimerID provided")
         return

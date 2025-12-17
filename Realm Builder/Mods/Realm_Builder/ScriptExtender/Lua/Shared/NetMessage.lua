@@ -26,8 +26,8 @@ NetChannel.CameraBind = Ext.Net.CreateChannel(ModuleUUID, "CameraBind")
 NetChannel.Entities = NetChannel.Entities or {}
 
 --- @class Entities.AddedChannel : NetChannel
---- @field Broadcast fun(self, data: {Entities: ServerEntityData[]})
---- @field OnMessage fun(self, data: {Entities: ServerEntityData[]})
+--- @field Broadcast fun(self, data: {Entities: EntityData[]})
+--- @field OnMessage fun(self, data: {Entities: EntityData[]})
 NetChannel.Entities.Added = Ext.Net.CreateChannel(ModuleUUID, "EntitiesAdded")
 
 --- @class Entities.DeletedChannel : NetChannel
