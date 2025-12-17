@@ -111,6 +111,7 @@ function createCoroutine()
     spawnCoroutine = coroutine.create(function()
         while true do
             if #queuedSpawnData == 0 then
+                Debug("[SpawnCoroutine] Spawn queue empty, going idle.")
                 NetChannel.Spawn:Broadcast({ Idle = true })
                 spawnBroadcastDirty = true
                 coroutine.yield()
@@ -121,6 +122,7 @@ function createCoroutine()
                 spawnBroadcastDirty = false
             end
 
+            Debug("[SpawnCoroutine] Processing spawn queue. Queue length: " .. tostring(#queuedSpawnData))
             --- @type {Data:SpawnData, RequestId:integer, UserId:integer}?
             local data = table.remove(queuedSpawnData, 1)
             if data then
@@ -134,9 +136,9 @@ function createCoroutine()
                     coroutine.yield()
                 end
             end
-            Debug("Remain spawn queue: " .. tostring(#queuedSpawnData))
         end
     end)
+    return spawnCoroutine
 end
 
 local function enqueueSpawnData(data, reqId, userId)

@@ -170,7 +170,7 @@ function LSXHelpers.BuildTemplate(guid, entData, internalName, displayNameHandle
     local scale = entData.Scale or ({ RBGetScale(guid) })[1]
 
     local templateType = entData.TemplateType
-    local templateUuid = EntityHelpers.TakeTailTemplate(entData.TemplateId)
+    local templateUuid = RBUtils.TakeTailTemplate(entData.TemplateId)
     local others = {}
 
     if not templateType then return end
@@ -253,7 +253,7 @@ function LSXHelpers.BuildTemplate(guid, entData, internalName, displayNameHandle
 end
 
 function LSXHelpers.BuildRootTemplate(srcUuid, uuid, internalName, override)
-    srcUuid = EntityHelpers.TakeTailTemplate(srcUuid)
+    srcUuid = RBUtils.TakeTailTemplate(srcUuid)
     override = override or {}
     local templateRegion = LSXHelpers.BuildTemplates()
     local gameObjectNode = templateRegion:AppendChild(XMLNode.new("node", { id = "GameObjects" }))

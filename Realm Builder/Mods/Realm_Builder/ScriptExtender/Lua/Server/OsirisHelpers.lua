@@ -222,13 +222,14 @@ function OsirisHelpers.PreviewTemplate(templateId, x, y, z, p, yaw, r, w, visual
         p, yaw, r, w = 0, 0, 0, 1
     end
 
-    local templateName = RBStringUtils.TrimTail(templateId, 37)
-    if templateName == "" then
-        templateName = templateId
-    end
 
     local spawnTemplate = templateId --[[@as string?]]
-    local templateObj = Ext.Template.GetTemplate(EntityHelpers.TakeTailTemplate(templateId))
+    templateId = RBUtils.TakeTailTemplate(templateId)
+    local templateObj = Ext.Template.GetTemplate(templateId)
+    local templateName = templateObj.Name
+    if templateName == nil or templateName == "" then
+        templateName = templateId
+    end
     local tempoFlag = 0
     spawnTemplate, tempoFlag = EntityManager.TemplateTrick(templateObj, templateId)
     if not spawnTemplate then

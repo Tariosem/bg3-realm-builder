@@ -10,7 +10,6 @@ function ItemManager:__init()
     self.TemplateNameToUuid = {}
     self.UuidToTemplateName = {}
     self.dynamicTags = {}
-    -- store tags as a map: tag -> { [uuid] = true }
     self.tagMap = {}
     -- maintain tag counts incrementally
     self.tagCount = {}
@@ -215,7 +214,7 @@ end
 
 --- @class RB_Item
 --- @field Uuid string
---- @field TemplateId string
+--- @field TemplateId string -- Name + "_" + Uuid
 --- @field TemplateName string
 --- @field DisplayName string
 --- @field Icon string
@@ -241,7 +240,7 @@ function ItemManager:PopulateItem(template, statsObj)
     --- @type RB_Item
     local entry = {
         Uuid = uuid,
-        TemplateId = template.Name .. "-" .. uuid,
+        TemplateId = template.Name .. "_" .. uuid,
         TemplateName = template.Name,
         DisplayName = template.DisplayName:Get() or "",
         Icon = template.Icon or "Item_Unknown",

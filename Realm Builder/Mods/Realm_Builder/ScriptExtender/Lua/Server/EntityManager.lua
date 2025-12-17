@@ -241,7 +241,7 @@ function EntityManager:CreateAt(templateId, x, y, z, rx, ry, rz, w)
     end
 
     local spawnTemplate = templateId --[[@as string?]]
-    local templateObj = Ext.Template.GetTemplate(EntityHelpers.TakeTailTemplate(templateId))
+    local templateObj = Ext.Template.GetTemplate(RBUtils.TakeTailTemplate(templateId))
     local tempoFlag = 0 --[[@as integer]]
     spawnTemplate, tempoFlag = self.TemplateTrick(templateObj, templateId)
     if not spawnTemplate then
@@ -386,7 +386,7 @@ function EntityManager:LoadFromModVar()
     end
 
     for guid, _ in pairs(modVar.SavedEntities) do
-        local templateId = EntityHelpers.TakeTailTemplate(Osi.GetTemplate(guid))
+        local templateId = RBUtils.TakeTailTemplate(Osi.GetTemplate(guid))
         if templateId == INVISIBLE_HELPER_SCENERY or templateId == INVISIBLE_HELPER_PREVIEW then
             Osi.RequestDelete(guid)
             Osi.RequestDeleteTemporary(guid)

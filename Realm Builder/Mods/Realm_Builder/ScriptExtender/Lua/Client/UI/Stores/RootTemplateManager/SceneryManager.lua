@@ -1,6 +1,6 @@
 --- @class RB_Scenery
 --- @field Uuid string
---- @field TemplateId string
+--- @field TemplateId string -- Name + "_" + Uuid
 --- @field TemplateName string
 --- @field DisplayName string
 --- @field VisualTemplate string

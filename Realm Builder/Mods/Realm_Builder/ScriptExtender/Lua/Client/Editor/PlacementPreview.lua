@@ -6,7 +6,7 @@ notif.AutoFadeOut = false
 
 PlacementPreview = {}
 
---- @param entry RB_Item
+--- @param entry {Uuid:string}
 function PlacementPreview:BeginPlacementPreview(entry, entryDisplayName)
     if SpawnInspector.IsSpawningInProgress() then
         local WarningNotif = Notification.new("Cannot preview item while spawning is in progress.")
@@ -87,7 +87,7 @@ function PlacementPreview:BeginPlacementPreview(entry, entryDisplayName)
         Rotation = startRot,
     }, function(response)
         if not response.Guid then
-            Warning("[IconBrowser] Failed to spawn preview for templateId: " .. tostring(entry.TemplateId))
+            Warning("[IconBrowser] Failed to spawn preview for templateId: " .. tostring(entry.Uuid))
             IsPreviewing = false
             notif:Dismiss()
             return
@@ -119,15 +119,16 @@ function PlacementPreview:BeginPlacementPreview(entry, entryDisplayName)
             if not previewObject then return UNSUBSCRIBE_SYMBOL end
             if not e.Pressed and e.Clicks > 0 then return end
 
+            local spawnId = entry.TemplateId or entry.Uuid
             if e.Button == 1 then
                 local data = {
-                    TemplateId = entry.TemplateId,
+                    TemplateId = spawnId,
                     EntInfo = {
                         Position = { RBGetPosition(previewObject) },
                         Rotation = { RBGetRotation(previewObject) }
                     }
                 }
-                Commands.SpawnCommand(entry.TemplateId, data.EntInfo)
+                Commands.SpawnCommand(spawnId, data.EntInfo)
             end
         end)
 
@@ -167,7 +168,7 @@ function PlacementPreview:BeginPlacementPreview(entry, entryDisplayName)
             mouseWheelSub = nil
         end
         if stickTimer then
-            stickTimer:Cancel()
+            Timer:Cancel(stickTimer)
             stickTimer = nil
         end
         if cancelSub then

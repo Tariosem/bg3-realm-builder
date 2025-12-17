@@ -135,7 +135,7 @@ function TemplateExportMenu:RenderExportEntities(panel)
         local function spawnFunc()
             for guid, entry in pairs(self.ExportDatas) do
                 self:VisualizeExportEntry(guid, -1)
-                local templateObj = Ext.Template.GetTemplate(EntityHelpers.TakeTailTemplate(entry.TemplateId))
+                local templateObj = Ext.Template.GetTemplate(RBUtils.TakeTailTemplate(entry.TemplateId))
                 if templateObj.TemplateType == "scenery" then
                     Timer:Ticks(30, function (timerID)
                         if not thread then return end
@@ -204,7 +204,7 @@ end
 --- @param cell ExtuiTableCell
 --- @param entData EntityData
 function TemplateExportMenu:RenderTemplateEntry(cell, entData)
-    local templateObj = Ext.Template.GetTemplate(EntityHelpers.TakeTailTemplate(entData.TemplateId))
+    local templateObj = Ext.Template.GetTemplate(RBUtils.TakeTailTemplate(entData.TemplateId))
     if not templateObj then
         Warning("[TemplateExportMenu] Failed to get template object for template ID: " .. tostring(entData.TemplateId))
         return nil
@@ -547,7 +547,7 @@ function TemplateExportMenu:__export(exportSettings, progressCallback)
     local toBuildCustomVisuals = {} --[[@type table<string, EntityData> ]]
 
     local function isValidTemplateId(templateId)
-        return templateId and templateId ~= "" and Ext.Template.GetTemplate(EntityHelpers.TakeTailTemplate(templateId)) ~= nil
+        return templateId and templateId ~= "" and Ext.Template.GetTemplate(RBUtils.TakeTailTemplate(templateId)) ~= nil
     end
 
     for guid, entData in pairs(exportSettings.Entities) do
@@ -672,7 +672,7 @@ function TemplateExportMenu:__export(exportSettings, progressCallback)
     local templateNameCnt = {}
 
     for guid, entData in pairs(toExport) do
-        local templateObj = Ext.Template.GetTemplate(EntityHelpers.TakeTailTemplate(entData.TemplateId))
+        local templateObj = Ext.Template.GetTemplate(RBUtils.TakeTailTemplate(entData.TemplateId))
         local baseName = templateObj.Name or "Template"
         templateNameCnt[baseName] = (templateNameCnt[baseName] or 0) + 1
         intenalNameMap[guid] = modInternalName .. "_" .. baseName .. "_" .. RBStringUtils.PadNumber(templateNameCnt[baseName], 3) 

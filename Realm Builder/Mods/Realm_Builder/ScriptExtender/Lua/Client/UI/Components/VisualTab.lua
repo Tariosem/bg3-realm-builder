@@ -2034,7 +2034,7 @@ end
 --- @field Transforms table<string, Transform> -- key <name :: attachIndex(if any) :: descIndex> -> Transform
 
 function VisualTab:Save(name, overwrite)
-    local templateName = self.templateName or GetTemplateNameForGuid(self.guid)
+    local templateName = self.templateName or RBGetTemplateNameForGuid(self.guid)
 
     if not templateName then
         Error("VisualTab:Save - No template name found for GUID: " .. self.guid)
@@ -2162,7 +2162,7 @@ function VisualTab:ExportPreset()
 end
 
 function VisualTab:Load(notoverwrite)
-    local templateName = self.templateName or GetTemplateNameForGuid(self.guid)
+    local templateName = self.templateName or RBGetTemplateNameForGuid(self.guid)
 
     if not templateName then
         Error("VisualTab:Load - No template name found for GUID: " .. self.guid)
@@ -2210,7 +2210,7 @@ function VisualTab:Load(notoverwrite)
 end
 
 function VisualTab:Remove(name)
-    local templateName = self.templateName or GetTemplateNameForGuid(self.guid)
+    local templateName = self.templateName or RBGetTemplateNameForGuid(self.guid)
 
     if not templateName then
         Error("VisualTab:Remove - No template name found for GUID: " .. self.guid)

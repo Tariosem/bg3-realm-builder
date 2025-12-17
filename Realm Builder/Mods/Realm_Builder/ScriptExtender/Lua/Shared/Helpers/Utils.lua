@@ -314,7 +314,7 @@ function RBUtils.IsItemOrCharacterTemplate(templateId)
         return false
     end
 
-    local templateObj = Ext.Template.GetTemplate(EntityHelpers.TakeTailTemplate(templateId))
+    local templateObj = Ext.Template.GetTemplate(RBUtils.TakeTailTemplate(templateId))
     local templateType = templateObj and templateObj.TemplateType or ""
     return templateType == "item" or templateType == "character"
 end

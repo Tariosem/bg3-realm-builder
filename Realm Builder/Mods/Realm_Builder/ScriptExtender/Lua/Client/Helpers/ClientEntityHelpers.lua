@@ -45,7 +45,7 @@ function RBGetIcon(guid)
     local stored = EntityStore:GetStoredData(guid)
 
     if stored and stored.TemplateId then
-        local icon = GetIconForTemplateId(stored.TemplateId)
+        local icon = RBGetIconForTemplateId(stored.TemplateId)
         return RBCheckIcon(icon, defaultIcon)
     end
 
@@ -117,7 +117,7 @@ function RBGetName(guid)
     if not templateId or templateId == "" then
         return "Unknown"
     end
-    local template = Ext.Template.GetTemplate(EntityHelpers.TakeTailTemplate(templateId))
+    local template = Ext.Template.GetTemplate(RBUtils.TakeTailTemplate(templateId))
     if not template then
         return "Unknown"
     end
@@ -131,8 +131,8 @@ local templateTypeToIcon = {
     TileConstruction = RB_ICONS.Scenery_Fill
 }
 
-function GetIconForTemplateId(uuid)
-    uuid = EntityHelpers.TakeTailTemplate(uuid)
+function RBGetIconForTemplateId(uuid)
+    uuid = RBUtils.TakeTailTemplate(uuid)
     local template = Ext.Template.GetTemplate(uuid)
     if not template then
         return "Item_Unknown"
@@ -146,8 +146,8 @@ function GetIconForTemplateId(uuid)
     return "Item_Unknown"
 end
 
-function GetDisplayNameForTemplateId(uuid)
-    uuid = EntityHelpers.TakeTailTemplate(uuid)
+function RBGetDisplayNameForTemplateId(uuid)
+    uuid = RBUtils.TakeTailTemplate(uuid)
     local template = Ext.Template.GetTemplate(uuid)
     if not template then
         local isVisual = Ext.Resource.Get(uuid, "Visual") --[[@as ResourceVisualResource]]
@@ -163,10 +163,10 @@ function GetDisplayNameForTemplateId(uuid)
     return translated
 end
 
-function GetTemplateNameForGuid(guid)
+function RBGetTemplateNameForGuid(guid)
     local templateId = EntityHelpers.GetTemplateId(guid)
     if not templateId or templateId == "" then return nil end
-    local template = Ext.Template.GetTemplate(EntityHelpers.TakeTailTemplate(templateId))
+    local template = Ext.Template.GetTemplate(RBUtils.TakeTailTemplate(templateId))
     if not template then
         --Error("GetTemplateNameForGuid: No template found for guid: " .. guid)
         return nil

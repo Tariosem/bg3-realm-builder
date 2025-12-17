@@ -195,7 +195,7 @@ function EntityStore:AddEntity(guid, data)
         data.Icon = RB_ICONS.Scenery
     end
 
-    self:RegisterDisplayName(data.DisplayName or GetDisplayNameForTemplateId(data.TemplateId), guid)
+    self:RegisterDisplayName(data.DisplayName or RBGetDisplayNameForTemplateId(data.TemplateId), guid)
         
     if not self.Tree:Find(guid) then
         if data.Path and #data.Path > 0 and self.Tree:AddPath(data.Path) then
@@ -264,7 +264,7 @@ function EntityStore:GetStoredTemplateType(guid)
     if not data then
         return nil
     end
-    local template = Ext.Template.GetTemplate(EntityHelpers.TakeTailTemplate(data.TemplateId))
+    local template = Ext.Template.GetTemplate(RBUtils.TakeTailTemplate(data.TemplateId))
     if not template then
         return nil
     end
@@ -484,7 +484,7 @@ function EntityStore:GetExportCopy(guids)
             local entity = Ext.Entity.Get(guid)
             if not entity then goto continue end
             local data = RBUtils.DeepCopy(self:GetStoredData(guid)) --[[@as EntityData]]
-            local template = Ext.Template.GetTemplate(EntityHelpers.TakeTailTemplate(data.TemplateId))
+            local template = Ext.Template.GetTemplate(RBUtils.TakeTailTemplate(data.TemplateId))
             if not template then goto continue end
             data.TemplateType = template.TemplateType
 

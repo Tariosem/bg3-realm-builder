@@ -71,6 +71,7 @@ local function spawnPrefab(prefabObj, entInfo)
     for i, child in pairs(prefabObj.Children or {}) do
         local childTemplateId = child
         local childTemplateObj = Ext.Template.GetTemplate(childTemplateId)
+        local childTemplateNameId = childTemplateObj.Name .. "_" .. child
         if not childTemplateObj then
             Warning("[spawnPrefab] Child template not found: " .. tostring(childTemplateId))
             goto continue
@@ -94,7 +95,7 @@ local function spawnPrefab(prefabObj, entInfo)
 
 
         NetChannel.Spawn:SendToServer({
-            TemplateId = childTemplateId,
+            TemplateId = childTemplateNameId,
             EntInfo = childEntInfo,
             RequestId = reqId
         })
@@ -113,7 +114,7 @@ function Commands.SpawnCommand(template, entInfo)
     }
     local spawnedGuid = nil
 
-    local templateObj = Ext.Template.GetTemplate(EntityHelpers.TakeTailTemplate(template))
+    local templateObj = Ext.Template.GetTemplate(RBUtils.TakeTailTemplate(template))
     local isVisual = Ext.Resource.Get(template, "Visual")
     if not templateObj and not isVisual then
         Warning("[SpawnCommand] Template not found: " .. tostring(template))

@@ -272,7 +272,7 @@ function SceneMenu:SavePreset(name, overwrite, candiates)
         entInfo.Rotation = rot
         entInfo.Level = levelName
 
-        local template = EntityHelpers.TakeTailTemplate(entInfo.TemplateId)
+        local template = RBUtils.TakeTailTemplate(entInfo.TemplateId)
         local templateObj = Ext.Template.GetTemplate(template)
         local isVisual = not templateObj and Ext.Resource.Get(entInfo.TemplateId, "Visual")
         if not templateObj and not isVisual then
@@ -826,7 +826,7 @@ function SceneMenu:RenderPresetObjectInfo(parent, entInfo, presetName, presetTyp
         tagsText = "[" .. table.concat(tags, ", ") .. "]"
     end
 
-    local header = parent:AddImageButton(displayName, RBCheckIcon(GetIconForTemplateId(entInfo.TemplateId)))
+    local header = parent:AddImageButton(displayName, RBCheckIcon(RBGetIconForTemplateId(entInfo.TemplateId)))
     local imageSize = self.previewImageSize or (64 * SCALE_FACTOR)
     header.Image.Size = RBUtils.ToVec2(imageSize)
     header.Background = self.iconBGcolor or RBUtils.ToVec4(0)

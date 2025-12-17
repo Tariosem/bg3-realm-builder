@@ -911,7 +911,7 @@ function OutlinerMenu:SetupCollectionSelectablePopup(openKey)
         }
         for guid,_ in pairs(childs) do
             local storedData = EntityStore:GetStoredData(guid)
-            if not storedData or not Ext.Template.GetTemplate(EntityHelpers.TakeTailTemplate(storedData.TemplateId)) then
+            if not storedData or not Ext.Template.GetTemplate(RBUtils.TakeTailTemplate(storedData.TemplateId)) then
                 --Warning("Invalid TemplateId for guid: " .. guid .. ", skipping...")
                 goto continue
             else
@@ -1019,8 +1019,6 @@ function OutlinerMenu:RenderMainArea()
 end
 
 function OutlinerMenu:CreateEntityTab(ent, opts)
-    --self.props[prop.Guid] = prop
-
     local entityTab = nil
 
     if opts and opts.Add then
@@ -1035,7 +1033,7 @@ function OutlinerMenu:CreateEntityTab(ent, opts)
 
             if self.imageRefs and self.imageRefs[ent.Guid] then
                 self.imageRefs[ent.Guid].Tint = EntityStore[ent.Guid].IconTintColor or {1,1,1,1}
-            end            
+            end
         end
 
         entityTab.OnAttach = function()

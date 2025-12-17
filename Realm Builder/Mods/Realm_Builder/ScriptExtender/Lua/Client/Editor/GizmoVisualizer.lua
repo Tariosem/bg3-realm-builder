@@ -198,7 +198,7 @@ function GizmoVisualizer:HideGizmo(guid)
 end
 
 
-local translateItemTemplateId = EntityHelpers.TakeTailTemplate(GIZMO_ITEM.Translate)
+local translateItemTemplateId = RBUtils.TakeTailTemplate(GIZMO_ITEM.Translate)
 function GizmoVisualizer:HighLightGizmoAxis(axis, guid)
     if tonumber(axis) then
         axis = IndexAxisMap[axis]

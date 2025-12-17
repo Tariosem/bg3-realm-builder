@@ -44,7 +44,7 @@ function EntityTab:__init(guid, templateId, parent, initAttach)
                     self.attrTable:SetValue("TemplateId", self.templateId)
                     self.attrTable:SetValue("TemplateName", self.templateName)
                 end
-                local templateObj = Ext.Template.GetTemplate(EntityHelpers.TakeTailTemplate(self.templateId))
+                local templateObj = Ext.Template.GetTemplate(RBUtils.TakeTailTemplate(self.templateId))
                 if templateObj.TemplateType == "character" then
                     self:RenderCharacterTab()
                 elseif templateObj.TemplateType == "item" then
@@ -89,7 +89,7 @@ function EntityTab:Render()
     self:RenderFilterTab()
     self:RenderVisualTab()
 
-    local selfTemplate = Ext.Template.GetTemplate(EntityHelpers.TakeTailTemplate(self.templateId))
+    local selfTemplate = Ext.Template.GetTemplate(RBUtils.TakeTailTemplate(self.templateId))
     if not selfTemplate then return end
 
     if selfTemplate.TemplateType == "character" then
@@ -105,7 +105,7 @@ end
 
 local function debugEntity(guid)
     local template = EntityStore:GetStoredData(guid).TemplateId
-    local templateObj = Ext.Template.GetTemplate(EntityHelpers.TakeTailTemplate(template))
+    local templateObj = Ext.Template.GetTemplate(RBUtils.TakeTailTemplate(template))
 
     local visualTemplate = templateObj and templateObj.VisualTemplate or nil
 

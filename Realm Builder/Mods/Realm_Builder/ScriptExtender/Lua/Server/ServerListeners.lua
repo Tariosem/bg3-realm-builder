@@ -105,7 +105,7 @@ end)
 
 NetChannel.SpawnPreview:SetRequestHandler(function(data, userID)
     local template = data.TemplateId
-    local templateId = EntityHelpers.TakeTailTemplate(template)
+    local templateId = RBUtils.TakeTailTemplate(template)
     local position = data.Position
     local rotation = data.Rotation
     if not position or #position ~= 3 then
