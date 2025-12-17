@@ -6,16 +6,6 @@ local spawningCnt = 0
 local isWaitingForResune = false
 local spawnCoroutinue
 
---[[
-NetChannel.Spawn:SetHandler(function(data, userID)
-    Timer:Ticks(30, function(timerID)
-        NetChannel.Spawn:SendToServer({
-            Resume = true,
-        })
-    end)
-end)
-]]
-
 local function safeResume(co)
     if isWaitingForResune then
         Warning("Spawn coroutine is already resuming, skipping nested resume.")
@@ -85,6 +75,17 @@ local function push(func, cnt)
     else
         createSpawnCoroutinue()
     end
+end
+
+local function spawnHandler(templateId, entInfo, callback)
+    NetChannel.Spawn:RequestToServer({
+        TemplateId = templateId,
+        EntInfo = entInfo
+    }, function(response)
+        if callback then
+            callback(response)
+        end
+    end)
 end
 
 --- @param prefabObj PrefabTemplate

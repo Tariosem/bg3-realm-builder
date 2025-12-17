@@ -10,4 +10,5 @@ RBUtils.RequireFiles("Client/Editor/", {
     "TransformOperator",
     "MaterialProxy",
     "MaterialEditor",
+    "PlacementPreview",
 })

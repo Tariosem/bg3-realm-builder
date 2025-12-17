@@ -54,18 +54,17 @@ RegisterDebugWindow("Realm Builder Debug", function(panel)
     end
 end)
 
-RB_CharacterManager = CharacterManager.new()
-RB_ItemManager = ItemManager.new()
-RB_MultiEffectManager = MultiEffectManager.new()
-RB_VisualManager = VisualResourceManager.new()
-RB_CCAVManager = CCAVManager.new()
-RB_SceneryManager = SceneryManager.new()
-RB_TileConstructionManager = TileConstructionManager.new()
-RB_PrefabManager = PrefabManager.new()
+RB_GLOBALS.CharacterManager = CharacterManager.new()
+RB_GLOBALS.ItemManager = ItemManager.new()
+RB_GLOBALS.MultiEffectManager = MultiEffectManager.new()
+RB_GLOBALS.VisualManager = VisualResourceManager.new()
+RB_GLOBALS.CCAVManager = CCAVManager.new()
+RB_GLOBALS.SceneryManager = SceneryManager.new()
+RB_GLOBALS.TileConstructionManager = TileConstructionManager.new()
+RB_GLOBALS.PrefabManager = PrefabManager.new()
 
 --- @return table<string, integer>, integer
 local function PopulateAllTemplates()
-    if RB_ItemManager.populated then return {}, 0 end
     local itemCnt = 0
     local characterCnt = 0
     local sceneryCnt = 0
@@ -75,23 +74,29 @@ local function PopulateAllTemplates()
     local allWeaponStats = Ext.Stats.GetStats("Weapon")
     for _, statsId in pairs(allWeaponStats) do
         local statsObj = Ext.Stats.Get(statsId)
-        if statsObj.RootTemplate == "" or RB_ItemManager.Data[statsObj.RootTemplate] then goto continue end
+        if statsObj.RootTemplate == "" or RB_GLOBALS.ItemManager.Data[statsObj.RootTemplate] then goto continue end
 
-        if statsObj and statsObj.RootTemplate and not RB_ItemManager.Data[statsObj.RootTemplate] then
-            RB_ItemManager.Data[statsObj.RootTemplate] = RB_ItemManager:PopulateWeapon(statsObj, statsId)
+        if statsObj and statsObj.RootTemplate and not RB_GLOBALS.ItemManager.Data[statsObj.RootTemplate] then
+            RB_GLOBALS.ItemManager.Data[statsObj.RootTemplate] = RB_GLOBALS.ItemManager:PopulateWeapon(statsObj, statsId)
             itemCnt = itemCnt + 1
         end
 
         ::continue::
     end
 
+    local itemManager = RB_GLOBALS.ItemManager
+    local characterManager = RB_GLOBALS.CharacterManager
+    local sceneryManager = RB_GLOBALS.SceneryManager
+    local prefabManager = RB_GLOBALS.PrefabManager
+    local tileConstructionManager = RB_GLOBALS.TileConstructionManager
+
     local allArmorStats = Ext.Stats.GetStats("Armor")
     for _, statsId in pairs(allArmorStats) do
         local statsObj = Ext.Stats.Get(statsId)
-        if statsObj.RootTemplate == "" or RB_ItemManager.Data[statsObj.RootTemplate] then goto continue end
+        if statsObj.RootTemplate == "" or itemManager.Data[statsObj.RootTemplate] then goto continue end
 
-        if statsObj and statsObj.RootTemplate and not RB_ItemManager.Data[statsObj.RootTemplate] then
-            RB_ItemManager.Data[statsObj.RootTemplate] = RB_ItemManager:PopulateArmor(statsObj, statsId)
+        if statsObj and statsObj.RootTemplate and not itemManager.Data[statsObj.RootTemplate] then
+            itemManager.Data[statsObj.RootTemplate] = itemManager:PopulateArmor(statsObj, statsId)
             itemCnt = itemCnt + 1
         end
         ::continue::
@@ -99,36 +104,36 @@ local function PopulateAllTemplates()
 
     local raw = Ext.ClientTemplate.GetAllRootTemplates()
     for uuid, object in pairs(raw) do
-        if object.TemplateType == "item" and not RB_ItemManager.Data[uuid] then
+        if object.TemplateType == "item" and not itemManager.Data[uuid] then
             object = object --[[@as ItemTemplate]]
-            RB_ItemManager.Data[object.Id] = RB_ItemManager:PopulateItem(object)
-            RB_ItemManager.UuidToTemplateName[object.Id] = object.Name
-            RB_ItemManager.TemplateNameToUuid[object.Name] = object.Id
+            itemManager.Data[object.Id] = itemManager:PopulateItem(object)
+            itemManager.UuidToTemplateName[object.Id] = object.Name
+            itemManager.TemplateNameToUuid[object.Name] = object.Id
             itemCnt = itemCnt + 1
         elseif object.TemplateType == "character" then
             --- @diagnostic disable-next-line
-            RB_CharacterManager:PopulateCharacter(object)
+            characterManager:PopulateCharacter(object)
             characterCnt = characterCnt + 1
         elseif object.TemplateType == "scenery" then
             object = object --[[@as SceneryTemplate]]
-            RB_SceneryManager:PopulateScenery(object)
+            sceneryManager:PopulateScenery(object)
             sceneryCnt = sceneryCnt + 1
         elseif object.TemplateType == "TileConstruction" then
             object = object --[[@as ConstructionTemplate]]
-            RB_TileConstructionManager:PopulateConstruction(object)
+            tileConstructionManager:PopulateConstruction(object)
             constructionsCnt = constructionsCnt + 1
         elseif object.TemplateType == "prefab" then
-            RB_PrefabManager:PopulatePrefab(object)
+            prefabManager:PopulatePrefab(object)
             prefabCnt = prefabCnt + 1
         end
     end
 
-    RB_CharacterManager.populated = true
-    RB_ItemManager.populated = true
-    RB_SceneryManager.populated = true
-    RB_PrefabManager.populated = true
-    RB_TileConstructionManager.populated = true
-    RB_ItemManager.modCache = {}
+    characterManager.populated = true
+    itemManager.populated = true
+    sceneryManager.populated = true
+    prefabManager.populated = true
+    tileConstructionManager.populated = true
+    itemManager.modCache = {}
     return {
         Items = itemCnt,
         Characters = characterCnt,
@@ -143,7 +148,7 @@ local function Realm_Builder_Population()
     local memNow = Ext.Utils.GetMemoryUsage()
     local cnts, sumCnt = PopulateAllTemplates()
     local itemsFinished = Ext.Timer:MonotonicTime()
-    local effectCnt = RB_MultiEffectManager:PopulateAllEffects()
+    local effectCnt = RB_GLOBALS.MultiEffectManager:PopulateAllEffects()
     local effectsFinished = Ext.Timer:MonotonicTime()
     if sumCnt >= 0 then
         RBPrintPurple("[Realm Builder] Populating " ..

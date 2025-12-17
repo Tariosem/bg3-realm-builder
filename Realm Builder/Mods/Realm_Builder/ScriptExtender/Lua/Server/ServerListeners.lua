@@ -404,18 +404,18 @@ NetChannel.UpdateDummies:SetHandler(function(data, userID)
 end)
 
 NetChannel.PlayEffect:SetHandler(function(data, userID)
-    RB_EffectManager:PlayEffects(data)
+    RB_GLOBALS.EffectManager:PlayEffects(data)
 end)
 
 NetChannel.StopEffect:SetHandler(function(data, userID)
     if data.Type == "All" then
-        RB_EffectManager:StopAllEffects()
+        RB_GLOBALS.EffectManager:StopAllEffects()
     elseif data.Type == "FxName" then
-        RB_EffectManager:StopEffectByFxName(data.FxName)
+        RB_GLOBALS.EffectManager:StopEffectByFxName(data.FxName)
     elseif data.Type == "Object" then
-        RB_EffectManager:StopEffectByObject(data.Object)
+        RB_GLOBALS.EffectManager:StopEffectByObject(data.Object)
     elseif data.Type == "Both" then
-        RB_EffectManager:StopEffectByComb(data.FxName, data.Object)
+        RB_GLOBALS.EffectManager:StopEffectByComb(data.FxName, data.Object)
     end
 end)
 
@@ -423,21 +423,21 @@ NetChannel.CreateStat:SetHandler(function(data, userID)
     data.DisplayName = data.DisplayName .. tostring(userID)
 
     if data.Type == "StatusData" then
-        RB_EffectManager:PlayStatus(data)
+        RB_GLOBALS.EffectManager:PlayStatus(data)
     elseif data.Type == "SpellData" then
-        RB_EffectManager:PlaySpell(data)
+        RB_GLOBALS.EffectManager:PlaySpell(data)
     end
 end)
 
 NetChannel.StopStatus:SetHandler(function(data, userID)
     if data.Type == "All" then
-        RB_EffectManager:RemoveAllStatuses()
+        RB_GLOBALS.EffectManager:RemoveAllStatuses()
         return
     end
 
     data.DisplayName = data.DisplayName .. tostring(userID)
 
-    RB_EffectManager:RemoveStatus(data)
+    RB_GLOBALS.EffectManager:RemoveStatus(data)
 end)
 
 
@@ -640,4 +640,12 @@ NetChannel.GetServerEntity:SetRequestHandler(function(data, userID)
     end
 
     return { Guid = data.Guid, Data = result }
+end)
+
+NetChannel.ClientTimer:SetHandler(function (data, userID)
+    if not data.TimerID then
+        Warning("ClientTimer: No TimerID provided")
+        return
+    end
+    Timer:ReceiveClientTimer(data.TimerID)
 end)

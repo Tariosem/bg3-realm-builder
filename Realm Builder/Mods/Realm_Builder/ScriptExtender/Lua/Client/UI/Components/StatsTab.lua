@@ -507,7 +507,7 @@ function StatsTab:RenderEmptyIcon(parent, effectType)
     emptyIcon.OnClick = function()
         local input = emptyInput.Text
         if input and input ~= "" then
-            local data = RB_MultiEffectManager.Data[input]
+            local data = RB_GLOBALS.MultiEffectManager.Data[input]
             if not data then return end
             local dropdata = {
                 Uuid = data.Uuid,

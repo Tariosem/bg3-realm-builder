@@ -164,19 +164,19 @@ end
 
 local function populateVisualResource()
     local bef = Ext.Utils.GetMemoryUsage()
-    if not RB_VisualManager then
-        RB_VisualManager = VisualResourceManager.new()
+    if not RB_GLOBALS.VisualManager then
+        RB_GLOBALS.VisualManager = VisualResourceManager.new()
     end
-    RB_VisualManager:PopulateAllVisualResources()
+    RB_GLOBALS.VisualManager:PopulateAllVisualResources()
     RBPrintPurple("[Realm Builder] Visual Resource Manager memory usage: " .. (Ext.Utils.GetMemoryUsage() - bef)/1000/1000 .. " MB")
 end
 
 local function populateCCAVResource()
     local bef = Ext.Utils.GetMemoryUsage()
-    if not RB_CCAVManager then
-        RB_CCAVManager = CCAVManager.new()
+    if not RB_GLOBALS.CCAVManager then
+        RB_GLOBALS.CCAVManager = CCAVManager.new()
     end
-    RB_CCAVManager:PopulateAll()
+    RB_GLOBALS.CCAVManager:PopulateAll()
     RBPrintPurple("[Realm Builder] CCAV Manager memory usage: " .. (Ext.Utils.GetMemoryUsage() - bef)/1000/1000 .. " MB")
 end
 
@@ -188,7 +188,7 @@ if Ext.Debug.IsDeveloperMode() then
 end
 
 RegisterConsoleCommand("rb_enable_visual_manager", function ()
-    if RB_VisualManager and RB_VisualManager.populated then
+    if RB_GLOBALS.VisualManager and RB_GLOBALS.VisualManager.populated then
         RBPrintPurple("[Realm Builder] Visual Resource Manager is already enabled and populated.")
         return
     end
@@ -197,10 +197,10 @@ RegisterConsoleCommand("rb_enable_visual_manager", function ()
 
     local mainMenu = RB_GLOBALS.MainMenu
     if mainMenu and mainMenu.browsers and not mainMenu.browsers.visual then
-        mainMenu.browsers.visual = RB_VisualManager:SetupVisualBrowser()
+        mainMenu.browsers.visual = RB_GLOBALS.VisualManager:SetupVisualBrowser()
         mainMenu.browsers.visual:CreateCachedSort("SourceFile")
         Debug("Visual Browser initialized.")
-        mainMenu.browsers.CCAV = RB_CCAVManager:SetupCCAVBrowser()
+        mainMenu.browsers.CCAV = RB_GLOBALS.CCAVManager:SetupCCAVBrowser()
         mainMenu.browsers.CCAV:CreateCachedSort("DisplayName")
         Debug("CCAV Browser initialized.")
         

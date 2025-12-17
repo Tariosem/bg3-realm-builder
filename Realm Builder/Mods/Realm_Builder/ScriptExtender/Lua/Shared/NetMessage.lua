@@ -39,3 +39,8 @@ NetChannel.Entities.Deleted = Ext.Net.CreateChannel(ModuleUUID, "EntitiesDeleted
 --- @field Broadcast fun(self, data: {})
 --- @field OnMessage fun(self, data: {})
 NetChannel.ClearHistory = Ext.Net.CreateChannel(ModuleUUID, "ClearHistory")
+
+--- @class ClientTimerChannel : NetChannel
+--- @field RequestToClient fun(self, data: {TimerID: integer, Ticks: integer, MS: number})
+--- @field SetRequestHandler fun(self, handler: fun(data: {TimerID: integer, Ticks: integer, MS: number}, userID: number))
+NetChannel.ClientTimer = Ext.Net.CreateChannel(ModuleUUID, "ClientTimer")

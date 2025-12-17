@@ -47,3 +47,23 @@ NetChannel.ApplyVisualPreset:SetHandler(function(data, userID)
     end
     VisualHelpers.ApplyVisualParams(guid, preset)
 end)
+
+NetChannel.ClientTimer:SetRequestHandler(function (data, userID)
+    if not data.TimerID then
+        Warning("ClientTimer: No TimerID provided")
+        return
+    end
+    if data.Ticks then
+        Timer:Ticks(data.Ticks, function(timerID)
+            NetChannel.ClientTimer:SendToServer({TimerID = data.TimerID})
+        end)
+    elseif data.MS then
+        Timer:After(data.MS, function(timerID)
+            NetChannel.ClientTimer:SendToServer({TimerID = data.TimerID})
+        end)
+    else
+        Ext.OnNextTick(function()
+            NetChannel.ClientTimer:SendToServer({TimerID = data.TimerID})
+        end)
+    end
+end)

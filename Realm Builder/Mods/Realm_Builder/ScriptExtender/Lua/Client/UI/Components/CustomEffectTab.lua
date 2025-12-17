@@ -262,7 +262,7 @@ function CustomEffectTab:RenderEffects()
         effectTree.UserData = effectObj
         effectTree.UserData.isMultiEffect = false
         local userData = effectTree.UserData
-        local oriData = RB_MultiEffectManager.Data[effectObj.FxName] or {}
+        local oriData = RB_GLOBALS.MultiEffectManager.Data[effectObj.FxName] or {}
         effectTree.CanDrag = true
         effectTree.DragDropType = "EffectInfo"
 
@@ -351,7 +351,7 @@ function CustomEffectTab:RenderEffects()
         sourceBoneResetButton.SameLine = true
 
         sourceBoneResetButton.OnClick = function()
-            local data = RB_MultiEffectManager.Data[effectObj.FxName]
+            local data = RB_GLOBALS.MultiEffectManager.Data[effectObj.FxName]
             if data and data.SourceBone then
                 effectObj.SourceBone = data.SourceBone
                 sourceBoneInput.Text = tostring(data.SourceBone)
@@ -386,7 +386,7 @@ function CustomEffectTab:RenderEffects()
         targetBoneResetButton.SameLine = true
 
         targetBoneResetButton.OnClick = function()
-            local data = RB_MultiEffectManager.Data[effectObj.FxName]
+            local data = RB_GLOBALS.MultiEffectManager.Data[effectObj.FxName]
             if data and data.TargetBone then
                 effectObj.TargetBone = data.TargetBone
                 --userData.TargetBone = data.TargetBone
@@ -481,7 +481,7 @@ function CustomEffectTab:RenderEffects()
         local FxNames = data.FxName
         if not FxNames or FxNames == "" then
             local uuid = data.Uuid
-            local libData = RB_MultiEffectManager.Data[uuid]
+            local libData = RB_GLOBALS.MultiEffectManager.Data[uuid]
             if not libData then
                 Warning("[EffectTab] Cannot find effect data for UUID: " .. tostring(uuid))
                 return
@@ -492,7 +492,7 @@ function CustomEffectTab:RenderEffects()
             FxNames = {FxNames}
         end
         for _, fxName in ipairs(FxNames) do
-            local libData = RB_MultiEffectManager.Data[fxName]
+            local libData = RB_GLOBALS.MultiEffectManager.Data[fxName]
             local entry = {
                 Uuid = fxName,
                 FxName = fxName,
@@ -525,7 +525,7 @@ function CustomEffectTab:RenderEffects()
         if not fxName or fxName == "" then
             return
         end
-        local data = RB_MultiEffectManager.Data[fxName]
+        local data = RB_GLOBALS.MultiEffectManager.Data[fxName]
         if not data then
             Warning("[EffectTab] Cannot find effect data for FxName: " .. tostring(fxName))
             return

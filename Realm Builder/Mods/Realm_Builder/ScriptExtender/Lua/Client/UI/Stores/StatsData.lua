@@ -99,8 +99,8 @@ function GetEffectInfo(effectUuid)
     local info = EffectToInfo[effectUuid]
 
     if not info then
-        if RB_MultiEffectManager.UuidToEffectName[effectUuid] then
-            local multiEffectName = RB_MultiEffectManager.UuidToEffectName[effectUuid]
+        if RB_GLOBALS.MultiEffectManager.UuidToEffectName[effectUuid] then
+            local multiEffectName = RB_GLOBALS.MultiEffectManager.UuidToEffectName[effectUuid]
             info = EffectToInfo[multiEffectName]
         end
     end
@@ -156,8 +156,8 @@ function GetEffectAnimation(any)
         return EffectToAnimation[any]
     end
 
-    if RB_MultiEffectManager.UuidToEffectName[any] and EffectToAnimation[RB_MultiEffectManager.UuidToEffectName[any]] then
-        return EffectToAnimation[RB_MultiEffectManager.UuidToEffectName[any]]
+    if RB_GLOBALS.MultiEffectManager.UuidToEffectName[any] and EffectToAnimation[RB_GLOBALS.MultiEffectManager.UuidToEffectName[any]] then
+        return EffectToAnimation[RB_GLOBALS.MultiEffectManager.UuidToEffectName[any]]
     end
 
     return nil

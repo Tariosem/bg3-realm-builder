@@ -1,7 +1,8 @@
 ---@alias TimerID integer
 ---@class Timer
 Timer = {
-    _active = {}
+    _active = {},
+    _serverClientCallbacks = {}
 }
 
 ---@param ms integer
@@ -170,4 +171,37 @@ function Timer:CancelAll()
         Ext.Events.Tick:Unsubscribe(id)
     end
     Timer._active = {}
+end
+
+local clientTimerId = 0
+function Timer:ClientOnTicks(ticks, callback, user)
+    if Ext.IsClient() then
+        return self:Ticks(ticks, callback)
+    end
+    clientTimerId = clientTimerId + 1
+    local timerID = clientTimerId
+    self._serverClientCallbacks[timerID] = callback
+    NetChannel.ClientTimer:SendToClient({ TimerID = timerID, Ticks = ticks }, user)
+    return timerID
+end
+
+function Timer:ClientAfter(ms, callback, user)
+    if Ext.IsClient() then
+        return self:After(ms, callback)
+    end
+    clientTimerId = clientTimerId + 1
+    local timerID = clientTimerId
+    self._serverClientCallbacks[timerID] = callback
+    NetChannel.ClientTimer:SendToClient({ TimerID = timerID, MS = ms }, user)
+    return timerID
+end
+
+function Timer:ReceiveClientTimer(timerID)
+    local callback = self._serverClientCallbacks[timerID]
+    if callback then
+        callback(timerID)
+    else
+        Warning("Timer:ReceiveClientTick - No callback found for timerID: " .. tostring(timerID))
+    end
+    self._serverClientCallbacks[timerID] = nil
 end

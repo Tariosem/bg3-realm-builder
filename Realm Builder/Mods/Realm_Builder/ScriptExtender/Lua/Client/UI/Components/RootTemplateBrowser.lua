@@ -95,11 +95,15 @@ function RootTemplateBrowser:RenderIcon(entry, cell)
     end
 
     iconImage.OnDragEnd = function()
-        Timer:Ticks(20, function (timerID)
-            local spawnPos, spawnRot = PickingUtils.GetPickingHitPosAndRot()
-            if not spawnPos or not spawnRot then return end
-            Commands.SpawnCommand(entry.TemplateId, { Position=spawnPos, Rotation=spawnRot })
-        end)
+        if self.templateType == "prefab" then
+            Timer:Ticks(20, function (timerID)
+                local spawnPos, spawnRot = PickingUtils.GetPickingHitPosAndRot()
+                if not spawnPos or not spawnRot then return end
+                Commands.SpawnCommand(entry.TemplateId, { Position=spawnPos, Rotation=spawnRot })
+            end)
+        else
+            PlacementPreview:StartPreview(entry, entry[self.iconTooltipName])
+        end
     end
 
     iconImage:Tooltip():AddText(entry[self.iconTooltipName] or "Unknown")

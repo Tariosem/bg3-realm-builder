@@ -178,56 +178,57 @@ function RealmBuilderMainMenu:Render()
 
     Timer:Ticks(7, function()
         Debug("Initializing Browsers...")
-        self.browsers.item = ItemBrowser.new(RB_ItemManager, "Item - Browser")
+        self.browsers.item = ItemBrowser.new(RB_GLOBALS.ItemManager, "Item - Browser")
         self.browsers.item:CreateCachedSort("DisplayName")
         Debug("Item Browser initialized.")
     end)
 
     Timer:Ticks(8, function()
-        self.browsers.effect = EffectBrowser.new(RB_MultiEffectManager, "Effect - Browser")
+        self.browsers.effect = EffectBrowser.new(RB_GLOBALS.MultiEffectManager, "Effect - Browser")
         self.browsers.effect:CreateCachedSort("DisplayName")
         Debug("Effect Browser initialized.")
     end)
 
     Timer:Ticks(9, function()
-        self.browsers.character = RootTemplateBrowser.new(RB_CharacterManager, "Character - Browser")
+        self.browsers.character = RootTemplateBrowser.new(RB_GLOBALS.CharacterManager, "Character - Browser")
         self.browsers.character:CreateCachedSort("TemplateName")
         Debug("Character Browser initialized.")
     end)
 
     Timer:Ticks(9, function()
-        self.browsers.scenery = RootTemplateBrowser.new(RB_SceneryManager, "Scenery - Browser")
+        self.browsers.scenery = RootTemplateBrowser.new(RB_GLOBALS.SceneryManager, "Scenery - Browser")
         self.browsers.scenery:CreateCachedSort("TemplateName")
         Debug("Scenery Browser initialized.")
     end)
 
     Timer:Ticks(9, function()
-        self.browsers.prefab = RootTemplateBrowser.new(RB_PrefabManager, "Prefab - Browser")
+        self.browsers.prefab = RootTemplateBrowser.new(RB_GLOBALS.PrefabManager, "Prefab - Browser")
+        self.browsers.prefab.templateType = "prefab"
         self.browsers.prefab:CreateCachedSort("TemplateName")
         Debug("Prefab Browser initialized.")
     end)
 
     Timer:Ticks(9, function()
-        self.browsers.construction = RootTemplateBrowser.new(RB_TileConstructionManager, "Tile Construction - Browser")
+        self.browsers.construction = RootTemplateBrowser.new(RB_GLOBALS.TileConstructionManager, "Tile Construction - Browser")
         self.browsers.construction:CreateCachedSort("TemplateName")
         Debug("Tile Construction Browser initialized.")
     end)
 
     Timer:Ticks(10, function()
-        if not RB_VisualManager or not RB_VisualManager.populated then
+        if not RB_GLOBALS.VisualManager or not RB_GLOBALS.VisualManager.populated then
             return
         end
-        local visualBrowser = RB_VisualManager:SetupVisualBrowser()
+        local visualBrowser = RB_GLOBALS.VisualManager:SetupVisualBrowser()
         self.browsers.visual = visualBrowser
         self.browsers.visual:CreateCachedSort("SourceFile")
         Debug("Visual Browser initialized.")        
     end)
 
     Timer:Ticks(9, function (timerID)
-        if not RB_CCAVManager or not RB_CCAVManager.populated then
+        if not RB_GLOBALS.CCAVManager or not RB_GLOBALS.CCAVManager.populated then
             return
         end
-        self.browsers.CCAV = RB_CCAVManager:SetupCCAVBrowser()
+        self.browsers.CCAV = RB_GLOBALS.CCAVManager:SetupCCAVBrowser()
         self.browsers.CCAV:CreateCachedSort("DisplayName")
         Debug("CCAV Browser initialized.")
     end)
@@ -321,7 +322,6 @@ function RealmBuilderMainMenu:Add()
 end
 
 --- @type RB_MainMenu
-RB_GLOBALS.MainMenu = nil
 EventsSubscriber.RegisterOnSessionLoaded(function()
     if RB_GLOBALS.MainMenu == nil then
         RB_GLOBALS.MainMenu = RealmBuilderMainMenu:Add()

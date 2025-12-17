@@ -174,8 +174,8 @@ StatsBoostHandlers = {
         local function render(parent, iconSize)
             local bulletText = parent:AddBulletText(GetLoca("Gain Proficiency : "))
             local icon = "Item_Unknown"
-            if RB_ItemManager then
-                icon = RB_ItemManager.tagIcons[prof] 
+            if RB_GLOBALS.ItemManager then
+                icon = RB_GLOBALS.ItemManager.tagIcons[prof] 
             end
             local image = parent:AddImage(icon, RBUtils.ToVec2((iconSize or 32) * SCALE_FACTOR))
             image.SameLine = true

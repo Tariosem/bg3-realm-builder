@@ -7,7 +7,7 @@ EffectTab = _Class("EffectTab")
 --- @class EffectTab
 function EffectTab:__init(uuid, parent, displayName)
     self.guid = uuid or ""
-    local templateData = RB_MultiEffectManager.Data[self.guid] or nil
+    local templateData = RB_GLOBALS.MultiEffectManager.Data[self.guid] or nil
     self.displayName = displayName or templateData.DisplayName or "Unknown"
 
     self.panel = nil
@@ -86,7 +86,7 @@ function EffectTab:RenderProfile()
         [GetLoca("DisplayName")] = self.displayName,
         [GetLoca("Icon")] = self.icon,
         [GetLoca("Uuid")] = self.guid,
-        [GetLoca("Effect Name")] = RB_MultiEffectManager.Data[self.guid] and RB_MultiEffectManager.Data[self.guid].TemplateName or "Unknown",
+        [GetLoca("Effect Name")] = RB_GLOBALS.MultiEffectManager.Data[self.guid] and RB_GLOBALS.MultiEffectManager.Data[self.guid].TemplateName or "Unknown",
     })
 end
 
@@ -112,7 +112,7 @@ function EffectTab:RenderEffectsTab()
 end
 
 function EffectTab:RenderEffects()
-    local FxNames = MultiEffectManager.Data[self.guid] and MultiEffectManager.Data[self.guid].FxNames or {}
+    local FxNames = RB_GLOBALS.MultiEffectManager.Data[self.guid] and RB_GLOBALS.MultiEffectManager.Data[self.guid].FxNames or {}
 
     self.effectsTimelineWin = self.effectsInfoTab:AddChildWindow("EffectsTimeline")
 
@@ -122,7 +122,7 @@ function EffectTab:RenderEffects()
     self.effectsInfos = {}
 
     for _, fxName in ipairs(FxNames) do
-        local data = RB_MultiEffectManager.Data[fxName]
+        local data = RB_GLOBALS.MultiEffectManager.Data[fxName]
         local effectTree = self.effectsRoot:AddTree(data.DisplayName or fxName)
         local effectIcon = effectTree:AddTreeIcon(self.icon, IMAGESIZE.ROW)
         effectTree.UserData = { 
@@ -538,7 +538,7 @@ function EffectTab:PlayEffect(userdata)
 
     local info = userdata.UserData
     local tags = {}
-    local fxNameData = RB_MultiEffectManager.Data[info.FxName] or {}
+    local fxNameData = RB_GLOBALS.MultiEffectManager.Data[info.FxName] or {}
     local data = {
         Object = objs,
         Target = targets,
@@ -591,7 +591,7 @@ function EffectTab:Play()
     for _, userdata in ipairs(self.effectsInfos) do
         local info = userdata.UserData
         local tags = {}
-        local libData = RB_MultiEffectManager.Data[info.FxName] or {}
+        local libData = RB_GLOBALS.MultiEffectManager.Data[info.FxName] or {}
 
         local data = {
             Object = objs,
