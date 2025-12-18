@@ -1,8 +1,11 @@
 --- workaround for spawning scenery
 local isSpawning = false
+
+--- @type table<integer, fun(data: SpawnResponseData)>
 local spawnIdCallbacks = {}
 local spawnId = 0
 
+--- @param data SpawnResponseData
 NetChannel.Spawn:SetHandler(function(data, userID)
     if data.RequestId then
         local callback = spawnIdCallbacks[data.RequestId]
@@ -55,9 +58,11 @@ local function spawnPrefab(prefabObj, entInfo)
         })
     end
 
+    local childrenCnt = #prefabObj.Children
     setSpawnIdCallback(reqId, function(data)
         table.insert(spawned, data.Guid)
-        if #spawned == #prefabObj.Children then
+        _P("Spawned: " .. #spawned .. " / " .. childrenCnt)
+        if #spawned == childrenCnt then
             pushCommand()
             setSpawnIdCallback(reqId, nil)
         end
@@ -160,6 +165,7 @@ function Commands.DuplicateCommand(targets, path)
     local originStats = {}
 
 
+    local duplicateCnt = 0
     local toGet = {}
     for _, guid in pairs(targets) do
         local stored = EntityStore:GetStoredData(guid)
@@ -176,7 +182,6 @@ function Commands.DuplicateCommand(targets, path)
     end
 
     local spawn
-    local toDuplicate = {}
     NetChannel.GetTemplate:RequestToServer({ Guid = toGet }, function(response)
         for guid, templateId in pairs(response.GuidToTemplateId) do
             templateMap[guid] = templateId
@@ -185,10 +190,10 @@ function Commands.DuplicateCommand(targets, path)
         for _, guid in pairs(targets) do
             local templateId = templateMap[guid]
             if templateId then
-                table.insert(toDuplicate, guid)
+                duplicateCnt = duplicateCnt + 1
             end
         end
-        if #toDuplicate == 0 then
+        if duplicateCnt == 0 then
             Warning("[DuplicateCommand] No valid entities to duplicate.")
             return
         end
@@ -223,12 +228,14 @@ function Commands.DuplicateCommand(targets, path)
     local reqId = getSpawnId()
     setSpawnIdCallback(reqId, function(data)
         table.insert(spawnedDuplications, data.Guid)
-        if #spawnedDuplications == #toDuplicate then
+        _P("Duplicated: " .. #spawnedDuplications .. " / " .. duplicateCnt)
+        if #spawnedDuplications == duplicateCnt then
             selectAndPushCommand()
             setSpawnIdCallback(reqId, nil)
         end
     end)
 
+    Debug("[DuplicateCommand] Spawning " .. tostring(duplicateCnt) .. " duplicated entities.")
     function spawn()
         for guid, templateId in pairs(templateMap) do
             local transform = oriTransforms[guid]
@@ -239,7 +246,8 @@ function Commands.DuplicateCommand(targets, path)
             entData.Rotation = transform.RotationQuat
             NetChannel.Spawn:SendToServer({
                 TemplateId = templateId,
-                EntInfo = entData
+                EntInfo = entData,
+                RequestId = reqId
             })
         end
     end
@@ -304,7 +312,8 @@ function Commands.SpawnPreset(data)
         NetChannel.Spawn:SendToServer({
             TemplateId = entData.TemplateId,
             EntInfo = entData or {},
-            Type = data.SpawnType
+            Type = data.SpawnType,
+            RequestId = reqId
         })
     end
 

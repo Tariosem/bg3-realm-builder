@@ -2,6 +2,11 @@ local spawnCoroutine = nil
 local isWaitingForResune = false
 local spawnBroadcastDirty = true
 
+--- @class SpawnResponseData
+--- @field Guid GUIDSTRING?
+--- @field Idle boolean?
+--- @field RequestId integer?
+
 --- @type {Data:SpawnData, RequestId:integer, UserId:integer}[]
 local queuedSpawnData = {}
 
@@ -112,6 +117,7 @@ function createCoroutine()
         while true do
             if #queuedSpawnData == 0 then
                 Debug("[SpawnCoroutine] Spawn queue empty, going idle.")
+                
                 NetChannel.Spawn:Broadcast({ Idle = true })
                 spawnBroadcastDirty = true
                 coroutine.yield()
@@ -141,6 +147,9 @@ function createCoroutine()
     return spawnCoroutine
 end
 
+--- @param data SpawnData
+--- @param reqId integer
+--- @param userId integer
 local function enqueueSpawnData(data, reqId, userId)
     table.insert(queuedSpawnData, {
         Data = data,
@@ -158,6 +167,7 @@ end
 
 createCoroutine()
 
+--- @param data SpawnData
 NetChannel.Spawn:SetHandler(function(data, userID)
     enqueueSpawnData(data, data.RequestId, userID)
     --spawnHandler(data)

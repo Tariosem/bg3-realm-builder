@@ -34,7 +34,7 @@ function RBGetIcon(guid)
         return specialGuids[guid]
     end
 
-    if SceneryRegistry[guid] then
+    if NearbyMap.GetRegisteredScenery(guid) then
         return RB_ICONS.Scenery
     end
 

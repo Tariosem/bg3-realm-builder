@@ -4,7 +4,7 @@ local nearByEntries = {
 NearbyMap = NearbyMap or {}
 
 --- @type table<string,EntityHandle>
-SceneryRegistry = SceneryRegistry or {}
+local SceneryRegistry = {}
 
 local function ClearNearbyMap(pos, radius)
     nearByEntries = {}
@@ -110,4 +110,14 @@ end
 --- @return NearbyEntry[]
 function NearbyMap.GetAllNearbyEntries()
     return nearByEntries
+end
+
+function NearbyMap.RegisterScenery(entity)
+    if not entity or not entity.Scenery then return end
+    local guid = entity.Scenery.Uuid
+    SceneryRegistry[guid] = entity
+end
+
+function NearbyMap.GetRegisteredScenery(guid)
+    return SceneryRegistry[guid]
 end

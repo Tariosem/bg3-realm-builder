@@ -90,7 +90,7 @@ function CCAVBrowser:RenderIcon(entry, cell)
 
             actTab:AddItem("Remove Custom Visual Override", function()
                 local target = self:GetSelected()
-                NetChannel.VisualOverride:RequestToServer({
+                NetChannel.CallOsiris:RequestToServer({
                     Function = "RemoveCustomVisualOvirride",
                     Args = {
                         target,

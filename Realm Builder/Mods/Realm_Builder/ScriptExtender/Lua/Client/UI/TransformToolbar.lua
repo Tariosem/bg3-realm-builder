@@ -20,15 +20,21 @@ function TransformToolbar:RegisterKeyInputEvents()
     self.Registered = true
 
     local function singleSelect()
-        local guid = PickingUtils.GetPickingGuid()
+        local guid = nil
         local entity = PickingUtils.GetPickingEntity()
 
         if entity and entity.Scenery and not self.Ignore["Scenery"] then
             guid = entity.Scenery.Uuid
-            if not SceneryRegistry[guid] then
-                SceneryRegistry[guid] = entity
+            if not NearbyMap.GetRegisteredScenery(guid) then
+                NearbyMap.RegisterScenery(entity)
             end
-            RB_GLOBALS.TransformEditor:Select({ MovableProxy.CreateByGuid(entity.Scenery.Uuid) })
+        end
+
+        if not guid then 
+            guid = PickingUtils.GetPickingGuid()
+        end
+
+        if not guid then
             return
         end
 
@@ -91,20 +97,15 @@ function TransformToolbar:RegisterKeyInputEvents()
     end)
 
     ttMod:RegisterEvent("MultiSelect", function(e)
-        if e.Repeat then return end
-
-        if not self.MultiSelecting then
-            self.MultiSelecting = true
-            Debug("Multi-Selecting Enabled")
-        else
-            self.MultiSelecting = false
-            Debug("Multi-Selecting Disabled")
-            self.Selecting = {}
-        end
+        if e.Event ~= "KeyDown" or e.Repeat then return end
+        self.MultiSelecting = true
+        singleSelect()
     end)
 
     ttMod:RegisterEvent("Select", function(e)
         if e.Event ~= "KeyDown" or e.Repeat then return end
+        self.MultiSelecting = false
+        self.Selecting = {} 
         singleSelect()
     end)
 
@@ -124,7 +125,7 @@ function TransformToolbar:RegisterKeyInputEvents()
         local pos, rot = PickingUtils.GetPickingHitPosAndRot()
         if not pos or not rot then return end
         local minY = math.huge
-        local centerXZ = Vec3.new(0,0,0)
+        local centerXZ = Vec3.new(0, 0, 0)
 
         for _, proxy in ipairs(targets) do
             local p = proxy:GetWorldTranslate()
@@ -136,7 +137,7 @@ function TransformToolbar:RegisterKeyInputEvents()
         centerXZ[1] = centerXZ[1] / #targets
         centerXZ[3] = centerXZ[3] / #targets
 
-        
+
         local center = Vec3.new(centerXZ[1], minY, centerXZ[3])
         local locals = {}
 
@@ -164,7 +165,7 @@ function TransformToolbar:RegisterKeyInputEvents()
         end
 
         Commands.SetTransformSeparate(targets, transforms)
-    end)
+    end, GetLoca("Move selected objects to the picking position."))
 
     ttMod:RegisterEvent("Duplicate", function(e)
         if e.Event ~= "KeyDown" then return end
@@ -195,11 +196,10 @@ function TransformToolbar:RegisterKeyInputEvents()
     end)
 
 
-
     ttMod:RegisterEvent("OpenNearbyPopup", function(e)
         if e.Event ~= "KeyDown" then return end
         self:CreateNearbyPopup()
-    end)
+    end, GetLoca("Open a popup to select nearby entities."))
 
     ttMod:RegisterEvent("Move3DCursor", function(e)
         if e.Event ~= "KeyDown" then return end
@@ -208,6 +208,21 @@ function TransformToolbar:RegisterKeyInputEvents()
             return
         end
         self:MoveCursor()
+    end, GetLoca("Move the 3D cursor to the picking position."))
+
+    ttMod:RegisterEvent("SnapToGround", function (e)
+        if e.Event ~= "KeyDown" then return end
+        if not RB_GLOBALS.TransformEditor.Target or #RB_GLOBALS.TransformEditor.Target == 0 then return end
+
+        local targets = {}
+
+        for _, proxy in pairs(RB_GLOBALS.TransformEditor.Target or {}) do
+            if proxy.Guid then
+                table.insert(targets, proxy)
+            end
+        end
+
+        Commands.SnapToGround(targets)
     end)
 
     buMod:RegisterEvent("BindTo", function(e)
@@ -243,7 +258,7 @@ function TransformToolbar:RegisterKeyInputEvents()
         Commands.Unbind(targets)
     end)
 
-    buMod:RegisterEvent("Snap", function(e)
+    buMod:RegisterEvent("SnapToParent", function(e)
         if e.Event ~= "KeyDown" then return end
         if not RB_GLOBALS.TransformEditor.Target or #RB_GLOBALS.TransformEditor.Target == 0 then return end
 
@@ -251,12 +266,12 @@ function TransformToolbar:RegisterKeyInputEvents()
 
         for _, proxy in pairs(RB_GLOBALS.TransformEditor.Target or {}) do
             if proxy.Guid then
-                table.insert(targets, proxy.Guid)
+                table.insert(targets, proxy)
             end
         end
 
-        Commands.SnapCommand(targets)
-    end)
+        Commands.SnapToParent(targets)
+    end, GetLoca("Snap selected entities to ."))
 
     buMod:RegisterEvent("BindPopup", function(e)
         if e.Event ~= "KeyDown" then return end
@@ -384,8 +399,10 @@ function TransformToolbar:RegisterTransformEditorEvents()
 
         local resetTransform = {}
         if e.Key == teMod:GetKeyByEvent("RotateMode").Key then resetTransform.RotationQuat = { 0, 0, 0, 1 } end
-        if e.Key == teMod:GetKeyByEvent("TranslateMode").Key then resetTransform.Translate = { RBGetPosition(
-            RBGetHostCharacter()) } end
+        if e.Key == teMod:GetKeyByEvent("TranslateMode").Key then
+            resetTransform.Translate = { RBGetPosition(
+                RBGetHostCharacter()) }
+        end
         if e.Key == teMod:GetKeyByEvent("ScaleMode").Key then resetTransform.Scale = { 1, 1, 1 } end
 
         Commands.SetTransform(globalEditor.Target or {}, resetTransform)
@@ -826,13 +843,13 @@ function TransformToolbar:CreateBindPopup(guid)
             image.SameLine = true
         end
 
-        local snapButton = right:AddButton("Snap")
+        local snapButton = right:AddButton("Snap To Parent")
         snapButton.SameLine = true
         snapButton.OnClick = function()
-            Commands.SnapCommand({ guid }, false, true)
+            Commands.SnapToParent({ guid }, false, true)
         end
         snapButton.OnRightClick = function()
-            Commands.SnapCommand({ guid }, true, false)
+            Commands.SnapToParent({ guid }, true, false)
         end
         snapButton:Tooltip():AddText("Left Click: Snap Position\nRight Click: Snap Rotation")
 
@@ -978,8 +995,9 @@ function TransformToolbar:CreateNearbyPopup()
                 Label = "Open Visual Tab",
                 OnClick = function(selectable)
                     if not selected or selected == "" then return end
-                    if SceneryRegistry[selected] then
-                        local entity = SceneryRegistry[selected]
+                    local sceneryEnt = NearbyMap.GetRegisteredScenery(selected)
+                    if sceneryEnt then
+                        local entity = sceneryEnt
                         local visualTab = VisualTab.CreateByEntity(entity)
                         visualTab:Refresh()
                         return

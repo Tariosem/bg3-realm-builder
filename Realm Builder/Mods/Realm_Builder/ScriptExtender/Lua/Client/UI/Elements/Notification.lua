@@ -282,6 +282,7 @@ function Notification:QuickDismiss()
         if panel then
             panel:SetStyle("Alpha", 0)
             panel:Destroy()
+            panel = nil
         end
     end)
 

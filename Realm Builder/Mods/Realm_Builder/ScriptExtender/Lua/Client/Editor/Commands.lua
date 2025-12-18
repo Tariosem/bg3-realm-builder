@@ -2,7 +2,7 @@
 --- @field SetTransform fun(proxies: RB_MovableProxy|RB_MovableProxy[], transform: {Translate: Vec3|nil, RotationQuat: Quat|nil, Scale: Vec3|nil}, notRecordHistory: boolean|nil)
 --- @field Bind fun(targets: GUIDSTRING|GUIDSTRING[], parent: GUIDSTRING)
 --- @field Unbind fun(targets: GUIDSTRING[])
---- @field Snap fun(targets: GUIDSTRING|GUIDSTRING[], onlyRotation: boolean|nil, onlyPosition: boolean|nil)
+--- @field SnapToParent fun(targets: RB_MovableProxy[], onlyRotation: boolean|nil, onlyPosition: boolean|nil)
 Commands = Commands or {}
 
 --- @param proxies RB_MovableProxy[]
@@ -120,47 +120,68 @@ function Commands.Unbind(targets)
     })
 end
 
-function Commands.SnapCommand(targets, onlyRotation, onlyPosition)
-    local parents = {}
-    for _, guid in ipairs(targets) do
-        local parent = EntityStore:GetBindParent(guid)
+--- @param targets RB_MovableProxy[]
+function Commands.SnapToGround(targets)
+    if #targets == 0 then return end
+
+    local proxyPairs = {}
+    for _, proxy in pairs(targets) do
+        table.insert(proxyPairs, {proxy, proxy:GetWorldTranslate()})
+    end
+    table.sort(proxyPairs, function(a, b)
+        return a[2][2] < b[2][2]
+    end)
+
+    local targetPos = {}
+    for _, pair in ipairs(proxyPairs) do
+        local proxy = pair[1] --[[@type RB_MovableProxy]]
+        local pos = Ext.Level.GetHeightsAt(pair[2][1], pair[2][3])
+
+        local finalPos = {pair[2][1], pos[1], pair[2][3]}
+        targetPos[proxy] = finalPos
+        proxy:SetWorldTranslate(finalPos)
+    end
+
+    HistoryManager:PushCommand({
+        Undo = function()
+            for _, pair in ipairs(proxyPairs) do
+                local proxy = pair[1] --[[@type RB_MovableProxy]]
+                proxy:SetWorldTranslate(pair[2])
+            end
+        end,
+        Redo = function()
+            for _, pair in ipairs(proxyPairs) do
+                local proxy = pair[1] --[[@type RB_MovableProxy]]
+                proxy:SetWorldTranslate(targetPos[proxy])
+            end
+        end,
+        Description = "Snap To Ground"
+    })
+end
+
+function Commands.SnapToParent(targets, onlyRotation, onlyPosition)
+    local parents = {} --[[@type table<RB_MovableProxy, RB_MovableProxy>]]
+    for _, proxy in ipairs(targets) do
+        local parent = proxy:GetParent()
         if parent then
-            parents[guid] = parent
+            parents[proxy] = parent
         end
     end
-    local targetPos = {}
-    local targetProxies = {}
-    local allParentTransform = {}
-    for guid, parent in pairs(parents) do
-        if allParentTransform[parent] == nil then
-            local parentProxy = MovableProxy.CreateByGuid(parent)
-            if parentProxy then
-                allParentTransform[parent] = parentProxy:GetTransform()
-                allParentTransform[parent].Scale = nil
-            else
-                allParentTransform[parent] = {
-                    Translate = { RBGetPosition(parent) },
-                    RotationQuat = { RBGetRotation(parent) },
-                }
-            end
-            ::continue::
-        end
-        local proxy = MovableProxy.CreateByGuid(guid)
-        if proxy then
-            table.insert(targetProxies, proxy)
-            targetPos[proxy] = allParentTransform[parent]
-        end
+    local targetTransforms = {} --[[@type table<RB_MovableProxy, Transform>]]
+    for proxy, parent in pairs(parents) do
+        targetTransforms[proxy] = parent:GetTransform()
+        targetTransforms[proxy].Scale = nil
     end
     if onlyRotation then
-        for guid, pos in pairs(targetPos) do
+        for _, pos in pairs(targetTransforms) do
             pos.Translate = nil
         end
     elseif onlyPosition then
-        for guid, pos in pairs(targetPos) do
+        for _, pos in pairs(targetTransforms) do
             pos.RotationQuat = nil
         end
     end
-    Commands.SetTransformSeparate(targetProxies, targetPos)
+    Commands.SetTransformSeparate(targets, targetTransforms)
 end
 
 --- @param targets GUIDSTRING[]

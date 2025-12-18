@@ -304,7 +304,7 @@ local movabelCache = {}
 
 local function clearCache()
     for guid,_ in pairs(movabelCache) do
-        if not EntityHelpers.EntityExists(guid) and not SceneryRegistry[guid] then
+        if not EntityHelpers.EntityExists(guid) and not NearbyMap.GetRegisteredScenery(guid) then
             movabelCache[guid] = nil
         end
     end
@@ -332,8 +332,8 @@ function MovableProxy.CreateByGuid(guid)
             proxy = CharacterMovableProxy.new(guid)
         elseif EntityHelpers.IsItem(guid) then
             proxy = ItemMovableProxy.new(guid)
-        elseif SceneryRegistry[guid] then
-            proxy = SceneryMovableProxy.new(SceneryRegistry[guid].Scenery)
+        elseif NearbyMap.GetRegisteredScenery(guid) then
+            proxy = SceneryMovableProxy.new(NearbyMap.GetRegisteredScenery(guid).Scenery)
         else
             proxy = CharacterMovableProxy.new(guid)
         end

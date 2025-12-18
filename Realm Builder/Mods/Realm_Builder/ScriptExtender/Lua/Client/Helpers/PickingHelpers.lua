@@ -7,42 +7,35 @@ function PickingUtils:RegisterGuidRedirect(fromGuid, toGuid)
     self.GuidRedirects[fromGuid] = toGuid
 end
 
+--- @param ray Ray?
 --- @return GUIDSTRING|nil
-function PickingUtils.GetPickingGuid()
-    local pickHandle = Ext.ClientUI.GetPickingHelper(1).Inner.Inner[1].GameObject
+function PickingUtils.GetPickingGuid(ray)
+    ray = ray or ScreenToWorldRay()
+    if not ray then return nil end
 
-    if pickHandle then
-        local pickUuid = HandleToUuid(pickHandle)
-        if pickUuid then
-            if PickingUtils.GuidRedirects[pickUuid] then
-                pickUuid = PickingUtils.GuidRedirects[pickUuid]
+    local result = ray:IntersectAll()
+
+    for _, hit in ipairs(result) do
+        local entity = hit.Target
+        if not entity then
+            goto continue
+        end
+        local uuid = entity.Uuid and entity.Uuid.EntityUuid
+        if not uuid and entity.Scenery then
+            uuid = entity.Scenery.Uuid
+            NearbyMap.RegisterScenery(entity)
+            return uuid
+        end
+        if uuid then
+            if PickingUtils.GuidRedirects[uuid] then
+                uuid = PickingUtils.GuidRedirects[uuid]
             end
-            return pickUuid
+            return uuid
         end
+        ::continue::
     end
 
-    local mouseRay = ScreenToWorldRay()
-    local returnGuid = nil
-    local entity = nil
-
-    if not mouseRay then return nil end
-    local allPartyMembers = EntityHelpers.GetAllPartyMembers()
-    local closestPartyMemberhit = nil
-    for _, guid in ipairs(allPartyMembers) do
-        local member = DummyHelpers.GetDummyByUuid(guid) or Ext.Entity.Get(guid) --[[@as EntityHandle]]
-
-        local hit = mouseRay:IntersectEntity(member)
-        if hit and (not closestPartyMemberhit or hit:IsCloserThan(closestPartyMemberhit)) then
-            closestPartyMemberhit = hit
-            returnGuid = guid
-            --Debug("Picked party member: " .. Ext.Entity.Get(guid).DisplayName.Name:Get())
-        end
-    end
-
-    if PickingUtils.GuidRedirects[returnGuid] then
-        returnGuid = PickingUtils.GuidRedirects[returnGuid]
-    end
-    return returnGuid
+    return nil
 end
 
 function PickingUtils.GetPickingEntity()
@@ -85,12 +78,6 @@ function PickingUtils.GetPickingHitPosAndRot(picker)
     return pos, rot
 end
 
-function PickingUtils.CalcNDC(x, y, screenW, screenH)
-    local ndcX = (2.0 * x) / screenW - 1.0
-    local ndcY = 1.0 - (2.0 * y) / screenH
-    return ndcX, ndcY
-end
-
 -- Converts a 2D screen-space coordinate into a world-space ray.
 ---@param cameraHandle EntityHandle?
 ---@param mouseX number?
@@ -117,40 +104,35 @@ function ScreenToWorldRay(cameraHandle, mouseX, mouseY, screenW, screenH)
     local camera = cameraHandle.Camera --[[@as CameraComponent]]
     local controller = camera.Controller
 
-    local ndcX, ndcY = PickingUtils.CalcNDC(mouseX, mouseY, screenW, screenH)
+    local ndcX = (2.0 * mouseX) / screenW - 1.0
+    local ndcY = 1.0 - (2.0 * mouseY) / screenH
 
     local zNearClip = 0
     local zFarClip  = 1.0
 
-    local clipNear = Vec4.new({ ndcX, ndcY, zNearClip, 1.0 })
-    local clipFar  = Vec4.new({ ndcX, ndcY, zFarClip,  1.0 })
+    local clipNear = { ndcX, ndcY, zNearClip, 1.0 }
+    local clipFar  = { ndcX, ndcY, zFarClip,  1.0 }
 
-    local invProj = Matrix.new(controller.Camera.InvProjectionMatrix)
-    local invView = Matrix.new(controller.Camera.InvViewMatrix)
+    local invProj = controller.Camera.InvProjectionMatrix
+    local invView = controller.Camera.InvViewMatrix
 
     --local projMat = Matrix.new(controller.Camera.ProjectionMatrix)
     --local viewMat = Matrix.new(controller.Camera.ViewMatrix)
 
     -- (A * B)^-1 = B^-1 * A^-1
-    local inverse = invView * invProj
+    local inverse = Ext.Math.Mul(invView, invProj)
     --local inverse = (projMat * viewMat):Inverse()
 
-    local worldNear4 = inverse * clipNear
-    local worldFar4  = inverse * clipFar
-    worldNear4 = worldNear4 / worldNear4.w
-    worldFar4  = worldFar4  / worldFar4.w
+    local worldNear4 = Ext.Math.Mul(inverse, clipNear)
+    local worldFar4  = Ext.Math.Mul(inverse, clipFar)
 
-    local worldNear = Vec3.new({ worldNear4.x, worldNear4.y, worldNear4.z })
-    local worldFar  = Vec3.new({ worldFar4.x,  worldFar4.y,  worldFar4.z })
+    --- normalize homogeneous coordinates
+    local worldNear = { worldNear4[1] / worldNear4[4], worldNear4[2] / worldNear4[4], worldNear4[3] / worldNear4[4] }
+    local worldFar = { worldFar4[1] / worldFar4[4], worldFar4[2] / worldFar4[4], worldFar4[3] / worldFar4[4] }
 
-    local dir = worldNear - worldFar
-    local origin
-    if controller.IsOrthographic then
-        origin = worldNear
-    else
-        origin = Vec3.new(cameraHandle.Transform.Transform.Translate)
-    end
-    dir = dir:Normalize()
+    local dir = { worldNear[1] - worldFar[1], worldNear[2] - worldFar[2], worldNear[3] - worldFar[3] }
+
+    local origin = Vec3.new(cameraHandle.Transform.Transform.Translate)
 
     local ray = Ray.new(origin, dir)
 
