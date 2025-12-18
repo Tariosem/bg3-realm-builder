@@ -739,7 +739,7 @@ function GetCameraForward(cameraHandle, userID)
     local controller = cameraHandle.Camera.Controller
     local invView = Matrix.new(controller.Camera.InvViewMatrix)
     local forward4 = invView * Vec4.new(GLOBAL_COORDINATE.Z) --[[@as Vec4]]
-    local forward = Vec3.new({ forward4.x, forward4.y, forward4.z }):Normalize()
+    local forward = Vec3.new(forward4):Normalize()
     return forward --[[@as Vec3]]
 end
 

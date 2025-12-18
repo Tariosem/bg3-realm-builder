@@ -242,6 +242,56 @@ EquipmentRaceToBodyType = {
     ["f07faafa-0c6f-4f79-a049-70e96b23d51b"] = "GithyankiBodyType2", -- Githyanki
 }
 
+EquipmentRaceToDisplayName = {
+    -- Human
+    ["71180b76-5752-4a97-b71f-911a69197f58"] = "Human (BodyType1)",
+    ["7d73f501-f65e-46af-a13b-2cacf3985d05"] = "Human (BodyType2)",
+    ["47c0315c-7dc6-4862-b39b-8bf3a10f8b54"] = "Human (BodyType3)",
+    ["e39505f7-f576-4e70-a99e-8e29cd381a11"] = "Human (BodyType4)",
+
+    -- Tiefling
+    ["cf421f4e-107b-4ae6-86aa-090419c624a5"] = "Tiefling (BodyType1)",
+    ["6503c830-9200-409a-bd26-895738587a4a"] = "Tiefling (BodyType2)",
+    ["a5789cd3-ecd6-411b-a53a-368b659bc04a"] = "Tiefling (BodyType3)",
+    ["f625476d-29ec-4a6d-9086-42209af0cf6f"] = "Tiefling (BodyType4)",
+
+    -- Elf
+    ["ad21d837-2db5-4e46-8393-7d875dd71287"] = "Elf (BodyType1)",
+    ["7dd0aa66-5177-4f65-b7d7-187c02531b0b"] = "Elf (BodyType2)",
+
+    -- Half-Elf
+    ["541473b3-0bf3-4e68-b1ab-d85894d96d3e"] = "Half-Elf (BodyType1)",
+    ["a0737289-ca84-4fde-bd52-25bae4fe8dea"] = "Half-Elf (BodyType2)",
+
+    -- Dragonborn
+    ["6d38f246-15cb-48b5-9b85-378016a7a78e"] = "Dragonborn (BodyType1)",
+    ["9a8bbeba-850c-402f-bac5-ff15696e6497"] = "Dragonborn (BodyType2)",
+
+    -- Half-Orc
+    ["eb81b1de-985e-4e3a-8573-5717dc1fa15c"] = "Half-Orc (BodyType1)",
+    ["6dd3db4f-e2db-4097-b82e-12f379f94c2e"] = "Half-Orc (BodyType2)",
+
+    -- Karlach
+    ["6326d417-315c-4605-964e-d0fad73d719b"] = "Karlach (BodyType3)",
+
+    -- Dwarf
+    ["b4a34ce7-41be-44d9-8486-938fe1472149"] = "Dwarf (BodyType1)",
+    ["abf674d2-2ea4-4a74-ade0-125429f69f83"] = "Dwarf (BodyType2)",
+
+    -- Halfling
+    ["8f00cf38-4588-433a-8175-8acdbbf33f33"] = "Halfling (BodyType1)",
+    ["a933e2a8-aee1-4ecb-80d2-8f47b706f024"] = "Halfling (BodyType2)",
+
+    -- Gnome
+    ["c491d027-4332-4fda-948f-4a3df6772baa"] = "Gnome (BodyType1)",
+    ["5640e766-aa53-428d-815b-6a0b4ef95aca"] = "Gnome (BodyType2)",
+
+    -- Githyanki
+    ["06aaae02-bb9e-4fa3-ac00-b08e13a5b0fa"] = "Githyanki (BodyType1)",
+    ["f07faafa-0c6f-4f79-a049-70e96b23d51b"] = "Githyanki (BodyType2)",
+}
+
+
 BodyTypeToEquipmentRace = {}
 
 for uuid, bodyType in pairs(EquipmentRaceToBodyType) do

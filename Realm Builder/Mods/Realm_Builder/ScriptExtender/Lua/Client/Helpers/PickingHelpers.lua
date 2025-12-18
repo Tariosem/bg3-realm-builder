@@ -176,8 +176,8 @@ function WorldToScreenPoint(worldPos, cameraHandle, screenW, screenH)
 
     local ndcPos = clipPos / clipPos.w
 
-    local screenX = ((ndcPos.x + 1) / 2) * screenW
-    local screenY = ((1 - ndcPos.y) / 2) * screenH
+    local screenX = ((ndcPos[1] + 1) / 2) * screenW
+    local screenY = ((1 - ndcPos[2]) / 2) * screenH
 
     return Vec2.new(screenX, screenY)
 end

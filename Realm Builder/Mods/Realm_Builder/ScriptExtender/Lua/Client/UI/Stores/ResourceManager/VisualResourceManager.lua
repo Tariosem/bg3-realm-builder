@@ -14,7 +14,6 @@ CCAVManager = _Class("CCAVManager", ManagerBase)
 --- @field Uuid GUIDSTRING
 
 function CCAVManager:PopulateAll()
-    --- currently merge in CCAVs as well
     RBPrintPurple("[Realm Builder] Populating Character Creation Appearance Visuals...")
     local now = Ext.Timer.MonotonicTime()
     
@@ -163,21 +162,17 @@ function CCAVManager:CreateDynamicTags(uuid)
 end
 
 local function populateVisualResource()
-    local bef = Ext.Utils.GetMemoryUsage()
     if not RB_GLOBALS.VisualManager then
         RB_GLOBALS.VisualManager = VisualResourceManager.new()
     end
     RB_GLOBALS.VisualManager:PopulateAllVisualResources()
-    RBPrintPurple("[Realm Builder] Visual Resource Manager memory usage: " .. (Ext.Utils.GetMemoryUsage() - bef)/1000/1000 .. " MB")
 end
 
 local function populateCCAVResource()
-    local bef = Ext.Utils.GetMemoryUsage()
     if not RB_GLOBALS.CCAVManager then
         RB_GLOBALS.CCAVManager = CCAVManager.new()
     end
     RB_GLOBALS.CCAVManager:PopulateAll()
-    RBPrintPurple("[Realm Builder] CCAV Manager memory usage: " .. (Ext.Utils.GetMemoryUsage() - bef)/1000/1000 .. " MB")
 end
 
 if Ext.Debug.IsDeveloperMode() then

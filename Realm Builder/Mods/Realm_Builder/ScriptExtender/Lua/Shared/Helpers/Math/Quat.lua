@@ -1,10 +1,6 @@
 --- @alias quat Quat
 
 --- @class Quat
---- @field x number
---- @field y number
---- @field z number
---- @field w number
 --- @field Inverse fun(self: Quat): Quat
 --- @field Normalize fun(self: Quat): Quat
 --- @field Rotate fun(self: Quat, v: Vec3): Vec3
@@ -13,12 +9,7 @@
 --- @field Identity Quat
 Quat = Quat or {}
 
-Quat.__index = function(t, k)
-    if AxisIndexMap[k] then return rawget(t, AxisIndexMap[k])
-    elseif rawget(t, k) then return rawget(t, k)
-    else return rawget(Quat, k) end
-end
-
+Quat.__index = Quat
 Quat.__mul = function(a, b)
     if type(b) == "table" and #b == 4 then
         return Quat.new(Ext.Math.QuatMul(a, b))

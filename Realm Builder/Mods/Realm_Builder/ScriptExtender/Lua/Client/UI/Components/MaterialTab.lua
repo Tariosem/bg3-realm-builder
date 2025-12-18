@@ -496,13 +496,18 @@ function MaterialTab:RenderTextProperty(node, propertyName, propertyValue, prope
         local newValue = sel.Text
         if not RBUtils.IsUuidIncludingNull(newValue) then return end
         local check = false
-        if propertyType == RB_MaterialParamType.Texture2D then
+        local isVT = propertyType == RB_MaterialParamType.VirtualTexture
+        if not isVT and propertyType == RB_MaterialParamType.Texture2D then
             check = TextureResourceManager:HasTextureResource(newValue)
-        elseif propertyType == RB_MaterialParamType.VirtualTexture then
+        elseif isVT then
             check = TextureResourceManager:HasVirtualTextureResource(newValue)
         end
         if not check then
-            Info("No Texture Resource found with UUID: " .. tostring(newValue))
+            if not isVT then
+                Info("No Texture Resource found with UUID: " .. tostring(newValue))
+            else
+                Info("No Virtual Texture Resource found with UUID: " .. tostring(newValue))
+            end
             return
         end
 

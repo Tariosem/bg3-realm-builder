@@ -150,7 +150,8 @@ local function makePlaneSquare(axis)
             local dist = hit.Position --[[@as Vec3]]
 
             for a, _ in pairs(hitAxes) do
-                local val = dist[a]
+                local idx = AxisIndexMap[a]
+                local val = dist[idx]
                 if val < 0 then
                     return nil
                 end

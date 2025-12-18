@@ -230,7 +230,7 @@ end
 --- @field StoryItem boolean
 --- @field Rarity string
 
---- @param template GameObjectTemplate
+--- @param template ItemTemplate
 --- @return RB_Item?
 function ItemManager:PopulateItem(template, statsObj)
     if not template then return nil end
@@ -400,6 +400,7 @@ end
 
 --- @param statsObj Weapon
 function ItemManager:PopulateWeapon(statsObj, statsId)
+    --- @diagnostic disable-next-line
     local baseEntry = self:PopulateItem(Ext.Template.GetTemplate(statsObj.RootTemplate), statsObj)
 
     if not baseEntry then
@@ -420,16 +421,6 @@ function ItemManager:PopulateWeapon(statsObj, statsId)
     baseEntry.BoostsOnEquipMainHand = statsObj.BoostsOnEquipMainHand or ""
     baseEntry.BoostsOnEquipOffHand = statsObj.BoostsOnEquipOffHand or ""
 
-    local debugFunc = function(passiveName)
-        StatsParser:ParseBoosts(baseEntry.DefaultBoosts)
-        StatsParser:ParseBoosts(baseEntry.Boosts)
-        for _, passive in pairs(baseEntry.Passives) do
-            StatsParser:ParsePassives(passive)
-        end
-    end
-
-    --debugFunc()
-
     return baseEntry
 end
 
@@ -441,6 +432,7 @@ end
 --- @param statsObj Armor
 --- @return RB_Armor?
 function ItemManager:PopulateArmor(statsObj, statsId)
+    --- @diagnostic disable-next-line
     local baseEntry = self:PopulateItem(Ext.Template.GetTemplate(statsObj.RootTemplate), statsObj)
 
     if not baseEntry then
@@ -459,16 +451,6 @@ function ItemManager:PopulateArmor(statsObj, statsId)
         --- @diagnostic disable-next-line
         self:AddTagToData(baseEntry.Uuid, statsObj.InstrumentType)
     end
-
-    local debugFunc = function(passiveName)
-        StatsParser:ParseBoosts(baseEntry.DefaultBoosts)
-        StatsParser:ParseBoosts(baseEntry.Boosts)
-        for _, passive in pairs(baseEntry.Passives) do
-            StatsParser:ParsePassives(passive)
-        end
-    end
-
-    --debugFunc()
 
     --- @type RB_Armor
     return baseEntry

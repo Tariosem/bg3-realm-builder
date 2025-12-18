@@ -134,9 +134,8 @@ function EntityTab:RenderMonitorTab()
     local attrTable = ImguiElements.AddReadOnlyAttrTable(monitorTab, attrs)
     self.attrTable = attrTable
 
-    local levelLine = {attrTable:AddNewLine()}
-    levelLine[1]:AddText(GetLoca("Level") .. ":")
-    local levelTextMonitor = levelLine[2]:AddInputText("") --[[@as ExtuiInputText]]
+    local levelLine = attrTable:AddNewLine("Level :")
+    local levelTextMonitor = levelLine:AddInputText("") --[[@as ExtuiInputText]]
     levelTextMonitor.ReadOnly = true
     levelTextMonitor.AutoSelectAll = true
     levelTextMonitor.Text = self.LastLevel or "N/A"
@@ -162,9 +161,8 @@ function EntityTab:RenderMonitorTab()
     end)
 
 
-    local posLine = {attrTable:AddNewLine()}
-    local posText = posLine[1]:AddText("Position")
-    local positionMonitor = posLine[2]:AddInputScalar("")
+    local posLine = attrTable:AddNewLine("Position :")
+    local positionMonitor = posLine:AddInputScalar("")
     positionMonitor.IDContext = self.guid .. "_PositionMonitor"
     positionMonitor.Components = 3
     positionMonitor.Value = self.LastTranslation or {0,0,0,0}
@@ -218,10 +216,8 @@ function EntityTab:RenderMonitorTab()
         end
     end)
 
-    local quatLine = {attrTable:AddNewLine()}
-    local rotText = quatLine[1]:AddText("Rotation")
-
-    local rotationMonitor = quatLine[2]:AddInputScalar("")
+    local quatLine = attrTable:AddNewLine("Rotation :")
+    local rotationMonitor = quatLine:AddInputScalar("")
     rotationMonitor.IDContext = self.guid .. "_RotationMonitor"
     rotationMonitor.Components = 3
     rotationMonitor.Value = self.LastRotation or {0,0,0,0}
@@ -299,9 +295,8 @@ function EntityTab:RenderMonitorTab()
 
     end)
 
-    local scaleLine = {attrTable:AddNewLine()}
-    scaleLine[1]:AddText("Scale:")
-    local scaleTextMonitor = scaleLine[2]:AddInputScalar("") --[[@as ExtuiInputScalar]]
+    local scaleLine = attrTable:AddNewLine("Scale :")
+    local scaleTextMonitor = scaleLine:AddInputScalar("") --[[@as ExtuiInputScalar]]
     scaleTextMonitor.IDContext = self.guid .. "_ScaleMonitor"
     scaleTextMonitor.Value = self.LastScale or {1,1,1,0}
     scaleTextMonitor.Components = 3

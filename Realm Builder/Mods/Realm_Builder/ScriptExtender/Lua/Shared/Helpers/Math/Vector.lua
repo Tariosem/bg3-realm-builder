@@ -7,9 +7,6 @@
 Vector = {}
 
 --- @class Vec3: Vec
---- @field x number
---- @field y number
---- @field z number
 --- @field Dot fun(self: Vec3, b: Vec3): number
 --- @field Cross fun(self: Vec3, b: Vec3): Vec3
 --- @field Inverse fun(self: Vec3): Vec3
@@ -19,10 +16,6 @@ Vector = {}
 Vec3 = {}
 
 --- @class Vec4: Vec
---- @field x number
---- @field y number
---- @field z number
---- @field w number
 --- @field Inverse fun(self: Vec4): Vec4
 --- @field Normalize fun(self: Vec4): Vec4
 --- @field Dot fun(self: Vec4, b: Vec4): number
@@ -32,33 +25,13 @@ Vec3 = {}
 Vec4 = {}
 
 --- @class Vec2: Vec
---- @field x number
---- @field y number
 --- @field new fun(...:any):Vec2
 Vec2 = {}
 
 AxisIndexMap = { X = 1, Y = 2, Z = 3, W = 4, x = 1, y = 2, z = 3, w = 4 }
 IndexAxisMap = { [1] = "X", [2] = "Y", [3] = "Z", [4] = "W" }
 
-Vector.__index = function(t, k)
-    if AxisIndexMap[k] then
-        return rawget(t, AxisIndexMap[k])
-    elseif rawget(t, k) then
-        return rawget(t, k)
-    else
-        return rawget(Vector, k)
-    end
-end
-
-Vector.__newindex = function(t, k, v)
-    if type(k) == "string" and AxisIndexMap[k] then
-        rawset(t, AxisIndexMap[k], v)
-    elseif type(k) == "number" and k >= 1 then
-        rawset(t, k, v)
-    else
-        Warning("Vec: Attempt to set unknown key: ", k)
-    end
-end
+Vector.__index = Vector
 
 function Vector.__add(a, b) return Vector.new(Ext.Math.Add(a, b)) end
 
@@ -216,25 +189,7 @@ function Vector.Unm(a)
     return Vector.new(newVec)
 end
 
-Vec2.__index = function(t, k)
-    if AxisIndexMap[k] then
-        return rawget(t, AxisIndexMap[k])
-    elseif rawget(t, k) then
-        return rawget(t, k)
-    else
-        return rawget(Vec2, k)
-    end
-end
-
-Vec2.__newindex = function(t, k, v)
-    if type(k) == "string" and AxisIndexMap[k] then
-        rawset(t, AxisIndexMap[k], v)
-    elseif type(k) == "number" and k >= 1 and k <= 2 then
-        rawset(t, k, v)
-    else
-        Warning("Vec2: Attempt to set unknown key: ", k)
-    end
-end
+Vec2.__index = Vec2
 
 function Vec2.__add(a, b) return Vector.Add(a, b) end
 

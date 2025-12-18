@@ -121,7 +121,7 @@ function EntityStore:SetupServerListeners()
 
     NetChannel.AttributeChanged:SetHandler(function(data)
         for _,guid in pairs(data.Guid) do
-            if EntityDatas[guid] then
+            if EntityDatas[guid] and data.Attributes and data.Attributes.Visible ~= nil then
                 EntityDatas[guid].Visible = data.Attributes.Visible
                 RB_GLOBALS.MainMenu.entityMenu:UpdateEyeIcon(guid)
             end

@@ -142,6 +142,9 @@ end
 function ItemBrowser:RenderInfoPopup(popup, entry)
     popup.UserData = popup.UserData or {}
     if popup.UserData.InfoRendered then return end
+
+    
+    
     local infoFields = {
         Icon = entry.Icon,
         DisplayName = entry.DisplayName,
@@ -154,7 +157,25 @@ function ItemBrowser:RenderInfoPopup(popup, entry)
     if infoFields.Mod == "" then infoFields.Mod = nil end
     if infoFields.ModAuthor == "" then infoFields.ModAuthor = nil end
 
-    ImguiElements.AddReadOnlyAttrTable(popup, infoFields)
+    local attrTable = ImguiElements.AddReadOnlyAttrTable(popup, infoFields)
+
+    local debugDumpLine = popup:AddButton("Dump Template to Console")
+    local dumpStatsLine = popup:AddButton("Dump Stats to Console")
+    debugDumpLine.OnClick = function()
+        local templateObj = Ext.Template.GetTemplate(entry.Uuid) or {} --[[@as ItemTemplate]]
+        if templateObj then
+            RainbowDumpTable(templateObj)
+        end
+    end
+
+    dumpStatsLine.OnClick = function()
+        local templateObj = Ext.Template.GetTemplate(entry.Uuid) or {} --[[@as ItemTemplate]]
+        if templateObj.Stats then
+            RainbowDumpTable(Ext.Stats.Get(templateObj.Stats) or {})
+        else
+            RBPrintRed("No stats found for item: " .. tostring(entry.Uuid))
+        end
+    end
 
     popup.UserData.InfoRendered = true
 end

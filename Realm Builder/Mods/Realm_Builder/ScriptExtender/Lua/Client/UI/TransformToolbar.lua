@@ -271,7 +271,7 @@ function TransformToolbar:RegisterKeyInputEvents()
         end
 
         Commands.SnapToParent(targets)
-    end, GetLoca("Snap selected entities to ."))
+    end, GetLoca("Snap selected entities to their parent's position."))
 
     buMod:RegisterEvent("BindPopup", function(e)
         if e.Event ~= "KeyDown" then return end
@@ -387,7 +387,7 @@ function TransformToolbar:RegisterTransformEditorEvents()
             avgPos = avgPos + proxy:GetWorldTranslate()
         end
         avgPos = avgPos / #globalEditor.Target
-        CameraHelpers.CameraMoveToPosition({ avgPos.X, avgPos.Y, avgPos.Z })
+        CameraHelpers.CameraMoveToPosition(avgPos)
     end)
 
     self.Subscriptions["ResetTransform"] = InputEvents.SubscribeKeyInput({}, function(e)

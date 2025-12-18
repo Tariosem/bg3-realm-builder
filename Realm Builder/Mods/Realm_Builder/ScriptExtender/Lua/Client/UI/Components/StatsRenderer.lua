@@ -131,8 +131,9 @@ local function RenderStatsObjectTitle(statsObj, parent, statType, isTooltip)
     title:SetColor("Text", UI_COLORS.HighLight)
 
     if statType == "SpellData" then
+        statsObj = statsObj --[[@as SpellData ]]
         local spellLevel = statsObj.Level == 0 and "Cantrips" or GetLoca("Level ") .. tostring(statsObj.Level or "?")
-        local spellSchool = statsObj.SpellSchool --[[ @type string ]]
+        local spellSchool = statsObj.SpellSchool --[[@as string]]
         if spellSchool == "None" then
             spellLevel = "Class Actions"
             spellSchool = ""
@@ -155,12 +156,30 @@ local function RenderStatsObjectTitle(statsObj, parent, statType, isTooltip)
 
 end
 
----@param spellData any
+---@param spellData SpellData
 ---@param parent ExtuiTreeParent
 local function renderSpellAttrs(spellData, parent)
     if not spellData then return end
 
     local first = false
+
+    if spellData.TooltipStatusApply then
+        --[[ ApplyStatus(MAG_CHARGED_LIGHTNING_ENSNARING_SHOCK,100,4) ]]
+        local statusStatName, _, durationStr = string.match(spellData.TooltipStatusApply, "ApplyStatus%(([%w_]+),(%d+),(%d+)%)")
+        if statusStatName then
+            local statusStat = Ext.Stats.Get(statusStatName) --[[@as StatusData]]
+            if statusStat then
+                parent:AddDummy(50 * SCALE_FACTOR, 5)
+                local statusObjRender = ImguiElements.RenderStatsObject(statusStat, "StatusData")
+                local image, label = statusObjRender(parent, false)
+                image.SameLine = true
+                label.Visible = false
+
+                local turnOrTurns = tonumber(durationStr) == 1 and "turn" or "turns"
+                parent:AddText(tostring(durationStr) .. " " .. turnOrTurns).SameLine = true
+            end
+        end
+    end
 
     if spellData.Range and spellData.Range ~= 0 then
         parent:AddText("Range: " .. spellData.Range .. " meters ").SameLine = first
@@ -262,6 +281,7 @@ function ImguiElements.RenderStatsObject(statsObj, type, nameOverride)
             local tooltip = refEle:Tooltip()
             RenderStatsObjectTitle(statsObj, tooltip, type, true)
             if type == "SpellData" then
+                --- @diagnostic disable-next-line
                 renderSpellAttrs(statsObj, tooltip)
             end
             refEle.OnHoverEnter = nil
@@ -272,6 +292,7 @@ function ImguiElements.RenderStatsObject(statsObj, type, nameOverride)
             RenderStatsObjectTitle(statsObj, popup, type)
 
             if type == "SpellData" then
+                --- @diagnostic disable-next-line
                 renderSpellAttrs(statsObj, popup)
             end
 

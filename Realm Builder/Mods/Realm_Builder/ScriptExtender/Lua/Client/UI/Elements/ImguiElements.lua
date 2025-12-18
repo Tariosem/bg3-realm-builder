@@ -728,7 +728,7 @@ function ImguiElements.AddSelectableButton(parent, label, onClick)
 end
 
 --- @class AttrTable : ExtuiTable
---- @field AddNewLine fun(self: AttrTable): ExtuiTableCell, ExtuiTableCell
+--- @field AddNewLine fun(self: AttrTable, label:string): ExtuiTableCell
 --- @field SetValue fun(self: AttrTable, name: string, value: string)
 
 ---@param parent ExtuiTreeParent
@@ -762,9 +762,13 @@ function ImguiElements.AddReadOnlyAttrTable(parent, contents)
 
     --- @type AttrTable
     local clos = {
-        AddNewLine = function()
+        AddNewLine = function(_ , name)
             local row = tab:AddRow() --[[@as ExtuiTableRow]]
-            return row:AddCell(), row:AddCell()
+            local nameCell = row:AddCell()
+            nameCell:AddText(name)
+            addLittleSpacer(nameCell)
+            local valueCell = row:AddCell()
+            return valueCell
         end,
         SetValue = function(_, name, value)
             local input = inputs[name]

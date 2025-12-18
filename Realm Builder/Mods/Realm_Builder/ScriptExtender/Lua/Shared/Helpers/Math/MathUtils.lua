@@ -182,12 +182,12 @@ end
 --- @param rectMin Vec2
 --- @param rectMax Vec2
 function MathUtils.IsInRect(point, rectMin, rectMax)
-    local minX = math.min(rectMin.x, rectMax.x)
-    local maxX = math.max(rectMin.x, rectMax.x)
-    local minY = math.min(rectMin.y, rectMax.y)
-    local maxY = math.max(rectMin.y, rectMax.y)
+    local minX = math.min(rectMin[1], rectMax[1])
+    local maxX = math.max(rectMin[1], rectMax[1])
+    local minY = math.min(rectMin[2], rectMax[2])
+    local maxY = math.max(rectMin[2], rectMax[2])
 
-    return point.x >= minX and point.x <= maxX and point.y >= minY and point.y <= maxY
+    return point[1] >= minX and point[1] <= maxX and point[2] >= minY and point[2] <= maxY
 end
 
 --- @param childUuid string

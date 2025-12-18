@@ -1,6 +1,5 @@
 --- some random stuff other mods already did
 --- just putting it here for my own convenience
-if not Ext.Debug.IsDeveloperMode() then return end
 
 RegisterDebugWindow("Misc", function(panel)
     --#region PM Extra Data Editor
@@ -272,21 +271,21 @@ RegisterDebugWindow("Raycast Debugger", function(panel)
         local hit = ray:IntersectDebug()
         if hit then
             inGameWin:Show("Raycast Hit!", function(panel)
-                local text = Ext.DumpExport(hit)
-                panel:AddText(text)
+                local text, origin = RainbowDumpTable(hit)
+                panel:AddText(origin)
             end)
             if configurableIntersect.Function == "RaycastAll" then
                 local cnt = #hit.Distances
-                for i=1, cnt do
+                for i = 1, cnt do
                     local pos = hit.Positions[i]
                     local quat = MathUtils.DirectionToQuat(hit.Normals[i], nil, "Y")
                     NetChannel.Visualize:RequestToServer({
                         Type = "Point",
                         Position = pos,
                         Rotation = quat,
-                        Duration = 1000,
-                    }, function (response)
-                        
+                        Duration = 3000,
+                    }, function(response)
+
                     end)
                 end
             else
@@ -297,21 +296,46 @@ RegisterDebugWindow("Raycast Debugger", function(panel)
                         Type = "Point",
                         Position = pos,
                         Rotation = quat,
-                        Duration = 1000,
-                    }, function (response)
-                        
+                        Duration = 3000,
+                    }, function(response)
+
                     end)
                 end
             end
         else
             inGameWin:Show("Raycast Missed!",
-                "Origin: " .. tostring(ray.Origin) .. "\nDirection: " .. tostring(ray.Direction))
+                "Origin: " ..
+                tostring(ray.Origin) .. "\nDestination: " .. tostring(ray:At(configurableIntersect.Distance)))
         end
     end
-    InputEvents.SubscribeKeyInput({}, function(e)
-        if e.Key ~= "F2" or e.Event == "KeyUp" then
+
+    local keySybBtn = panel:AddButton("Toggle Raycast Debugger (F2)")
+    local f2keySub = nil
+
+    local function subf2Key()
+        f2keySub = InputEvents.SubscribeKeyInput({}, function(e)
+            if e.Key ~= "F2" or e.Event == "KeyUp" then
+                return
+            end
+            debugBtn.OnClick()
+        end)
+    end
+    local function unsubf2Key()
+        if f2keySub then
+            f2keySub:Unsubscribe()
+            f2keySub = nil
+        end
+    end
+
+    keySybBtn.OnClick = function(btn)
+        if f2keySub then
+            unsubf2Key()
+            btn.Label = "Toggle Raycast Debugger (F2)"
             return
         end
-        debugBtn.OnClick()
-    end)
+        subf2Key()
+        btn.Label = "Unsub Raycast Debugger (F2)"
+    end
+
+    
 end)

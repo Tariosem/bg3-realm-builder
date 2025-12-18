@@ -321,7 +321,9 @@ function RainbowDumpTable(o, from, to)
         local colorCodeStr = string.format("\x1b[%dm", colorCode)
         table.insert(result, colorCodeStr .. line .. resetCode)
     end
-    _P(table.concat(result, "\n"))
+    local fianlText = table.concat(result, "\n")
+    _P(fianlText)
+    return fianlText, stringified
 end
 
 local debuglevelCommandDes =

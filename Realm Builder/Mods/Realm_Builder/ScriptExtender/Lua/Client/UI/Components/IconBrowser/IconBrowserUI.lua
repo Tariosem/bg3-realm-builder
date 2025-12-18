@@ -26,7 +26,7 @@ function IconBrowser:__init(dataManager, DisplayName)
     self.searchResult = self.searchData
     self.selectedGroups = {}
     self.selectedTags = {}
-    self.selectedFields = { DisplayName = true, TemplateName = true }
+    self.selectedFields = { DisplayName = true, TemplateName = true, Uuid = true }
     self.excludeTags = {}   -- { UnknownIcon = true, Timeline = true }
     self.excludeGroups = {} -- { Blacklist = true }
     self.iconTooltipName = "DisplayName"
@@ -321,12 +321,19 @@ function IconBrowser:RenderSearchOptionsMenu()
     }
 
     local fields = {}
+    local cleanFields = {}
     local firstEntry = next(self.searchData)
     if firstEntry then
         for field, value in pairs(self.searchData[firstEntry]) do
             if not skip[field] and type(value) == "string" then
+                cleanFields[field] = true
                 table.insert(fields, field)
             end
+        end
+    end
+    for field, _ in pairs(self.selectedFields) do
+        if not cleanFields[field] then
+            self.selectedFields[field] = nil
         end
     end
 
