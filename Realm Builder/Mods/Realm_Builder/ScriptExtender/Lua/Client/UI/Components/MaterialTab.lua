@@ -693,8 +693,7 @@ function MaterialMixerTab:__init(parameters)
     self.MaterialName = "MaterialMixerEditor"
     self.ParentNodeName = "Material Mixer"
 
-
-    RainbowDumpTable(parameters)
+    --RainbowDumpTable(parameters)
 
     self.ParametersSetProxy = ParametersSetProxy.BuildFromFormatParameters(parameters)
 

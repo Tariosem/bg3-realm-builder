@@ -751,6 +751,7 @@ function TransformToolbar:RenderOtherConfigOptions(panel)
         local editor = RB_GLOBALS.TransformEditor
         if editor.Gizmo then
             editor.Gizmo:SetScale(e.Value[1])
+            editor.Gizmo:Visualize()
         end
     end
 end

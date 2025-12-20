@@ -150,13 +150,8 @@ function SceneMenu:Render()
         end
     end
 
-    local collapsingTable = ImguiElements.AddCollapsingTable(self.panel, nil, "Presets", { SideBarWidth = 100 * SCALE_FACTOR, MainAreaTitleAlign = 0.45})
-    if collapsingTable then
-        self.previewWindow = collapsingTable.MainArea
-    else
-        Warning("PresetMenu: collapsingTable or MainArea is nil.")
-        self.previewWindow = nil
-    end
+    local collapsingTable = ImguiElements.AddCollapsingTable(self.panel, nil, GetLoca("Scenes"), { SideBarWidth = 100 * SCALE_FACTOR, MainAreaTitleAlign = 0.45})
+    self.previewWindow = collapsingTable.MainArea
     self.collapsingTable = collapsingTable
 
     local cTTitleCell = collapsingTable.TitleCell
@@ -166,7 +161,7 @@ function SceneMenu:Render()
     local cTTitleRow = cTTitleTable:AddRow()
     local cTTitleTextCell = cTTitleRow:AddCell()
     local cTTitleButtonCell = cTTitleRow:AddCell()
-    cTTitleTextCell:AddSeparatorText(GetLoca("Preset Preview")):SetStyle("SeparatorTextAlign", 0.5, 0)
+    cTTitleTextCell:AddSeparatorText(GetLoca("Scene Preview")):SetStyle("SeparatorTextAlign", 0.5, 0)
     local cTTitleButton = cTTitleButtonCell:AddImageButton("ConfigButton", RB_ICONS.Gear, IMAGESIZE.SMALL)
     cTTitleButton:SetColor("Button", {0,0,0,0})
 

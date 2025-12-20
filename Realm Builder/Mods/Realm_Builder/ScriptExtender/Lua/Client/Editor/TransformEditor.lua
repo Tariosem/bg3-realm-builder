@@ -346,7 +346,6 @@ function TransformEditor:MakePointVisualization(gizmo, pointTransform, index)
         Rotation = pointTransform.RotationQuat,
         Duration = -1,
     }, function(response)
-
         for _, viz in pairs(response or {}) do
             table.insert(self.PointVisualizations, viz)
         end
@@ -621,11 +620,11 @@ function TransformEditor:SetupGizmo()
             local dy = Ext.Math.Dot(axes.Y, deltaWorld1)
             local dz = Ext.Math.Dot(axes.Z, deltaWorld1)
 
-            return Vec3.new(
+            return {
                 baseScale[1] * (1 + dx),
                 baseScale[2] * (1 + dy),
                 baseScale[3] * (1 + dz)
-            )
+            }
         end
 
         for _, proxy in self:SafeTraverseTarget() do

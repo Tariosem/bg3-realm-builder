@@ -167,8 +167,8 @@ function EntityTab:RenderMonitorTab()
     positionMonitor.Components = 3
     positionMonitor.Value = self.LastTranslation or {0,0,0,0}
 
-    local copyPosBtn = posLine[2]:AddImageButton("##CopyPosBtn", RB_ICONS.Copy, IMAGESIZE.ROW)
-    local pastePosBtn = posLine[2]:AddImageButton("##PastePosBtn", RB_ICONS.Clipboard, IMAGESIZE.ROW)
+    local copyPosBtn = posLine:AddImageButton("##CopyPosBtn", RB_ICONS.Copy, IMAGESIZE.ROW)
+    local pastePosBtn = posLine:AddImageButton("##PastePosBtn", RB_ICONS.Clipboard, IMAGESIZE.ROW)
     copyPosBtn.SameLine = true
     pastePosBtn.SameLine = true
     copyPosBtn:Tooltip():AddText(GetLoca("Copy Position"))
@@ -222,8 +222,8 @@ function EntityTab:RenderMonitorTab()
     rotationMonitor.Components = 3
     rotationMonitor.Value = self.LastRotation or {0,0,0,0}
 
-    local copyRotBtn = quatLine[2]:AddImageButton("##CopyRotationBtn", RB_ICONS.Copy, IMAGESIZE.ROW)
-    local pasteRotBtn = quatLine[2]:AddImageButton("##PasteRotationBtn", RB_ICONS.Clipboard, IMAGESIZE.ROW)
+    local copyRotBtn = quatLine:AddImageButton("##CopyRotationBtn", RB_ICONS.Copy, IMAGESIZE.ROW)
+    local pasteRotBtn = quatLine:AddImageButton("##PasteRotationBtn", RB_ICONS.Clipboard, IMAGESIZE.ROW)
     copyRotBtn.SameLine = true
     pasteRotBtn.SameLine = true
     copyRotBtn:Tooltip():AddText(GetLoca("Copy Rotation"))

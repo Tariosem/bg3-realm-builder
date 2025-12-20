@@ -69,7 +69,7 @@ local function parseNumberText(numberStr)
 
                 if lmvObj.FallbackValue then
                     local fallbackStr = formatVariant(lmvObj.FallbackValue)
-                    parent:AddBulletText("Fallback Value: ") 
+                    parent:AddBulletText("Fallback Value: ")
                     local varStr = parent:AddText(fallbackStr)
                     varStr:SetColor("Text", UI_COLORS.HighLight)
                     varStr.SameLine = true
@@ -92,28 +92,27 @@ local function parseNumberText(numberStr)
                     local row = mapTable:AddRow()
                     local levelCell = row:AddCell()
                     local valueCell = row:AddCell()
-                    levelCell:AddText(string.format("Level %d ->", i)):SetColor("Text", {1, 1, 1, 1})
+                    levelCell:AddText(string.format("Level %d ->", i)):SetColor("Text", { 1, 1, 1, 1 })
                     valueCell:AddText(variantStr):SetColor("Text", UI_COLORS.HighLight)
                     ::continue::
                 end
-
             end
         end
         numberStr = GetLoca("<Progress with level>") .. rest
     end
-       
+
     if numberStr:sub(1, 3) == "max" then
         numberStr = replaceMaxWithBestModifier(numberStr)
     end
 
 
-    local token = { Text = numberStr , Tooltip = levelMapValueTooltip }
+    local token = { Text = numberStr, Tooltip = levelMapValueTooltip }
 
     return token
 end
 
 local function simpleRenderer(text, bonus)
-    local bonusColor = bonus:sub(1,1) == "-" and UI_COLORS.Warning or UI_COLORS.HighLight
+    local bonusColor = bonus:sub(1, 1) == "-" and UI_COLORS.Warning or UI_COLORS.HighLight
     if tonumber(bonus) and tonumber(bonus) > 0 then
         bonus = "+" .. bonus
     end
@@ -175,7 +174,7 @@ StatsBoostHandlers = {
             local bulletText = parent:AddBulletText(GetLoca("Gain Proficiency : "))
             local icon = "Item_Unknown"
             if RB_GLOBALS.ItemManager then
-                icon = RB_GLOBALS.ItemManager.tagIcons[prof] 
+                icon = RB_GLOBALS.ItemManager.tagIcons[prof]
             end
             local image = parent:AddImage(icon, RBUtils.ToVec2((iconSize or 32) * SCALE_FACTOR))
             image.SameLine = true
@@ -200,7 +199,7 @@ StatsBoostHandlers = {
         return render
     end,
 
-    Ability =  function(boost)
+    Ability = function(boost)
         return ablityBoostRenderer(boost)
     end,
 
@@ -211,18 +210,18 @@ StatsBoostHandlers = {
     Skill = function(boost)
         return ablityBoostRenderer(boost)
     end,
- 
+
     RollBonus = function(boost)
-       return ablityBoostRenderer(boost)
+        return ablityBoostRenderer(boost)
     end,
 
     Advantage = function(boost)
         local rollType = boost.args[1] or "Unknown"
         local specific = boost.args[2] or ""
-        
+
         local function render(parent)
             local bulletText = parent:AddBulletText("")
-            
+
             local advantageText = parent:AddText("Advantage")
             advantageText.SameLine = true
 
@@ -230,14 +229,12 @@ StatsBoostHandlers = {
 
             local rollTypeText = parent:AddText(rollType)
             rollTypeText.SameLine = true
-            
+
             if specific ~= "" then
                 local specificText = parent:AddText(specific)
                 specificText.SameLine = true
                 specificText:SetColor("Text", UI_COLORS.HighLight)
             else
-                
-
                 rollTypeText:SetColor("Text", UI_COLORS.HighLight)
             end
 
@@ -249,7 +246,7 @@ StatsBoostHandlers = {
     Disadvantage = function(boost)
         local rollType = boost.args[1] or "Unknown"
         local specific = boost.args[2] or ""
-        
+
         local function render(parent)
             local bulletText = parent:AddBulletText("")
 
@@ -266,10 +263,9 @@ StatsBoostHandlers = {
                 specificText.SameLine = true
                 specificText:SetColor("Text", UI_COLORS.Warning)
             else
-                
                 rollTypeText:SetColor("Text", UI_COLORS.Warning)
             end
-            
+
             return bulletText
         end
         return render
@@ -364,14 +360,14 @@ StatsBoostHandlers = {
     end,
 
     JumpMaxDistanceBonus = function(boost)
-        return simpleBoostRenderer(boost, "Jump max distance" , (boost.args[1] or "?") .. " meters")
+        return simpleBoostRenderer(boost, "Jump max distance", (boost.args[1] or "?") .. " meters")
     end,
 
     ProficiencyBonus = function(boost)
         local rollType = boost.args[1] or "Unknown"
         local ability = boost.args[2] or ""
-        local text = ability ~= "" and string.format("Proficiency bonus to %s (%s)", rollType, ability) 
-                                   or string.format("Proficiency bonus to %s", rollType)
+        local text = ability ~= "" and string.format("Proficiency bonus to %s (%s)", rollType, ability)
+            or string.format("Proficiency bonus to %s", rollType)
         local function render(parent)
             local bulletText = parent:AddBulletText(text)
             return bulletText
@@ -415,7 +411,8 @@ StatsBoostHandlers = {
         end
 
         local function render(parent, iconSize)
-            local bulletText = parent:AddBulletText(string.format("Critical hit against %s %s %s", target, frequency, result))
+            local bulletText = parent:AddBulletText(string.format("Critical hit against %s %s %s", target, frequency,
+                result))
             return bulletText
         end
         return render
@@ -473,7 +470,7 @@ StatsBoostHandlers = {
 
     IF = function(boost)
         if not boost.effects or #boost.effects == 0 then
-            return function() end 
+            return function() end
         end
 
         local conditionTokens = StatsParser:ParseCondition(boost.condition or "Unknown")
@@ -564,7 +561,7 @@ StatsParameterHandler = {
 
         local tokens = {
             damageNumberToken,
-            { Text = string.format(" %s damage", damageType), Color = damageColor}
+            { Text = string.format(" %s damage", damageType), Color = damageColor }
         }
 
         if not damageType then
@@ -584,7 +581,7 @@ StatsParameterHandler = {
         local icon = RBCheckIcon(status and status.Icon or "Item_Unknown")
         return {
             { Text = "Applies status: " },
-            { Text = GetLoca(status and status.DisplayName or statusName), Icon = icon, Tooltip = StatsParser:ParseDesc(status and status.Description or nil, nil, status and status.DescriptionParams)}
+            { Text = GetLoca(status and status.DisplayName or statusName), Icon = icon, Tooltip = StatsParser:ParseDesc(status and status.Description or nil, nil, status and status.DescriptionParams) }
         }
     end,
 
@@ -597,7 +594,7 @@ StatsParameterHandler = {
             numberToken,
         }
     end,
-    
+
     GainTemporaryHitPoints = function(param)
         local amount = param.args[1] or ""
         local numberToken = parseNumberText(amount)
@@ -618,11 +615,11 @@ StatsParameterHandler = {
             { Text = " temporary hit points" }
         }
     end,
-    
+
     Distance = function(param)
         local distance = param.args[1] or ""
         return {
-            { Text = string.format("%s meters", distance), Color = UI_COLORS.HighLight}
+            { Text = string.format("%s meters", distance), Color = UI_COLORS.HighLight }
         }
     end,
 
@@ -639,8 +636,8 @@ StatsParameterHandler = {
     Disadvantage = function(param)
         local rollType = param.args[1] or "Unknown"
         local specific = param.args[2] or ""
-        local text = specific ~= "" and string.format("Disadvantage on %s (%s)", rollType, specific) 
-                                     or string.format("Disadvantage on %s", rollType)
+        local text = specific ~= "" and string.format("Disadvantage on %s (%s)", rollType, specific)
+            or string.format("Disadvantage on %s", rollType)
         return {
             { Text = text }
         }
@@ -656,16 +653,16 @@ StatsParameterHandler = {
         local damageType = param.args[1] or "All"
         local reductionType = param.args[2] or "Flat"
         local amount = param.args[3] or "1"
-        
+
         if damageType == "All" then
             return {
                 { Text = "Reduce all damage by " },
-                { Text = amount, Color = UI_COLORS.HighLight }
+                { Text = amount,                 Color = UI_COLORS.HighLight }
             }
         else
             return {
                 { Text = string.format("Reduce %s damage by ", damageType) },
-                { Text = amount, Color = UI_COLORS.HighLight }
+                { Text = amount,                                           Color = UI_COLORS.HighLight }
             }
         end
     end,
@@ -751,9 +748,13 @@ StatsConditionHandlers = {
         end
         local tokens = {
             { Text = "Tagged: " },
-            { Text = displayName, Icon = icon, Tooltip = function(parent)
-                parent:AddText(description)
-            end }
+            {
+                Text = displayName,
+                Icon = icon,
+                Tooltip = function(parent)
+                    parent:AddText(description)
+                end
+            }
         }
 
         return tokens
@@ -819,7 +820,7 @@ StatsConditionHandlers = {
         local damageType = args[1] or "Unknown"
         local damageTypeColor = DAMAGE_TYPE_COLORS[damageType] or nil
         local tokens = {
-            { Text = "Resistant to ", Color = damageTypeColor },
+            { Text = "Resistant to ",                        Color = damageTypeColor },
             { Text = string.format("%s damage", damageType), Color = damageTypeColor }
         }
         return tokens
@@ -828,7 +829,7 @@ StatsConditionHandlers = {
         local damageType = args[1] or "Unknown"
         local damageTypeColor = DAMAGE_TYPE_COLORS[damageType] or nil
         local tokens = {
-            { Text = "Immune to ", Color = damageTypeColor },
+            { Text = "Immune to ",                           Color = damageTypeColor },
             { Text = string.format("%s damage", damageType), Color = damageTypeColor }
         }
         return tokens

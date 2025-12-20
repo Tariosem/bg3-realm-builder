@@ -622,6 +622,13 @@ Enums.SimplifiedModfier = {
     GUI = "GUI",
 }
 
+Enums.SimplifiedModfierBit = {
+    CTRL = 1,
+    SHIFT = 2,
+    ALT = 4,
+    GUI = 8,
+}
+
 Enums.ModfierToPresentation = {
     CTRL = "Ctrl",
     SHIFT = "Shift",

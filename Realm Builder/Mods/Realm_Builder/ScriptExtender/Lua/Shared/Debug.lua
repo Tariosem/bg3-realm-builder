@@ -38,7 +38,7 @@ DEBUG_COLOR = {
     Trace = "#00FFC3",
 }
 
-function RgbToANSI(rgb)
+local function RgbToANSI(rgb)
     local r = math.floor(rgb[1] * 255 + 0.5)
     local g = math.floor(rgb[2] * 255 + 0.5)
     local b = math.floor(rgb[3] * 255 + 0.5)
@@ -52,7 +52,7 @@ end
 
 --- @param gradientResult GradientResult
 --- @return string ANSI colored text
-function GradientToANSI(gradientResult)
+local function GradientToANSI(gradientResult)
     if not gradientResult or not gradientResult.Segments then
         return ""
     end

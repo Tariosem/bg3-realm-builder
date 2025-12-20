@@ -1531,7 +1531,7 @@ function MaterialPresetsMenu:RenderCCPresetList(presetName, parent)
     local recentList = cT.SideBar
 
     local mainWindow = mainList:AddChildWindow("MainCCPresets")
-    local mainTable = mainWindow:AddTable("CCPresets", 10)
+    local skinTypeTables = {}
     local titleCell = cT.TitleCell
 
     local titleTable = titleCell:AddTable("CCTitleTable", 2)
@@ -1548,13 +1548,17 @@ function MaterialPresetsMenu:RenderCCPresetList(presetName, parent)
     local recentQueue = self.Recent[presetName] or {} --[[@type ResourceCharacterCreationColor[] ]]
     self.Recent[presetName] = recentQueue
 
-    local row = mainTable:AddRow() --[[@as ExtuiTableRow?]]
+    local rows = {}
 
     local allResId = Ext.StaticData.GetAll(presetName) --[[@as table<string>]]
 
     local allRes = {} --[[@type ResourceCharacterCreationColor[] ]]
     for _, resId in ipairs(allResId) do
         local res = Ext.StaticData.Get(resId, presetName) --[[@as ResourceCharacterCreationColor]]
+        if not skinTypeTables[res.SkinType] then
+            mainWindow:AddSeparatorText(res.SkinType):SetStyle("SeparatorTextAlign", 0.5)
+            skinTypeTables[res.SkinType] = mainWindow:AddTable("", 10)
+        end
         table.insert(allRes, res)
     end
     local namePrior = false
@@ -1588,15 +1592,20 @@ function MaterialPresetsMenu:RenderCCPresetList(presetName, parent)
 
     local function renderAllResources()
         local lastYieldTime = Ext.Timer.MicrosecTime()
-        if row then
+        for skinType, row in pairs(rows) do
             row:Destroy()
-            row = nil
+            rows[skinType] = nil
         end
-        row = mainTable:AddRow()
         for _, res in ipairs(allRes) do
             if outerSuspended then
                 outerSuspended = false
                 return
+            end
+
+            local row = rows[res.SkinType]
+            if not row then
+                row = skinTypeTables[res.SkinType]:AddRow()
+                rows[res.SkinType] = row
             end
 
             local cell = row:AddCell()
@@ -1741,7 +1750,9 @@ function MaterialPresetsMenu:RenderCCPresetList(presetName, parent)
         local mTW = mainWindow.LastSize[1]
         local cols = math.floor(mTW / 55 * SCALE_FACTOR)
         if cols < 1 then cols = 1 end
-        mainTable.Columns = math.floor(cols)
+        for skinType, tab in pairs(skinTypeTables) do
+            tab.Columns = cols
+        end
     end
 
     Timer:Ticks(10, function()

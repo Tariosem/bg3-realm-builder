@@ -15,12 +15,6 @@ function UIHelpers.GetUIScale()
     return screenHeight / baseHeight
 end
 
---- @param value number
---- @return number
-function RBScaleUI(value)
-    return value * SCALE_FACTOR
-end
-
 SCALE_FACTOR = UIHelpers.GetUIScale()
 
 IMAGESIZE = {

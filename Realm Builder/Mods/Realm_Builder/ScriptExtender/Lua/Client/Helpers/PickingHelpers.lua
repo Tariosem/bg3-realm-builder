@@ -101,40 +101,41 @@ function ScreenToWorldRay(cameraHandle, mouseX, mouseY, screenW, screenH)
         return nil
     end
 
-    local camera = cameraHandle.Camera --[[@as CameraComponent]]
+    local camera     = cameraHandle.Camera --[[@as CameraComponent]]
     local controller = camera.Controller
 
-    local ndcX = (2.0 * mouseX) / screenW - 1.0
-    local ndcY = 1.0 - (2.0 * mouseY) / screenH
+    local ndcX       = (2.0 * mouseX) / screenW - 1.0
+    local ndcY       = 1.0 - (2.0 * mouseY) / screenH
 
-    local zNearClip = 0
-    local zFarClip  = 1.0
+    local zNearClip  = 0
+    local zFarClip   = 1.0
 
-    local clipNear = { ndcX, ndcY, zNearClip, 1.0 }
-    local clipFar  = { ndcX, ndcY, zFarClip,  1.0 }
+    local clipNear   = { ndcX, ndcY, zNearClip, 1.0 }
+    local clipFar    = { ndcX, ndcY, zFarClip, 1.0 }
 
-    local invProj = controller.Camera.InvProjectionMatrix
-    local invView = controller.Camera.InvViewMatrix
+    local invProj    = controller.Camera.InvProjectionMatrix
+    local invView    = controller.Camera.InvViewMatrix
 
     --local projMat = Matrix.new(controller.Camera.ProjectionMatrix)
     --local viewMat = Matrix.new(controller.Camera.ViewMatrix)
 
     -- (A * B)^-1 = B^-1 * A^-1
-    local inverse = Ext.Math.Mul(invView, invProj)
+    local inverse    = Ext.Math.Mul(invView, invProj)
     --local inverse = (projMat * viewMat):Inverse()
 
     local worldNear4 = Ext.Math.Mul(inverse, clipNear)
     local worldFar4  = Ext.Math.Mul(inverse, clipFar)
 
     --- normalize homogeneous coordinates
-    local worldNear = { worldNear4[1] / worldNear4[4], worldNear4[2] / worldNear4[4], worldNear4[3] / worldNear4[4] }
-    local worldFar = { worldFar4[1] / worldFar4[4], worldFar4[2] / worldFar4[4], worldFar4[3] / worldFar4[4] }
+    local worldNear  = { worldNear4[1] / worldNear4[4], worldNear4[2] / worldNear4[4], worldNear4[3] / worldNear4[4] }
+    local worldFar   = { worldFar4[1] / worldFar4[4], worldFar4[2] / worldFar4[4], worldFar4[3] / worldFar4[4] }
 
-    local dir = { worldNear[1] - worldFar[1], worldNear[2] - worldFar[2], worldNear[3] - worldFar[3] }
+    ---
+    local dir        = { worldNear[1] - worldFar[1], worldNear[2] - worldFar[2], worldNear[3] - worldFar[3] }
 
-    local origin = Vec3.new(cameraHandle.Transform.Transform.Translate)
+    local origin     = Vec3.new(cameraHandle.Transform.Transform.Translate)
 
-    local ray = Ray.new(origin, dir)
+    local ray        = Ray.new(origin, dir)
 
     return ray
 end
@@ -155,13 +156,13 @@ function WorldToScreenPoint(worldPos, cameraHandle, screenW, screenH)
 
     if not cameraHandle or not cameraHandle.Camera then
         Error("WorldToScreenPoint: Invalid camera entity or missing Camera component")
-        return {0, 0}
+        return { 0, 0 }
     end
 
     local camera = cameraHandle.Camera --[[@as CameraComponent]]
     local controller = camera.Controller
 
-    local worldPos4 = Vec4.new({worldPos[1], worldPos[2], worldPos[3], 1.0})
+    local worldPos4 = Vec4.new({ worldPos[1], worldPos[2], worldPos[3], 1.0 })
 
     local viewMat = Matrix.new(controller.Camera.ViewMatrix)
     local projMat = Matrix.new(controller.Camera.ProjectionMatrix)
@@ -171,7 +172,7 @@ function WorldToScreenPoint(worldPos, cameraHandle, screenW, screenH)
     local clipPos = viewProj * worldPos4
 
     if clipPos.w == 0 then
-        return {0, 0}
+        return { 0, 0 }
     end
 
     local ndcPos = clipPos / clipPos.w

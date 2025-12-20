@@ -164,31 +164,32 @@ end
 --- @class KeybindRegistry
 --- @field Callback fun(e:SimplifiedInputEvent)
 --- @field Conditions (fun(e:SimplifiedInputEvent):boolean)[]
---- @field Modifiers SDLKeyModifier|nil
---- @field AddCondition fun(self:KeybindRegistry, condition:fun(e:SimplifiedInputEvent):boolean)
---- @field SetCallback fun(self:KeybindRegistry, callback:fun(e:SimplifiedInputEvent))
---- @field AddDescription fun(self:KeybindRegistry, desc:string)
+--- @field AddCondition fun(self:KeybindRegistry, condition:fun(e:SimplifiedInputEvent):boolean):KeybindRegistry
+--- @field SetCallback fun(self:KeybindRegistry, callback:fun(e:SimplifiedInputEvent)):KeybindRegistry
+--- @field AddDescription fun(self:KeybindRegistry, desc:string):KeybindRegistry
 --- @field Disabled boolean
-
-KeybindRegistry = _Class("KeybindRegistry")
+--- @field new fun(callback:fun(e:SimplifiedInputEvent)?):KeybindRegistry
+local KeybindRegistry = _Class("KeybindRegistry")
 
 function KeybindRegistry:__init(callback)
     self.Callback = callback or function() end
     self.Conditions = {}
-    self.Modifiers = nil
     self.Description = nil
 end
 
 function KeybindRegistry:AddCondition(condition)
     table.insert(self.Conditions, condition)
+    return self
 end
 
 function KeybindRegistry:SetCallback(callback)
     self.Callback = callback
+    return self
 end
 
 function KeybindRegistry:AddDescription(desc)
     self.Description = desc
+    return self
 end
 
 ---@param module string
