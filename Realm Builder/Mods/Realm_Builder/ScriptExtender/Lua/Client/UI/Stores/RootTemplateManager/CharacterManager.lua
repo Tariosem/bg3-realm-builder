@@ -224,7 +224,7 @@ function CharacterManager:HardCodeHierachy()
         }
     }
 
-    local tabStack = {}
+    local tabStack = {raceTagTree}
 
     while #tabStack > 0 do
         local t = table.remove(tabStack)

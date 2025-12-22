@@ -611,12 +611,13 @@ function EntityHelpers.GetNearbyCharactersAndItems(pos, radius)
         else
             distance = Ext.Math.Distance(pos, targetPos)
         end
+        local displayName = entity.DisplayName and entity.DisplayName.Name and entity.DisplayName.Name:Get() or "Unknown"
         if distance and distance <= radius then
             table.insert(nearbyEntities, {
                 Entity = entity,
                 Guid = guid,
                 Distance = distance,
-                DisplayName = entity.DisplayName.Name:Get()
+                DisplayName = displayName
             })
         else
         end

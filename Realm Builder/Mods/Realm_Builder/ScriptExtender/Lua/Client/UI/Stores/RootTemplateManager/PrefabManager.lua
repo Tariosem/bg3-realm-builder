@@ -13,6 +13,5 @@ function PrefabManager:PopulatePrefab(template)
         Uuid = template.Id,
         TemplateId = template.Name .. "_" .. template.Id,
         TemplateName = template.Name,
-        Icon = "Item_Unknown",
     }
 end

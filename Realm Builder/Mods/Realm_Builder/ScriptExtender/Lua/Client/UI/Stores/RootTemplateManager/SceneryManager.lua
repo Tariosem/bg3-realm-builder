@@ -19,7 +19,6 @@ function SceneryManager:PopulateScenery(template)
         TemplateName = template.Name,
         VisualTemplate = template.VisualTemplate,
         DisplayName = template.DisplayName:Get() or "",
-        Icon = "Item_Unknown",
     }
 
     if not self.Data[template.Id].DisplayName or self.Data[template.Id].DisplayName == "" then

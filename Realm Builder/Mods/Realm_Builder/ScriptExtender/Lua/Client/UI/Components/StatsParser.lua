@@ -2,9 +2,9 @@ StatsParser = {}
 
 local StatsHandler = Ext.Require("Client/UI/Components/StatsHandler.lua")
 
-local StatsParameterHandler = StatsHandler.StatsParameterHandler
-local StatsConditionHandlers = StatsHandler.StatsConditionHandlers
-local StatsBoostHandlers = StatsHandler.StatsBoostHandlers
+local StatsParameterHandler = StatsHandler.StatsParameterHandler --[[@as table<string, fun(param: ParsedString): RB_TextToken[] >]]
+local StatsConditionHandlers = StatsHandler.StatsConditionHandlers --[[@as table<string, fun(args: string[]): RB_TextToken[] >]]
+local StatsBoostHandlers = StatsHandler.StatsBoostHandlers --[[@as table<string, fun(boost: ParsedString): fun(parent: ExtuiTreeParent, wrapPos: integer?) >]]
 
 --- @class ParsedString
 --- @field name string
@@ -13,6 +13,8 @@ local StatsBoostHandlers = StatsHandler.StatsBoostHandlers
 --- @field effect ParsedString|nil
 --- @field effects ParsedString[]|nil
 
+--- @param boostStr string
+--- @return ParsedString[]
 function StatsParser:ParseString(boostStr)
     local results = {}
     if not boostStr or boostStr == "" then
@@ -151,6 +153,8 @@ function StatsParser:ParseString(boostStr)
     return results
 end
 
+--- @param input string
+--- @return RB_TextToken[]
 local function ParseLSTextToTokens(input)
     local results = {}
     local lastPos = 1
@@ -190,6 +194,10 @@ local function ParseLSTextToTokens(input)
     return results
 end
 
+--- @param tokens RB_TextToken[] -- tokens to inject params into
+--- @param params RB_TextToken[][] -- paramIndex -> list of tokens to be injected
+--- @param oriParams string
+--- @return RB_TextToken[]
 local function injectParams(tokens, params, oriParams)
     local output = {}
 
@@ -239,6 +247,8 @@ local function injectParams(tokens, params, oriParams)
     return output
 end
 
+--- @param descParams string 
+--- @return RB_TextToken[][], string -- parsed params, original params string
 function StatsParser:ParseParams(descParams)
     --Debug("ParseParams input:", descParams)
     
@@ -250,7 +260,7 @@ function StatsParser:ParseParams(descParams)
     end
     
     if #results == 0 then
-        return { { { Text = descParams or "" } } }
+        return { { { Text = descParams or "" } } }, descParams
     end
 
     local parsed = {}
@@ -298,6 +308,8 @@ function StatsParser:ParseParams(descParams)
     return parsed, descParams
 end
 
+--- @param condStr string
+--- @return RB_TextToken[]
 function StatsParser:ParseCondition(condStr)
     if not condStr or condStr == "" then
         return { { Text = "No condition" } }
@@ -377,7 +389,7 @@ end
 --- @param descParams any
 --- @param depth integer?
 --- @param isTooltip boolean?
---- @return function 
+--- @return fun(parent: ExtuiTreeParent, wrapPos: integer?) -- render function
 function StatsParser:ParseDesc(desc, descRef, descParams, depth, isTooltip)
     depth = depth or 1
     if not desc or desc == "" then
@@ -412,6 +424,7 @@ end
 
 local seenBoosts = {}
 --- @param Boosts string
+--- @return fun(parent: ExtuiTreeParent, wrapPos: integer?)[]|nil -- list of render functions
 function StatsParser:ParseBoosts(Boosts)
     local raw = Boosts or ""
 
@@ -461,6 +474,7 @@ function StatsParser:ParseBoosts(Boosts)
 end
 
 --- @param passives string
+--- @return fun(parent: ExtuiTreeParent, wrapPos: integer?)[]|nil -- list of render functions
 function StatsParser:ParsePassives(passives)
     local allRenders = {}
 

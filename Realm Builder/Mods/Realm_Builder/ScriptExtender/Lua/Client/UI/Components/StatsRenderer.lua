@@ -32,14 +32,14 @@ function ImguiElements.RenderTokenTexts(parent, tokens, firstAlwaysSameLine)
         local text = token.Text or ""
 
         --- dirty fix for punctuation at start of text
-        if not token.SameLine and #text > 1 and punctuations[text:sub(1,1)] then
-            local firstChar = text:sub(1,1)
+        if not token.SameLine and #text > 1 and punctuations[text:sub(1, 1)] then
+            local firstChar = text:sub(1, 1)
             local textRest = text:sub(2)
             local labelPunc = parent:AddText(firstChar)
             labelPunc.SameLine = true
             text = textRest
         end
-        
+
         local icon = nil
         local statsName = nil
         local statsType = nil
@@ -49,7 +49,7 @@ function ImguiElements.RenderTokenTexts(parent, tokens, firstAlwaysSameLine)
             statsObj = Ext.Stats.Get(statsName) --[[ @type StatsObject ]]
             statsType = token.TooltipRef.Type
         end
-        
+
         if token.Icon and not token.TooltipRef then
             icon = parent:AddImage(token.Icon)
             icon.ImageData.Size = RBUtils.ToVec2(32 * SCALE_FACTOR)
@@ -60,7 +60,7 @@ function ImguiElements.RenderTokenTexts(parent, tokens, firstAlwaysSameLine)
         local statImage = nil
         if token.TooltipRef and statsObj then
             local statsObjRenderfunc = ImguiElements.RenderStatsObject(statsObj, statsType, text)
-            statImage,label = statsObjRenderfunc(parent, true)
+            statImage, label = statsObjRenderfunc(parent, true)
         else
             label = parent:AddText(text)
         end
@@ -89,7 +89,7 @@ function ImguiElements.RenderTokenTexts(parent, tokens, firstAlwaysSameLine)
         else
             label.SameLine = token.SameLine
         end
-        
+
         if firstAlwaysSameLine and i == 1 then
             label.SameLine = true
             if icon then
@@ -109,7 +109,6 @@ function ImguiElements.RenderTokenTexts(parent, tokens, firstAlwaysSameLine)
     end
     return elements
 end
-
 
 ---@param statsObj StatsObject
 ---@param parent ExtuiTreeParent
@@ -148,12 +147,11 @@ local function RenderStatsObjectTitle(statsObj, parent, statType, isTooltip)
 
     local image = iconCell:AddImage(icon, RBUtils.ToVec2(64 * SCALE_FACTOR))
 
-    local _,rightContent = parent:AddDummy(10 * SCALE_FACTOR, 1), parent:AddGroup("StatsDescGroup")
+    local _, rightContent = parent:AddDummy(10 * SCALE_FACTOR, 1), parent:AddGroup("StatsDescGroup")
     rightContent.SameLine = true
     descRender(rightContent)
     parent:SetStyle("WindowBorderSize", 2)
     parent:SetColor("Border", UI_COLORS.Border)
-
 end
 
 ---@param spellData SpellData
@@ -165,17 +163,19 @@ local function renderSpellAttrs(spellData, parent)
 
     if spellData.TooltipStatusApply then
         --[[ ApplyStatus(MAG_CHARGED_LIGHTNING_ENSNARING_SHOCK,100,4) ]]
-        local statusStatName, _, durationStr = string.match(spellData.TooltipStatusApply, "ApplyStatus%(([%w_]+),(%d+),(%d+)%)")
+        local statusStatName, _, durationStr = string.match(spellData.TooltipStatusApply,
+            "ApplyStatus%(([%w_]+),(%d+),(%d+)%)")
         if statusStatName then
             local statusStat = Ext.Stats.Get(statusStatName) --[[@as StatusData]]
+            local duration = tonumber(durationStr) or 0
             if statusStat then
                 parent:AddDummy(50 * SCALE_FACTOR, 5)
                 local statusObjRender = ImguiElements.RenderStatsObject(statusStat, "StatusData")
                 local image, label = statusObjRender(parent, false)
                 image.SameLine = true
                 label.Visible = false
-
-                local turnOrTurns = tonumber(durationStr) == 1 and "turn" or "turns"
+                
+                local turnOrTurns = duration == 1 and "turn" or "turns"
                 parent:AddText(tostring(durationStr) .. " " .. turnOrTurns).SameLine = true
             end
         end
@@ -228,7 +228,7 @@ local function renderSpellAttrs(spellData, parent)
         if #costs > 0 then
             for i, cost in ipairs(costs) do
                 if cost:sub(1, 15) == "SpellSlotsGroup" then
-                    cost = " Level " .. RBStringUtils.TakeTail(cost, 1) .. " Spell Slot" 
+                    cost = " Level " .. RBStringUtils.TakeTail(cost, 1) .. " Spell Slot"
                 elseif cost:sub(1, 16) == "WarlockSpellSlot" then
                     cost = " Warlock Spell Slot"
                 end
@@ -239,20 +239,19 @@ local function renderSpellAttrs(spellData, parent)
     end
 
     --parent:AddText("Spell type: " .. (spellData.SpellType or "Unknown"))
-
 end
 
 --- @param statsObj StatsObject
 --- @param type any
 --- @param nameOverride string|nil
---- @return fun(parent: ExtuiTreeParent, useTextLink: boolean): (ExtuiImageButton|ExtuiImage, ExtuiText|ExtuiTextLink)|fun()
+--- @return fun(parent: ExtuiTreeParent, useTextLink: boolean): (ExtuiImageButton|ExtuiImage, ExtuiText|ExtuiTextLink)|fun():nil
 function ImguiElements.RenderStatsObject(statsObj, type, nameOverride)
     if not statsObj then
         return function() end
     end
 
     local icon = RBCheckIcon(statsObj.Icon or "Item_Unknown")
-    
+
     local function render(parent, useTextLink)
         --- @type ExtuiImageButton
         local image = nil
@@ -297,8 +296,8 @@ function ImguiElements.RenderStatsObject(statsObj, type, nameOverride)
             end
 
             popup:Open()
-            
-            refEle.OnClick = function ()
+
+            refEle.OnClick = function()
                 popup:Open()
             end
         end

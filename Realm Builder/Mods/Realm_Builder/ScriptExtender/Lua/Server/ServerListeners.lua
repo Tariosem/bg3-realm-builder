@@ -439,13 +439,11 @@ NetChannel.GetAtmosphere:SetRequestHandler(function(data, userID)
     end
     local atmosphereUuid = trigger.ServerAtmosphereTrigger.CurrentAtmosphereResourceID
     local allResources = RBUtils.LightCToArray(trigger.ServerAtmosphereTrigger.AtmosphereResourceIDs)
-    for i = #allResources, 1, -1 do
-        local resUUID = allResources[i]
-        if not RBUtils.IsUuid(resUUID) then
-            table.remove(allResources, i)
-        end
+    local availableResources = {}
+    for i, resUuuid in pairs(allResources) do
+        availableResources[resUuuid] = true
     end
-    return { Guid = atmosphereUuid, ResourceUUIDs = allResources }
+    return { Guid = atmosphereUuid, ResourceUUIDs = availableResources }
 end)
 
 NetChannel.GetLighting:SetRequestHandler(function(data, userID)
@@ -455,13 +453,11 @@ NetChannel.GetLighting:SetRequestHandler(function(data, userID)
     end
     local lightingUuid = trigger.ServerLightingTrigger.CurrentLightingResourceID
     local allResources = RBUtils.LightCToArray(trigger.ServerLightingTrigger.LightingResourceIDs)
-    for i = #allResources, 1, -1 do
-        local resUUID = allResources[i]
-        if not RBUtils.IsUuid(resUUID) then
-            table.remove(allResources, i)
-        end
+    local availableResources = {}
+    for i, resUuuid in pairs(allResources) do
+        availableResources[resUuuid] = true
     end
-    return { Guid = lightingUuid, ResourceUUIDs = allResources }
+    return { Guid = lightingUuid, ResourceUUIDs = availableResources }
 end)
 
 NetChannel.SetAtmosphere:SetRequestHandler(function(data, userID)

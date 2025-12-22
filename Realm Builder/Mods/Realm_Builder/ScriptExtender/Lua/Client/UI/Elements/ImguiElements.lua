@@ -844,7 +844,7 @@ function ImguiElements.AddAlignedTable(parent)
             if k:sub(1, 3) == "Add" then
                 return function(_, ...)
                     local args = { ... }
-                    local label = table.remove(args, 1)
+                    local label = table.remove(args, 1) or ""
                     local row = tab:AddRow() --[[@as ExtuiTableRow]]
                     local nameCell = row:AddCell()
                     nameCell:AddText(label)

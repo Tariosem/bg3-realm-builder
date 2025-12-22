@@ -11,7 +11,6 @@ function ItemManager:__init()
     self.UuidToTemplateName = {}
     self.dynamicTags = {}
     self.tagMap = {}
-    -- maintain tag counts incrementally
     self.tagCount = {}
     self:HardCodeHierachy()
 end
@@ -294,6 +293,7 @@ function ItemManager:PopulateItem(template, statsObj)
 
     return entry
 end
+
 
 local function categorize_equipment(manager, statsObj, templateName, uuid)
     if EQUIPMENTS_HAS_ARMORTYPE[statsObj.Slot] and statsObj.ArmorType ~= "None" then

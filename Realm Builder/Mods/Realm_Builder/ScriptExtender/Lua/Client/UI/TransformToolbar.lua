@@ -398,12 +398,12 @@ function TransformToolbar:RegisterTransformEditorEvents()
         if not (e.Modifiers and e.Modifiers == "LAlt") then return end
 
         local resetTransform = {}
-        if e.Key == teMod:GetKeyByEvent("RotateMode").Key then resetTransform.RotationQuat = { 0, 0, 0, 1 } end
-        if e.Key == teMod:GetKeyByEvent("TranslateMode").Key then
+        if e.Key == teMod:GetKeyByEvent("Rotate").Key then resetTransform.RotationQuat = { 0, 0, 0, 1 } end
+        if e.Key == teMod:GetKeyByEvent("Grab").Key then
             resetTransform.Translate = { RBGetPosition(
                 RBGetHostCharacter()) }
         end
-        if e.Key == teMod:GetKeyByEvent("ScaleMode").Key then resetTransform.Scale = { 1, 1, 1 } end
+        if e.Key == teMod:GetKeyByEvent("Scale").Key then resetTransform.Scale = { 1, 1, 1 } end
 
         Commands.SetTransform(globalEditor.Target or {}, resetTransform)
     end)

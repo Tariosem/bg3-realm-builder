@@ -8,21 +8,26 @@ local SceneryRegistry = {}
 
 local function ClearNearbyMap(pos, radius)
     nearByEntries = {}
-    for guid, entry in pairs(SceneryRegistry) do
-        local newDis = Ext.Math.Distance(pos, entry.Transform.Transform.Translate)
+    for guid, ent in pairs(SceneryRegistry) do
+        if not ent.Transform or not ent.Transform.Transform or not ent.Transform.Transform.Translate then
+            SceneryRegistry[guid] = nil
+            goto continue
+        end
+        local newDis = Ext.Math.Distance(pos, ent.Transform.Transform.Translate)
         if radius and newDis > radius then
             SceneryRegistry[guid] = nil
         else
             local newEntry = {
                 Guid = guid,
-                DisplayName = entry.Visual and entry.Visual.Visual and
-                RBStringUtils.GetLastPath(entry.Visual.Visual.VisualResource.SourceFile),
-                Entity = entry,
+                DisplayName = ent.Visual and ent.Visual.Visual and
+                RBStringUtils.GetLastPath(ent.Visual.Visual.VisualResource.SourceFile),
+                Entity = ent,
                 Distance = newDis,
                 IsScenery = true,
             }
             table.insert(nearByEntries, newEntry)
         end
+        ::continue::
     end
 end
 

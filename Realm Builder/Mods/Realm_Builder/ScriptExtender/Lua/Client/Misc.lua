@@ -151,7 +151,7 @@ RegisterDebugWindow("Misc", function(panel)
             btn.OnClick = function()
                 local cam = RBGetCamera()
                 if not cam or not cam.PhotoModeCameraSavedTransform then return end
-                cam.PhotoModeCameraSavedTransform.field_0 = save.Transform
+                cam.PhotoModeCameraSavedTransform.Transform = save.Transform
                 Ext.OnNextTick(function()
                     --- @diagnostic disable-next-line
                     Ext.UI.GetRoot():Find("ContentRoot"):Child(21).DataContext.RecallCameraTransform:Execute()
@@ -168,6 +168,7 @@ RegisterDebugWindow("Misc", function(panel)
         local cam = RBGetCamera()
         if not cam or not cam.PhotoModeCameraSavedTransform then return end
         local camTransform = cam.Transform.Transform
+    
         local copy = {
             Translate = Vec3.new(camTransform.Translate),
             RotationQuat = Quat.new(camTransform.RotationQuat),

@@ -12,6 +12,8 @@ local keybindPath = rootFolder .. "Keybind.json"
 local browserSettingPath = rootFolder .. "Browsers/%s.json"
 local generatedPrefabPath = rootFolder .. "Prefabs/"
 
+local atmosPath = rootFolder .. "Atmospheres/"
+
 local logPath = rootFolder .. "Logs/"
 local mapModLogPath = logPath .. "Map_Mods_Export_Log_%s.json"
 local ccaModLogPath = logPath .. "CC_Mods_Export_Log_%s.json"
@@ -221,4 +223,8 @@ end
 
 function FilePath.GetXMLErrorLogPath(timeStamp)
     return string.format(xmlErrorLogPath, timeStamp)
+end
+
+function FilePath.GetAtmospherePath(atmosphereName)
+    return atmosPath .. atmosphereName .. ".json"
 end

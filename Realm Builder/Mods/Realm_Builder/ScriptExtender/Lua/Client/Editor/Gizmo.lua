@@ -258,7 +258,7 @@ end
 
 function TransformGizmo:SetupIdleTimers()
     local lastRay = nil
-    
+
     self.Timers["DetectHover"] = Timer:EveryFrame(function(timerID)
         if self.IsDragging or not self.Picker then return end
         local mouseRay = ScreenToWorldRay()
@@ -528,7 +528,8 @@ function TransformGizmo:GetHit(ray)
 
         hit = self.Picker:HitPlaneByNormal(ray, axis)
         --- @diagnostic disable-next-line
-        if not hit then hit = Hit.new(self.Picker:ProjectPointOnPlanePerpToAxis(ray.Origin, next(self.SelectedAxis)), nil, 0, nil) end
+        if not hit then hit = Hit.new(self.Picker:ProjectPointOnPlanePerpToAxis(ray.Origin, next(self.SelectedAxis)), nil,
+        0, nil) end
     else
         if cnt == 1 then
             local axisName = nil
@@ -573,18 +574,15 @@ function TransformGizmo:GetHit(ray)
     return hit, axis or Vec3.new { 0, 0, 0 }
 end
 
---- Ext.Math.Angle doesn't return signed angles
 local function CalcRotationChange(startDir, dir, axis, origin)
-    local dot = startDir:Dot(dir)
-    dot = Ext.Math.Clamp(dot, -1, 1)
-    local angle = math.acos(dot)
+    local angle = Ext.Math.Angle(startDir, dir)
 
     local cross = startDir:Cross(dir)
     if cross:Dot(axis) < 0 then
         angle = -angle
     end
 
-    return angle --WrapQuat(Ext.Math.QuatRotateAxisAngle(Quat.Identity(), axis, angle))
+    return angle
 end
 
 --- @param startHit Hit

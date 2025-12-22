@@ -150,12 +150,12 @@ local function ablityBoostRenderer(boost)
     return simpleRenderer(ability, bonus)
 end
 
---- @type table<string, fun(boost: any): fun(parent: ExtuiTreeParent): ExtuiText>
+--- @type table<string, fun(boost: ParsedString): fun(parent: ExtuiTreeParent): ExtuiBulletText>
 local StatsBoostHandlers = {}
 StatsBoostHandlers = {
     UnlockSpell = function(boost)
         local sd = Ext.Stats.Get(boost.args[1] or "") --[[@as SpellData]]
-        local function render(parent, iconSize)
+        local function render(parent)
             local bulletText = parent:AddBulletText(GetLoca("Unlock Spell : "))
             ImguiElements.RenderStatsObject(sd, "SpellData")(parent)
             return bulletText
@@ -295,7 +295,7 @@ StatsBoostHandlers = {
         local damage = boost.args[1] or "1"
         local damageType = boost.args[2] or "Physical"
         local damageTypeColor = DAMAGE_TYPE_COLORS[damageType] or nil
-        local function render(parent, iconSize)
+        local function render(parent)
             local bulletText = parent:AddBulletText("")
             local damageText = parent:AddText(string.format("+%s %s damage", damage, damageType))
             damageText.SameLine = true
@@ -410,7 +410,7 @@ StatsBoostHandlers = {
             target = "Wearer"
         end
 
-        local function render(parent, iconSize)
+        local function render(parent)
             local bulletText = parent:AddBulletText(string.format("Critical hit against %s %s %s", target, frequency,
                 result))
             return bulletText
@@ -525,6 +525,7 @@ StatsBoostHandlers = {
     end,
 }
 
+--- @type table<string, fun(param: ParsedString): RB_TextToken[] >
 local StatsParameterHandler = {}
 StatsParameterHandler = {
     LevelMapValue = function(param)
@@ -717,6 +718,7 @@ StatsParameterHandler = {
 
 }
 
+--- @type table<string, fun(args: string[]): RB_TextToken[] >
 local StatsConditionHandlers = {}
 StatsConditionHandlers = {
     HasPassive = function(args)

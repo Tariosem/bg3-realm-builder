@@ -38,31 +38,31 @@ function ImguiHelpers.SetupImageButton(arrowImage)
     arrowImage:SetColor("ButtonActive", { 0, 0, 0, 0 })
 end
 
---- @param Combo ExtuiCombo
+--- @param c ExtuiCombo
 --- @return string
-function ImguiHelpers.GetCombo(Combo)
-    return Combo.Options[Combo.SelectedIndex + 1]
+function ImguiHelpers.GetCombo(c)
+    return c.Options[c.SelectedIndex + 1]
 end
 
----@param Combo ExtuiCombo
+---@param c ExtuiCombo
 ---@param Value string
 ---@param ifNotFoundAdd? boolean
 ---@param noTrigger? boolean
-function ImguiHelpers.SetCombo(Combo, Value, ifNotFoundAdd, noTrigger)
-    for i, v in pairs(Combo.Options) do
+function ImguiHelpers.SetCombo(c, Value, ifNotFoundAdd, noTrigger)
+    for i, v in pairs(c.Options) do
         if v == Value then
             -- So the combo index start from 0 but lua table index start from 1. ???
-            Combo.SelectedIndex = i - 1
-            return
+            c.SelectedIndex = i - 1
+            break
         end
     end
     if ifNotFoundAdd then
-        table.insert(Combo.Options, Value)
-        Combo.SelectedIndex = #Combo.Options - 1
+        table.insert(c.Options, Value)
+        c.SelectedIndex = #c.Options - 1
     end
 
-    if not noTrigger and Combo.OnChange then
-        Combo:OnChange()
+    if not noTrigger and c.OnChange then
+        c:OnChange()
     end
 end
 
