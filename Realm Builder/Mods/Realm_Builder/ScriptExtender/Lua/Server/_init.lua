@@ -6,7 +6,7 @@ RBUtils.RequireFiles("Server/", {
     "BindManager",
 })
 
-RB_GLOBALS.EffectManager = EffectsManager:init("EffectsManager") --[[@as EffectsManager]]
+RB_GLOBALS.EffectManager = EffectsManager:init("EffectsManager") --[[@as RB_EffectsManager]]
 
 RBUtils.RequireFiles("Server/", {
     "ServerListeners",

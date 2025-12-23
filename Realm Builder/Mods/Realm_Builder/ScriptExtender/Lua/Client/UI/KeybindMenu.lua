@@ -49,7 +49,7 @@ local KEYBIND_EVENT_RENDER_ORDER = {
         "BindPopup",
         "BindTo",
         "Unbind",
-        "SnapToParent",
+        "SnapToHover",
     },
 }
 
@@ -76,6 +76,10 @@ local localizedNames = {
     FreezeGravity = "Freeze Gravity",
     SnapToGround = "Snap To Ground",
     OpenNearbyPopup = "Open Nearby Popup",
+    MoveToCursor = "Move To Cursor",
+    Move3DCursor = "Move 3D Cursor",
+    Snap3DCursor = "Snap 3D Cursor",
+    SnapToHover = "Snap To Hover",
     Undo = "Undo",
     Redo = "Redo",
 
@@ -92,7 +96,7 @@ local localizedNames = {
     BindPopup = "Open Bind Popup",
     BindTo = "Bind To Hover",
     Unbind = "Unbind Selection",
-    SnapToParent = "Snap To Parent",
+
 }
 
 function KeybindMenu:Render(parent)

@@ -248,39 +248,49 @@ function EntityManager:CreateAt(templateId, x, y, z, rx, ry, rz, w)
         return nil
     end
 
-    local newProp = Osi.CreateAt(spawnTemplate, x, y, z, tempoFlag, 0, "") --[[@as string]]
-    if not newProp then
+    local newGuid = Osi.CreateAt(spawnTemplate, x, y, z, tempoFlag, 0, "") --[[@as string]]
+    if not newGuid then
         Error("Failed to create Entity from TemplateId: " .. tostring(templateId))
         return nil
     end
     local templateType = templateObj and templateObj.TemplateType or "Visual"
     --Debug(debugText:format(tostring(templateType), x, y, z, tostring(templateId), tostring(newProp)))
 
-    OsirisHelpers.Propify(newProp)
-    RB_FlagHelpers.SetFlag(newProp, "IsSpawned")
+    OsirisHelpers.Propify(newGuid)
+    RB_FlagHelpers.SetFlag(newGuid, "IsSpawned")
 
     if rx and ry and rz and w then
-        OsirisHelpers.RotateTo(newProp, rx, ry, rz, w)
+        OsirisHelpers.RotateTo(newGuid, rx, ry, rz, w)
     end
     if templateType == "character" then
-        NetChannel.SetVisualTransform:Broadcast({Guid = newProp, Transforms = { [newProp] = { RotationQuat = {rx, ry, rz, w}, Translate = {x, y, z} } } })
+        NetChannel.SetVisualTransform:Broadcast({Guid = newGuid, Transforms = { [newGuid] = { RotationQuat = {rx, ry, rz, w}, Translate = {x, y, z} } } })
+    else
     end
 
     local propData = {
         TemplateId = templateId,
-        Guid = newProp,
+        Guid = newGuid,
     }
 
-    self.SavedEntities[newProp] = propData
-    self:StoreGuid(newProp)
+    self.SavedEntities[newGuid] = propData
+    self:StoreGuid(newGuid)
+
+    
 
     local TemplateName = RBStringUtils.TrimTail(templateId, 37)
     if TemplateName == "" then
         TemplateName = templateId
     end
 
-    return newProp
+    return newGuid
 end
+
+--[[
+local entity = Ext.Entity.Get("748fc364-1753-adfa-3836-ab1432c5705f")
+local visual = "cdb507c9-c999-8286-89e0-571ceba8f6f9"
+Ext.System.ServerVisual.ItemSetVisualResource[entity] = visual
+Ext.System.ServerVisual.UpdateVisuals[entity] = true
+]]--
 
 function EntityManager:SetEntity(guid, entInfo)
     if entInfo.VisualPreset and entInfo.VisualPreset ~= "" then

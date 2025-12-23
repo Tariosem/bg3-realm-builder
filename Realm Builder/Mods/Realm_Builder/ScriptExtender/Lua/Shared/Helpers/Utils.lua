@@ -339,10 +339,11 @@ function RBUtils.Debounce(delay, func)
     end
 end
 
---- @param doSomething fun()
+--- @param callback fun()
 --- @param check fun():boolean
 --- @param timeOutFrame integer?
-function RBUtils.WaitUntil(check, doSomething, timeOutFrame)
+--- @param fallback fun()?
+function RBUtils.WaitUntil(check, callback, fallback, timeOutFrame)
     timeOutFrame = timeOutFrame or 300
 
     local frameCount = 0
@@ -356,10 +357,13 @@ function RBUtils.WaitUntil(check, doSomething, timeOutFrame)
             return
         end
         if okToDo then
-            doSomething()
+            callback()
             Ext.Events.Tick:Unsubscribe(timerId)
         elseif frameCount >= timeOutFrame then
             Ext.Events.Tick:Unsubscribe(timerId)
+            if fallback then
+                fallback()
+            end
         end
     end)
 end
@@ -372,7 +376,7 @@ function RBUtils.GetFormatTime()
     if not y or not m or not d or not h or not min or not s then
         return ""
     end
-    return string.format("%04d-%02d-%02d_%02d%02d%02d", tonumber(y), tonumber(m), tonumber(d),
+    return string.format("%04d-%02d-%02d_%02d-%02d-%02d", tonumber(y), tonumber(m), tonumber(d),
             tonumber(h), tonumber(min), tonumber(s))
 end
 

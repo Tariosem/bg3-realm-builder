@@ -324,18 +324,32 @@ end
 --- @param index integer
 --- @
 function TransformEditor:MakePointVisualization(gizmo, pointTransform, index)
+    local function setupGizmoVisual(guid)
+        RBUtils.WaitUntil(function()
+            return VisualHelpers.GetEntityVisual(guid) ~= nil
+        end, function()
+            if not self.IsDragging then return end
+            for _, axis in pairs({ "X", "Y", "Z" }) do
+                if gizmo.SelectedAxis and gizmo.SelectedAxis[axis] then
+                    gizmo.Visualizer:HighLightGizmoAxis(axis, guid)
+                else
+                    gizmo.Visualizer:HideGizmoAxis(axis, guid)
+                end
+            end
+        end, function()
+            NetChannel.Delete:RequestToServer({ Guid = guid }, function(response)
+                -- make sure it's dead
+                self.PointVisualizations[index] = nil
+            end)
+        end)
+    end
+
     if self.PointVisualizations and self.PointVisualizations[index] then
         local pointGuid = self.PointVisualizations[index]
 
         NetChannel.SetTransform:RequestToServer({ Guid = pointGuid, Transforms = { [pointGuid] = pointTransform } },
             function()
-                for _, axis in pairs({ "X", "Y", "Z" }) do
-                    if gizmo.SelectedAxis and gizmo.SelectedAxis[axis] then
-                        gizmo.Visualizer:HighLightGizmoAxis(axis, pointGuid)
-                    else
-                        gizmo.Visualizer:HideGizmoAxis(axis, pointGuid)
-                    end
-                end
+                setupGizmoVisual(pointGuid)
             end)
         return
     end
@@ -346,37 +360,15 @@ function TransformEditor:MakePointVisualization(gizmo, pointTransform, index)
         Rotation = pointTransform.RotationQuat,
         Duration = -1,
     }, function(response)
-        for _, viz in pairs(response or {}) do
-            table.insert(self.PointVisualizations, viz)
-        end
+        local guid = response[1]
+        self.PointVisualizations[index] = guid
 
         if not self.IsDragging then
-            for _, viz in ipairs(response or {}) do
-                gizmo.Visualizer:HideGizmo(viz)
-            end
+            gizmo.Visualizer:HideGizmo(guid)
             return
         end
 
-        RBUtils.WaitUntil(function()
-            local allReady = true
-            for _, viz in ipairs(response or {}) do
-                if not VisualHelpers.GetEntityVisual(viz) then
-                    allReady = false
-                    break
-                end
-            end
-            return allReady
-        end, function()
-            for _, viz in ipairs(response or {}) do
-                for _, axis in pairs({ "X", "Y", "Z" }) do
-                    if gizmo.SelectedAxis and gizmo.SelectedAxis[axis] then
-                        gizmo.Visualizer:HighLightGizmoAxis(axis, viz)
-                    else
-                        gizmo.Visualizer:HideGizmoAxis(axis, viz)
-                    end
-                end
-            end
-        end)
+        setupGizmoVisual(guid)
     end)
 end
 
@@ -386,37 +378,56 @@ end
 --- @param index integer
 function TransformEditor:MakeAxisLineVisualization(gizmo, ray, color, index)
     local beamDirection = ray.Direction * -1
-    local startPoint = ray:At(-30)
-    local secondPoint = ray:At(30)
+    local firstPoint = ray:At(-5)
+    local secondPoint = ray:At(5)
+    local firstEnd = 100
+    local secondEnd = -100
 
     if self.LineVisualizations[index] then
         local lineGuid = self.LineVisualizations[index][1]
         local line2Guid = self.LineVisualizations[index][2]
-        gizmo.Visualizer:SetLineFxColor(lineGuid, color)
-        gizmo.Visualizer:SetLineFxColor(line2Guid, color)
         local newLineTransform = {
-            Translate = startPoint,
+            Translate = firstPoint,
             RotationQuat = MathUtils.DirectionToQuat(beamDirection),
         }
         local newLine2Transform = {
             Translate = secondPoint,
             RotationQuat = MathUtils.DirectionToQuat(ray.Direction)
         }
-        NetChannel.SetTransform:RequestToServer({ Guid = lineGuid, Transforms = { [lineGuid] = newLineTransform } },
-            function(response)
-                -- prevent flickering
+        local transformPost = {
+            [lineGuid] = newLineTransform,
+            [line2Guid] = newLine2Transform,
+        }
+
+        local cleaned = false
+        local function cleanup()
+            if cleaned then return end
+            NetChannel.Delete:RequestToServer({ Guid = self.LineVisualizations[index] }, function(response)
+                -- make sure it's dead
+                self.LineVisualizations[index] = nil
+                cleaned = true
+            end)
+        end
+        local function setupVisual(guid)
+            RBUtils.WaitUntil(function()
+                return VisualHelpers.GetEntityVisual(guid) ~= nil
+            end, function()
                 Timer:Ticks(5, function(timerID)
                     if not self.IsDragging then return end
-                    gizmo.Visualizer:SetLineLength(lineGuid, 200)
+                    gizmo.Visualizer:SetLineFxColor(guid, color)
+                    gizmo.Visualizer:SetLineLength(guid, 200)
                 end)
+            end, function()
+                cleanup()
             end)
-        NetChannel.SetTransform:RequestToServer({ Guid = line2Guid, Transforms = { [line2Guid] = newLine2Transform } },
+        end
+
+        NetChannel.SetTransform:RequestToServer({ Guid = self.LineVisualizations[index], Transforms = transformPost },
             function(response)
-                Timer:Ticks(5, function(timerID)
-                    if not self.IsDragging then return end
-                    gizmo.Visualizer:SetLineLength(line2Guid, 200)
-                end)
+                setupVisual(lineGuid)
+                setupVisual(line2Guid)
             end)
+
         return
     end
 
@@ -439,13 +450,14 @@ function TransformEditor:MakeAxisLineVisualization(gizmo, ray, color, index)
             RBUtils.WaitUntil(function()
                 return VisualHelpers.GetEntityVisual(viz) ~= nil
             end, function()
+                if not self.IsDragging then return end
                 gizmo.Visualizer:SetLineFxColor(viz, color)
                 gizmo.Visualizer:SetLineLength(viz, 200)
-            end, 300)
+            end)
         end)
     end
-    makeLine(startPoint, 100)
-    makeLine(secondPoint, -100)
+    makeLine(firstPoint, firstEnd)
+    makeLine(secondPoint, secondEnd)
 end
 
 function TransformEditor:SafeTraverseTarget()
@@ -490,23 +502,21 @@ function TransformEditor:SetupGizmo()
         self.PointVisualizations = self.PointVisualizations or {}
         self.LineVisualizations = self.LineVisualizations or {}
 
-        for i = #self.LineVisualizations, 1, -1 do
-            local guids = self.LineVisualizations[i]
+        for i, guids in pairs(self.LineVisualizations or {}) do
             if not EntityHelpers.EntityExists(guids[1]) or not EntityHelpers.EntityExists(guids[2]) then
                 NetChannel.Delete:RequestToServer({ Guid = guids }, function(response)
                     -- make sure it's dead
                 end)
-                table.remove(self.LineVisualizations, i)
+                self.LineVisualizations[i] = nil
             end
         end
 
-        for i = #self.PointVisualizations, 1, -1 do
-            local guid = self.PointVisualizations[i]
+        for i, guid in pairs(self.PointVisualizations or {}) do
             if not EntityHelpers.EntityExists(guid) then
                 NetChannel.Delete:RequestToServer({ Guid = guid }, function(response)
                     -- make sure it's dead
                 end)
-                table.remove(self.PointVisualizations, i)
+                self.PointVisualizations[i] = nil
             end
         end
 

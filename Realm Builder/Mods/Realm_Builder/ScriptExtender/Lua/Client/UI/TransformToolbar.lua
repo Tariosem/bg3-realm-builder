@@ -210,6 +210,67 @@ function TransformToolbar:RegisterKeyInputEvents()
         self:MoveCursor()
     end, GetLoca("Move the 3D cursor to the picking position."))
 
+    ttMod:RegisterEvent("Snap3DCursor", function(e)
+        if e.Event ~= "KeyDown" then return end
+
+        local function getCenterOfTargets()
+            if not RB_GLOBALS.TransformEditor.Target or #RB_GLOBALS.TransformEditor.Target == 0 then
+                return nil
+            end
+
+            local center = Vec3.new(0, 0, 0)
+            for _, proxy in pairs(RB_GLOBALS.TransformEditor.Target) do
+                center = center + proxy:GetWorldTranslate()
+            end
+            center = center / #RB_GLOBALS.TransformEditor.Target
+            return center
+        end
+
+        local function setCursorPosition(pos)
+            local movable = MovableProxy.CreateByGuid(self.Cursor)
+            if not movable then
+                Warning("3D Cursor movable not found")
+                return
+            end
+            movable:SetWorldTranslate(pos)
+        end
+
+        if not self.Cursor then
+            self:CreateCursor(getCenterOfTargets())
+            return
+        end
+        local center = getCenterOfTargets()
+        if center then
+            setCursorPosition(center)
+        end
+    end, GetLoca("Snap the 3D cursor to the center of selected objects."))
+
+    ttMod:RegisterEvent("SnapToHover", function(e)
+        if e.Event ~= "KeyDown" then return end
+        if not RB_GLOBALS.TransformEditor.Target or #RB_GLOBALS.TransformEditor.Target == 0 then return end
+
+        local hovered = PickingUtils.GetPickingGuid()
+        if not hovered or hovered == "" then
+            Debug("No valid target to snap to")
+            return
+        end
+        local hoveredProxy = MovableProxy.CreateByGuid(hovered)
+        if not hoveredProxy then
+            Debug("No valid target to snap to")
+            return
+        end
+
+        local targetTransform = hoveredProxy:GetTransform()
+
+        local targets = {}
+
+        for _, proxy in pairs(RB_GLOBALS.TransformEditor.Target or {}) do
+            table.insert(targets, proxy)
+        end
+
+        Commands.SnapToTarget(targets, targetTransform)
+    end, GetLoca("Snap selected entities to hovered entity"))
+
     ttMod:RegisterEvent("SnapToGround", function (e)
         if e.Event ~= "KeyDown" then return end
         if not RB_GLOBALS.TransformEditor.Target or #RB_GLOBALS.TransformEditor.Target == 0 then return end
@@ -258,20 +319,7 @@ function TransformToolbar:RegisterKeyInputEvents()
         Commands.Unbind(targets)
     end)
 
-    buMod:RegisterEvent("SnapToParent", function(e)
-        if e.Event ~= "KeyDown" then return end
-        if not RB_GLOBALS.TransformEditor.Target or #RB_GLOBALS.TransformEditor.Target == 0 then return end
 
-        local targets = {}
-
-        for _, proxy in pairs(RB_GLOBALS.TransformEditor.Target or {}) do
-            if proxy.Guid then
-                table.insert(targets, proxy)
-            end
-        end
-
-        Commands.SnapToParent(targets)
-    end, GetLoca("Snap selected entities to their parent's position."))
 
     buMod:RegisterEvent("BindPopup", function(e)
         if e.Event ~= "KeyDown" then return end
@@ -1067,14 +1115,14 @@ function TransformToolbar:CreateNearbyPopup()
     end
 end
 
-function TransformToolbar:CreateCursor(pos)
+function TransformToolbar:CreateCursor(pos, onCreated)
     if self.Cursor and EntityHelpers.EntityExists(self.Cursor) or (self.creatingCursor) then
         return
     end
 
     self.creatingCursor = true
 
-    pos = ScreenToWorldRay():At(10)
+    pos = pos or ScreenToWorldRay():At(10)
     local hostPosition = Vec3.new(pos)
     local hostRotation = Quat.new(CameraHelpers.GetCameraRotation())
 
@@ -1089,6 +1137,8 @@ function TransformToolbar:CreateCursor(pos)
             RB_GLOBALS.TransformEditor.Cursor = self.Cursor
         end
         self.creatingCursor = false
+        onCreated = onCreated or function() end
+        onCreated()
     end)
 
     self.CursorTimer = Timer:EveryFrame(function(timerID)

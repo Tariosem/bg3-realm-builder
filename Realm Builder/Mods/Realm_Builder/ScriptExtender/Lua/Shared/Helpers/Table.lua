@@ -9,10 +9,14 @@
 --- @field NextFromList fun(list:any[], cur:any):any
 RBTableUtils = RBTableUtils or {}
 
+local isTable = function(o)
+    return type(o) == "table" or type(o) == "userdata"
+end
+
 ---@param t table|userdata
 ---@return boolean
 function RBTableUtils.IsArray(t)
-    if type(t) ~= "table" and type(t) ~= "userdata" then
+    if not isTable(t) then
         return false
     end
     
@@ -32,17 +36,13 @@ function RBTableUtils.IsArray(t)
     return true
 end
 
-
----@param tbl table
----@param valueType "number"|"string"|"boolean"|"table"|"userdata"|"function"|"thread"|"nil"
----@return boolean
-function RBTableUtils.IsArrayOf(tbl, valueType)
+function RBTableUtils.IsArrayOfAny(tbl)
     if type(tbl) ~= "table" and type(tbl) ~= "userdata" then
         return false
     end
 
-    for _, v in pairs(tbl) do
-        if type(v) ~= valueType then
+    for key, v in pairs(tbl) do
+        if not tonumber(key) then
             return false
         end
     end
@@ -51,16 +51,22 @@ function RBTableUtils.IsArrayOf(tbl, valueType)
 end
 
 
---- @param arr1 any[]
---- @param arr2 any[]
---- @return any[]
-function RBTableUtils.MergeArrays(arr1, arr2)
-    for _, v in ipairs(arr2) do
-        table.insert(arr1, v)
+---@param o table
+---@param t "number"|"string"|"boolean"|"table"|"userdata"|"function"|"thread"|"nil"
+---@return boolean
+function RBTableUtils.IsArrayOf(o, t)
+    if not RBTableUtils.IsArrayOfAny(o) then
+        return false
     end
-    return arr1
-end
 
+    for _, v in pairs(o) do
+        if type(v) ~= t then
+            return false
+        end
+    end
+
+    return true
+end
 
 ---@param map any
 ---@return integer cnt
@@ -108,13 +114,18 @@ function RBTableUtils.ToggleEntry(tbl, value)
     return true
 end
 
-function RBTableUtils.NextFromList(list, cur)
-    local curIndex = table.find(list, cur) or 0
-    local nextIndex = curIndex + 1
-    if nextIndex > #list then
-        nextIndex = 1
+
+--- @generic T
+--- @param o T
+--- @param f T
+function RBTableUtils.RecoverFrom(o, f)
+    for k, v in pairs(o) do
+        if isTable(v) then
+            RBTableUtils.RecoverFrom(v, f[k])
+        else
+            o[k] = f[k]
+        end
     end
-    return list[nextIndex]
 end
 
 --- @generic K, V

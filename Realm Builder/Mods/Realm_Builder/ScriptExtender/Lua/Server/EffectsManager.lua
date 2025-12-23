@@ -18,21 +18,21 @@
 --- @field Duration number
 --- @field SpellAnimation string
 
---- @class EffectsManager
+--- @class RB_EffectsManager
 --- @field name string
 --- @field ActivatedFX table<string, table<string, {Handle:integer,FxName:string}>>
 --- @field Statuses table<string, string>
 --- @field _activeStatuses {Object:GUIDSTRING, Status:string}[]
 --- @field Spells table<string, string>
---- @field init fun(self:EffectsManager, name?:string):EffectsManager
---- @field PlayLoopEffect fun(self:EffectsManager, data:EffectData):integer
---- @field PlayEffect fun(self:EffectsManager, data:EffectData)
---- @field PlayEffects fun(self:EffectsManager, datas:EffectData[])
---- @field PlayLoopEffects fun(self:EffectsManager, datas:EffectData[])
---- @field StopEffect fun(self:EffectsManager, object:GUIDSTRING, name:string)
---- @field StopEffectByObject fun(self:EffectsManager, object:GUIDSTRING)
---- @field StopEffectByFxName fun(self:EffectsManager, fxName:string|string[])
---- @field StopEffectByComb fun(self:EffectsManager, fxName:string, object:GUIDSTRING|GUIDSTRING[])
+--- @field init fun(self:RB_EffectsManager, name?:string):RB_EffectsManager
+--- @field PlayLoopEffect fun(self:RB_EffectsManager, data:EffectData):integer
+--- @field PlayEffect fun(self:RB_EffectsManager, data:EffectData)
+--- @field PlayEffects fun(self:RB_EffectsManager, datas:EffectData[])
+--- @field PlayLoopEffects fun(self:RB_EffectsManager, datas:EffectData[])
+--- @field StopEffect fun(self:RB_EffectsManager, object:GUIDSTRING, name:string)
+--- @field StopEffectByObject fun(self:RB_EffectsManager, object:GUIDSTRING)
+--- @field StopEffectByFxName fun(self:RB_EffectsManager, fxName:string|string[])
+--- @field StopEffectByComb fun(self:RB_EffectsManager, fxName:string, object:GUIDSTRING|GUIDSTRING[])
 EffectsManager = {}
 
 local STATUS_PREFIX = "VFX_RB_STATUS_"

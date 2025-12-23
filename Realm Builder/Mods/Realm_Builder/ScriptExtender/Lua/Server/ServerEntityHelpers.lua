@@ -1,5 +1,6 @@
 ServerEntityHelpers = ServerEntityHelpers or {}
 
+
 function ServerEntityHelpers.FindCurrentAtmosphereTrigger(pos, user)
     local allAtmosTriggers = Ext.Entity.GetAllEntitiesWithComponent("ServerAtmosphereTrigger")
     local player = Osi.GetHostCharacter() --[[@as GUIDSTRING]]
@@ -31,6 +32,9 @@ function ServerEntityHelpers.FindCurrentAtmosphereTrigger(pos, user)
     return nil
 end
 
+--- @param pos vec3?
+--- @param user integer?
+--- @return EntityHandle?
 function ServerEntityHelpers.FindCurrentLightingTrigger(pos, user)
     local allLightTriggers = Ext.Entity.GetAllEntitiesWithComponent("ServerLightingTrigger")
     local player = Osi.GetHostCharacter() --[[@as GUIDSTRING]]

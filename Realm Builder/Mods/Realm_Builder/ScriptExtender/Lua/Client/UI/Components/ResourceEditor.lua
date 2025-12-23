@@ -60,6 +60,35 @@ function ResourceEditor:SaveInitialState()
     return true
 end
 
+function ResourceEditor:ApplyModifications(updateUIState)
+    updateUIState = updateUIState or self.UpdateUIState
+
+    local player = _C().Uuid.EntityUuid
+    local pos = { RBGetPosition(player) }
+
+    if self.ResourceType == "Lighting" then
+        self.SetChannel:RequestToServer(
+            { [self.ResourceType] = self.ModfiedResource, ResourceUUID = self.ResourceUUID, Reset = true, Position = pos },
+            function(response)
+                self.SetChannel:RequestToServer({ Apply = true, ResourceUUID = self.ResourceUUID, Position = pos },
+                    function(response)
+                        if updateUIState then
+                            updateUIState()
+                        end
+                    end)
+            end)
+        return
+    end
+    self.SetChannel:RequestToServer({ [self.ResourceType] = self.ModfiedResource, ResourceUUID = self.ResourceUUID, Position = pos },
+        function(response)
+            self.SetChannel:RequestToServer({ Apply = true, ResourceUUID = self.ResourceUUID, Position = pos }, function(response)
+                if updateUIState then
+                    updateUIState()
+                end
+            end)
+        end)
+end
+
 function ResourceEditor:Render()
     for _, editor in pairs(cachedResourceEditors) do
         if editor.Panel and editor.Panel.Open then
@@ -85,35 +114,15 @@ function ResourceEditor:Render()
     local updateUIState = nil
     local debouceDelay = self.ResourceType == "Lighting" and 1000 or 10
     local setter = function()
-        if self.ResourceType == "Lighting" then
-            self.SetChannel:RequestToServer(
-                { [self.ResourceType] = self.ModfiedResource, ResourceUUID = self.ResourceUUID, Reset = true },
-                function(response)
-                    self.SetChannel:RequestToServer({ Apply = true, ResourceUUID = self.ResourceUUID },
-                        function(response)
-                            if updateUIState then
-                                updateUIState()
-                            end
-                        end)
-                end)
-            return
-        end
-        self.SetChannel:RequestToServer({ [self.ResourceType] = self.ModfiedResource, ResourceUUID = self.ResourceUUID },
-            function(response)
-                self.SetChannel:RequestToServer({ Apply = true, ResourceUUID = self.ResourceUUID }, function(response)
-                    if updateUIState then
-                        updateUIState()
-                    end
-                end)
-            end)
+        self:ApplyModifications(updateUIState)
     end
     --local delaySetter = RBUtils.Debounce(debouceDelay, setter)
     local delaySetter = setter
-    self.ApplyModifications = delaySetter
 
     local resetBtn = window:AddButton("Reset World " .. self.ResourceType)
     resetBtn.OnClick = function()
-        self.SetChannel:RequestToServer({ Reset = true }, function(response)
+        local pos = { GetHostPosition() }
+        self.SetChannel:RequestToServer({ Reset = true, Position = pos }, function(response)
             if updateUIState then
                 updateUIState()
             end
@@ -129,8 +138,9 @@ function ResourceEditor:Render()
     local resetThisBtn = window:AddButton("Reset Changes")
     resetThisBtn.SameLine = true
     resetThisBtn.OnClick = function()
-        self.ModfiedResource = RBUtils.DeepCopy(self.InitialState)
+        self.ModfiedResource = self.InitialState
         setter()
+        self.ModfiedResource = {}
     end
 
     self.ModfiedResource = {}
@@ -148,6 +158,7 @@ function ResourceEditor:Render()
             res[self.ResourceType][field] = value
             delaySetter()
         end)
+    self.UpdateUIState = updateUIState
 end
 
 function ResourceEditor:RenderArrayEditor(parent, label, objGetter, objSetter)
@@ -302,18 +313,18 @@ function ResourceEditor:RenderEditor(parent, label, objGetter, objSetter)
             input.OnRightClick = function()
                 input.Text = initValue
             end
-            --[[input.OnClick = function()
-                local popup = StyleHelpers.RenderTexturePopup(parent, function()
-                        return getter()
-                    end,
-                    function(newValue)
-                        setter(newValue)
-                    end)
-                popup:Open()
-                input.OnClick = function ()
-                    popup:Open()
+            
+            local isTexRes = field:lower():find("texture") ~= nil or field:lower():find("tex") ~= nil
+            if isTexRes then
+                local texPop = nil
+                input.OnRightClick = function ()
+                    if not texPop then
+                        texPop = ImguiElements.AddTexturePopup(parent, getter, setter)
+                    end
+                    texPop:Open()
                 end
-            end]]
+            end
+
             updateFunc = function()
                 input.Text = getter()
             end
@@ -387,8 +398,16 @@ RegisterDebugWindow("Realm Builder Atmosphere Editor", function(panel)
         Atmosphere = AtmosphereEditor.new,
         Lighting = LightingEditor.new
     }
-    for _, resType in pairs({ "Atmosphere", "Lighting" }) do
-        local resetBtn = panel:AddButton("Reset " .. resType .. " Resource")
+    local notif = Notification.new("Resource Editor")
+
+    local resTab = panel:AddTable("", 2)
+    local resRow = resTab:AddRow()
+    resTab.ShowHeader = true
+    resTab.BordersInnerV = true
+    for resIdx, resType in pairs({ "Atmosphere", "Lighting" }) do
+        resTab.ColumnDefs[resIdx] = { Name = resType }
+        local cell = resRow:AddCell()
+        local resetBtn = cell:AddButton("Reset " .. resType .. " Resource")
         local setChannel = setChannels[resType]
         local editorConstructor = editorConstrutors[resType]
         resetBtn.OnClick = function()
@@ -420,11 +439,11 @@ RegisterDebugWindow("Realm Builder Atmosphere Editor", function(panel)
             table.insert(nameArray, name)
         end
         table.sort(nameArray)
-        local inputForCopy = panel:AddInputText("##" .. resType .. "ResourceToCopy", "")
+        local inputForCopy = cell:AddInputText("##" .. resType .. "ResourceToCopy", "")
         inputForCopy.AutoSelectAll = true
         inputs[resType] = inputForCopy
-        local combo = panel:AddCombo("Select " .. resType .. " Resource")
-        local popup = panel:AddPopup("Copy " .. resType .. " Resource UUID")
+        local combo = cell:AddCombo("##Select " .. resType .. " Resource")
+        local popup = cell:AddPopup("##Copy " .. resType .. " Resource UUID")
         local maxSize = 100
         local recentQueue = {}
         local allSelecteble = {}
@@ -538,58 +557,33 @@ RegisterDebugWindow("Realm Builder Atmosphere Editor", function(panel)
         end)
         combo.Options = allAtms
         combo.HeightLarge = true
-    end
 
-    local notif = Notification.new("Resource Editor")
-    panel:AddButton("Open Atmosphere Editor").OnClick = function()
-        local cameraPos = { CameraHelpers.GetCameraPosition() }
-        NetChannel.GetAtmosphere:RequestToServer({ Position = cameraPos }, function(response)
-            local atmosphereUuid = response.Guid
-            if atmosphereUuid == "" then
+        local openEditorBtn = cell:AddButton("Open " .. resType .. " Editor")
+        openEditorBtn.OnClick = function()
+            local resUuid = ImguiHelpers.GetCombo(combo)
+            if not resUuid then
                 notif:Show("Resource Editor", function(panel)
-                    panel:AddText("No atmosphere resource id found in the current level.")
+                    panel:AddText("Please select a valid " .. resType .. " resource uuid.")
                 end)
                 return
             end
-
-            local editor = cachedResourceEditors[atmosphereUuid]
+            local editor = cachedResourceEditors[resUuid]
             if not editor then
-                editor = AtmosphereEditor.new(atmosphereUuid)
-                cachedResourceEditors[atmosphereUuid] = editor
+                editor = editorConstructor(resUuid, resType)
+                cachedResourceEditors[resUuid] = editor
             end
-            if inputs["Atmosphere"] then
-                inputs["Atmosphere"].Text = atmosphereUuid
+            if inputs[resType] then
+                inputs[resType].Text = resUuid
             end
 
             editor:Render()
-        end)
-    end
-    panel:AddButton("Open Lighting Editor").OnClick = function()
-        local cameraPos = { CameraHelpers.GetCameraPosition() }
-        NetChannel.GetLighting:RequestToServer({ Position = cameraPos }, function(response)
-            local lightingUuid = response.Guid
-            if lightingUuid == "" then
-                notif:Show("Resource Editor", function(panel)
-                    panel:AddText("No lighting resource id found in the current level.")
-                end)
-                return
-            end
-
-            local editor = cachedResourceEditors[lightingUuid]
-            if not editor then
-                editor = LightingEditor.new(lightingUuid)
-                cachedResourceEditors[lightingUuid] = editor
-            end
-
-            if inputs["Lighting"] then
-                inputs["Lighting"].Text = lightingUuid
-            end
-
-            editor:Render()
-        end)
+        end
     end
 
-    local saveBtn = panel:AddButton("Save Atmosphere")
+    local saveInput = panel:AddInputText("##fileNameInput", "")
+    saveInput.Hint = "Enter file name"
+
+    local saveBtn = panel:AddButton("Save To File")
     saveBtn.OnClick = function()
         local lightingEditor = nil
         local lightingReady = false
@@ -598,22 +592,30 @@ RegisterDebugWindow("Realm Builder Atmosphere Editor", function(panel)
 
         local function checkAndSave()
             if lightingReady and atmosphereReady then
-                notif:Show("Resource Editor", function(panel)
-                    panel:AddText("Atmosphere and Lighting resources saved to level.")
-                end)
+
                 atmosphereEditor = atmosphereEditor or {}
                 lightingEditor = lightingEditor or {}
                 local formated = {
                     AtmosphereUuid = atmosphereEditor.ResourceUUID,
                     LightingUuid = lightingEditor.ResourceUUID,
-                    ModifiedAtmosphere = RBUtils.DeepCopy(atmosphereEditor.ModfiedResource),
-                    ModifiedLighting = RBUtils.DeepCopy(lightingEditor.ModfiedResource),
+                    AtmosphereModifications = atmosphereEditor.ModfiedResource,
+                    LightingModifications = LightingEditor.ModfiedResource,
                 }
-                local currentLevel = _C().Level.LevelName
-                local currentTime = RBUtils.GetFormatTime()
-                local fileName = currentLevel .. "_" .. currentTime
+                local fileName = saveInput.Text
+                if fileName == "" then
+                    local currentLevel = _C().Level.LevelName
+                    local currentTime = RBUtils.GetFormatTime()
+                    fileName = currentLevel .. "_" .. currentTime
+                    saveInput.Text = fileName
+                end
                 local savePath = FilePath.GetAtmospherePath(fileName)
-                Ext.IO.SaveFile(savePath, Ext.Json.Stringify(formated))
+                local suc = Ext.IO.SaveFile(savePath, Ext.Json.Stringify(formated))
+                if not suc then
+                    notif:Show("Resource Editor", "Failed to save to file: " .. savePath)
+                    return
+                else
+                    notif:Show("Resource Editor", "Atmosphere and Lighting resources saved to: " .. savePath)
+                end
             end
         end
 
@@ -642,12 +644,10 @@ RegisterDebugWindow("Realm Builder Atmosphere Editor", function(panel)
         end)
     end
 
-    local loadFileNameInput = panel:AddInputText("Load From File")
-    loadFileNameInput.Hint = "Enter file name"
-    
-    local loadBtn = panel:AddButton("Load Atmosphere")
+    local loadBtn = panel:AddButton("Load From File")
+    loadBtn.SameLine = true
     loadBtn.OnClick = function()
-        local fileName = tostring(loadFileNameInput.Text)
+        local fileName = tostring(saveInput.Text)
         if fileName == "" then
             notif:Show("Resource Editor", function(panel)
                 panel:AddText("Please enter a valid file name.")
@@ -681,7 +681,7 @@ RegisterDebugWindow("Realm Builder Atmosphere Editor", function(panel)
                 cachedResourceEditors[atmosphereUuid] = editor
             end
             editor:SaveInitialState()
-            editor.ModfiedResource = parsed.ModifiedAtmosphere or {}
+            editor.ModfiedResource = parsed.AtmosphereModifications or {}
             editor:ApplyModifications()
         end
         if lightingUuid and lightingUuid ~= "" then
@@ -691,9 +691,8 @@ RegisterDebugWindow("Realm Builder Atmosphere Editor", function(panel)
                 cachedResourceEditors[lightingUuid] = editor
             end
             editor:SaveInitialState()
-            editor.ModfiedResource = parsed.ModifiedLighting or {}
+            editor.ModfiedResource = parsed.LightingModifications or {}
             editor:ApplyModifications()
         end
     end
-
 end)

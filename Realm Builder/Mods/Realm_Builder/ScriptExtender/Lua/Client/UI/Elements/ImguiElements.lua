@@ -559,6 +559,8 @@ function ImguiElements.AddGeneralTableEditor(parent, o, onSet, ignoreKeys)
     end
 end
 
+local defaultTexturePath = "Generated/"
+
 --- @param parent ExtuiTreeParent
 --- @param getter fun():any
 --- @param setter fun(newValue:FixedString)
@@ -574,13 +576,22 @@ function ImguiElements.AddTexturePopup(parent, getter, setter)
         end
         return propertyValue
     end
-    local propertyValue = safeGetter()
-    local res = Ext.Resource.Get(propertyValue, "Texture") --[[@as ResourceTextureResource]]
+    local initValue = safeGetter()
+    local res = Ext.Resource.Get(initValue, "Texture") --[[@as ResourceTextureResource]]
+    if not res then
+        initValue = GUID_NULL
+    end
     local popup = parent:AddPopup("EditStringParameterPopup##" .. id)
     local alignedTable = ImguiElements.AddAlignedTable(popup)
-    local searchInput = alignedTable:AddInputText("Search Texture",
-        res and LSXHelpers.GetPathAfterData(res.SourceFile) or "Public/")
+    local searchInput, valueCell = alignedTable:AddInputText("Search Texture",
+        res and LSXHelpers.GetPathAfterData(res.SourceFile) or defaultTexturePath)
     searchInput.SizeHint = { 1000 * SCALE_FACTOR, 0 }
+    local resetBtn = ImguiElements.AddResetButton(valueCell, true)
+    resetBtn.OnClick = function()
+        setter(initValue)
+        searchInput.Text = LSXHelpers.GetPathAfterData(Ext.Resource.Get(initValue, "Texture").SourceFile)
+        searchInput:OnChange()
+    end
     local allCombo, comboCell = alignedTable:AddCombo("Change Texture")
     local exceedImage = comboCell:AddImage(RB_ICONS.Exclamation, IMAGESIZE.FRAME) --[[@as ExtuiImage]]
     exceedImage.Tint = { 1, 0, 0, 1 }
@@ -591,6 +602,9 @@ function ImguiElements.AddTexturePopup(parent, getter, setter)
     exceedImage.Visible = false
     allCombo.HeightLarge = true
     searchInput.OnChange = function()
+        if searchInput.Text == "" then
+            searchInput.Text = "Generated/"
+        end
         local allRes, exceed = TextureResourceManager:GetAllTextureResourceUnderPath(searchInput.Text)
         exceedImage.Visible = exceed
         local options = {}

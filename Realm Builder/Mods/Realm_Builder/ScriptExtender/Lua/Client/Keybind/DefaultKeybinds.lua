@@ -37,7 +37,7 @@ return {
         ["BindPopup"] = { Key = "K", Modifiers = { "SHIFT" } },
         ["BindTo"] = { Key = "B", Modifiers = { "SHIFT" } },
         ["Unbind"] = { Key = "U" },
-        ["SnapToParent"] = { Key = "S", Modifiers = { "CTRL" } },
+        ["SnapToHover"] = { Key = "S", Modifiers = { "CTRL" } },
     },
 
 }

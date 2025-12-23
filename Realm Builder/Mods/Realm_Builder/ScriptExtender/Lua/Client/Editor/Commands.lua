@@ -159,6 +159,28 @@ function Commands.SnapToGround(targets)
     })
 end
 
+--- @param targets RB_MovableProxy[]
+--- @param targetTransform Transform
+--- @param onlyRotation boolean|nil
+--- @param onlyPosition boolean|nil
+function Commands.SnapToTarget(targets, targetTransform, onlyRotation, onlyPosition)
+    local targetTransforms = {} --[[@type table<RB_MovableProxy, Transform>]]
+    for _, proxy in pairs(targets) do
+        targetTransforms[proxy] = targetTransform
+        targetTransforms[proxy].Scale = nil
+    end
+    if onlyRotation then
+        for _, pos in pairs(targetTransforms) do
+            pos.Translate = nil
+        end
+    elseif onlyPosition then
+        for _, pos in pairs(targetTransforms) do
+            pos.RotationQuat = nil
+        end
+    end
+    Commands.SetTransformSeparate(targets, targetTransforms)
+end
+
 function Commands.SnapToParent(targets, onlyRotation, onlyPosition)
     local parents = {} --[[@type table<RB_MovableProxy, RB_MovableProxy>]]
     for _, proxy in ipairs(targets) do

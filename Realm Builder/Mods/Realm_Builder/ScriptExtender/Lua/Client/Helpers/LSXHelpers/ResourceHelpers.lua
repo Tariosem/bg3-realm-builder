@@ -29,7 +29,9 @@ local function createParameterAttrNodes(paramObj, overrideValue, parameterName)
         lsAttrNode("ExportAsPreset", "bool", true),
     }
 
-    RBTableUtils.MergeArrays(attrs, otherAttrs)
+    for _, attr in pairs(otherAttrs) do
+        table.insert(attrs, attr)
+    end
 
     return attrs
 end
@@ -387,7 +389,9 @@ function ResourceHelpers.BuildVisualResource(srcUuid, uuid, internalName, overri
         local clothAttrs = {
             lsAttrNode("ClothColliderResourceID", "FixedString", src.Cloth.ClothColliderResourceID),
         }
-        RBTableUtils.MergeArrays(attributes, clothAttrs)
+        for i, attrNode in pairs(clothAttrs) do
+            table.insert(attributes, attrNode)
+        end
     end
 
 
