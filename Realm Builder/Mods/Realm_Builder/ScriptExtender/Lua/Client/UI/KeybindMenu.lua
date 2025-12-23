@@ -282,7 +282,7 @@ function KeybindMenu:RenderEvent(row, moduleName, eventName, module, registry)
         local originLabel = keyButton.Label
         keyButton.Label = "Press any key..."
         keyButton.Disabled = true
-        module:RebindByInput(eventName, function(newKeybind, conflictModule, conflictEvent)
+        local sub = module:RebindByInput(eventName, function(newKeybind, conflictModule, conflictEvent)
             if not newKeybind then
                 local conflictKeybind = KeybindManager:GetKeyByEvent(conflictModule, conflictEvent)
                 conflictNotif:Show("Keybind Conflict", function(panel)
@@ -306,6 +306,15 @@ function KeybindMenu:RenderEvent(row, moduleName, eventName, module, registry)
             end
             keyButton.Label = getPresentation(newKeybind)
             keyButton.Disabled = false
+        end)
+
+        local timeoutTimer = Timer:After(10 * 1000, function()
+            if not keyButton.Disabled then
+                return
+            end
+            sub:Unsubscribe()
+            keyButton.Disabled = false
+            keyButton.Label = originLabel
         end)
     end
 

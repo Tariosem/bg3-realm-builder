@@ -1,10 +1,31 @@
 --- @class KeybindManager
---- @field Keybinds table<KeybindingIdentifier, {Module:string, Name:string}>
---- @field Reverse table<string, table<string, Keybinding>> module -> eventName -> Keybinding
---- @field Listeners table<string, any> module -> Subscription
---- @field Events table<string, table<string, KeybindRegistry>> module -> eventName -> KeybindRegistry
---- @field Modules table<string, KeybindModule>
---- @field Disabled boolean
+--- @field private Keybinds table<KeybindingIdentifier, {Module:string, Name:string}>
+--- @field private Reverse table<string, table<string, Keybinding>> module -> eventName -> Keybinding
+--- @field private Listeners table<string, any> module -> Subscription
+--- @field private Events table<string, table<string, KeybindRegistry>> module -> eventName -> KeybindRegistry
+--- @field private Modules table<string, KeybindModule>
+--- @field private Disabled boolean
+--- @field private rebinding boolean
+--- @field Enable fun(self:KeybindManager, module:string)
+--- @field Disable fun(self:KeybindManager, module?:string)
+--- @field GetEvents fun(self:KeybindManager, module:string):table<string, KeybindRegistry>
+--- @field GetEvent fun(self:KeybindManager, module:string, eventName:string):KeybindRegistry|nil
+--- @field GetEventByKey fun(self:KeybindManager, key:SimplifiedInputCode, modifiers:SDLKeyModifier[]):KeybindRegistry|nil
+--- @field GetKeyByEvent fun(self:KeybindManager, module:string, eventName:string):Keybinding|nil
+--- @field GetKeybinding fun(self:KeybindManager, key:SimplifiedInputCode, modifiers:SDLKeyModifier[]):Keybinding|nil
+--- @field HandleInput fun(self:KeybindManager, module:string, e:SimplifiedInputEvent)
+--- @field Bind fun(self:KeybindManager, module:string, eventName:string, key:SimplifiedInputCode, modifiers:SDLKeyModifier[]):boolean
+--- @field Unbind fun(self:KeybindManager, module:string, eventName:string)
+--- @field GetAllBindings fun(self:KeybindManager):table<string, {Identifier:string, EventName:string}[]>
+--- @field IsKeyBound fun(self:KeybindManager, key:SimplifiedInputCode, modifiers:SDLKeyModifier[]):boolean
+--- @field RegisterEvent fun(self:KeybindManager, module:string, eventName:string, callback:fun(e:SimplifiedInputEvent)?, desc:string?):KeybindRegistry
+--- @field Unregister fun(self:KeybindManager, module:string, eventName:string)
+--- @field Rebind fun(self:KeybindManager, module:string, eventName:string, newKey:SimplifiedInputCode, newModifiers:SDLKeyModifier[]):boolean
+--- @field RebindByInput fun(self:KeybindManager, module:string, eventName:string, callback:fun(e:Keybinding?, conflictModule:string?, conflictEvent:string?)?):RBSubscription
+--- @field On fun(self:KeybindManager, module:string, eventName:string, callback:fun(e:SimplifiedInputEvent))
+--- @field AddCondition fun(self:KeybindManager, module:string, eventName:string, condition:fun(e:SimplifiedInputEvent):boolean)
+--- @field AddModuleCondition fun(self:KeybindManager, module:string, condition:fun(e:SimplifiedInputEvent):boolean)
+--- @field TriggerEvent fun(self:KeybindManager, module:string, eventName:string, e:SimplifiedInputEvent)
 KeybindManager = {
     Keybinds = {},
     Reverse = {},
@@ -234,7 +255,7 @@ end
 
 function KeybindManager:RebindByInput(module, eventName, callback)
     self.rebinding = true
-    InputEvents.SubscribeKeyAndMouse(function(e)
+    local sub = InputEvents.SubscribeKeyAndMouse(function(e)
         if e.Event == "KeyUp" then
             self.rebinding = false
             if self:GetKeyByEvent(module, eventName) then
@@ -259,6 +280,13 @@ function KeybindManager:RebindByInput(module, eventName, callback)
             return UNSUBSCRIBE_SYMBOL
         end
     end)
+
+    return {
+        Unsubscribe = function()
+            sub:Unsubscribe()
+            self.rebinding = false
+        end
+    }
 end
 
 function KeybindManager:On(module, eventName, callback)
@@ -341,33 +369,38 @@ function KeybindManager:LoadFromFile()
     end
 end
 
---- @class KeybindModule
+--- @class KeybindModule : KeybindManager
 --- @field Name string
 --- @field Conditions (fun(e:SimplifiedInputEvent):boolean)[]
 --- @field Enable fun(self:KeybindModule)
 --- @field Disable fun(self:KeybindModule)
 --- @field RegisterEvent fun(self:KeybindModule, eventName:string, callback:fun(e:SimplifiedInputEvent)?, desc:string?):KeybindRegistry
 --- @field Unregister fun(self:KeybindModule, eventName:string)
---- @field Bind fun(self:KeybindModule, eventName:string, key:SDLScanCode, modifiers:SDLKeyModifier?)
+--- @field Bind fun(self:KeybindModule, eventName:string, key:SimplifiedInputCode, modifiers:SimplifiedModfier[]?):boolean
 --- @field Unbind fun(self:KeybindModule, eventName:string)
---- @field Rebind fun(self:KeybindModule, eventName:string, newKey:SimplifiedInputCode, newModifiers:SDLKeyModifier[]?)
+--- @field Rebind fun(self:KeybindModule, eventName:string, newKey:SimplifiedInputCode, newModifiers:SimplifiedModfier[]?)
 --- @field RebindByInput fun(self:KeybindModule, eventName:string, callback:fun(e:Keybinding, conflictModule:string?, conflictEvent:string?)?)
 --- @field GetEvents fun(self:KeybindModule):table<string, KeybindRegistry>
 --- @field GetEvent fun(self:KeybindModule, eventName:string):KeybindRegistry|nil
 --- @field GetKeyByEvent fun(self:KeybindModule, eventName:string):Keybinding
---- @field GetEventByKey fun(self:KeybindModule, key:SDLScanCode, modfiers:SDLKeyModifier[]):KeybindRegistry|nil
+--- @field GetEventByKey fun(self:KeybindModule, key:SimplifiedInputCode, modfiers:SDLKeyModifier[]):KeybindRegistry|nil
 --- @field On fun(self:KeybindModule, eventName:string, callback:fun(e:SimplifiedInputEvent))
 --- @field AddCondition fun(self:KeybindModule, eventName:string, condition:fun(e:SimplifiedInputEvent):boolean)
 --- @field AddModuleCondition fun(self:KeybindModule, condition:fun(e:SimplifiedInputEvent):boolean)
 --- @field TriggerEvent fun(self:KeybindModule, eventName:string, e:SimplifiedInputEvent)
---- @field new fun(name:string):KeybindModule
 local KeybindModule = _Class("KeybindModule")
+
+for key, method in pairs(KeybindManager) do
+    KeybindModule[key] = function(self, ...)
+        return method(KeybindManager, self.Name, ...)
+    end
+end
 
 function KeybindModule:__init(name)
     self.Name = name
     self.Conditions = {}
 
-    setmetatable(self, {
+    --[[setmetatable(self, {
         __index = function(t, k)
             local localValue = rawget(t, k)
             if localValue then return localValue end
@@ -380,7 +413,7 @@ function KeybindModule:__init(name)
 
             return nil
         end
-    })
+    })]]
 end
 
 --- @param moduleName string
@@ -390,7 +423,7 @@ function KeybindManager:CreateModule(moduleName)
         return self.Modules[moduleName]
     end
 
-    local module = KeybindModule.new(moduleName)
+    local module = KeybindModule.new(moduleName) --[[@as KeybindModule]]
 
     self.Modules[moduleName] = module
     self.Reverse[moduleName] = {}

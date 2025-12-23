@@ -73,16 +73,18 @@ function TextureResourceManager:GetTextureResourceByPath(path)
 end
 
 --- @param pathPrefix string
+--- @param searchCriteria string|nil
 --- @return {Path:string, ResourceUUID:string, SourceFile:string}[], boolean exceedFlag
-function TextureResourceManager:GetAllTextureResourceUnderPath(pathPrefix, precise)
+function TextureResourceManager:GetAllTextureResourceUnderPath(pathPrefix, searchCriteria, precise)
     local paths = RBStringUtils.SplitByString(pathPrefix, "/")
-    local searchCriteria = nil
+
     if pathPrefix:sub(-1) ~= "/" then
-        -- If the path does not end with a slash, we assume it's a file name
-        searchCriteria = paths[#paths]
+        -- Ignore the last element for prefix search
         paths[#paths] = nil
     end
+    
     if #paths == 0 then return {}, false end
+    
     precise = precise or false
     local curNode = self.CachedTextureTrie
     local allTrieNode = curNode

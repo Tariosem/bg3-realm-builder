@@ -123,7 +123,8 @@ end
 --- @param displayName string?
 function VisualTab.CreateByEntity(entity, uuid, displayName)
     if entity.Scenery then
-        displayName = entity.Visual and entity.Visual.Visual and RBStringUtils.GetLastPath(entity.Visual.Visual.VisualResource.SourceFile) or "Unknown Scenery"
+        displayName = entity.Visual and entity.Visual.Visual and
+        RBStringUtils.GetLastPath(entity.Visual.Visual.VisualResource.SourceFile) or "Unknown Scenery"
         uuid = entity.Scenery.Uuid
     end
 
@@ -133,6 +134,7 @@ function VisualTab.CreateByEntity(entity, uuid, displayName)
     function obj:GetEntity()
         return entity
     end
+
     function obj:GetVisual()
         return entity.Visual.Visual
     end
@@ -225,7 +227,8 @@ function VisualTab:Render(retryCnt)
         self.panel = self.parent:AddTabItem(GetLoca("Visual"))
         self.isWindow = false
     else
-        self.panel = WindowManager.RegisterWindow(self.guid, self.displayName .. " - Visual Editor", "VisualTab", self, self.lastPosition,
+        self.panel = WindowManager.RegisterWindow(self.guid, self.displayName .. " - Visual Editor", "VisualTab", self,
+            self.lastPosition,
             self.lastSize or { VISUALTAB_WIDTH, VISUALTAB_HEIGHT })
         self.isWindow = true
         self:OnDetach()
@@ -235,18 +238,21 @@ function VisualTab:Render(retryCnt)
 
     local entity = self:GetEntity(self.guid)
 
-    if entity == nil or not entity.Visual or not entity.Visual.Visual or (not entity.Visual.Visual.ObjectDescs and not entity.Effect) then
-        local tryToRerender = function()
-            self:Refresh()
+    if entity == nil or not entity.Visual or not entity.Visual.Visual or not entity.Effect then
+        local rerenderButton = self.panel:AddButton(GetLoca("Try to reload Visual Tab"))
+        local reasons = {
+            "Too far from camera",
+            "In inventory, or equipped",
+            "Entity has no visual"
+        }
+        local tooltip = rerenderButton:Tooltip()
+        tooltip:AddText(GetLoca("Visual Tab cannot load because the entity's visual data is unavailable. Possible reasons:")).TextWrapPos = 900 *
+        SCALE_FACTOR
+        for i, reason in ipairs(reasons) do
+            tooltip:AddBulletText(i .. ". " .. reason)
         end
-        if not retryCnt or retryCnt < 1 then
-            Timer:Ticks(30, function()
-                self:Refresh((retryCnt or 0) + 1)
-            end)
-        else
-            local rerenderButton = self.panel:AddButton(GetLoca("Try to reload Visual Tab"))
-            rerenderButton:Tooltip():AddText(GetLoca("Entity is too far away, in inventory, or has no visual."))
-            rerenderButton.OnClick = tryToRerender
+        rerenderButton.OnClick = function()
+            self:Refresh()
         end
         return
     end
@@ -280,10 +286,10 @@ function VisualTab:RenderMaterialContextPopup()
     self.SelectedMaterial = ""
     local contextMenu = ImguiElements.AddContextMenu(popup, "Material")
     local exportNotif = Notification.new(GetLoca("Material Exported"))
-    exportNotif.Pivot = {0,0}
+    exportNotif.Pivot = { 0, 0 }
     exportNotif.ClickToDismiss = true
 
-    contextMenu:AddItem("Copy To Other Materials", function (sel)
+    contextMenu:AddItem("Copy To Other Materials", function(sel)
         local keyName = self.SelectedMaterial
         local matTab = self.Materials[keyName]
         if not matTab then return end
@@ -300,7 +306,7 @@ function VisualTab:RenderMaterialContextPopup()
         end
     end)
 
-    contextMenu:AddItem("Open Material Mixer", function (sel)
+    contextMenu:AddItem("Open Material Mixer", function(sel)
         local matTab = self.Materials[self.SelectedMaterial]
         if not matTab then return end
         local allParams = matTab.Editor.ParamSet.Parameters
@@ -316,54 +322,56 @@ function VisualTab:RenderMaterialContextPopup()
         mixerTab:Render()
     end)
 
-    contextMenu:AddItem("Reset All", function (sel)
+    contextMenu:AddItem("Reset All", function(sel)
         local matTab = self.Materials[self.SelectedMaterial]
         if not matTab then return end
         matTab:ResetAll()
     end).DontClosePopups = true
 
-    contextMenu:AddItem("Export As Material", function (sel)
+    contextMenu:AddItem("Export As Material", function(sel)
         local keyName = self.SelectedMaterial
         local matTab = self.Materials[keyName]
         if not matTab then return end
         local uuid = RBUtils.Uuid_v4()
         local finalPath = "Realm_Builder/Materials/" .. uuid .. ".lsx"
-        local save = ResourceHelpers.BuildMaterialResource(matTab.Editor.Material, uuid, matTab.Editor.Parameters, matTab.ParentNodeName:gsub("%.[lL][sS][fF]$", ""))
+        local save = ResourceHelpers.BuildMaterialResource(matTab.Editor.Material, uuid, matTab.Editor.Parameters,
+            matTab.ParentNodeName:gsub("%.[lL][sS][fF]$", ""))
         if save then
             local suc = Ext.IO.SaveFile(finalPath, save:Stringify())
             if not suc then
                 Error("Failed to export material to " .. finalPath)
-                exportNotif:Show(GetLoca("Failed to export material."), function (panel)
+                exportNotif:Show(GetLoca("Failed to export material."), function(panel)
                     panel:AddText("Failed to export material to " .. finalPath)
                 end)
             else
                 Info("Exported material to " .. finalPath)
-                exportNotif:Show(GetLoca("Material exported successfully."), function (panel)
+                exportNotif:Show(GetLoca("Material exported successfully."), function(panel)
                     panel:AddText("Exported material to " .. finalPath)
                 end)
             end
         end
     end)
 
-    contextMenu:AddItem("Export As Preset", function (sel)
+    contextMenu:AddItem("Export As Preset", function(sel)
         local matTab = self.Materials[self.SelectedMaterial]
         if not matTab then return end
 
         local save = LSXHelpers.BuildMaterialPresetBank()
         local uuid = RBUtils.Uuid_v4()
-        local preset = ResourceHelpers.BuildMaterialPresetResourceNode(matTab.Editor.Parameters, uuid, matTab.ParentNodeName:gsub("%.[lL][sS][fF]$", "") .. "_Preset")
+        local preset = ResourceHelpers.BuildMaterialPresetResourceNode(matTab.Editor.Parameters, uuid,
+            matTab.ParentNodeName:gsub("%.[lL][sS][fF]$", "") .. "_Preset")
         save:AppendChild(preset)
         local finalPath = "Realm_Builder/Materials/" .. uuid .. ".lsx"
 
         local suc = Ext.IO.SaveFile(finalPath, save:Stringify({ AutoFindRoot = true }))
         if not suc then
             Error("Failed to export material preset to " .. finalPath)
-            exportNotif:Show(GetLoca("Failed to export material preset."), function (panel)
+            exportNotif:Show(GetLoca("Failed to export material preset."), function(panel)
                 panel:AddText("Failed to export material preset to " .. finalPath)
             end)
         else
             Info("Exported material preset to " .. finalPath)
-            exportNotif:Show(GetLoca("Material preset exported successfully."), function (panel)
+            exportNotif:Show(GetLoca("Material preset exported successfully."), function(panel)
                 panel:AddText("Exported material preset to " .. finalPath)
             end)
         end
@@ -508,7 +516,7 @@ function VisualTab:RenderPresetsCell(parent)
                 matTab:UpdateUIState()
             end
 
-            if isChara  then
+            if isChara then
                 NetChannel.Replicate:SendToServer({
                     Guid = self.guid,
                     Field = "GameObjectVisual",
@@ -613,7 +621,7 @@ function VisualTab:RenderAttachmentSection()
         self.attachmentsHeader = renderParent:AddCollapsingHeader(GetLoca("Attachments"))
     end
 
-    self.attachmentsHeader.OnHoverEnter = function ()
+    self.attachmentsHeader.OnHoverEnter = function()
         self:RenderAttachmentEditors()
         self.attachmentsHeader.OnHoverEnter = nil
     end
@@ -627,10 +635,10 @@ local colorDefinitionMap = {
 
         return params
     end,
-    HairHighlight = function (element)
+    HairHighlight = function(element)
         local params = {}
         local colorDef = Ext.StaticData.Get(element.Color, "ColorDefinition") --[[@as ResourceColor]]
-        local vec3Color = {colorDef.Color[1], colorDef.Color[2], colorDef.Color[3]}
+        local vec3Color = { colorDef.Color[1], colorDef.Color[2], colorDef.Color[3] }
 
         params = {
             [1] = {
@@ -640,16 +648,16 @@ local colorDefinitionMap = {
             },
             [2] = {},
             [3] = {
-                ["Highlight_Color"] = vec3Color or {1.0, 1.0, 1.0},
-                ["Beard_Highlight_Color"] = vec3Color or {1.0, 1.0, 1.0}
+                ["Highlight_Color"] = vec3Color or { 1.0, 1.0, 1.0 },
+                ["Beard_Highlight_Color"] = vec3Color or { 1.0, 1.0, 1.0 }
             }
         }
         return params
     end,
-    HairGraying = function (element)
+    HairGraying = function(element)
         local params = {}
         local colorDef = Ext.StaticData.Get(element.Color, "ColorDefinition") --[[@as ResourceColor]]
-        local vec3Color = {colorDef.Color[1], colorDef.Color[2], colorDef.Color[3]}
+        local vec3Color = { colorDef.Color[1], colorDef.Color[2], colorDef.Color[3] }
         params = {
             [1] = {
                 ["Graying_Intensity"] = {
@@ -661,46 +669,46 @@ local colorDefinitionMap = {
             },
             [2] = {},
             [3] = {
-                ["Hair_Graying_Color"] = vec3Color or {1.0, 1.0, 1.0},
-                ["Beard_Graying_Color"] = vec3Color or {1.0, 1.0, 1.0}
+                ["Hair_Graying_Color"] = vec3Color or { 1.0, 1.0, 1.0 },
+                ["Beard_Graying_Color"] = vec3Color or { 1.0, 1.0, 1.0 }
             }
         }
 
         return params
     end,
-    HornColor = function (element)
+    HornColor = function(element)
         local params = {}
         local colorDef = Ext.StaticData.Get(element.Color, "ColorDefinition") --[[@as ResourceColor]]
-        local vec3Color = {colorDef.Color[1], colorDef.Color[2], colorDef.Color[3]}
+        local vec3Color = { colorDef.Color[1], colorDef.Color[2], colorDef.Color[3] }
 
         params = {
             [1] = {},
             [2] = {},
             [3] = {
-                ["NonSkinColor"] = vec3Color or {1.0, 1.0, 1.0}
+                ["NonSkinColor"] = vec3Color or { 1.0, 1.0, 1.0 }
             }
         }
 
         return params
     end,
-    HornTipColor = function (element)
+    HornTipColor = function(element)
         local params = {}
         local colorDef = Ext.StaticData.Get(element.Color, "ColorDefinition") --[[@as ResourceColor]]
-        local vec3Color = {colorDef.Color[1], colorDef.Color[2], colorDef.Color[3]}
+        local vec3Color = { colorDef.Color[1], colorDef.Color[2], colorDef.Color[3] }
         params = {
             [1] = {},
             [2] = {},
             [3] = {
-                ["NonSkinTipColor"] = vec3Color or {1.0, 1.0, 1.0}
+                ["NonSkinTipColor"] = vec3Color or { 1.0, 1.0, 1.0 }
             }
         }
 
         return params
     end,
-    LipsMakeup = function (element)
+    LipsMakeup = function(element)
         local params = {}
         local colorDef = Ext.StaticData.Get(element.Color, "ColorDefinition") --[[@as ResourceColor]]
-        local vec3Color = {colorDef.Color[1], colorDef.Color[2], colorDef.Color[3]}
+        local vec3Color = { colorDef.Color[1], colorDef.Color[2], colorDef.Color[3] }
 
         params = {
             [1] = {
@@ -716,7 +724,7 @@ local colorDefinitionMap = {
             },
             [2] = {},
             [3] = {
-                ["Lips_Makeup_Color"] = vec3Color or {1.0, 1.0, 1.0},
+                ["Lips_Makeup_Color"] = vec3Color or { 1.0, 1.0, 1.0 },
             }
         }
 
@@ -754,10 +762,10 @@ function VisualTab:DetermineOverrideCharacterParameters()
         cca = ccDummy.ClientCCChangeAppearanceDefinition.Definition.Visual
     end
     if not cca then
-        cca = entity.AppearanceOverride and entity.AppearanceOverride.Visual --[[@as CharacterCreationAppearanceComponent]]
+        cca = entity.AppearanceOverride and
+        entity.AppearanceOverride.Visual --[[@as CharacterCreationAppearanceComponent]]
     end
     if cca then
-        
         local ccaPresetgroup = ImguiElements.AddTree(self.attachmentsHeader, "Character Creation Material Presets")
 
         local allColors = {
@@ -790,7 +798,7 @@ function VisualTab:DetermineOverrideCharacterParameters()
             params[1][paramName] = num
             mergeParameterSets(overrideCharacterParams, params)
         end
-        
+
         for i, colorChoice in pairs(cca.Elements) do
             local mat = Ext.StaticData.Get(colorChoice.Material, "CharacterCreationAppearanceMaterial") --[[@as ResourceCharacterCreationAppearanceMaterial]]
             local mp = MaterialProxy.new(mat.MaterialPresetUUID)
@@ -885,7 +893,7 @@ function VisualTab:DetermineOverrideCharacterParameters()
             end
         end
 
-        
+
         local paramLists = {
             visualSet.MaterialOverrides.ScalarParameters,
             visualSet.MaterialOverrides.Vector2Parameters,
@@ -926,13 +934,13 @@ function VisualTab:RenderAttachmentEditors()
 
         local displayName = vres.Slot
 
-        if displayName == "" or displayName == "Unassigned" then 
+        if displayName == "" or displayName == "Unassigned" then
             displayName = gr2FileName
         end
 
         local attachNode = ImguiElements.AddTree(self.attachmentsHeader, displayName .. "##" .. tostring(attIndex), false)
         attachNode:AddTreeIcon(RB_ICONS.Box, IMAGESIZE.ROW).Tint = ColorUtils.HexToRGBA("FFB98634")
-        
+
         local gr2Text = attachNode:AddHint("Model: " .. gr2FileName)
         gr2Text:SetColor("Text", ColorUtils.HexToRGBA("FF6D6D6D"))
         gr2Text.SameLine = true
@@ -947,7 +955,8 @@ function VisualTab:RenderAttachmentEditors()
                 parentNode = lodNode
             end
 
-            local objNode = parentNode:AddTree(modelName .. "##" .. tostring(attIndex) .. "::" .. tostring(descIndex), false)
+            local objNode = parentNode:AddTree(modelName .. "##" .. tostring(attIndex) .. "::" .. tostring(descIndex),
+                false)
             objNode:AddTreeIcon(RB_ICONS.Bounding_Box, IMAGESIZE.ROW).Tint = ColorUtils.HexToRGBA("FF27B040")
 
 
@@ -956,7 +965,7 @@ function VisualTab:RenderAttachmentEditors()
                 local visual = self:GetVisual(self.guid)
                 if not visual then return nil end
 
-                 local attach = visual.Attachments[attIndex]
+                local attach = visual.Attachments[attIndex]
                 if not attach then return nil end
 
                 local desc = attach.Visual.ObjectDescs[descIndex]
@@ -975,7 +984,8 @@ function VisualTab:RenderAttachmentEditors()
             local keyName = gr2FileName .. "::" .. modelName .. "::" .. tostring(attIndex) .. "::" .. tostring(descIndex)
             self:RenderTransformSliders(objNode, descIndex, attIndex, keyName)
 
-            local materialTab = self.Materials[keyName] or MaterialTab.new(objNode, matName, getliveMat, getliveParams) --[[@as MaterialTab]]
+            local materialTab = self.Materials[keyName] or
+            MaterialTab.new(objNode, matName, getliveMat, getliveParams) --[[@as MaterialTab]]
             materialTab.Parent = objNode
             materialTab.Editor.Instance = getliveMat
             materialTab.Editor.ParamsSrc = getliveParams
@@ -997,7 +1007,7 @@ function VisualTab:RenderAttachmentEditors()
                     self.SelectedMaterial = keyName
                     self.materialContextPopup:Open()
                 end
-                
+
                 objNode.OnExpand = function()
                 end
             end
@@ -1030,7 +1040,7 @@ function VisualTab:RenderObjectSection()
         self.materialHeader.DefaultOpen = true
     end
 
-    self.materialHeader.OnHoverEnter = function ()
+    self.materialHeader.OnHoverEnter = function()
         self:RenderObjectEditor()
         self.materialHeader.OnHoverEnter = nil
     end
@@ -1111,7 +1121,7 @@ function VisualTab:RenderObjectEditor()
                 self.materialContextPopup:Open()
             end
 
-            
+
             materialNode.OnExpand = function() end
         end
 
@@ -1144,7 +1154,7 @@ function VisualTab:RenderEffectSection()
         self.effectHeader.DefaultOpen = true
     end
 
-    self.effectHeader.OnHoverEnter = function ()
+    self.effectHeader.OnHoverEnter = function()
         self:RenderEffectEditor()
         self.effectHeader.OnHoverEnter = nil
     end
@@ -1251,7 +1261,8 @@ function VisualTab:RenderEffectTimelineEditor()
     end]]
 
     row:AddCell():AddText(GetLoca("Playing Speed") .. ":")
-    local playSpeedSlider = ImguiElements.AddSliderWithStep(row:AddCell(), GetLoca("Set Play Speed"), timeline.PlayingSpeed, 0.1, 5.0, 0.1, false)
+    local playSpeedSlider = ImguiElements.AddSliderWithStep(row:AddCell(), GetLoca("Set Play Speed"),
+        timeline.PlayingSpeed, 0.1, 5.0, 0.1, false)
     playSpeedSlider.OnChange = function()
         local entity = self:GetEntity(self.guid) --[[@as EntityHandle]]
         if not entity.Effect or not entity.Effect.Timeline then
@@ -1259,13 +1270,12 @@ function VisualTab:RenderEffectTimelineEditor()
         end
         entity.Effect.Timeline.PlayingSpeed = playSpeedSlider.Value[1]
     end
-
 end
 
 --- @class EffectComponentRenderInfo
 --- @field Group string
 --- @field RenderOrder string[]
---- @field PropertyMap EffectPropertyMap 
+--- @field PropertyMap EffectPropertyMap
 
 --- @class EffectComponentParameterInfo
 --- @field DisplayName string
@@ -1370,13 +1380,13 @@ end
 
 --- @param panel ExtuiTreeParent
 function VisualTab:RenderEffectComponentSliders(panel, getComp, key, componentName, valueInfo)
-    local applyMethod = valueInfo.Setter or function (value)
+    local applyMethod = valueInfo.Setter or function(value)
         local comp = getComp()
         if not comp then return end
 
         comp[componentName] = value
     end
-    local getMethod = valueInfo.Getter or function ()
+    local getMethod = valueInfo.Getter or function()
         local comp = getComp()
         if not comp then return nil end
 
@@ -1390,7 +1400,7 @@ function VisualTab:RenderEffectComponentSliders(panel, getComp, key, componentNa
         initValue = { initValue }
     end
     local isInt = valueInfo.IsInt or false
-    local range = valueInfo.Range or { Min = -10, Max = 10 , Step = 0.1 }
+    local range = valueInfo.Range or { Min = -10, Max = 10, Step = 0.1 }
     local compDisplayName = valueInfo.DisplayName or componentName
 
     local function saveChanged(value)
@@ -1413,7 +1423,8 @@ function VisualTab:RenderEffectComponentSliders(panel, getComp, key, componentNa
         end
     end
 
-    local updateMethod = ImguiElements.AddNumberSliders(panel, compDisplayName, getMethod, saveChanged, { IsInt = isInt, Range = range, OnReset = onReset, ResetValue = initValue, IsColor = valueInfo.IsColor })
+    local updateMethod = ImguiElements.AddNumberSliders(panel, compDisplayName, getMethod, saveChanged,
+        { IsInt = isInt, Range = range, OnReset = onReset, ResetValue = initValue, IsColor = valueInfo.IsColor })
 
     self.resetFuncs[key][componentName] = function()
         applyMethod(self.resetParams[key][componentName])
@@ -1506,7 +1517,7 @@ function VisualTab:RenderEffectComponentBitmaskRadioButtons(panel, getComp, key,
     radioGroup.OnChange = function()
         local comp = getComp()
         if not comp then return end
-        saveChanged(radioGroup.Value)    
+        saveChanged(radioGroup.Value)
     end
 
     title.OnRightClick = function()
@@ -1563,7 +1574,7 @@ function VisualTab:RenderEffectComponentEnumRadioButtons(panel, getComp, key, co
     radioGroup.OnChange = function()
         local comp = getComp()
         if not comp then return end
-        saveChanged(radioGroup.Value)    
+        saveChanged(radioGroup.Value)
     end
 
     title.OnRightClick = function()
@@ -1584,10 +1595,10 @@ function VisualTab:SetupEffectContextMenu()
     self.SelectedEffectComponent = nil
     local contextMenu = ImguiElements.AddContextMenu(effectContextPopup, "Effect Component")
 
-    contextMenu:AddItem("Apply To Same Type", function (sel)
+    contextMenu:AddItem("Apply To Same Type", function(sel)
         local compKey = self.SelectedEffectComponent
         if not compKey then return end
-        
+
         local modfiedParams = self.Effects[compKey]
         if not modfiedParams then return end
 
@@ -1619,7 +1630,6 @@ function VisualTab:SetupEffectContextMenu()
             end
         end
     end)
-
 end
 
 ---@param node ExtuiTree
@@ -1638,7 +1648,7 @@ function VisualTab:RenderLightEntity(node, component, compIndex)
         LightChannelFlag = {
             Options = {
                 { Label = "Character", Value = 1 << 5 },
-                { Label = "Scenery", Value = 1 },
+                { Label = "Scenery",   Value = 1 },
             },
             DisplayName = "Light Channel",
             Group = "Light Flags",
@@ -1663,10 +1673,10 @@ function VisualTab:RenderLightEntity(node, component, compIndex)
         },
         DirectionLightAttenuationFunction = {
             Options = {
-                { Label = "Linear", Value = 0 },
+                { Label = "Linear",         Value = 0 },
                 { Label = "Inverse Square", Value = 1 },
-                { Label = "Smooth Step", Value = 2 },
-                { Label = "Smoother Step", Value = 3 },
+                { Label = "Smooth Step",    Value = 2 },
+                { Label = "Smoother Step",  Value = 3 },
             },
             DisplayName = "Attenuation Function",
             Group = "Directional Light Settings",
@@ -1740,7 +1750,7 @@ function VisualTab:RenderLightEntity(node, component, compIndex)
             IsColor = true,
         },
     }
-    
+
     local renderOrder = {
         "LightChannelFlag",
         "Flags",
@@ -1799,7 +1809,7 @@ function VisualTab:RenderLightComponent(node, component, compIndex)
             VisualHelpers.ChangeFrames(property.Frames, value, true)
         end
     end
-    
+
     local scalarNameMap = {
         ["IntensityProperty"] = {
             Range = { Min = 0, Max = 100, Step = 0.1 },
@@ -1972,7 +1982,7 @@ function VisualTab:RenderParticleSystemComponent(node, component, compIndex)
     }
 
     local key = "ParticleSystem::" .. compIndex
-    
+
     local function GetLiveParticleSystem()
         local entity = self:GetEntity(self.guid)
         if not entity or not entity.Effect or not entity.Effect.Timeline or not entity.Effect.Timeline.Components[compIndex] then
@@ -1998,7 +2008,8 @@ end
 
 function VisualTab:RenderTransformSliders(parent, descIndex, attachIndex, keyName)
     local selectInTransformEditor = parent:AddButton(GetLoca("Select in Transform Editor"))
-    selectInTransformEditor.IDContext = "VisualTab_TransformEditorSelectButton_" .. descIndex .. "_" .. (attachIndex or "")
+    selectInTransformEditor.IDContext = "VisualTab_TransformEditorSelectButton_" ..
+    descIndex .. "_" .. (attachIndex or "")
 
     selectInTransformEditor.OnClick = function()
         if not self:CheckVisual() then return end
@@ -2074,14 +2085,14 @@ function VisualTab:Save(name, overwrite)
             Mats[key] = params
         end
 
-    
+
         local objStart = self.resetParams[key]
 
         if objStart == nil then
             goto continue
         end
 
-        local currentScale = {VisualHelpers.GetRenderableScale(self.guid, objStart.DescIndex, objStart.AttachIndex)}
+        local currentScale = { VisualHelpers.GetRenderableScale(self.guid, objStart.DescIndex, objStart.AttachIndex) }
         if RBTableUtils.EqualArrays(currentScale, objStart.Scale) == false then
             localTransforms[key] = {
                 Scale = currentScale
@@ -2150,7 +2161,7 @@ function VisualTab:ExportPreset()
             presetData.Materials[key] = params
         end
         local objStart = self.resetParams[key]
-        local currentScale = {VisualHelpers.GetRenderableScale(self.guid, objStart.DescIndex, objStart.AttachIndex)}
+        local currentScale = { VisualHelpers.GetRenderableScale(self.guid, objStart.DescIndex, objStart.AttachIndex) }
         if RBTableUtils.EqualArrays(currentScale, objStart.Scale) == false then
             presetData.Transforms[key] = {
                 Scale = currentScale

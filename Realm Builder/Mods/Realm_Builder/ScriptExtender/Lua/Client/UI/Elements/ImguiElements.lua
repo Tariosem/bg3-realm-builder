@@ -295,7 +295,7 @@ function ImguiElements.RenderExportSettingPanel(parent, settings)
     local currentModInternalNameTooltip = modNameTooltip:AddText("Current Mod Internal Name:")
     currentModInternalNameTooltip:SetColor("Text", ColorUtils.HexToRGBA("FFFFBC51"))
     local modIntenalNameTooltip = modNameTooltip:AddText(settings.ModName and
-    RBUtils.ValidateFolderName(settings.ModName) or "")
+        RBUtils.ValidateFolderName(settings.ModName) or "")
     modIntenalNameTooltip:SetColor("Text", ColorUtils.HexToRGBA("FFFFFFFF"))
     modIntenalNameTooltip.SameLine = true
 
@@ -583,16 +583,20 @@ function ImguiElements.AddTexturePopup(parent, getter, setter)
     end
     local popup = parent:AddPopup("EditStringParameterPopup##" .. id)
     local alignedTable = ImguiElements.AddAlignedTable(popup)
-    local searchInput, valueCell = alignedTable:AddInputText("Search Texture",
+    local searchInput = alignedTable:AddInputText("Path",
         res and LSXHelpers.GetPathAfterData(res.SourceFile) or defaultTexturePath)
     searchInput.SizeHint = { 1000 * SCALE_FACTOR, 0 }
-    local resetBtn = ImguiElements.AddResetButton(valueCell, true)
+    local nameSearchInput = alignedTable:AddInputText("Name Filter", RBStringUtils.GetLastPath(res.SourceFile) or "")
+    nameSearchInput.SizeHint = { 1000 * SCALE_FACTOR, 0 }
+
+    local allCombo, comboCell = alignedTable:AddCombo("Change Texture")
+
+    local resetBtn = ImguiElements.AddResetButton(comboCell, true)
     resetBtn.OnClick = function()
         setter(initValue)
         searchInput.Text = LSXHelpers.GetPathAfterData(Ext.Resource.Get(initValue, "Texture").SourceFile)
         searchInput:OnChange()
     end
-    local allCombo, comboCell = alignedTable:AddCombo("Change Texture")
     local exceedImage = comboCell:AddImage(RB_ICONS.Exclamation, IMAGESIZE.FRAME) --[[@as ExtuiImage]]
     exceedImage.Tint = { 1, 0, 0, 1 }
     exceedImage.SameLine = true
@@ -601,11 +605,19 @@ function ImguiElements.AddTexturePopup(parent, getter, setter)
     exceedTooltip:AddText("Too many results! Some results are not shown. Please refine your search.")
     exceedImage.Visible = false
     allCombo.HeightLarge = true
-    searchInput.OnChange = function()
+
+    local function search()
         if searchInput.Text == "" then
             searchInput.Text = "Generated/"
         end
-        local allRes, exceed = TextureResourceManager:GetAllTextureResourceUnderPath(searchInput.Text)
+        local nameFilter = nameSearchInput.Text --[[@as string?]]
+        if nameFilter == "" then
+            nameFilter = nil
+        elseif nameFilter then
+            nameFilter = nameFilter:lower()
+        end
+        local allRes, exceed = TextureResourceManager:GetAllTextureResourceUnderPath(searchInput.Text,
+            nameSearchInput.Text)
         exceedImage.Visible = exceed
         local options = {}
         optionToId = {}
@@ -624,6 +636,9 @@ function ImguiElements.AddTexturePopup(parent, getter, setter)
         end
         allCombo.Options = options
     end
+
+    searchInput.OnChange = search
+    nameSearchInput.OnChange = search
 
     allCombo.OnChange = function()
         local selected = optionToId[allCombo.SelectedIndex + 1]
@@ -692,7 +707,7 @@ function ImguiElements.AddResetButton(parent, sameLine)
 
     local button = nil
     button = group:AddImageButton("##ResetButton_" .. RBUtils.Uuid_v4(), RB_ICONS.Arrow_CounterClockwise, IMAGESIZE
-    .FRAME) --[[@as ExtuiImageButton]]
+        .FRAME) --[[@as ExtuiImageButton]]
 
     --button.PositionOffset = { 0, 4 }
     return button, group
@@ -776,7 +791,7 @@ function ImguiElements.AddReadOnlyAttrTable(parent, contents)
 
     --- @type AttrTable
     local clos = {
-        AddNewLine = function(_ , name)
+        AddNewLine = function(_, name)
             local row = tab:AddRow() --[[@as ExtuiTableRow]]
             local nameCell = row:AddCell()
             nameCell:AddText(name)

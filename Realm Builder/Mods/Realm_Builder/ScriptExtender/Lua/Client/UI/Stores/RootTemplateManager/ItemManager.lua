@@ -140,12 +140,14 @@ function ItemManager:HardCodeHierachy()
         Equipment = "Item_WPN_HUM_Longsword_A_0",
     }
 
+    --[[
     for armorType, _ in pairs(Ext.Enums.ArmorType) do
         if armorType ~= "None" and armorType ~= "Count" and tonumber(armorType) == nil then
             self.tagTree["ArmorType"][armorType] = 0
             self.tagIcons[armorType] = "Item_ARM_" .. armorType
         end
     end
+    ]]
 
     self.tagIcons.BreastPlate = "Item_ARM_Breastplate"
     self.tagIcons.Cloth = "Item_ARM_Robe"
@@ -170,11 +172,12 @@ function ItemManager:HardCodeHierachy()
         if prof == "SimpleWeapons" or prof == "MartialWeapons" then goto continue end
         if prof ~= "None" and prof ~= "Count" and prof ~= "MusicalInstrument" and tonumber(prof) == nil then
             if simpleWeaponCate[prof] then
-                self.tagTree["Equipment"]["Weapon"]["SimpleWeapons"][prof] = 0
+                self.tagTree:AddLeaf(prof, 0, "SimpleWeapons")
+                --self.tagTree["Equipment"]["Weapon"]["SimpleWeapons"][prof] = 0
             else
-                self.tagTree["Equipment"]["Weapon"]["MartialWeapons"][prof] = 0
+                self.tagTree:AddLeaf(prof, 0, "MartialWeapons")
+                --self.tagTree["Equipment"]["Weapon"]["MartialWeapons"][prof] = 0
             end
-
 
             self.tagIcons[prof] = "Item_WPN_HUM_" .. prof:gsub("s$", "") .. "_A_0"
         end
@@ -208,7 +211,7 @@ function ItemManager:HardCodeHierachy()
     self.tagIcons["Potion"] = "Item_CONS_Potion_Healing_A"
     self.tagIcons["Scroll"] = "Item_LOOT_SCROLL_Counterspell"
 
-    tree:Reparent("ArmorType", "Equipment")
+    --tree:Reparent("ArmorType", "Equipment")
 end
 
 --- @class RB_Item
@@ -297,7 +300,7 @@ end
 
 local function categorize_equipment(manager, statsObj, templateName, uuid)
     if EQUIPMENTS_HAS_ARMORTYPE[statsObj.Slot] and statsObj.ArmorType ~= "None" then
-        manager:AddTagToData(uuid, statsObj.ArmorType)
+        --manager:AddTagToData(uuid, statsObj.ArmorType)
     end
     local profGroup = statsObj["Proficiency Group"]
     if profGroup and next(profGroup) then

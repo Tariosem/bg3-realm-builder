@@ -469,16 +469,17 @@ end
 
 function EntityTab:RenderVisualTab()
 
-    if not self.visualTab then
+    local vT = self.visualTab
+    if not vT then
         self.visualTab = VisualTab:Add(self.guid, self.displayName, self.tabBar, self.templateName) --[[@as VisualTab]]
-    elseif self.visualTab and self.visualTab.isWindow then
-        self.visualTab.parent = self.tabBar
-        if self.visualTab.panel then
-            self.visualTab.panel.Open = true
+    elseif vT and vT.isWindow then
+        vT.parent = self.tabBar
+        if vT.panel then
+            vT.panel.Open = true
         end
-    elseif self.visualTab then
-        self.visualTab.parent = self.tabBar
-        self.visualTab:Refresh()
+    elseif vT then
+        vT.parent = self.tabBar
+        vT:Refresh()
     end
 
     self.visualTab.OnDetach = function()

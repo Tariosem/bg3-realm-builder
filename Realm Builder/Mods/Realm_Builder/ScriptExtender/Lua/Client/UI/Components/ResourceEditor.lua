@@ -420,7 +420,7 @@ RegisterDebugWindow("Realm Builder Atmosphere Editor", function(panel)
         local uuidIdx = {}
         for i, resUuid in pairs(allAtms) do
             local padNumber = RBStringUtils.PadNumber(i, 3) -- for sorting
-            local indexPrefix = "[ " .. padNumber .. "] "
+            local indexPrefix = "[" .. padNumber .. "] "
             local label = indexPrefix .. resUuid
             if resType == "Atmosphere" then
                 local res = Ext.Resource.Get(resUuid, resType) --[[@as ResourceAtmosphereResource]]
@@ -591,31 +591,30 @@ RegisterDebugWindow("Realm Builder Atmosphere Editor", function(panel)
         local atmosphereReady = false
 
         local function checkAndSave()
-            if lightingReady and atmosphereReady then
+            if not (lightingReady and atmosphereReady) then return end
 
-                atmosphereEditor = atmosphereEditor or {}
-                lightingEditor = lightingEditor or {}
-                local formated = {
-                    AtmosphereUuid = atmosphereEditor.ResourceUUID,
-                    LightingUuid = lightingEditor.ResourceUUID,
-                    AtmosphereModifications = atmosphereEditor.ModfiedResource,
-                    LightingModifications = LightingEditor.ModfiedResource,
-                }
-                local fileName = saveInput.Text
-                if fileName == "" then
-                    local currentLevel = _C().Level.LevelName
-                    local currentTime = RBUtils.GetFormatTime()
-                    fileName = currentLevel .. "_" .. currentTime
-                    saveInput.Text = fileName
-                end
-                local savePath = FilePath.GetAtmospherePath(fileName)
-                local suc = Ext.IO.SaveFile(savePath, Ext.Json.Stringify(formated))
-                if not suc then
-                    notif:Show("Resource Editor", "Failed to save to file: " .. savePath)
-                    return
-                else
-                    notif:Show("Resource Editor", "Atmosphere and Lighting resources saved to: " .. savePath)
-                end
+            atmosphereEditor = atmosphereEditor or {}
+            lightingEditor = lightingEditor or {}
+            local formated = {
+                AtmosphereUuid = atmosphereEditor.ResourceUUID,
+                LightingUuid = lightingEditor.ResourceUUID,
+                AtmosphereModifications = atmosphereEditor.ModfiedResource,
+                LightingModifications = LightingEditor.ModfiedResource,
+            }
+            local fileName = saveInput.Text
+            if fileName == "" then
+                local currentLevel = _C().Level.LevelName
+                local currentTime = RBUtils.GetFormatTime()
+                fileName = currentLevel .. "_" .. currentTime
+                saveInput.Text = fileName
+            end
+            local savePath = FilePath.GetAtmospherePath(fileName)
+            local suc = Ext.IO.SaveFile(savePath, Ext.Json.Stringify(formated))
+            if not suc then
+                notif:Show("Resource Editor", "Failed to save to file: " .. savePath)
+                return
+            else
+                notif:Show("Resource Editor", "Atmosphere and Lighting resources saved to: " .. savePath)
             end
         end
 
