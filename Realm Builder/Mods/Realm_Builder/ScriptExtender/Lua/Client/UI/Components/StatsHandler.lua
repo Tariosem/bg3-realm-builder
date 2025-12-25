@@ -479,7 +479,6 @@ StatsBoostHandlers = {
 
         local boostRenders = {}
         for _, effect in ipairs(boost.effects or {}) do
-            _D(effect)
             local handler = StatsBoostHandlers[effect.name]
             if handler then
                 local boostRender = handler(effect)

@@ -238,7 +238,10 @@ function VisualTab:Render(retryCnt)
 
     local entity = self:GetEntity(self.guid)
 
-    if entity == nil or not entity.Visual or not entity.Visual.Visual or not entity.Effect then
+    local hasEffect = entity.Effect and true or false
+    local hasVisual = entity.Visual and entity.Visual.Visual and true or false
+
+    if not ( hasVisual or hasEffect ) then
         local rerenderButton = self.panel:AddButton(GetLoca("Try to reload Visual Tab"))
         local reasons = {
             "Too far from camera",
@@ -294,14 +297,14 @@ function VisualTab:RenderMaterialContextPopup()
         local matTab = self.Materials[keyName]
         if not matTab then return end
         -- only copy number/vector parameters
-        local param1234 = {
+        local paramSet = {
             [1] = matTab.Editor.Parameters[1],
             [2] = matTab.Editor.Parameters[2],
             [3] = matTab.Editor.Parameters[3],
             [4] = matTab.Editor.Parameters[4],
         }
         for _, otherMatTab in pairs(self.Materials) do
-            otherMatTab.Editor:ApplyParameters(param1234)
+            otherMatTab.Editor:ApplyParameters(paramSet)
             otherMatTab:UpdateUIState()
         end
     end)
@@ -499,38 +502,31 @@ function VisualTab:RenderPresetsCell(parent)
     if self.templateName then
         self.tooltipTemplate = warningImage:Tooltip():AddText(GetLoca("Template: ") .. self.templateName)
     end
-    warningImage:Tooltip():AddText(GetLoca("Some changes will affect all instances of the same template."))
     warningImage:Tooltip():AddText(GetLoca("If 'Reset All' doesn't work, reload a save."))
 
     resetAllButton.OnClick = function(_)
-        Timer:Ticks(10, function()
-            local isChara = EntityHelpers.IsCharacter(self.guid)
+        local isChara = EntityHelpers.IsCharacter(self.guid)
 
-            for key, matTab in pairs(self.Materials) do
-                matTab.Editor:ClearParameters()
+        for key, matTab in pairs(self.Materials) do
+            matTab.Editor:ClearParameters()
+            matTab.Editor:ResetAll()
+            matTab:UpdateUIState()
+        end
 
-                if not isChara then
-                    matTab.Editor:ResetAll()
-                end
+        if isChara then
+            NetChannel.Replicate:SendToServer({
+                Guid = self.guid,
+                Field = "GameObjectVisual",
+            })
+        end
 
-                matTab:UpdateUIState()
-            end
-
-            if isChara then
-                NetChannel.Replicate:SendToServer({
-                    Guid = self.guid,
-                    Field = "GameObjectVisual",
-                })
-            end
-
-            if not isChara then
-                for key, func in pairs(self.resetFuncs) do
-                    for propName, resetFunc in pairs(func) do
-                        resetFunc()
-                    end
+        if not isChara then
+            for key, func in pairs(self.resetFuncs) do
+                for propName, resetFunc in pairs(func) do
+                    resetFunc()
                 end
             end
-        end)
+        end
     end
 
     --#endregion Left Cell Content
@@ -920,7 +916,7 @@ function VisualTab:RenderAttachmentEditors()
 
     local overrideCharacterParams = {}
     if EntityHelpers.IsCharacter(self.guid) then
-        overrideCharacterParams = self:DetermineOverrideCharacterParameters()
+        --overrideCharacterParams = self:DetermineOverrideCharacterParameters()
     end
 
     local attachments = visual.Attachments or {}
@@ -929,6 +925,7 @@ function VisualTab:RenderAttachmentEditors()
         if #attach.Visual.ObjectDescs == 0 then goto continue end
         local vres = attach.Visual.VisualResource
         if not vres then goto continue end
+        local initVresId = vres.Guid
         local source = vres and vres.SourceFile or "Unknown Model"
         local gr2FileName = RBStringUtils.GetLastPath(source)
 
@@ -959,16 +956,23 @@ function VisualTab:RenderAttachmentEditors()
                 false)
             objNode:AddTreeIcon(RB_ICONS.Bounding_Box, IMAGESIZE.ROW).Tint = ColorUtils.HexToRGBA("FF27B040")
 
-
             local matName = obj.Renderable.ActiveMaterial.Material.Name
             local function getliveMat()
                 local visual = self:GetVisual(self.guid)
                 if not visual then return nil end
 
                 local attach = visual.Attachments[attIndex]
+
                 if not attach then return nil end
 
-                local desc = attach.Visual.ObjectDescs[descIndex]
+                local attachVisual = attach.Visual
+                local vresId = attachVisual.VisualResource.Guid
+
+                if vresId ~= initVresId then
+                    return nil
+                end
+
+                local desc = attachVisual.ObjectDescs[descIndex]
                 if not desc or not desc.Renderable then return nil end
 
                 return desc.Renderable.ActiveMaterial
@@ -981,7 +985,7 @@ function VisualTab:RenderAttachmentEditors()
                 return mat.Material.Parameters
             end
 
-            local keyName = gr2FileName .. "::" .. modelName .. "::" .. tostring(attIndex) .. "::" .. tostring(descIndex)
+            local keyName = initVresId .. "::" .. tostring(attIndex) .. "::" .. tostring(descIndex)
             self:RenderTransformSliders(objNode, descIndex, attIndex, keyName)
 
             local materialTab = self.Materials[keyName] or
@@ -990,7 +994,6 @@ function VisualTab:RenderAttachmentEditors()
             materialTab.Editor.Instance = getliveMat
             materialTab.Editor.ParamsSrc = getliveParams
             materialTab.Editor.ParamSet:Update(getliveParams())
-            materialTab.Editor:SetDefaultParameters(overrideCharacterParams)
 
             objNode.OnRightClick = function()
                 --local renable = VisualHelpers.GetRenderable(self.guid, descIndex, attIndex)
@@ -1108,7 +1111,7 @@ function VisualTab:RenderObjectEditor()
         materialEditor.Editor.ParamSet:Update(getliveParams())
 
         materialNode.OnRightClick = function()
-            materialNode.OnExpand()
+            materialNode:OnExpand()
             self.SelectedMaterial = keyName
             self.materialContextPopup:Open()
         end

@@ -297,7 +297,6 @@ function ItemManager:PopulateItem(template, statsObj)
     return entry
 end
 
-
 local function categorize_equipment(manager, statsObj, templateName, uuid)
     if EQUIPMENTS_HAS_ARMORTYPE[statsObj.Slot] and statsObj.ArmorType ~= "None" then
         --manager:AddTagToData(uuid, statsObj.ArmorType)
@@ -397,9 +396,32 @@ function ItemManager:CategorizeItem(entry, statsObj, templateName)
 end
 
 --- @class RB_Weapon:RB_Item
+--- @field DefaultBoost string
 --- @field Boosts string
 --- @field Damage string
---- @field Passives string[]
+--- @field Range integer
+--- @field DamageType string
+--- @field DamageRange integer
+--- @field PassivesOnEquip string
+--- @field PassivesMainHand string
+--- @field PassivesOffHand string
+--- @field BoostsOnEquipMainHand string
+--- @field BoostsOnEquipOffHand string
+--- @field BoostsOnEquip string
+
+local weaponLookupInStatsObj = {
+    DefaultBoosts = "DefaultBoosts",
+    Boosts = "Boosts",
+    Damage = "Damage",
+    WeaponRange = "Range",
+    DamageType = "Damage Type",
+    DamageRange = "Damage Range",
+    PassivesOnEquip = "PassivesOnEquip",
+    PassivesMainHand = "PassivesMainHand",
+    PassivesOffHand = "PassivesOffHand",
+    BoostsOnEquipMainHand = "BoostsOnEquipMainHand",
+    BoostsOnEquipOffHand = "BoostsOnEquipOffHand",
+}
 
 --- @param statsObj Weapon
 function ItemManager:PopulateWeapon(statsObj, statsId)
@@ -411,26 +433,42 @@ function ItemManager:PopulateWeapon(statsObj, statsId)
         return nil
     end
 
+    setmetatable(baseEntry, { __index = function(t, k)
+        local statsObj = Ext.Stats.Get(statsId) --[[@as Weapon]]
+        local lookupKey = weaponLookupInStatsObj[k]
+        if not statsObj or not lookupKey then return nil end
+        return statsObj and statsObj[lookupKey] or nil
+    end})
+
+    --[[
     baseEntry.DefaultBoosts = statsObj.DefaultBoosts
     baseEntry.Boosts = statsObj.Boosts
     baseEntry.Damage = statsObj.Damage
     baseEntry.Range = statsObj.WeaponRange
     baseEntry.DamageType = statsObj["Damage Type"] or "Physical"
     baseEntry.DamageRange = statsObj["Damage Range"] or 0
-    baseEntry.Passives = {}
-    baseEntry.Passives["On Equip"] = statsObj.PassivesOnEquip or ""
-    baseEntry.Passives["On MainHand"] = statsObj.PassivesMainHand or ""
-    baseEntry.Passives["On OffHand"] = statsObj.PassivesOffHand or ""
+    baseEntry.PassivesOnEquip = statsObj.PassivesOnEquip or ""
+    baseEntry.PassivesMainHand = statsObj.PassivesMainHand or ""
+    baseEntry.PassivesOffHand = statsObj.PassivesOffHand or ""
     baseEntry.BoostsOnEquipMainHand = statsObj.BoostsOnEquipMainHand or ""
     baseEntry.BoostsOnEquipOffHand = statsObj.BoostsOnEquipOffHand or ""
+    ]]
 
     return baseEntry
 end
 
---- @class RB_Armor:RB_Item
+--- @class RB_Armor : RB_Item
 --- @field ArmorClass integer
---- @field Passives string[]
+--- @field DefaultBoosts string
 --- @field Boosts string
+--- @field PassivesOnEquip string
+
+local armorLookupInStatsObj = {
+    ArmorClass = "ArmorClass",
+    DefaultBoosts = "DefaultBoosts",
+    Boosts = "Boosts",
+    PassivesOnEquip = "PassivesOnEquip",
+}
 
 --- @param statsObj Armor
 --- @return RB_Armor?
@@ -443,12 +481,20 @@ function ItemManager:PopulateArmor(statsObj, statsId)
         return nil
     end
 
-    baseEntry.ArmorClass = statsObj.ArmorClass or 0
+    setmetatable(baseEntry, { __index = function(t, k)
+        local sId = baseEntry.StatsName
+        local sO = Ext.Stats.Get(sId) --[[@as Armor]]
+        local lookupKey = armorLookupInStatsObj[k]
+        if not sO or not lookupKey then return nil end
+        return sO and sO[lookupKey] or nil
+    end})
 
+    --[[
+    baseEntry.ArmorClass = statsObj.ArmorClass or 0
     baseEntry.DefaultBoosts = statsObj.DefaultBoosts
     baseEntry.Boosts = statsObj.Boosts
-    baseEntry.Passives = {}
-    baseEntry.Passives["On Equip"] = statsObj.PassivesOnEquip
+    baseEntry.PassivesOnEquip = statsObj.PassivesOnEquip or ""
+    ]]
 
     if statsObj.Slot == "MusicalInstrument" and statsObj.InstrumentType ~= "None" then
         --- @diagnostic disable-next-line

@@ -399,14 +399,12 @@ function TransformEditor:MakeAxisLineVisualization(gizmo, ray, color, index)
             [line2Guid] = newLine2Transform,
         }
 
-        local cleaned = false
         local function cleanup()
-            if cleaned then return end
             NetChannel.Delete:RequestToServer({ Guid = self.LineVisualizations[index] }, function(response)
                 -- make sure it's dead
                 self.LineVisualizations[index] = nil
-                cleaned = true
             end)
+            cleanup = function () end
         end
         local function setupVisual(guid)
             RBUtils.WaitUntil(function()

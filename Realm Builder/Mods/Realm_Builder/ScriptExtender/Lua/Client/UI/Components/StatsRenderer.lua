@@ -131,11 +131,14 @@ local function RenderStatsObjectTitle(statsObj, parent, statType, isTooltip)
 
     if statType == "SpellData" then
         statsObj = statsObj --[[@as SpellData ]]
-        local spellLevel = statsObj.Level == 0 and "Cantrips" or GetLoca("Level ") .. tostring(statsObj.Level or "?")
+        local spellLevel = statsObj.Level == 0 and "Cantrip" or GetLoca("Level ") .. tostring(statsObj.Level or "?")
         local spellSchool = statsObj.SpellSchool --[[@as string]]
         if spellSchool == "None" then
             spellLevel = "Class Actions"
             spellSchool = ""
+        elseif spellLevel == "Cantrip" then
+            spellLevel = spellSchool
+            spellSchool = "Cantrip"
         else
             spellSchool = spellSchool .. " Spell"
         end

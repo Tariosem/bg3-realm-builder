@@ -24,11 +24,23 @@ function ImguiHelpers.SafeAddSliderInt(parent, label, default, min, max)
 end
 
 --- @param arrowImage ExtuiImageButton
-function ImguiHelpers.SetupImageButton(arrowImage)
+--- @param tooltipText string?
+function ImguiHelpers.SetupImageButton(arrowImage, tooltipText)
     StyleHelpers.ClearAllBorders(arrowImage)
     arrowImage.Tint = arrowImage.Tint or { 1, 1, 1, 1 }
+    
     arrowImage.OnHoverEnter = function()
         arrowImage.Tint = { arrowImage.Tint[1], arrowImage.Tint[2], arrowImage.Tint[3], arrowImage.Tint[4] * 0.8 }
+    end
+    if tooltipText then
+        local notAddedTooltip = true --[[@type boolean?]]
+        arrowImage.OnHoverEnter = function()
+            arrowImage.Tint = { arrowImage.Tint[1], arrowImage.Tint[2], arrowImage.Tint[3], arrowImage.Tint[4] * 0.8 }
+            if notAddedTooltip then
+                ImguiHelpers.Tooltip(tooltipText)
+                notAddedTooltip = nil
+            end
+        end
     end
     arrowImage.OnHoverLeave = function()
         arrowImage.Tint = { arrowImage.Tint[1], arrowImage.Tint[2], arrowImage.Tint[3], arrowImage.Tint[4] / 0.8 }

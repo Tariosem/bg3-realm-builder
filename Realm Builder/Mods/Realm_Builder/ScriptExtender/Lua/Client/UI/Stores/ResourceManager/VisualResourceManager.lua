@@ -108,7 +108,7 @@ function VisualResourceManager:PopulateAllVisualResources()
     for _, resId in pairs(visualResources) do
         local res = Ext.Resource.Get(resId, "Visual") --[[@as ResourceVisualResource]]
         local fileName = RBStringUtils.GetLastPath(res.SourceFile)
-        local path = LSXHelpers.GetPathAfterData(res.SourceFile)
+        local path = RBStringUtils.GetPathAfterData(res.SourceFile)
         self.Data[res.Guid] = {
             SourceFile = fileName,
             Uuid = resId,

@@ -553,6 +553,7 @@ function EntityTab:Collapsed()
         self.panel:Destroy()
         self.panel = nil
     else
+        --- @diagnostic disable-next-line
         WindowManager.DeleteWindow(self.panel)
         self.panel = nil
     end

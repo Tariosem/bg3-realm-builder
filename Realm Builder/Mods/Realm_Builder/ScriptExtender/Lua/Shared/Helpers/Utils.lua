@@ -31,6 +31,14 @@ function RBUtils.IsUuidIncludingNull(object)
     return object:match("^%x%x%x%x%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%x%x%x%x%x%x%x%x$") ~= nil
 end
 
+function RBUtils.IsUuidShape(o)
+    if not o then return false end
+
+    if type(o) ~= "string" then return false end
+
+    return o:match("^%w%w%w%w%w%w%w%w%-%w%w%w%w%-%w%w%w%w%-%w%w%w%w%-%w%w%w%w%w%w%w%w%w%w%w%w$") ~= nil
+end
+
 ---@param major string|number
 ---@param minor string|number
 ---@param revision string|number

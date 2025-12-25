@@ -79,6 +79,10 @@ RB_ICONS.Plus_Circle_Fill = "RB_Plus_Circle_Icon_Fill"
 
 RB_ICONS.Arrow_CounterClockwise = "RB_Arrow_CounterClockwise_Icon"
 
+RB_ICONS.Folder_Home = "RB_Folder_Home_Icon"
+RB_ICONS.Folder_Outline = "RB_Folder_Outline_Icon"
+RB_ICONS.Folder_Arrow_Left = "RB_Folder_Arrow_Left_Icon"
+
 --- vanilla resources
 WARNING_ICON = "PassiveFeature_Generic_Threat"
 LOCK_ICON = "Spell_Abjuration_ArcaneLock"

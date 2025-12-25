@@ -19,8 +19,17 @@ local treeClosed = RB_ICON_UV01[treeClosedIcon]
 --- @field ToggleAll fun(self: RB_UI_Tree)
 --- @field Panel ExtuiGroup
 --- @field Indent number
---- @field OnExpand fun()
---- @field OnCollapse fun()
+--- @field Framed boolean
+--- @field HideHeader boolean
+--- @field DontClosePopups boolean
+--- @field OnExpand fun(self:RB_UI_Tree)
+--- @field OnCollapse fun(self:RB_UI_Tree)
+
+local selectableProps = {
+    Selected = true,
+    Highlight = true,
+    DontClosePopups = true,
+}
 
 --- @param parent ExtuiTreeParent
 --- @param label string
@@ -48,6 +57,7 @@ function ImguiElements.AddTree(parent, label, open)
     panel.SameLine = true
     selectable.SameLine = true
     selectable.AllowItemOverlap = true
+    selectable.DontClosePopups = true
     selectable.IDContext = "TreeSelectable__" .. uuid
     iconReserved.SameLine = true
     iconReserved.Visible = false
@@ -58,9 +68,9 @@ function ImguiElements.AddTree(parent, label, open)
         panel.Visible = isOpen
         arrowReserved.Image = panel.Visible and treeOpen or treeClosed
         if closure.OnExpand and isOpen then
-            closure.OnExpand()
+            closure:OnExpand()
         elseif closure.OnCollapse and not isOpen then
-            closure.OnCollapse()
+            closure:OnCollapse()
         end
     end
 
@@ -186,6 +196,8 @@ function ImguiElements.AddTree(parent, label, open)
                 end
             elseif k == "Indent" then
                 return indent.Width
+            elseif k == "HideHeader" then
+                return not headerGroup.Visible
             end
             return selectable[k]
         end,
@@ -206,9 +218,12 @@ function ImguiElements.AddTree(parent, label, open)
             elseif k == "Indent" then
                 indent.Width = v
                 return
+            elseif k == "HideHeader" then
+                headerGroup.Visible = not v
+                return
             end
             selectable[k] = v
-            if treeIcon and not (k == "Selected" or k == "Highlight") then
+            if treeIcon and not selectableProps[k] then
                 treeIcon[k] = v
             end
         end

@@ -291,19 +291,55 @@ function ItemBrowser:RenderAttrPopup(iconImage, cell, entry, getPopupFunc)
             attributePopup:AddSeparator()
         end
 
-        if entry.Passives then
-            for onSomething, passive in pairs(entry.Passives) do
-                local renderFunc = StatsParser:ParsePassives(passive, onSomething)
-                if renderFunc then
-                    addAttrTitle("Passives")
-                    attributePopup:AddSeparator()
-                    addAttrSubTitle(onSomething .. " :")
-                    for _, render in ipairs(renderFunc) do
-                        render(attributePopup)
-                    end
+        local hasAnyPassive = false
+        for _,fieldName in pairs({"PassivesOnEquip", "PassivesMainHand", "PassivesOffHand"}) do
+            if entry[fieldName] and entry[fieldName] ~= "" then
+                hasAnyPassive = true
+                break
+            end
+        end
+
+        if hasAnyPassive then
+            addAttrTitle("Passives")
+        end
+
+        if entry.PassivesOnEquip and entry.PassivesOnEquip ~= "" then            
+            local passive = entry.PassivesOnEquip
+            local renderFunc = StatsParser:ParsePassives(passive)
+            if renderFunc then
+                attributePopup:AddSeparator()
+                for _, render in ipairs(renderFunc) do
+                    render(attributePopup)
                 end
             end
         end
+
+        if entry.PassivesMainHand and entry.PassivesMainHand ~= "" then
+            local passive = entry.PassivesMainHand
+            local renderFunc = StatsParser:ParsePassives(passive)
+            if renderFunc then
+                attributePopup:AddSeparator()
+                attributePopup:AddDummy(20, 10)
+                addAttrSubTitle("Main Hand :")
+                for _, render in ipairs(renderFunc) do
+                    render(attributePopup)
+                end
+            end
+        end
+
+        if entry.PassivesOffHand and entry.PassivesOffHand ~= "" then
+            local passive = entry.PassivesOffHand
+            local renderFunc = StatsParser:ParsePassives(passive)
+            if renderFunc then
+                attributePopup:AddSeparator()
+                attributePopup:AddDummy(20, 10)
+                addAttrSubTitle("Off Hand :")
+                for _, render in ipairs(renderFunc) do
+                    render(attributePopup)
+                end
+            end
+        end
+
         popupRendered = true
         attributePopup:Open()
     end

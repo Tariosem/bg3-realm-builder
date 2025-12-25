@@ -175,7 +175,7 @@ function WorldToScreenPoint(worldPos, cameraHandle, screenW, screenH)
         return { 0, 0 }
     end
 
-    local ndcPos = clipPos / clipPos.w
+    local ndcPos = clipPos / clipPos[4]
 
     local screenX = ((ndcPos[1] + 1) / 2) * screenW
     local screenY = ((1 - ndcPos[2]) / 2) * screenH

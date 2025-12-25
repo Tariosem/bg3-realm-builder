@@ -4,7 +4,9 @@
 --- @field Panel ExtuiTreeParent
 --- @field ResetFuncs table<string, fun()>
 --- @field UpdateFuncs table<string, fun(newValue: number|number[]|string?)>
---- @field ParamNodeRefs table<string, ExtuiSelectable>
+--- @field ParamTypeRoots table<RB_MaterialParamType, RB_UI_Tree>
+--- @field ParamSelectables table<string, ExtuiSelectable>
+--- @field ParamTables table<string, ExtuiTable>
 --- @field MaterialName string
 --- @field new fun(parent: ExtuiTreeParent, materialName: string, materialFunc:fun():Material , paramsSrc: fun():MaterialParameters):MaterialTab
 MaterialTab = _Class("MaterialEditor")
@@ -28,9 +30,19 @@ function MaterialTab:__init(parent, materialName, materialFunc, paramsSrc)
 
     self.ResetFuncs = {}
     self.UpdateFuncs = {}
-    self.ParamNodeRefs = {}
-    self.ParamTypeNodeRefs = {}
+
+    self.ParamSelectables = {}
+    self.ParamTypeRoots = {}
 end
+
+local indexToDisplay = {
+    [1] = "Scalar Parameters",
+    [2] = "Vector2 Parameters",
+    [3] = "Vector3 Parameters",
+    [4] = "Vector4 Parameters",
+    [5] = "Texture2D Parameters",
+    [6] = "Virtual Texture Parameters",
+}
 
 --- @param parent ExtuiTreeParent?
 --- @return RB_UI_Tree
@@ -75,38 +87,44 @@ function MaterialTab:Render(parent)
 
     local params = self:GetAllParameterNames()
 
-    local indexToDisplay = {
-        [1] = "Scalar Parameters",
-        [2] = "Vector2 Parameters",
-        [3] = "Vector3 Parameters",
-        [4] = "Vector4 Parameters",
-        [5] = "Texture2D Parameters",
-        [6] = "Virtual Texture Parameters",
-    }
-
-    self.cachedExpandedState = self.cachedExpandedState or {}
-    self.ParamTypeNodeRefs = {}
-    self.ParamNodeRefs = {}
+    self.ExpandedState = self.ExpandedState or {}
+    self.ParamTypeRoots = {}
+    self.ParamSelectables = {}
     self.UpdateFuncs = {}
     self.ResetFuncs = {}
-    self.ParamTableRefs = {}
+    self.ParamTables = {}
     local searchBar = parentNode:AddInputText("####" .. self.MaterialName .. "Global")
     searchBar.IDContext = "MaterialParamSearchBox" .. self.MaterialName .. "Global" .. tostring(math.random())
     searchBar.Hint = "Search parameters..."
     searchBar.OnChange = function(sel)
         if sel.Text == "" then
-            for _, node in pairs(self.ParamTableRefs) do
+            for _, node in pairs(self.ParamTables) do
                 node.Visible = true
+            end
+            for i, paramNode in pairs(self.ParamTypeRoots) do
+                paramNode:SetOpen(self.ExpandedState[i] == true)
             end
             return
         end
 
         local searchTerm = sel.Text:lower()
-        for paramName, cell in pairs(self.ParamTableRefs) do
-            if paramName:lower():find(searchTerm) then
-                cell.Visible = true
-            else
-                cell.Visible = false
+        for ptype, propNames in pairs(params) do
+            for _, propName in pairs(propNames) do
+                local paramNode = self.ParamTypeRoots[ptype]
+                local paramTable = self.ParamTables[propName]
+                if propName:lower():find(searchTerm) then
+                    local realState = self.ExpandedState[ptype] == true
+                    paramNode:SetOpen(true)
+                    self.ExpandedState[ptype] = realState
+
+                    if not paramTable then
+                        paramTable = self.ParamTables[propName] or {}
+                    end
+
+                    paramTable.Visible = true
+                elseif paramTable then
+                    paramTable.Visible = false
+                end
             end
         end
     end
@@ -115,10 +133,10 @@ function MaterialTab:Render(parent)
         local propType = indexToDisplay[paramType]
         if #propNames < 1 then goto continue end
         local typeNode = parentNode:AddTree(propType .. "##" .. self.MaterialName,
-            self.cachedExpandedState[paramType] == true) --[[@as ExtuiSelectable ]]
+            self.ExpandedState[paramType] == true)
         local paramsGroup = typeNode:AddGroup("AllPropertiesGroup##" .. self.MaterialName .. tostring(math.random()))
 
-        self.ParamTypeNodeRefs[paramType] = typeNode
+        self.ParamTypeRoots[paramType] = typeNode
         local allParamNode = {}
         local paramTable = paramsGroup:AddTable("ParameterTable##" .. self.MaterialName .. propType, 1)
         local paramRow = paramTable:AddRow()
@@ -126,7 +144,7 @@ function MaterialTab:Render(parent)
         paramTable.RowBg = true
 
         typeNode.OnCollapse = function()
-            self.cachedExpandedState[paramType] = false
+            self.ExpandedState[paramType] = false
         end
 
         typeNode.DragDropType = MATERIALPRESET_DRAGDROP_TYPE
@@ -170,125 +188,18 @@ function MaterialTab:Render(parent)
             end
         end
 
-        local function renderParamTable()
-            for _, propertyName in ipairs(propNames) do
-                local rowCell = paramRow:AddCell()
-                local tab = rowCell:AddTable("PropertyTable##" .. self.MaterialName .. propertyName, 3)
-                tab.ColumnDefs[1] = { WidthFixed = true }
-                tab.ColumnDefs[2] = { WidthStretch = true }
-                tab.ColumnDefs[3] = { WidthFixed = true }
-                local row = tab:AddRow()
-                local propCell = row:AddCell()
-                local propNode = propCell:AddSelectable(propertyName .. "##" .. self.MaterialName) --[[@as ExtuiSelectable ]]
-                self.ParamNodeRefs[propertyName] = propNode
-                self.ParamTableRefs[propertyName] = rowCell
-                row:AddCell() -- Spacer
-                local paramgroup = row:AddCell()
-                paramgroup.SameLine = true
-
-                propNode.OnClick = function(sel)
-                    sel.Highlight = false
-                    sel.Selected = false
-                    self.ResetFuncs[propertyName]()
-                    typeNode.Framed = self:HasChangeInType(paramType)
-                end
-                propNode.OnRightClick = propNode.OnClick
-
-                propNode.OnHoverEnter = function()
-                    local paramValue, ptype = self:GetParameter(propertyName)
-                    if type(paramValue) == "string" then
-                        self:RenderTextProperty(paramgroup, propertyName, paramValue, ptype, rowCell)
-                    else
-                        self:RenderNumberProperty(paramgroup, propertyName, paramValue, rowCell)
-                    end
-                    propNode.OnHoverEnter = function()
-                        propNode.Selected = self:HasChanged(propertyName) and true or false
-                        typeNode.Framed = self:HasChangeInType(paramType)
-                    end
-                end
-
-                if paramgroup.Visible then
-                    propNode.OnHoverEnter()
-                end
-
-                propNode.CanDrag = true
-                propNode.DragDropType = MATERIALPRESET_DRAGDROP_TYPE
-
-                propNode.OnDragStart = function(sel)
-                    propNode.DragPreview:AddText(propertyName)
-
-                    local value, ptype = self:GetParameter(propertyName) --[[@as number[] ]]
-                    if not value then return end
-                    propNode.UserData.ParameterName = propertyName
-                    propNode.UserData.ParameterValue = value
-                    propNode.UserData.ParameterType = ptype
-                    if type(value) == "string" then
-                        local displayName = indexToDisplay[paramType] or "Unknown"
-                        propNode.DragPreview:AddText(displayName .. " : " .. value)
-                        return
-                    elseif type(value) == "number" then
-                        value = { value }
-                    end
-
-            
-                    if #value >= 3 then
-                        local colorRect = propNode.DragPreview:AddColorEdit("##" .. self.MaterialName .. propertyName)
-                        colorRect.Color = { value[1], value[2], value[3], value[4] or 1 }
-                    else
-                        for i = 1, #value do
-                            value[i] = RBStringUtils.FormatDecimal(value[i], 2)
-                        end
-                        propNode.DragPreview:AddText("Value: " .. table.concat(value, ", "))
-                    end
-                end
-
-                propNode.OnDragDrop = function(sel, drop)
-                    if drop.UserData and drop.UserData.ParameterValue then
-                        local newValue = drop.UserData.ParameterValue --[[@as number[] ]]
-                        local vType = drop.UserData.ParameterType --[[@as RB_MaterialParamType ]]
-                        local currentValue, cType = self:GetParameter(propertyName)
-                        if newValue and currentValue then
-                            if not cType or vType ~= cType then
-                                return
-                            end
-                        else
-                            return -- Invalid parameters
-                        end
-
-                        self:SetParameter(propertyName, newValue, vType)
-
-                        local updateFunc = self.UpdateFuncs[propertyName]
-                        if updateFunc then
-                            updateFunc(newValue)
-                        end
-                    end
-                end
-
-                allParamNode[propertyName] = propNode
-
-                propNode.UserData = {
-                    ParameterName = propertyName,
-                    OnDestroy = function()
-                        allParamNode[propertyName] = nil
-                        self.ParamNodeRefs[propertyName] = nil
-                        self.UpdateFuncs[propertyName] = nil
-                        self.ResetFuncs[propertyName] = nil
-                        self.ParamTableRefs[propertyName] = nil
-                    end
-                }
-            end
-        end
-
         typeNode.OnExpand = function()
-            renderParamTable()
-            renderParamTable = function() end
+            if not allParamNode or #allParamNode < 1 then
+                allParamNode = self:RenderParameterContent(propNames, paramType, paramRow)
+            end
+
             for _, node in pairs(allParamNode) do
                 node:OnHoverEnter()
             end
-            self.cachedExpandedState[paramType] = true
+            self.ExpandedState[paramType] = true
         end
 
-        if self.cachedExpandedState[paramType] == true then
+        if self.ExpandedState[paramType] == true then
             typeNode:OnExpand()
         end
 
@@ -298,12 +209,125 @@ function MaterialTab:Render(parent)
     return parentNode
 end
 
+function MaterialTab:RenderParameterContent(paramNames, paramType, paramRow)
+    local allParamNode = {}
+    local typeNode = self.ParamTypeRoots[paramType]
+    for _, paramName in ipairs(paramNames) do
+        local rowCell = paramRow:AddCell()
+        local tab = rowCell:AddTable("PropertyTable##" .. self.MaterialName .. paramName, 3)
+        tab.ColumnDefs[1] = { WidthFixed = true }
+        tab.ColumnDefs[2] = { WidthStretch = true }
+        tab.ColumnDefs[3] = { WidthFixed = true }
+        local row = tab:AddRow()
+        local propCell = row:AddCell()
+        local propNode = propCell:AddSelectable(paramName .. "##" .. self.MaterialName) --[[@as ExtuiSelectable ]]
+        self.ParamSelectables[paramName] = propNode
+        self.ParamTables[paramName] = rowCell
+        row:AddCell() -- Spacer
+        local paramgroup = row:AddCell()
+        paramgroup.SameLine = true
+
+        propNode.OnClick = function(sel)
+            sel.Highlight = false
+            sel.Selected = false
+            self.ResetFuncs[paramName]()
+            typeNode.Framed = self:HasChangeInType(paramType)
+        end
+        propNode.OnRightClick = propNode.OnClick
+
+        propNode.OnHoverEnter = function()
+            local paramValue, ptype = self:GetParameter(paramName)
+            if type(paramValue) == "string" then
+                self:RenderTextProperty(paramgroup, paramName, paramValue, ptype, rowCell)
+            else
+                self:RenderNumberProperty(paramgroup, paramName, paramValue, rowCell)
+            end
+            propNode.OnHoverEnter = function()
+                propNode.Selected = self:HasChanged(paramName) and true or false
+                typeNode.Framed = self:HasChangeInType(paramType)
+            end
+        end
+
+        if paramgroup.Visible then
+            propNode.OnHoverEnter()
+        end
+
+        propNode.CanDrag = true
+        propNode.DragDropType = MATERIALPRESET_DRAGDROP_TYPE
+
+        propNode.OnDragStart = function(sel)
+            propNode.DragPreview:AddText(paramName)
+
+            local value, ptype = self:GetParameter(paramName) --[[@as number[] ]]
+            if not value then return end
+            propNode.UserData.ParameterName = paramName
+            propNode.UserData.ParameterValue = value
+            propNode.UserData.ParameterType = ptype
+            if type(value) == "string" then
+                local displayName = indexToDisplay[paramType] or "Unknown"
+                propNode.DragPreview:AddText(displayName .. " : " .. value)
+                return
+            elseif type(value) == "number" then
+                value = { value }
+            end
+
+
+            if #value >= 3 then
+                local colorRect = propNode.DragPreview:AddColorEdit("##" .. self.MaterialName .. paramName)
+                colorRect.Color = { value[1], value[2], value[3], value[4] or 1 }
+            else
+                for i = 1, #value do
+                    value[i] = RBStringUtils.FormatDecimal(value[i], 2)
+                end
+                propNode.DragPreview:AddText("Value: " .. table.concat(value, ", "))
+            end
+        end
+
+        propNode.OnDragDrop = function(sel, drop)
+            if drop.UserData and drop.UserData.ParameterValue then
+                local newValue = drop.UserData.ParameterValue --[[@as number[] ]]
+                local vType = drop.UserData.ParameterType --[[@as RB_MaterialParamType ]]
+                local currentValue, cType = self:GetParameter(paramName)
+                if newValue and currentValue then
+                    if not cType or vType ~= cType then
+                        return
+                    end
+                else
+                    return -- Invalid parameters
+                end
+
+                self:SetParameter(paramName, newValue, vType)
+
+                local updateFunc = self.UpdateFuncs[paramName]
+                if updateFunc then
+                    updateFunc(newValue)
+                end
+            end
+        end
+
+        allParamNode[paramName] = propNode
+
+        propNode.UserData = {
+            ParameterName = paramName,
+            OnDestroy = function()
+                allParamNode[paramName] = nil
+                self.ParamSelectables[paramName] = nil
+                self.UpdateFuncs[paramName] = nil
+                self.ResetFuncs[paramName] = nil
+                self.ParamTables[paramName] = nil
+            end
+        }
+    end
+
+    return allParamNode
+end
+
 function MaterialTab:ClearRefs()
-    self.ParamNodeRefs = {}
-    self.ParamTypeNodeRefs = {}
+    self.ParamSelectables = {}
+    self.ParamTypeRoots = {}
     self.UpdateFuncs = {}
     self.ResetFuncs = {}
-    self.ParamTableRefs = {}
+    self.ParamTables = {}
 end
 
 --- @param node ExtuiTreeParent
@@ -378,7 +402,7 @@ function MaterialTab:RenderNumberProperty(node, propertyName, vecValue)
         local slider = ImguiElements.AddSliderWithStep(node, propertyName .. "##" .. self.MaterialName .. i,
             vecValue[i], range.min, range.max, range.step, isIndex)
         slider.ItemWidth = 400 * SCALE_FACTOR
-        
+
 
         if colorPicker then
             slider.Visible = false
@@ -453,7 +477,7 @@ end
 
 --- @param node ExtuiTreeParent
 function MaterialTab:RenderTextProperty(node, propertyName, propertyValue, propertyType)
-    if propertyType ~= RB_MaterialParamType.Texture2D and propertyType ~= RB_MaterialParamType.VirtualTexture then
+    if propertyType ~= MaterialEnums.MaterialParamType.Texture2D and propertyType ~= MaterialEnums.MaterialParamType.VirtualTexture then
         Warning("MaterialTab:RenderTextProperty called for unsupported property type '" ..
             tostring(propertyType) .. "' for property '" .. tostring(propertyName) .. "'.")
         return
@@ -496,8 +520,8 @@ function MaterialTab:RenderTextProperty(node, propertyName, propertyValue, prope
         local newValue = sel.Text
         if not RBUtils.IsUuidIncludingNull(newValue) then return end
         local check = false
-        local isVT = propertyType == RB_MaterialParamType.VirtualTexture
-        if not isVT and propertyType == RB_MaterialParamType.Texture2D then
+        local isVT = propertyType == MaterialEnums.MaterialParamType.VirtualTexture
+        if not isVT and propertyType == MaterialEnums.MaterialParamType.Texture2D then
             check = TextureResourceManager:HasTextureResource(newValue)
         elseif isVT then
             check = TextureResourceManager:HasVirtualTextureResource(newValue)
@@ -565,28 +589,27 @@ function MaterialTab:UpdateUIState()
         updateFunc(newValue)
     end
 
-    for key, propNode in pairs(self.ParamNodeRefs) do
+    for key, propNode in pairs(self.ParamSelectables) do
         propNode.Selected = self:HasChanged(key) and true or false
     end
 
-    for paramType, typeNode in pairs(self.ParamTypeNodeRefs) do
+    for paramType, typeNode in pairs(self.ParamTypeRoots) do
         typeNode.Framed = self:HasChangeInType(paramType)
     end
 end
 
 function MaterialTab:UpdateParamState(name, paramType)
-    if self.ParamNodeRefs[name] then
-        self.ParamNodeRefs[name].Selected = self:HasChanged(name) and true or false
+    if self.ParamSelectables[name] then
+        self.ParamSelectables[name].Selected = self:HasChanged(name) and true or false
     end
 
-    if self.ParamTypeNodeRefs[paramType] then
-        self.ParamTypeNodeRefs[paramType].Framed = self:HasChangeInType(paramType)
+    if self.ParamTypeRoots[paramType] then
+        self.ParamTypeRoots[paramType].Framed = self:HasChangeInType(paramType)
     end
-
 end
 
 function MaterialTab:HasChanges()
-    for key, _ in pairs(self.ParamNodeRefs) do
+    for key, _ in pairs(self.ParamSelectables) do
         if self:HasChanged(key) then
             return true
         end
@@ -648,6 +671,7 @@ function MaterialTab:ApplyParameters(params)
     self:UpdateUIState()
 end
 
+--- @return table<RB_MaterialParamType, string[]>
 function MaterialTab:GetAllParameterNames()
     return {
         [1] = self.Editor.ParamSet:GetAllScalarParameterNames(),
@@ -746,7 +770,7 @@ function MaterialMixerTab:RenderNumberProperty(node, propertyName, propertyValue
 
     local removeBtn = ImguiElements.AddMiddleAlignedImageButton(node, RB_ICONS.X_Square, true) --[[@as ExtuiImageButton ]]
     removeBtn.OnClick = function(sel)
-        self.ParamNodeRefs[propertyName].UserData.OnDestroy()
+        self.ParamSelectables[propertyName].UserData.OnDestroy()
         self.ParametersSetProxy:RemoveParameter(propertyName)
         propRow:Destroy()
         self:UpdateUIState()
@@ -758,7 +782,7 @@ function MaterialMixerTab:RenderTextProperty(node, propertyName, propertyValue, 
 
     local removeBtn = ImguiElements.AddMiddleAlignedImageButton(node, RB_ICONS.X_Square, true) --[[@as ExtuiImageButton ]]
     removeBtn.OnClick = function(sel)
-        self.ParamNodeRefs[propertyName].UserData.OnDestroy()
+        self.ParamSelectables[propertyName].UserData.OnDestroy()
         self.ParametersSetProxy:RemoveParameter(propertyName)
         propRow:Destroy()
         self:UpdateUIState()

@@ -9,4 +9,5 @@ RBUtils.RequireFiles("Client/UI/Elements/", {
     "Notification",
     "NearbyCombo",
     "TreeList",
+    "TextureExplorer",
 })

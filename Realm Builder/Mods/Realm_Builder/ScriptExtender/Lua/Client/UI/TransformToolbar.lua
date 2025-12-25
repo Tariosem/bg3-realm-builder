@@ -895,10 +895,14 @@ function TransformToolbar:CreateBindPopup(guid)
         local snapButton = right:AddButton("Snap To Parent")
         snapButton.SameLine = true
         snapButton.OnClick = function()
-            Commands.SnapToParent({ guid }, false, true)
+            local proxy = MovableProxy.CreateByGuid(guid)
+            if not proxy then return end
+            Commands.SnapToParent({ proxy }, false, true)
         end
         snapButton.OnRightClick = function()
-            Commands.SnapToParent({ guid }, true, false)
+            local proxy = MovableProxy.CreateByGuid(guid)
+            if not proxy then return end
+            Commands.SnapToParent({ proxy }, true, false)
         end
         snapButton:Tooltip():AddText("Left Click: Snap Position\nRight Click: Snap Rotation")
 

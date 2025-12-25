@@ -1059,6 +1059,8 @@ function MaterialPresetsMenu:ImportFromFile(modName, version)
     return cacheFile
 end
 
+---@param modPack CCMod_Pack
+---@param progressCallback fun(progress:number, message:string?)
 function MaterialPresetsMenu:ExportToMod(modPack, progressCallback)
     local thread
     local threadFunc = function()

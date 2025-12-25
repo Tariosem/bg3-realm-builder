@@ -16,9 +16,6 @@ NetChannel.Spawn:SetHandler(function(data, userID)
     if data.Idle ~= nil then
         isSpawning = not data.Idle
     end
-    if data.Overflow then
-        
-    end
 end)
 
 local function getSpawnId()

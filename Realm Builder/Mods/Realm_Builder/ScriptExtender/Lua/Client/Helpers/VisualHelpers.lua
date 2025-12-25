@@ -389,7 +389,7 @@ function VisualHelpers.ApplyVisualParams(guid, preset, retryCnt)
         for i, params in pairs(matParam) do
             i = tonumber(i) --[[@as number]]
             for paramName, value in pairs(params) do
-                mat[ParamTypeToFunc[i]](mat, paramName, value)
+                mat[MaterialEnums.ParamTypeToSetFunc[i]](mat, paramName, value)
             end
         end
         ::continue::

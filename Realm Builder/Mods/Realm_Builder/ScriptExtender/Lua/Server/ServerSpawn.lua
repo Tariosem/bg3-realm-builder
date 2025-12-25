@@ -1,5 +1,5 @@
 local spawnCoroutine = nil
-local isWaitingForResune = false
+local isWaitingForResume = false
 local spawnBroadcastDirty = true
 
 --- @class SpawnResponseData
@@ -10,17 +10,11 @@ local spawnBroadcastDirty = true
 --- @type {Data:SpawnData, RequestId:integer, UserId:integer}[]
 local queuedSpawnData = {}
 
+--- @type function
 local createCoroutine
 
-local function safeCreateCoroutine()
-    if spawnCoroutine then
-        return
-    end
-    spawnCoroutine = createCoroutine()
-end
-
 local function safeResume()
-    if isWaitingForResune then
+    if isWaitingForResume then
         return
     end
 
@@ -34,22 +28,22 @@ local function safeResume()
     end
 
     spawnCoroutine = nil
-    safeCreateCoroutine()
+    createCoroutine()
 end
 
 local function waitForTicks(cnt, user)
     cnt = cnt or 30
-    isWaitingForResune = true
+    isWaitingForResume = true
     local callbacked = false
     Timer:ClientOnTicks(cnt, function(timerID)
         callbacked = true
-        isWaitingForResune = false
+        isWaitingForResume = false
         safeResume()
     end, user)
 
     Timer:Ticks(600, function (timerID)
         if not callbacked then
-            isWaitingForResune = false
+            isWaitingForResume = false
             safeResume()
         end
     end)
@@ -113,6 +107,9 @@ local function spawnHandler(data)
 end
 
 function createCoroutine()
+    if spawnCoroutine then
+        return spawnCoroutine
+    end
     spawnCoroutine = coroutine.create(function()
         while true do
             if #queuedSpawnData == 0 then
@@ -158,7 +155,7 @@ local function enqueueSpawnData(data, reqId, userId)
     })
 
     if not spawnCoroutine then
-        safeCreateCoroutine()
+        createCoroutine()
         safeResume()
     else
         safeResume()
@@ -175,4 +172,17 @@ end)
 
 NetChannel.Spawn:SetRequestHandler(function(data, userID)
     return spawnHandler(data)
+end)
+
+RegisterConsoleCommand("rb_reboot_spawn_coroutine", function()
+    if spawnCoroutine and coroutine.status(spawnCoroutine) ~= "dead" then
+        local ok, err = coroutine.close(spawnCoroutine)
+        if not ok then
+            Error("Error when killing spawn coroutine: " .. tostring(err))
+        end
+        spawnCoroutine = nil
+    end
+
+    createCoroutine()
+    safeResume()
 end)

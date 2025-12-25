@@ -369,7 +369,7 @@ function KeybindManager:LoadFromFile()
     end
 end
 
---- @class KeybindModule : KeybindManager
+--- @class KeybindModule
 --- @field Name string
 --- @field Conditions (fun(e:SimplifiedInputEvent):boolean)[]
 --- @field Enable fun(self:KeybindModule)

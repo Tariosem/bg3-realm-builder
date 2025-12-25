@@ -97,7 +97,7 @@ function ResourceHelpers.BuildMaterialResource(srcMat, uuid, params, customName)
 
     local resNode = XMLNode.new("node", { id = "Resource" })
 
-    local sourceFile = LSXHelpers.GetPathAfterData(matRes.SourceFile or "")
+    local sourceFile = RBStringUtils.GetPathAfterData(matRes.SourceFile or "")
     local baseAttr = {
         lsAttrNode("ID", "FixedString", uuid or srcMat),
         lsAttrNode("Name", "LSString", customName or matRes.Name or "Material_" .. uuid),
@@ -144,7 +144,7 @@ local function createPresetParameterNodes(matRes, parameters)
     for i, params in pairs(parameters) do
         if i >= 5 then break end -- Texture2DParameters and VirtualTextureParameters are not supported in presets
         for paramName, value in pairs(params) do
-            local node = XMLNode.new("node", { id = ParamTypeToField[i] })
+            local node = XMLNode.new("node", { id = MaterialEnums.ParamTypeToField[i] })
             local attrs = createPresetParamAttrNodes(paramName, value)
             if not attrs then
                 Warning("CustomMaterialProxy: Could not create LSX attribute nodes for parameter '" ..
@@ -366,7 +366,7 @@ function ResourceHelpers.BuildVisualResource(srcUuid, uuid, internalName, overri
     local attributes = {
         lsAttrNode("ID", "FixedString", uuid),
         lsAttrNode("Name", "LSString", internalName),
-        lsAttrNode("SourceFile", "LSString", LSXHelpers.GetPathAfterData(src.SourceFile or "")),
+        lsAttrNode("SourceFile", "LSString", RBStringUtils.GetPathAfterData(src.SourceFile or "")),
         lsAttrNode("AttachBone", "FixedString", src.AttachBone),
         lsAttrNode("BlueprintInstanceResourceID", "FixedString", src.BlueprintInstanceResourceID),
         lsAttrNode("BoundsMax", "fvec3", src.BoundsMax),

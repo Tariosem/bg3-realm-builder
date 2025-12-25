@@ -2,9 +2,11 @@ local materialProxies = {}
 
 --- just populate a formatted table for easier handling of material parameters
 
+MaterialEnums = {}
+
 --- @alias ParamterName string
 --- @enum RB_MaterialParamType
-RB_MaterialParamType = {
+MaterialEnums.MaterialParamType = {
     Scalar = 1,
     Vector2 = 2,
     Vector3 = 3,
@@ -54,8 +56,7 @@ ParametersSetProxy = {}
 ParametersSetProxy.__index = ParametersSetProxy
 setmetatable(ParametersSetProxy, {__index = MaterialProxy})
 
-
-ParamTypeToFunc = {
+MaterialEnums.ParamTypeToSetFunc = {
     [1] = "SetScalar",
     [2] = "SetVector2",
     [3] = "SetVector3",
@@ -64,7 +65,14 @@ ParamTypeToFunc = {
     [6] = "SetVirtualTexture",
 }
 
-ParamTypeToField = {
+MaterialEnums.ParamTypeToGetFunc = {
+    [1] = "GetScalar",
+    [2] = "GetVector2",
+    [3] = "GetVector3",
+    [4] = "GetVector4",
+}
+
+MaterialEnums.ParamTypeToField = {
     [1] = "ScalarParameters",
     [2] = "Vector2Parameters",
     [3] = "Vector3Parameters",
@@ -73,7 +81,7 @@ ParamTypeToField = {
     [6] = "VirtualTextureParameters",
 }
 
-ParamTypeToLSValueType = {
+MaterialEnums.ParamTypeToLSValueType = {
     [1] = "float",
     [2] = "fvec2",
     [3] = "fvec3",
@@ -168,7 +176,7 @@ function MaterialProxy.__buildParameterTables(self, paramsList, name, fieldName,
         if typeRef > 4 then valueField = "ID" end
         for i, param in pairs(paramList or {}) do
             local paramName = param[fieldName]
-            if paramName == "" then
+            if not paramName or paramName == "" then
                 --Warning(string.format("Invalid parameter name in '%s' at index %d. Skipping.", name, i))
                 goto continue
             end
@@ -221,7 +229,7 @@ function MaterialProxy:GetParamObject(paramName)
 
     local res = self:GetResource()
     local container = self.Preset and res.Presets or res
-    local list = container[ParamTypeToField[typeRef]]
+    local list = container[MaterialEnums.ParamTypeToField[typeRef]]
     if not list then return nil end
 
     for _, param in pairs(list) do
@@ -375,7 +383,7 @@ function ParametersSetProxy:SetParameter(paramName, value, typeRef)
         typeRef = #value
     end
 
-    if not typeRef or typeRef < 1 or typeRef > 6 then
+    if not typeRef or not MaterialEnums.MaterialParamType[typeRef] then
         return false
     end
 
@@ -412,10 +420,15 @@ function ParametersSetProxy:Update(paramSet)
             return not self.TypeRefs[a.ParameterName] -- only new parameters
         end) do
             local paramName = param.ParameterName
+            if not paramName or paramName == "" then
+                --Warning(string.format("Invalid parameter name in '%s' at index %d. Skipping.", name, i))
+                goto continue
+            end
             local value = param[valueField]
 
             self.TypeRefs[paramName] = typeRef
             self.Parameters[typeRef][paramName] = value
+            ::continue::
         end
     end
 end
@@ -430,7 +443,7 @@ function ParametersSetProxy:SetDefaultParameter(paramName, value, typeRef)
         typeRef = #value
     end
 
-    if not typeRef or typeRef < 1 or typeRef > 6 then
+    if not typeRef or not MaterialEnums.MaterialParamType[typeRef] then
         return false
     end
 
@@ -492,7 +505,7 @@ function MaterialProxy:GetParameter(paramName)
     end
 
     local param = nil
-    param = res[ParamTypeToField[typeRef]][indexRef]
+    param = res[MaterialEnums.ParamTypeToField[typeRef]][indexRef]
     if not param then
         return nil
     end
@@ -532,7 +545,7 @@ function MaterialPresetProxy:GetParameter(paramName)
     end
 
     local param = nil
-    param = res.Presets[ParamTypeToField[typeRef]][indexRef]
+    param = res.Presets[MaterialEnums.ParamTypeToField[typeRef]][indexRef]
     if not param then
         return nil
     end
@@ -632,8 +645,8 @@ end
 function MaterialProxy:ApplyToMaterial(mat)
     for typeRef,props in pairs(self.Parameters) do
         for propertyName,value in pairs(props) do
-            if mat[ParamTypeToFunc[typeRef]] then
-                mat[ParamTypeToFunc[typeRef]](mat, propertyName, value)
+            if mat[MaterialEnums.ParamTypeToSetFunc[typeRef]] then
+                mat[MaterialEnums.ParamTypeToSetFunc[typeRef]](mat, propertyName, value)
             end
         end
     end

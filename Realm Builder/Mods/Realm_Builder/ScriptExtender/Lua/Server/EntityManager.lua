@@ -142,6 +142,26 @@ function EntityManager:RestoreEntities(guids)
     return true
 end
 
+function EntityManager:FreeEntity(guids)
+    guids = RBUtils.NormalizeGuidList(guids)
+    local modVar = getModVar()
+
+    for _, guid in ipairs(guids) do
+        if not guid or not self.SavedEntities[guid] then
+            Warning("Invalid guid or prop not found: " .. tostring(guid))
+        else
+            self.SavedEntities[guid] = nil
+            modVar.SavedEntities[guid] = nil
+            modVar.DeleteOnNextSession[guid] = nil
+            RB_FlagHelpers.ClearFlags(guid)
+        end
+    end
+
+    NetChannel.Entities.Deleted:Broadcast(guids)
+
+    setModVar(modVar)
+end
+
 local readOnlyTemplateProperty = {
     Id = true,
     TemplateName = true,
@@ -442,21 +462,6 @@ function EntityManager:DeleteAll()
     for guid, _ in pairs(self.SavedEntities) do
         self:DeleteEntities(guid)
     end
-end
-
-function EntityManager:FreeEntity(guids)
-    local toFree = RBUtils.NormalizeGuidList(guids)
-
-    for _, guid in ipairs(toFree) do
-        if not guid or not self.SavedEntities[guid] then
-            Warning("Invalid guid or prop not found: " .. tostring(guid))
-        else
-            self.SavedEntities[guid] = nil
-
-            NetChannel.Entities.Deleted:Broadcast({guid})
-        end
-    end
-
 end
 
 function EntityManager:GetAllEntitiesForClients()
