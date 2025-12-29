@@ -18,15 +18,14 @@ function VisualHelpers.GetEntityVisual(handle)
         end
 
         local entityHandle = UuidToHandle(handle)
-        if EntityHelpers.IsCharacter(handle) then
-            local hasPMDummy = entityHandle.HasDummy
-            if hasPMDummy then
-                handle = hasPMDummy.Entity
-            elseif GetClientVisualDummy(handle) then
-                handle = GetClientVisualDummy(handle) --[[@as EntityHandle]]
-            else
-                handle = UuidToHandle(handle)
-            end
+        if not entityHandle then
+            return nil
+        end
+        local hasPMDummy = entityHandle.HasDummy
+        if hasPMDummy then
+            handle = hasPMDummy.Entity
+        elseif GetClientVisualDummy(handle) then
+            handle = GetClientVisualDummy(handle) --[[@as EntityHandle]]
         else
             handle = UuidToHandle(handle)
         end

@@ -16,7 +16,7 @@ local function UpdatePresetDataFromServer(data)
     end
 end
 
---- @class SceneData
+--- @class RB_SceneData
 --- @field PresetType "Relative"|"Absolute"
 --- @field Name string
 --- @field Level string
@@ -30,7 +30,7 @@ end
 --- @class SceneMenu
 --- @field panel ExtuiTabItem
 --- @field SavePreset fun(self: SceneMenu, name: string, overwrite: boolean?, candiates: GUIDSTRING[]?)
---- @field sceneDatas table<string, SceneData>
+--- @field sceneDatas table<string, RB_SceneData>
 --- @field Add fun(parent: ExtuiTabBar):SceneMenu
 SceneMenu = _Class("PresetMenu")
 

@@ -535,3 +535,7 @@ function StatsParser:ParsePassives(passives)
 
     return allRenders
 end
+
+RegisterConsoleCommand("rb_parse_all_stats", function (command, ...)
+
+end)

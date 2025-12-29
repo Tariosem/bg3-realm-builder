@@ -322,7 +322,6 @@ end
 --- @param gizmo TransformGizmo
 --- @param pointTransform Transform
 --- @param index integer
---- @
 function TransformEditor:MakePointVisualization(gizmo, pointTransform, index)
     local function setupGizmoVisual(guid)
         RBUtils.WaitUntil(function()
@@ -338,7 +337,6 @@ function TransformEditor:MakePointVisualization(gizmo, pointTransform, index)
             end
         end, function()
             NetChannel.Delete:RequestToServer({ Guid = guid }, function(response)
-                -- make sure it's dead
                 self.PointVisualizations[index] = nil
             end)
         end)
@@ -383,6 +381,12 @@ function TransformEditor:MakeAxisLineVisualization(gizmo, ray, color, index)
     local firstEnd = 100
     local secondEnd = -100
 
+    local function visualizeLine(guid)
+        if not self.IsDragging then return end
+        gizmo.Visualizer:SetLineFxColor(guid, color)
+        gizmo.Visualizer:SetLineLength(guid, 200)
+    end
+
     if self.LineVisualizations[index] then
         local lineGuid = self.LineVisualizations[index][1]
         local line2Guid = self.LineVisualizations[index][2]
@@ -406,14 +410,13 @@ function TransformEditor:MakeAxisLineVisualization(gizmo, ray, color, index)
             end)
             cleanup = function () end
         end
+
         local function setupVisual(guid)
             RBUtils.WaitUntil(function()
                 return VisualHelpers.GetEntityVisual(guid) ~= nil
             end, function()
                 Timer:Ticks(5, function(timerID)
-                    if not self.IsDragging then return end
-                    gizmo.Visualizer:SetLineFxColor(guid, color)
-                    gizmo.Visualizer:SetLineLength(guid, 200)
+                    visualizeLine(guid)
                 end)
             end, function()
                 cleanup()
@@ -448,9 +451,7 @@ function TransformEditor:MakeAxisLineVisualization(gizmo, ray, color, index)
             RBUtils.WaitUntil(function()
                 return VisualHelpers.GetEntityVisual(viz) ~= nil
             end, function()
-                if not self.IsDragging then return end
-                gizmo.Visualizer:SetLineFxColor(viz, color)
-                gizmo.Visualizer:SetLineLength(viz, 200)
+                visualizeLine(viz)
             end)
         end)
     end

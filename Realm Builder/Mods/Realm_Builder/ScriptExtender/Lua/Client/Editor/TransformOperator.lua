@@ -283,20 +283,7 @@ function TransformOperator:__tostring()
 end
 
 local loadstringexpr = [[
-    local abs = math.abs
-    local floor = math.floor
-    local ceil = math.ceil
-    local round = Ext.Math.Round
-    local max = math.max
-    local min = math.min
-    local pi = math.pi
-    local sin = math.sin
-    local cos = math.cos
-    local tan = math.tan
-    local asin = math.asin
-    local acos = math.acos
-    local deg = math.deg
-    local rad = math.rad
+    _ENV = math
 
     return %s
 ]]

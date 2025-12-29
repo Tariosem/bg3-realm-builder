@@ -6,13 +6,8 @@ local debugWindowRegistery = {}
 
 EventsSubscriber.RegisterOnSessionLoaded(function()
     for title, renderFunc in RBUtils.SortedPairs(debugWindowRegistery) do
-        local now = Ext.Timer:MonotonicTime()
-        RBPrintPurple("Setting up debug window: " .. title)
         renderFunc(ImguiElements.AddTree(GLOBAL_DEBUG_WINDOW, title))
-        local finished = Ext.Timer:MonotonicTime()
-        RBPrintPurple("    Took " .. (finished - now) .. " ms")
     end
-    GLOBAL_DEBUG_WINDOW.Open = Ext.Debug.IsDeveloperMode()
 end)
 
 ---@param title string

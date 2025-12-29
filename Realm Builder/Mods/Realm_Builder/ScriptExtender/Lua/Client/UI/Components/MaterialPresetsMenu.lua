@@ -834,8 +834,8 @@ local folderColorComparator = function(a, b)
 end
 
 local folderColComparator = {
-    ["Name"] = folderNameComparator,
-    ["Color"] = folderColorComparator,
+    [1] = folderColorComparator,
+    [2] = folderNameComparator,
 }
 
 ---@param parentTab ExtuiTable
@@ -861,8 +861,7 @@ function MaterialPresetsMenu:RenderFolder(parentTab, folderObj, matPresets)
     parentTab.OnSortChanged = function()
         local sortSpec = parentTab.Sorting[1]
         local colIndex = sortSpec.ColumnIndex + 1
-        local colDef = parentTab.ColumnDefs[colIndex].Name
-        local colComparator = folderColComparator[colDef] or folderNameComparator
+        local colComparator = folderColComparator[colIndex] or folderNameComparator
         comparator = function(a, b)
             local apre = matPresets[a]
             local bpre = matPresets[b]
@@ -914,6 +913,8 @@ function MaterialPresetsMenu:RenderExportPresetRow(parentTab, obj, uuid, onDelet
     local uiColorCell = row:AddCell()
     local nameCell = row:AddCell()
     local manageCell = row:AddCell()
+    local openContextPopup = function()
+    end
 
     local colorBox = uiColorCell:AddColorEdit("##" .. obj.DisplayName)
     local nameInput = nameCell:AddInputText("##" .. obj.DisplayName .. "NameInput", obj.DisplayName)
@@ -938,9 +939,8 @@ function MaterialPresetsMenu:RenderExportPresetRow(parentTab, obj, uuid, onDelet
         obj.UIColor = colorBox.Color
     end
 
-    local managePopup = manageCell:AddPopup("ManageSelectedPresetPopup##" .. obj.DisplayName)
     colorBox.OnRightClick = function()
-        managePopup:Open()
+        openContextPopup()
     end
 
     colorBox.OnDragStart = function(sel)
@@ -958,6 +958,7 @@ function MaterialPresetsMenu:RenderExportPresetRow(parentTab, obj, uuid, onDelet
 
     colorBox.OnDragDrop = function(sel, drop)
         sel.UserData = sel.UserData or {}
+        --- material preset has uuid, means it's being moved
         if drop.UserData and drop.UserData.Uuid then
             local header = parentTab.UserData.Header
             if header then
@@ -966,6 +967,7 @@ function MaterialPresetsMenu:RenderExportPresetRow(parentTab, obj, uuid, onDelet
             end
         end
 
+        --- new material preset data
         if drop.UserData and drop.UserData.Parameters then
             obj.Parameters = RBUtils.DeepCopy(drop.UserData.Parameters or {})
             if drop.UserData.UIColor then
@@ -1002,32 +1004,39 @@ function MaterialPresetsMenu:RenderExportPresetRow(parentTab, obj, uuid, onDelet
     row.OnDragDrop = colorBox.OnDragDrop
 
     manageBtn.OnClick = function(btn)
-        managePopup:Open()
+        openContextPopup()
     end
 
-    local selectTable = ImguiElements.AddContextMenu(managePopup, "Material Preset")
-    local deleteBtn = selectTable:AddItem("Remove Preset##" .. obj.DisplayName, function(sel)
-        obj.Deleted = true
-        onDelete()
-        row:Destroy()
-    end)
-    StyleHelpers.ApplyDangerSelectableStyle(deleteBtn)
+    function openContextPopup()
+        local managePopup = manageCell:AddPopup("ManageSelectedPresetPopup##" .. obj.DisplayName)
+        local selectTable = ImguiElements.AddContextMenu(managePopup, "Material Preset")
+        local deleteBtn = selectTable:AddItem("Remove Preset##" .. obj.DisplayName, function(sel)
+            obj.Deleted = true
+            onDelete()
+            row:Destroy()
+        end)
+        StyleHelpers.ApplyDangerSelectableStyle(deleteBtn)
 
-    local openMatMixerBtn = selectTable:AddItem("Material Mixer ##" .. obj.DisplayName, function(sel)
-        local materialMixer = MaterialMixerTab.new(obj.Parameters)
-        materialMixer:Render()
-    end)
+        local openMatMixerBtn = selectTable:AddItem("Material Mixer ##" .. obj.DisplayName, function(sel)
+            local materialMixer = MaterialMixerTab.new(obj.Parameters)
+            materialMixer:Render()
+        end)
+        openContextPopup = function()
+            managePopup:Open()
+        end
+    end
 
     return row
 end
 
---- simply load from CCA_Cache folder
+--- simply load from CC_Cache folder
 ---@param modName string
 ---@param version vec4|string
 ---@return CCMod_Pack?
 function MaterialPresetsMenu:ImportFromFile(modName, version)
     modName = modName:gsub("%s+", "_")
-    local versionStr = type(version) == "table" and RBUtils.BuildVersionString(version[1], version[2], version[3], version[4]) or
+    local versionStr = type(version) == "table" and
+        RBUtils.BuildVersionString(version[1], version[2], version[3], version[4]) or
         tostring(version)
 
     if self.cachedMods and self.cachedMods[modName] and self.cachedMods[modName].Cache then
@@ -1038,7 +1047,7 @@ function MaterialPresetsMenu:ImportFromFile(modName, version)
     end
 
     local moduleID = self.cachedMods and self.cachedMods[modName] and self.cachedMods[modName].ModuleUUID or nil
-    local filePath = FilePath.GetCCAModCachePath(moduleID, version)
+    local filePath = FilePath.GetCCModCachePath(moduleID, version)
 
     local jsonStr = Ext.IO.LoadFile(filePath)
 
@@ -1108,6 +1117,7 @@ function MaterialPresetsMenu:__exportToMod(modPack, progressCallback, exportThre
     local existUuid = modPack.ModuleUUID --[[@type GUIDSTRING?]]
     local folderDefs = modPack.FolderDefinitions or {}
     local existingLoca = self.modLocalizations[modFolderName] or {}
+    local yieldThreshold = 50 -- microseconds
 
     local modFolderDisplayName = modFolderName ..
         "_" ..
@@ -1133,7 +1143,7 @@ function MaterialPresetsMenu:__exportToMod(modPack, progressCallback, exportThre
     local progress = 0
     local progressStep = 100 / actionCnt
 
-    local yieldThreshold = 1 -- 50ms
+
 
     local function throwError(message)
         progress = -1
@@ -1273,7 +1283,7 @@ function MaterialPresetsMenu:__exportToMod(modPack, progressCallback, exportThre
             local matPresetFile = FilePath.GetCCAMaterialPresetsFile(presetType, modFolderDisplayName, modFolderName,
                 folderName) --[[@as string]]
 
-            if not saveFile(matPresetFile, bank:Stringify({  Indent = 4, AutoFindRoot = true }, exportThread)) then
+            if not saveFile(matPresetFile, bank:Stringify({ Indent = 4, AutoFindRoot = true }, exportThread)) then
                 return
             end
         end
@@ -1362,7 +1372,7 @@ function MaterialPresetsMenu:__exportToMod(modPack, progressCallback, exportThre
     suc = self:SaveModCache(modPack)
     if not suc then
         throwError("ExportToMod: Failed to save CCA mod cache file at " ..
-            FilePath.GetCCAModCachePath(modFolderName, version))
+            FilePath.GetCCModCachePath(modFolderName, version))
         return
     end
 
@@ -1386,12 +1396,13 @@ function MaterialPresetsMenu:SaveModCache(modPack)
     local version = modPack.Version
     local moduleID = modPack.ModuleUUID
     local jsonStr = Ext.Json.Stringify(cacheFile, { Indent = 4 })
-    local filePath = FilePath.GetCCAModCachePath(moduleID, version)
+    local filePath = FilePath.GetCCModCachePath(moduleID, version)
 
     self.cachedMods[modInternalName] = self.cachedMods[modInternalName] or {}
     self.cachedMods[modInternalName].ModuleUUID = moduleID
     self.cachedMods[modInternalName].Cache = self.cachedMods[modInternalName].Cache or {}
-    local versionStr = type(version) == "table" and RBUtils.BuildVersionString(version[1], version[2], version[3], version[4]) or
+    local versionStr = type(version) == "table" and
+        RBUtils.BuildVersionString(version[1], version[2], version[3], version[4]) or
         tostring(version)
     self.cachedMods[modInternalName].Cache[versionStr] = cacheFile
     self.cachedMods[modInternalName].Versions = self.cachedMods[modInternalName].Versions or {}
@@ -1673,7 +1684,8 @@ function MaterialPresetsMenu:RenderCCPresetList(presetName, parent)
         renderThread = coroutine.create(renderAllResources)
         local ok, err = coroutine.resume(renderThread)
         if not ok then
-            Error(debug.traceback(renderThread, "MaterialPresetsMenu: RenderCCPresetList: Error starting render coroutine: " .. tostring(err)))
+            Error(debug.traceback(renderThread,
+                "MaterialPresetsMenu: RenderCCPresetList: Error starting render coroutine: " .. tostring(err)))
         end
     end
 

@@ -8,7 +8,7 @@ PlacementPreview = {}
 
 --- @param entry {Uuid:string}
 function PlacementPreview:BeginPlacementPreview(entry, entryDisplayName)
-    if SpawnInspector.IsSpawningInProgress() then
+    if SpawnInspector.IsSpawning() then
         local WarningNotif = Notification.new("Cannot preview item while spawning is in progress.")
         WarningNotif.Pivot = { 0.5, 0 }
         WarningNotif.Duration = 3000
@@ -28,7 +28,7 @@ function PlacementPreview:BeginPlacementPreview(entry, entryDisplayName)
         midAlighTab.ColumnDefs[2] = { WidthFixed = true }
         midAlighTab.ColumnDefs[3] = { WidthStretch = true }
         local row = midAlighTab:AddRow()
-        local _, midCell, _ = row:AddCell(), row:AddCell(), row:AddCell()
+        local midCell = ({row:AddCell(), row:AddCell(), row:AddCell()})[2]
         local icon = RBCheckIcon(entry.Icon or "Item_Unknown")
         local image = nil
         if icon == "Item_Unknown" then

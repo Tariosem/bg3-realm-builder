@@ -65,6 +65,9 @@ function TransformToolbar:RegisterKeyInputEvents()
     local restrainOpening = function(e)
         return self.TopToolBar and self.TopToolBar.Open
     end
+    local restrainInCharacterCreation = function(e)
+        return not IsInCharacterCreationMirror()
+    end
 
     local ttMod = KeybindManager:CreateModule("TransformToolbar")
     local buMod = KeybindManager:CreateModule("BindUtility")
@@ -78,6 +81,9 @@ function TransformToolbar:RegisterKeyInputEvents()
 
     ttMod:AddModuleCondition(restrainInputing)
     buMod:AddModuleCondition(restrainInputing)
+
+    ttMod:AddModuleCondition(restrainInCharacterCreation)
+    buMod:AddModuleCondition(restrainInCharacterCreation)
 
     self.Subscriptions["NumericInput"] = InputEvents.SubscribeKeyInput({}, function(e)
         if not restrainInputing(e) then return end
@@ -619,7 +625,10 @@ function TransformToolbar:Render()
 end
 
 function TransformToolbar:RenderTopBar()
-    local panel = WindowManager.RegisterWindow("generic", "Transform ToolBar", "ToolBar", self)
+    local screenWidth, screenHeight = UIHelpers.GetScreenSize()
+    local windowSize = { screenWidth * 0.6, 80 * SCALE_FACTOR }
+    local windowPos = { screenWidth * 0.1, 0 }
+    local panel = WindowManager.RegisterWindow("generic", "Transform ToolBar", "ToolBar", self, windowPos, windowSize)
     self.TopToolBar = panel
 
     panel.OnClose = function()
@@ -629,10 +638,6 @@ function TransformToolbar:RenderTopBar()
         self.BindManagerWindow.Open = false
         self:ClearSubscriptions()
     end
-
-    local screenWidth, screenHeight = UIHelpers.GetScreenSize()
-    panel:SetSize({ screenWidth * 0.6, 80 * SCALE_FACTOR })
-    panel:SetPos({ screenWidth * 0.2, 0 })
 
     panel.NoResize = true
     panel.NoMove = true

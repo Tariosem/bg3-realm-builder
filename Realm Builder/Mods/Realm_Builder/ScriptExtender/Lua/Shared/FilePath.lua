@@ -21,7 +21,7 @@ local xmlErrorLogPath = logPath .. "XML_Stringify_Errors_%s.json"
 
 local ccPath = rootFolder .. "CC Mods/"
 local ccModCachePath = rootFolder .. "CC Mod Cache/"
-local ccModCacheRefPath = ccModCachePath .. "CCAModCache_References.json"
+local ccModCacheRefPath = ccModCachePath .. "CCModCache_References.json"
 
 local ccaModMetaFile = ccPath .. "%s/Mods/%s/meta.lsx"
 
@@ -107,7 +107,7 @@ function FilePath.GetCCALocalizationPath(modName, modFolderName, lang)
     return string.format(ccaLocalizationFile, modName, lang, modFolderName)
 end
 
-function FilePath.GetCCAModCachePath(modName, version)
+function FilePath.GetCCModCachePath(modName, version)
     local versionStr = type(version) == "table" and RBUtils.BuildVersionString(version[1], version[2], version[3], version[4]) or version
 
     local fileName = string.format("%s_%s_Cache.json", modName, versionStr)

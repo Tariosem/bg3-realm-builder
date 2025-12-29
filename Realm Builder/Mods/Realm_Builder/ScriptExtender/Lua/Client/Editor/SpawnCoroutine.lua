@@ -62,6 +62,7 @@ local function spawnPrefab(prefabObj, entInfo)
         if #spawned == childrenCnt then
             pushCommand()
             setSpawnIdCallback(reqId, nil)
+            _P("Prefab spawn complete.")
         end
     end)
 
@@ -229,10 +230,10 @@ function Commands.DuplicateCommand(targets, path)
         if #spawnedDuplications == duplicateCnt then
             selectAndPushCommand()
             setSpawnIdCallback(reqId, nil)
+            _P("Duplication complete.")
         end
     end)
 
-    Debug("[DuplicateCommand] Spawning " .. tostring(duplicateCnt) .. " duplicated entities.")
     function spawn()
         for guid, templateId in pairs(templateMap) do
             local transform = oriTransforms[guid]
@@ -250,7 +251,7 @@ function Commands.DuplicateCommand(targets, path)
     end
 end
 
---- @param data SceneData
+--- @param data RB_SceneData
 function Commands.SpawnPreset(data)
     local spawnedGuids = {}
     local tree = TreeTable.FromTableStatic(data.Tree)
@@ -275,9 +276,11 @@ function Commands.SpawnPreset(data)
     local reqId = getSpawnId()
     setSpawnIdCallback(reqId, function(data)
         table.insert(spawnedGuids, data.Guid)
+        _P("Spawned: " .. #spawnedGuids .. " / " .. toSpawnCnt)
         if #spawnedGuids == toSpawnCnt then
             pushCommand()
             setSpawnIdCallback(reqId, nil)
+            _P("Preset spawn complete.")
         end
     end)
 
@@ -321,6 +324,6 @@ end
 
 SpawnInspector = {}
 
-function SpawnInspector.IsSpawningInProgress()
+function SpawnInspector.IsSpawning()
     return isSpawning
 end

@@ -322,7 +322,7 @@ function ParametersSetProxy.BuildFromFormatParameters(params)
     for itype, paramList in pairs(params) do
         for parameterName, value in pairs(paramList) do
             paramSetProxy.TypeRefs[parameterName] = itype
-            paramSetProxy.Parameters[itype][parameterName] = value
+            paramSetProxy.Parameters[itype][parameterName] = RBUtils.DeepCopy(value)
             ::continue::
         end
     end

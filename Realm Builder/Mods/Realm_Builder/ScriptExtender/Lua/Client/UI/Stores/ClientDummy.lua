@@ -85,6 +85,7 @@ Ext.Entity.OnCreate("ClientPaperdoll", function (entity)
 end)
 
 local ccDummy = nil
+local onEnterCharacterCreation = {}
 
 --- @param entity any
 --- @diagnostic disable-next-line
@@ -115,7 +116,7 @@ Ext.Entity.OnCreate("ClientCCDummyDefinition", function(entity)
             end
         end
 
-        Debug("Set CC dummy for appearance: " .. name)
+        Debug("Set CC dummy for : " .. name)
         isInMirror = true
     end)
 end)
@@ -197,17 +198,6 @@ end)
 
 function IsInCharacterCreationMirror()
     return isInMirror
-end
-
----@return EntityHandle|nil
-function GetMirrotDummyEntity()
-    if ccDummy and #ccDummy:GetAllComponentNames() == 0 then
-        ccDummy = nil
-        isInMirror = false
-        return nil
-    end
-
-    return ccDummy
 end
 
 ---@param ownerUuid string

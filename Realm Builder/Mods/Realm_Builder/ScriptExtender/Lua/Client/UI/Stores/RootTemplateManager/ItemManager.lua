@@ -226,7 +226,6 @@ end
 --- @field Mod string
 --- @field ModId string
 --- @field ModAuthor string
---- @field ModVersion vec4
 --- @field Note string
 --- @field CanBePickedUp boolean
 --- @field StoryItem boolean
@@ -251,7 +250,6 @@ function ItemManager:PopulateItem(template, statsObj)
         Mod = "",
         ModId = "",
         ModAuthor = "",
-        ModVersion = { 0, 0, 0, 0 },
         Note = "",
         CanBePickedUp = template.CanBePickedUp and true or false,
         StoryItem = template.StoryItem and true or false,
@@ -366,14 +364,13 @@ function ItemManager:CategorizeItem(entry, statsObj, templateName)
     if modInfo then
         entry.Mod = modInfo.Info.Name or ""
         entry.ModAuthor = modInfo.Info.Author or "Unknown"
-        entry.ModVersion = modInfo.Info.ModVersion or ""
         if VANILLA_MODULES[entry.Mod] then
             entry.ModAuthor = "Larian"
         end
     end
 
     entry.StatsName = statsObj.Name
-    if entry.StatsName == "MinorIllusion" then return end -- like wtf
+    if entry.StatsName == "MinorIllusion" then return end -- why is this even an item ???
     if statsObj.Rarity and statsObj.Rarity ~= "" then
         entry.Rarity = statsObj.Rarity
     end

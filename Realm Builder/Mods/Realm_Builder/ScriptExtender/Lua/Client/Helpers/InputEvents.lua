@@ -3,7 +3,6 @@
 --- @field SubscribeMouseInput fun(key:EclLuaMouseButtonEvent?, callback:fun(e:EclLuaMouseButtonEvent):any):RBSubscription
 --- @field SubscribeMouseWheel fun(key:EclLuaMouseWheelEvent?, callback:fun(e:EclLuaMouseWheelEvent):any):RBSubscription
 --- @field SubscribeKeyAndMouse fun(callback:fun(e:SimplifiedInputEvent):any, filterKey:Keybinding?):RBSubscription
---- @field SetupInputEnterCallback fun(input:ExtuiInputText, callback:fun(input:string)):RBSubscription
 InputEvents = InputEvents or {}
 
 ---@param key EclLuaKeyInputEvent?
@@ -221,31 +220,4 @@ function InputEvents.SubscribeKeyAndMouse(callback, filterKey)
     end)
 
     return { Unsubscribe = unsub }
-end
-
----@param input ExtuiInputText
----@param callback fun(input:string)
----@return RBSubscription sub
-function InputEvents.SetupInputEnterCallback(input, callback)
-    local sub = nil
-
-    sub = InputEvents.SubscribeKeyInput({}, function (e)
-        local ok, focused = pcall(ImguiHelpers.IsFocused, input)
-        if not ok then
-            Warning("[SetupInputEnterCallback] Failed to check focus state of input, unsubscribing key input listener.")
-            return UNSUBSCRIBE_SYMBOL
-        end
-
-        local inputText = input.Text
-        if not inputText or inputText == "" then
-            return
-        end
-
-        if e.Key == "RETURN" and focused then
-            callback(inputText)
-            return UNSUBSCRIBE_SYMBOL
-        end
-    end)
-
-    return sub
 end

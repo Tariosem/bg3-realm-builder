@@ -188,9 +188,11 @@ function MaterialTab:Render(parent)
             end
         end
 
+        local rendered = false
         typeNode.OnExpand = function()
-            if not allParamNode or #allParamNode < 1 then
+            if not rendered then
                 allParamNode = self:RenderParameterContent(propNames, paramType, paramRow)
+                rendered = true
             end
 
             for _, node in pairs(allParamNode) do
@@ -635,10 +637,13 @@ function MaterialTab:BuildMaterialPresetResourceNode(uuid, internalName)
     return saveNode
 end
 
+--- return a copy of current parameters
+--- @return RB_ParameterSet
 function MaterialTab:ExportChanges()
     return RBUtils.DeepCopy(self.Editor.Parameters)
 end
 
+--- @param params RB_ParameterSet
 function MaterialTab:ImportChanges(params)
     self.Editor:ApplyParameters(params)
 
@@ -652,6 +657,10 @@ function MaterialTab:GetParameter(name)
     return self.Editor:GetParameter(name)
 end
 
+--- @param name string
+--- @param value number|number[]|string?
+--- @param ptype RB_MaterialParamType?
+--- @param dontUpdate boolean?
 function MaterialTab:SetParameter(name, value, ptype, dontUpdate)
     self.Editor:SetParameter(name, value, ptype)
     if dontUpdate or not self.UpdateFuncs[name] then return end
@@ -702,9 +711,14 @@ end
 
 --- @class MaterialMixerTab : MaterialTab
 --- @field ParametersSetProxy ParametersSetProxy
+--- @field InitState RB_ParameterSet
+--- @field ContextMenu ExtuiPopup
+--- @field UpdateFuncs table<string, fun(newValue: number|number[]|string?)>
+--- @field ResetFuncs table<string, fun()>
 --- @field new fun(parameters: RB_ParameterSet):MaterialMixerTab
 MaterialMixerTab = _Class("MaterialMixerTab", MaterialTab)
 
+--- @param parameters RB_ParameterSet
 function MaterialMixerTab:__init(parameters)
     self.Label = RBUtils.Uuid_v4()
     self.Parent = WindowManager.RegisterWindow(self.Label, "Material Mixer", "Material Mixer Tab", self)
@@ -719,6 +733,7 @@ function MaterialMixerTab:__init(parameters)
 
     --RainbowDumpTable(parameters)
 
+    self.InitState = RBUtils.DeepCopy(parameters)
     self.ParametersSetProxy = ParametersSetProxy.BuildFromFormatParameters(parameters)
 
     self.ResetFuncs = {}
@@ -768,7 +783,7 @@ end
 function MaterialMixerTab:RenderNumberProperty(node, propertyName, propertyValue, propRow)
     MaterialTab.RenderNumberProperty(self, node, propertyName, propertyValue, propRow)
 
-    local removeBtn = ImguiElements.AddMiddleAlignedImageButton(node, RB_ICONS.X_Square, true) --[[@as ExtuiImageButton ]]
+    local removeBtn = ImguiElements.AddImageButton(node, RB_ICONS.X_Square, true) --[[@as ExtuiImageButton ]]
     removeBtn.OnClick = function(sel)
         self.ParamSelectables[propertyName].UserData.OnDestroy()
         self.ParametersSetProxy:RemoveParameter(propertyName)
@@ -780,7 +795,7 @@ end
 function MaterialMixerTab:RenderTextProperty(node, propertyName, propertyValue, propertyType, propRow)
     MaterialTab.RenderTextProperty(self, node, propertyName, propertyValue, propertyType)
 
-    local removeBtn = ImguiElements.AddMiddleAlignedImageButton(node, RB_ICONS.X_Square, true) --[[@as ExtuiImageButton ]]
+    local removeBtn = ImguiElements.AddImageButton(node, RB_ICONS.X_Square, true) --[[@as ExtuiImageButton ]]
     removeBtn.OnClick = function(sel)
         self.ParamSelectables[propertyName].UserData.OnDestroy()
         self.ParametersSetProxy:RemoveParameter(propertyName)
@@ -813,7 +828,13 @@ function MaterialMixerTab:SetParameter(name, value)
 end
 
 function MaterialMixerTab:ResetValue(name)
-    -- do nothing
+    local ptype = self.ParametersSetProxy:GetParameterType(name)
+    local initValue = self.InitState[ptype][name]
+    self.ParametersSetProxy:SetParameter(name, initValue)
+    if self.UpdateFuncs[name] then
+        local newValue = self:GetParameter(name)
+        self.UpdateFuncs[name](newValue)
+    end
 end
 
 function MaterialMixerTab:GetParameter(name)
@@ -836,7 +857,7 @@ function MaterialMixerTab:ResetParameter(name)
 end
 
 function MaterialMixerTab:ResetAll()
-    self.ParametersSetProxy:ResetAll()
+    self.ParametersSetProxy = ParametersSetProxy.BuildFromFormatParameters(self.InitState)
     self:Render()
 end
 
@@ -856,6 +877,10 @@ end
 
 function MaterialMixerTab:SetupManagePopup(popup)
     local contextMenu = ImguiElements.AddContextMenu(popup)
+
+    contextMenu:AddItem("Reset All##" .. self.MaterialName, function(sel)
+        self:ResetAll()
+    end)
 
     contextMenu:AddItem("Export As Preset##" .. self.MaterialName, function(sel)
         local save = LSXHelpers.BuildMaterialPresetBank()

@@ -19,6 +19,7 @@ return {
         ["ShowSelection"] = { Key = "H", Modifiers = { "SHIFT" } },
         ["ApplyGravity"] = { Key = "G", Modifiers = { "SHIFT" } },
         ["FreezeGravity"] = { Key = "F", Modifiers = { "SHIFT" } },
+        ["SnapToHover"] = { Key = "S", Modifiers = { "CTRL" } },
         ["SnapToGround"] = { Key = "G", Modifiers = { "CTRL" } },
         ["Undo"] = { Key = "Z", Modifiers = { "CTRL" } },
         ["Redo"] = { Key = "Y", Modifiers = { "CTRL" } },
@@ -37,7 +38,5 @@ return {
         ["BindPopup"] = { Key = "K", Modifiers = { "SHIFT" } },
         ["BindTo"] = { Key = "B", Modifiers = { "SHIFT" } },
         ["Unbind"] = { Key = "U" },
-        ["SnapToHover"] = { Key = "S", Modifiers = { "CTRL" } },
     },
-
 }

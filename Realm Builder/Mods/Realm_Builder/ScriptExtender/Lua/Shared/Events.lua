@@ -69,7 +69,6 @@ local commonCommands = {}
 local CommandChannel = Ext.Net.CreateChannel(ModuleUUID, "SyncCommands") --[[@as NetChannel]]
 
 CommandChannel:SetHandler(function(data, user)
-    --- because server setup earlier than client
     if data.Request then
         CommandChannel:SendToClient({
             Commands = serverCommands,

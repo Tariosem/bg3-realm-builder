@@ -198,6 +198,11 @@ function ImguiElements.AddSliderWithStep(parent, IDContext, defaultValue, min, m
             s.Min = { val, val, val, val }
         end
 
+        local allInputs = { stepInput, minInput, maxInput }
+        for _, input in ipairs(allInputs) do
+            input.ItemWidth = 250 * SCALE_FACTOR
+        end
+
         s.UserData.StepInput = stepInput
 
         sliderPopup:Open()
@@ -310,7 +315,7 @@ function ImguiElements.RenderExportSettingPanel(parent, settings)
             StyleHelpers.ClearWarningBorder(modNameInput)
             settings.ModName = modNameInput.Text
         else
-            modIntenalNameTooltip.Label = "Current Mod Internal Name: Invalid Name"
+            modIntenalNameTooltip.Label = "Invalid Name"
             StyleHelpers.SetWarningBorder(modNameInput)
             settings.ModName = ""
             GuiAnim.PulseBorder(modNameInput, 2)
@@ -621,7 +626,7 @@ function ImguiElements.AddResetButton(parent, sameLine)
     return button, group
 end
 
-function ImguiElements.AddMiddleAlignedImageButton(parent, icon, sameLine)
+function ImguiElements.AddImageButton(parent, icon, sameLine)
     local group = parent:AddGroup("MiddleAlignedImageButtonGroup_" .. RBUtils.Uuid_v4())
     group.SameLine = sameLine and true or false
     local button = group:AddImageButton("##MiddleAlignedImageButton_" .. RBUtils.Uuid_v4(), icon, IMAGESIZE.FRAME) --[[@as ExtuiImageButton]]
@@ -673,11 +678,30 @@ end
 ---@return AttrTable
 function ImguiElements.AddReadOnlyAttrTable(parent, contents)
     local tab = parent:AddTable(parent.Label, 2) --[[@as ExtuiTable]]
-    tab.BordersInner = true
+    tab.BordersInnerV = true
     tab.ColumnDefs[1] = { WidthFixed = true }
-    tab.ColumnDefs[2] = { Width = 900 * SCALE_FACTOR }
+    tab.ColumnDefs[2] = { WidthStretch = true }
 
+    local clampWidth = 1200 * SCALE_FACTOR
+    local textWidth = 20
     local inputs = {}
+
+    local function updateAllLengths()
+        local maxLen = 0
+        for name, input in pairs(inputs) do
+            if #input.Text > maxLen then
+                maxLen = #input.Text
+            end
+        end
+        local totalWidth = (textWidth * maxLen + 50) * SCALE_FACTOR
+        if totalWidth > clampWidth then
+            totalWidth = clampWidth
+        end
+        for name, input in pairs(inputs) do
+            input.SizeHint = { totalWidth, 0 }
+        end
+    end
+
     local function addRow(name, value)
         local row = tab:AddRow() --[[@as ExtuiTableRow]]
         local nameCell = row:AddCell()
@@ -696,6 +720,7 @@ function ImguiElements.AddReadOnlyAttrTable(parent, contents)
     for name, value in RBUtils.SortedPairs(contents) do
         addRow(name, value)
     end
+    updateAllLengths()
 
     --- @type AttrTable
     local clos = {
@@ -714,6 +739,7 @@ function ImguiElements.AddReadOnlyAttrTable(parent, contents)
             else
                 addRow(name, value)
             end
+            updateAllLengths()
         end
     }
 
@@ -740,11 +766,11 @@ function ImguiElements.AddAlignedTable(parent)
     local tab = parent:AddTable(parent.Label, 2) --[[@as ExtuiTable]]
     tab.BordersInnerV = true
     tab.ColumnDefs[1] = { WidthFixed = true }
-    tab.ColumnDefs[2] = { Width = 900 * SCALE_FACTOR }
 
+    local row = tab:AddRow() --[[@as ExtuiTableRow]]
     local clos = {
         AddSliderWithStep = function(_, label, defaultValue, min, max, step, isInteger)
-            local row = tab:AddRow() --[[@as ExtuiTableRow]]
+            --local row = tab:AddRow() --[[@as ExtuiTableRow]]
             local nameCell = row:AddCell()
             nameCell:AddText(label)
             addLittleSpacer(nameCell)
@@ -754,7 +780,7 @@ function ImguiElements.AddAlignedTable(parent)
                 min, max, step, isInteger), valueCell
         end,
         AddNearbyCombo = function(_, label)
-            local row = tab:AddRow() --[[@as ExtuiTableRow]]
+            --local row = tab:AddRow() --[[@as ExtuiTableRow]]
             local nameCell = row:AddCell()
             nameCell:AddText(label)
             addLittleSpacer(nameCell)
@@ -763,7 +789,7 @@ function ImguiElements.AddAlignedTable(parent)
             return NearbyCombo.new(valueCell)
         end,
         AddNewLine = function(_, label)
-            local row = tab:AddRow() --[[@as ExtuiTableRow]]
+            --local row = tab:AddRow() --[[@as ExtuiTableRow]]
             local nameCell = row:AddCell()
             nameCell:AddText(label)
             addLittleSpacer(nameCell)
@@ -782,7 +808,7 @@ function ImguiElements.AddAlignedTable(parent)
                 return function(_, ...)
                     local args = { ... }
                     local label = table.remove(args, 1) or ""
-                    local row = tab:AddRow() --[[@as ExtuiTableRow]]
+                    --local row = tab:AddRow() --[[@as ExtuiTableRow]]
                     local nameCell = row:AddCell()
                     nameCell:AddText(label)
                     addLittleSpacer(nameCell)

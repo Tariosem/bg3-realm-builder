@@ -236,7 +236,7 @@ function VisualTab:Render(retryCnt)
 
     self.isVisible = true
 
-    local entity = self:GetEntity(self.guid)
+    local entity = self:GetEntity(self.guid) --[[@as EntityHandle]]
 
     local hasEffect = entity.Effect and true or false
     local hasVisual = entity.Visual and entity.Visual.Visual and true or false
@@ -278,6 +278,37 @@ function VisualTab:Render(retryCnt)
 
     self.editorWindow = self.panel:AddChildWindow("EditorWindow")
 
+    if entity.CharacterCreationAppearance then
+        local cca = entity.CharacterCreationAppearance --[[@as CharacterCreationAppearance]]
+        local fields = {
+            EyeColor = "Right Eye Color",
+            SecondEyeColor = "Left Eye Color",
+            HairColor = "Hair Color",
+            SkinColor = "Skin Color",
+        }
+        local fieldOrder = {
+            "SkinColor",
+            "HairColor",
+            "EyeColor",
+            "SecondEyeColor",
+        }
+        local fieldResTypes = {
+            EyeColor = "CharacterCreationEyeColor",
+            SecondEyeColor = "CharacterCreationEyeColor",
+            HairColor = "CharacterCreationHairColor",
+            SkinColor = "CharacterCreationSkinColor",
+        }
+
+        local appearanceHeader = self.editorWindow:AddCollapsingHeader(GetLoca("Character Creation Appearance"))
+        local alignedTab = ImguiElements.AddAlignedTable(appearanceHeader)
+        for _, fieldName in ipairs(fieldOrder) do
+            local colorId = cca[fieldName]
+            local colorRes = Ext.StaticData.Get(colorId, fieldResTypes[fieldName])
+
+            MaterialPresetsMenu:RenderPresetColorBox(colorRes, alignedTab:AddNewLine(fields[fieldName]))
+        end
+    end
+    
     self:RenderAttachmentSection()
     self:RenderObjectSection()
     self:RenderEffectSection()
@@ -325,10 +356,37 @@ function VisualTab:RenderMaterialContextPopup()
         mixerTab:Render()
     end)
 
+    contextMenu:AddItem("Edit Transform", function (selectable)
+        if not self:CheckVisual() then return end
+        if IsInCharacterCreationMirror() then return end
+        local keyName = self.SelectedMaterial
+        local parsedKey = RBStringUtils.SplitByString(keyName, "::")
+        local eleCnt = #parsedKey
+        local descIndex = tonumber(parsedKey[eleCnt]) or nil
+        local attachIndex = tonumber(parsedKey[eleCnt - 1]) or nil
+        if not descIndex then return end
+        local renderableFunc = function()
+            return VisualHelpers.GetRenderable(self.guid, descIndex, attachIndex)
+        end
+        local startScale = VisualHelpers.GetRenderableScale(self.guid, descIndex, attachIndex)
+        local proxy = RenderableMovableProxy.new(renderableFunc)
+        RB_GLOBALS.TransformEditor:Select({ proxy })
+        self.resetParams[keyName] = self.resetParams[keyName] or {}
+        self.resetParams[keyName].Scale = startScale
+        self.resetParams[keyName].DescIndex = descIndex
+        self.resetParams[keyName].AttachIndex = attachIndex
+    end)
+
     contextMenu:AddItem("Reset All", function(sel)
         local matTab = self.Materials[self.SelectedMaterial]
         if not matTab then return end
         matTab:ResetAll()
+    end).DontClosePopups = true
+
+    contextMenu:AddItem("Save Current as Default", function(sel)
+        local matTab = self.Materials[self.SelectedMaterial]
+        if not matTab then return end
+        matTab.Editor:SaveCurrentParameters()
     end).DontClosePopups = true
 
     contextMenu:AddItem("Export As Material", function(sel)
@@ -600,8 +658,6 @@ function VisualTab:RenderUtilsCell(parent)
 end
 
 function VisualTab:RenderAttachmentSection()
-    local entity = self:GetEntity(self.guid) --[[@as EntityHandle]]
-
     local visual = self:GetVisual(self.guid)
 
     if not visual then return end
@@ -623,301 +679,10 @@ function VisualTab:RenderAttachmentSection()
     end
 end
 
---- @type table<string, fun(element: CharacterCreationAppearanceMaterialSetting):RB_ParameterSet>
-local colorDefinitionMap = {
-    Tattoo = function(element)
-        local params = {}
-        local colorDef = Ext.StaticData.Get(element.Color, "ColorDefinition") --[[@as ResourceColor]]
-
-        return params
-    end,
-    HairHighlight = function(element)
-        local params = {}
-        local colorDef = Ext.StaticData.Get(element.Color, "ColorDefinition") --[[@as ResourceColor]]
-        local vec3Color = { colorDef.Color[1], colorDef.Color[2], colorDef.Color[3] }
-
-        params = {
-            [1] = {
-                ["Highlight_Intensity"] = {
-                    element.ColorIntensity or 0.0
-                },
-            },
-            [2] = {},
-            [3] = {
-                ["Highlight_Color"] = vec3Color or { 1.0, 1.0, 1.0 },
-                ["Beard_Highlight_Color"] = vec3Color or { 1.0, 1.0, 1.0 }
-            }
-        }
-        return params
-    end,
-    HairGraying = function(element)
-        local params = {}
-        local colorDef = Ext.StaticData.Get(element.Color, "ColorDefinition") --[[@as ResourceColor]]
-        local vec3Color = { colorDef.Color[1], colorDef.Color[2], colorDef.Color[3] }
-        params = {
-            [1] = {
-                ["Graying_Intensity"] = {
-                    element.ColorIntensity or 0.0
-                },
-                ["Beard_Graying_Intensity"] = {
-                    element.ColorIntensity or 0.0
-                }
-            },
-            [2] = {},
-            [3] = {
-                ["Hair_Graying_Color"] = vec3Color or { 1.0, 1.0, 1.0 },
-                ["Beard_Graying_Color"] = vec3Color or { 1.0, 1.0, 1.0 }
-            }
-        }
-
-        return params
-    end,
-    HornColor = function(element)
-        local params = {}
-        local colorDef = Ext.StaticData.Get(element.Color, "ColorDefinition") --[[@as ResourceColor]]
-        local vec3Color = { colorDef.Color[1], colorDef.Color[2], colorDef.Color[3] }
-
-        params = {
-            [1] = {},
-            [2] = {},
-            [3] = {
-                ["NonSkinColor"] = vec3Color or { 1.0, 1.0, 1.0 }
-            }
-        }
-
-        return params
-    end,
-    HornTipColor = function(element)
-        local params = {}
-        local colorDef = Ext.StaticData.Get(element.Color, "ColorDefinition") --[[@as ResourceColor]]
-        local vec3Color = { colorDef.Color[1], colorDef.Color[2], colorDef.Color[3] }
-        params = {
-            [1] = {},
-            [2] = {},
-            [3] = {
-                ["NonSkinTipColor"] = vec3Color or { 1.0, 1.0, 1.0 }
-            }
-        }
-
-        return params
-    end,
-    LipsMakeup = function(element)
-        local params = {}
-        local colorDef = Ext.StaticData.Get(element.Color, "ColorDefinition") --[[@as ResourceColor]]
-        local vec3Color = { colorDef.Color[1], colorDef.Color[2], colorDef.Color[3] }
-
-        params = {
-            [1] = {
-                ["LipsMakeupIntensity"] = {
-                    element.ColorIntensity or 0.0
-                },
-                ["LipsMakeupMetalness"] = {
-                    element.MetallicTint or 0.0
-                },
-                ["LipsMakeupRoughness"] = {
-                    1 - (element.GlossyTint or 0.0)
-                }
-            },
-            [2] = {},
-            [3] = {
-                ["Lips_Makeup_Color"] = vec3Color or { 1.0, 1.0, 1.0 },
-            }
-        }
-
-        return params
-    end,
-}
-local additionalChoicesHandle = {
-    [1] = "Vitiligo",
-    [2] = "Freckle",
-    [3] = "Age_Weight",
-    [4] = "Freckle_Intensity",
-}
-
-local function mergeParameterSets(base, override)
-    for ptype, typeParams in pairs(override) do
-        base[ptype] = base[ptype] or {}
-        for paramName, value in pairs(typeParams) do
-            base[ptype][paramName] = value
-        end
-    end
-end
-
-function VisualTab:DetermineOverrideCharacterParameters()
-    local overrideCharacterParams = {
-        {}, -- ScalarParameters
-        {}, -- Vector2Parameters
-        {}, -- Vector3Parameters
-        {}, -- VectorParameters
-    }
-    local entity = self:GetEntity(self.guid) --[[@as EntityHandle]]
-    local ccDummy = GetMirrotDummyEntity()
-    --- @type CharacterCreationAppearance|CharacterCreationAppearanceComponent
-    local cca = entity.CharacterCreationAppearance
-    if ccDummy and ccDummy.ClientCCChangeAppearanceDefinition then
-        cca = ccDummy.ClientCCChangeAppearanceDefinition.Definition.Visual
-    end
-    if not cca then
-        cca = entity.AppearanceOverride and
-        entity.AppearanceOverride.Visual --[[@as CharacterCreationAppearanceComponent]]
-    end
-    if cca then
-        local ccaPresetgroup = ImguiElements.AddTree(self.attachmentsHeader, "Character Creation Material Presets")
-
-        local allColors = {
-            SkinColor = cca.SkinColor,
-            HairColor = cca.HairColor,
-            EyeColor = cca.EyeColor,
-            LeftEyeColor = cca.SecondEyeColor,
-        }
-        local colorTypes = {
-            SkinColor = "CharacterCreationSkinColor",
-            HairColor = "CharacterCreationHairColor",
-            EyeColor = "CharacterCreationEyeColor",
-            LeftEyeColor = "CharacterCreationEyeColor",
-        }
-        local colorOrder = {
-            "EyeColor",
-            "LeftEyeColor",
-            "HairColor",
-            "SkinColor",
-        }
-
-        ---[[ 1 = Vitiligo, 2 = Freckle Quantity, 3 = Maturity, 4 = Freckle Intensity]]
-        for i, num in pairs(cca.AdditionalChoices) do
-            local params = {}
-            local paramName = additionalChoicesHandle[i]
-            params[1] = {}
-            if i == 3 then
-                num = num * 0.4 -- don't know why but this seams to be more accurate
-            end
-            params[1][paramName] = num
-            mergeParameterSets(overrideCharacterParams, params)
-        end
-
-        for i, colorChoice in pairs(cca.Elements) do
-            local mat = Ext.StaticData.Get(colorChoice.Material, "CharacterCreationAppearanceMaterial") --[[@as ResourceCharacterCreationAppearanceMaterial]]
-            local mp = MaterialProxy.new(mat.MaterialPresetUUID)
-            if mp and next(mp.Parameters) and next(mp.Parameters[1]) then
-                mergeParameterSets(overrideCharacterParams, mp.Parameters)
-                goto continue
-            end
-            if not mat or not colorDefinitionMap[mat.MaterialType2] then
-                goto continue
-            end
-            local params = colorDefinitionMap[mat.MaterialType2](colorChoice)
-            mergeParameterSets(overrideCharacterParams, params)
-            ::continue::
-        end
-
-        local hasCCA = false
-        for _, colorIndex in ipairs(colorOrder) do
-            local colorType = colorIndex
-            local resUuid = allColors[colorType]
-            if not RBUtils.IsUuid(resUuid) then goto continue end
-            local res = Ext.StaticData.Get(resUuid, colorTypes[colorType]) --[[@as ResourceCharacterCreationColor]]
-            if not res then goto continue end
-            local matPresetRes = MaterialPresetProxy.new(res.MaterialPresetUUID)
-            if not matPresetRes then goto continue end
-            hasCCA = true
-            for ptype, params in pairs(matPresetRes.Parameters) do
-                for paramName, value in pairs(params) do
-                    if colorIndex == "LeftEyeColor" then
-                        paramName = paramName .. "_L"
-                    end
-                    overrideCharacterParams[ptype] = overrideCharacterParams[ptype] or {}
-                    if not overrideCharacterParams[ptype][paramName] then
-                        overrideCharacterParams[ptype][paramName] = value
-                    end
-                end
-            end
-            ::continue::
-        end
-        if not hasCCA then
-            ccaPresetgroup.Visible = false
-        end
-
-        ccaPresetgroup.OnExpand = function()
-            local twoColTable = ccaPresetgroup:AddTable("CCAPresetsTable", 2)
-            local row = twoColTable:AddRow()
-            for _, ctype in ipairs(colorOrder) do
-                local color = allColors[ctype]
-                if not color or color == GUID_NULL then goto continue end
-                local res = Ext.StaticData.Get(color, colorTypes[ctype]) --[[@as ResourceCharacterCreationColor]]
-                if not res then goto continue end
-                local cell = row:AddCell()
-                local preset = MaterialPresetsMenu:RenderPresetColorBox(res, cell)
-                local prefixText = cell:AddText(GetLoca(ctype))
-                prefixText.SameLine = true
-
-                ::continue::
-            end
-            ccaPresetgroup.OnExpand = nil
-        end
-    end
-
-    local characterTemplate = entity.ClientCharacter.Template
-    local characterVisual = Ext.Resource.Get(characterTemplate.CharacterVisualResourceID, "CharacterVisual") --[[@as ResourceCharacterVisualResource]]
-    if characterVisual and characterVisual.VisualSet then
-        local visualSet = characterVisual.VisualSet
-        for _, matPreset in pairs(visualSet.MaterialOverrides.MaterialPresets) do
-            local matPresetRes = MaterialPresetProxy.new(matPreset.MaterialPresetResource)
-            if not matPresetRes then goto continue end
-            for ptype, params in pairs(matPresetRes.Parameters) do
-                for paramName, value in pairs(params) do
-                    if not overrideCharacterParams[ptype][paramName] then
-                        overrideCharacterParams[ptype][paramName] = value
-                    end
-                end
-            end
-            ::continue::
-        end
-
-        for _, visualResource in pairs(visualSet.Slots) do
-            local vres = Ext.Resource.Get(visualResource.VisualResource, "Visual") --[[@as ResourceVisualResource]]
-            if vres.HairPresetResourceId and RBUtils.IsUuid(vres.HairPresetResourceId) then
-                local matPresetRes = MaterialPresetProxy.new(vres.HairPresetResourceId)
-                if matPresetRes then
-                    for ptype, params in pairs(matPresetRes.Parameters) do
-                        for paramName, value in pairs(params) do
-                            if not overrideCharacterParams[ptype][paramName] then
-                                overrideCharacterParams[ptype][paramName] = value
-                            end
-                        end
-                    end
-                end
-            end
-        end
-
-
-        local paramLists = {
-            visualSet.MaterialOverrides.ScalarParameters,
-            visualSet.MaterialOverrides.Vector2Parameters,
-            visualSet.MaterialOverrides.Vector3Parameters,
-            visualSet.MaterialOverrides.VectorParameters,
-        }
-        for ptype, paramList in pairs(paramLists) do
-            for _, param in pairs(paramList) do
-                if not overrideCharacterParams[ptype][param.Parameter] and param.Enabled then
-                    overrideCharacterParams[ptype][param.Parameter] = param.Value
-                end
-            end
-        end
-    end
-
-    return overrideCharacterParams
-end
-
 function VisualTab:RenderAttachmentEditors()
-    local entity = self:GetEntity(self.guid) --[[@as EntityHandle]]
     local visual = self:GetVisual(self.guid)
 
     if not visual then return end
-
-    local overrideCharacterParams = {}
-    if EntityHelpers.IsCharacter(self.guid) then
-        --overrideCharacterParams = self:DetermineOverrideCharacterParameters()
-    end
 
     local attachments = visual.Attachments or {}
 
@@ -937,6 +702,32 @@ function VisualTab:RenderAttachmentEditors()
 
         local attachNode = ImguiElements.AddTree(self.attachmentsHeader, displayName .. "##" .. tostring(attIndex), false)
         attachNode:AddTreeIcon(RB_ICONS.Box, IMAGESIZE.ROW).Tint = ColorUtils.HexToRGBA("FFB98634")
+
+        attachNode.OnRightClick = function ()
+            if IsInCharacterCreationMirror() then return end
+            local liveAttachment = VisualHelpers.GetAttachment(self.guid, attIndex)
+            if not liveAttachment then return end
+            local descCnt = #liveAttachment.Visual.ObjectDescs
+            if descCnt == 0 then return end
+
+            local initFuncs = {} --[[@as (fun():RenderableObject)[] ]]
+            for descIndex = 1, descCnt do
+                local renderableFunc = function()
+                    local liveAttach = VisualHelpers.GetAttachment(self.guid, attIndex)
+                    if not liveAttach then return nil end
+                    local desc = liveAttach.Visual.ObjectDescs[descIndex]
+                    if not desc or not desc.Renderable then return nil end
+                    return desc.Renderable
+                end
+                initFuncs[descIndex] = renderableFunc
+            end
+            local proxies = {}
+            for descIndex, func in pairs(initFuncs) do
+                local proxy = RenderableMovableProxy.new(func)
+                table.insert(proxies, proxy)
+            end
+            RB_GLOBALS.TransformEditor:Select(proxies)
+        end
 
         local gr2Text = attachNode:AddHint("Model: " .. gr2FileName)
         gr2Text:SetColor("Text", ColorUtils.HexToRGBA("FF6D6D6D"))
@@ -966,7 +757,12 @@ function VisualTab:RenderAttachmentEditors()
                 if not attach then return nil end
 
                 local attachVisual = attach.Visual
-                local vresId = attachVisual.VisualResource.Guid
+                if not attachVisual then return nil end
+                
+                local vres = attachVisual.VisualResource
+                if not vres then return nil end
+
+                local vresId = vres.Guid
 
                 if vresId ~= initVresId then
                     return nil
@@ -986,7 +782,6 @@ function VisualTab:RenderAttachmentEditors()
             end
 
             local keyName = initVresId .. "::" .. tostring(attIndex) .. "::" .. tostring(descIndex)
-            self:RenderTransformSliders(objNode, descIndex, attIndex, keyName)
 
             local materialTab = self.Materials[keyName] or
             MaterialTab.new(objNode, matName, getliveMat, getliveParams) --[[@as MaterialTab]]
@@ -1101,7 +896,6 @@ function VisualTab:RenderObjectEditor()
         --- @return MaterialParameters|nil
 
         local keyName = linkId .. "::" .. tostring(descIndex)
-        self:RenderTransformSliders(materialNode, descIndex, nil, keyName)
         local materialEditor = self.Materials[keyName] or
             MaterialTab.new(materialNode, material.MaterialName, getliveMat, getliveParams) --[[@as MaterialTab]]
         materialEditor.LinkId = linkId
@@ -2009,26 +1803,6 @@ end
 
 --#endregion effects
 
-function VisualTab:RenderTransformSliders(parent, descIndex, attachIndex, keyName)
-    local selectInTransformEditor = parent:AddButton(GetLoca("Select in Transform Editor"))
-    selectInTransformEditor.IDContext = "VisualTab_TransformEditorSelectButton_" ..
-    descIndex .. "_" .. (attachIndex or "")
-
-    selectInTransformEditor.OnClick = function()
-        if not self:CheckVisual() then return end
-        local renderableFunc = function()
-            return VisualHelpers.GetRenderable(self.guid, descIndex, attachIndex)
-        end
-        local startScale = VisualHelpers.GetRenderableScale(self.guid, descIndex, attachIndex)
-        local proxy = RenderableMovableProxy.new(renderableFunc)
-        RB_GLOBALS.TransformEditor:Select({ proxy })
-        self.resetParams[keyName] = self.resetParams[keyName] or {}
-        self.resetParams[keyName].Scale = startScale
-        self.resetParams[keyName].DescIndex = descIndex
-        self.resetParams[keyName].AttachIndex = attachIndex
-    end
-end
-
 function VisualTab:Add(guid, displayName, parent, templateName)
     if not EntityHelpers.EntityExists(guid) then
         Error("VisualTab:Add - Entity with GUID " .. guid .. " does not exist.")
@@ -2047,31 +1821,13 @@ end
 --- @field Materials table<string, RB_ParameterSet> -- key <name :: attachIndex(if any) :: descIndex> -> RB_ParameterSet
 --- @field Transforms table<string, Transform> -- key <name :: attachIndex(if any) :: descIndex> -> Transform
 
-function VisualTab:Save(name, overwrite)
-    local templateName = self.templateName or RBGetTemplateNameForGuid(self.guid)
-
-    if not templateName then
-        Error("VisualTab:Save - No template name found for GUID: " .. self.guid)
-        return false
-    end
-
-    if self.savedPresets and self.savedPresets[name] and not overwrite then
-        ConfirmPopup:QuickConfirm(
-            string.format(GetLoca("A preset named '%s' already exists. Overwrite?"), name),
-            function()
-                self:Save(name, true)
-            end,
-            nil,
-            10
-        )
-        return true
-    end
-
-    local saveName = name or self.displayName or "Unnamed"
-
-    local filePath = FilePath.GetVisualPresetsPath(templateName)
-    local oriFile = Ext.Json.Parse(Ext.IO.LoadFile(filePath) or "{}")
-
+--- @return RB_VisualPreset
+function VisualTab:SaveCurrentState()
+    local presetData = {
+        Materials = {},
+        Effects = RBUtils.DeepCopy(self.Effects),
+    }
+    
     local localTransforms = {}
     local Mats = {}
     for key, mat in pairs(self.Materials) do
@@ -2105,12 +1861,46 @@ function VisualTab:Save(name, overwrite)
         ::continue::
     end
 
+    presetData.Materials = Mats
+    presetData.Transforms = localTransforms
+
+    return presetData
+end
+
+
+function VisualTab:Save(name, overwrite)
+    local templateName = self.templateName or RBGetTemplateNameForGuid(self.guid)
+
+    if not templateName then
+        Error("VisualTab:Save - No template name found for GUID: " .. self.guid)
+        return false
+    end
+
+    if self.savedPresets and self.savedPresets[name] and not overwrite then
+        ConfirmPopup:QuickConfirm(
+            string.format(GetLoca("A preset named '%s' already exists. Overwrite?"), name),
+            function()
+                self:Save(name, true)
+            end,
+            nil,
+            10
+        )
+        return true
+    end
+
+    local saveName = name or self.displayName or "Unnamed"
+
+    local filePath = FilePath.GetVisualPresetsPath(templateName)
+    local oriFile = Ext.Json.Parse(Ext.IO.LoadFile(filePath) or "{}")
+
+    local currentPresetData = self:SaveCurrentState()
+    
     oriFile[saveName] = {
         Name = saveName,
         TemplateName = templateName,
-        Effects = RBUtils.DeepCopy(self.Effects),
-        Materials = Mats,
-        Transforms = localTransforms,
+        Effects = currentPresetData.Effects,
+        Materials = currentPresetData.Materials,
+        Transforms = currentPresetData.Transforms,
     }
 
     local ok, err = Ext.IO.SaveFile(filePath, Ext.Json.Stringify(oriFile))

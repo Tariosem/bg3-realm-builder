@@ -96,7 +96,6 @@ local localizedNames = {
     BindPopup = "Open Bind Popup",
     BindTo = "Bind To Hover",
     Unbind = "Unbind Selection",
-
 }
 
 function KeybindMenu:Render(parent)
