@@ -238,7 +238,7 @@ function Commands.AddMarker(target, markerType)
         EntInfo = {
             Position = { RBGetPosition(target) },
             Rotation = { RBGetRotation(target) },
-            DisplayName = "Spot Light Marker",
+            DisplayName = markerType .. " Marker",
         }
     }
 

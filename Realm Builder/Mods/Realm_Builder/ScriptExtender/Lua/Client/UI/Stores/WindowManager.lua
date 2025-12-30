@@ -87,6 +87,8 @@ function WindowManager.RegisterWindow(guid, displayName, iType, instance, pos, s
     return windowHandle
 end
 
+--- @param handle any
+--- @return boolean
 function WindowManager.DeleteWindow(handle)
     for guid, windows in pairs(WindowMap) do
         for i = #windows, 1, -1 do

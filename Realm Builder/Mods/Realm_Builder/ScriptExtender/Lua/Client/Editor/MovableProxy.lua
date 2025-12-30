@@ -20,6 +20,15 @@
 --- @field Render fun(self: RB_MovableProxy, parent: ExtuiTreeParent)
 MovableProxy = _Class("RB_MovableProxy")
 
+local function getDefaultTransform()
+    local pos = Vec3.new(GetHostPosition())
+    return {
+        Translate = pos,
+        RotationQuat = Quat.new(0,0,0,1),
+        Scale = Vec3.new(1,1,1)
+    }
+end
+
 --- @param guids GUIDSTRING[]
 --- @param transforms table<GUIDSTRING, {Translate: Vec3|nil, RotationQuat: Vec4|nil, Scale: Vec3|nil}>
 local function SetItemTransform(guids, transforms)
@@ -109,7 +118,7 @@ function ItemMovableProxy:__init(guid)
 end
 
 function ItemMovableProxy:GetTransform()
-    return EntityHelpers.SaveTransform(self.Guid)
+    return EntityHelpers.SaveTransform(self.Guid) or getDefaultTransform()
 end
 
 function ItemMovableProxy:GetWorldBoundingBox()
@@ -175,7 +184,7 @@ function CharacterMovableProxy:__init(guid)
 end
 
 function CharacterMovableProxy:GetTransform()
-    return EntityHelpers.SaveTransform(self.Guid)
+    return EntityHelpers.SaveTransform(self.Guid) or getDefaultTransform()
 end
 
 function CharacterMovableProxy:SetTransform(transform)
@@ -214,11 +223,7 @@ function SceneryMovableProxy:__init(sceneryEntity)
 end
 
 function SceneryMovableProxy:GetTransform()
-    return VisualHelpers.GetVisualTransform(self.Entity) or {
-        Translate = Vec3.new(0,0,0),
-        RotationQuat = Quat.new(0,0,0,1),
-        Scale = Vec3.new(1,1,1)
-    }
+    return VisualHelpers.GetVisualTransform(self.Entity) or getDefaultTransform()
 end
 
 function SceneryMovableProxy:SetTransform(transform)
@@ -269,11 +274,7 @@ end
 function RenderableMovableProxy:GetTransform()
     local rend = self:Instance()
     if not rend then
-        return {
-            Translate = Vec3.new(0,0,0),
-            RotationQuat = Quat.new(0,0,0,1),
-            Scale = Vec3.new(1,1,1)
-        }
+        return getDefaultTransform()
     end
     return {
         Translate = Vec3.new(rend.WorldTransform.Translate),

@@ -1,4 +1,4 @@
---- 
+---
 
 --- @class IconBrowser
 --- @field panel ExtuiWindow
@@ -39,10 +39,10 @@ function IconBrowser:__init(dataManager, DisplayName)
 
     self.iconButtonBgColor = nil
     self.iconWidth = 75 * SCALE_FACTOR
-    self.iconPC =  10
+    self.iconPC = 10
     self.iconPR = 10
     self.cellsPadding = { 10 * SCALE_FACTOR, 10 * SCALE_FACTOR }
-    self.browserWidth = self.iconPR * ( self.iconWidth + self.cellsPadding[1] ) + 20 * SCALE_FACTOR
+    self.browserWidth = self.iconPR * (self.iconWidth + self.cellsPadding[1]) + 20 * SCALE_FACTOR
     self.browserHeight = self.iconPC * (self.iconWidth + self.cellsPadding[2]) + 280 * SCALE_FACTOR
     self.lastPosition = { screenWidth * 0.6, screenHeight * 0.15 }
     self.lastSize = { self.browserWidth * 1.2, self.browserHeight * 1.2 }
@@ -69,21 +69,22 @@ function IconBrowser:Render()
     if self.lastPosition[2] + self.lastSize[2] > screenHeight then
         self.lastPosition[2] = math.max(0, screenHeight - self.lastSize[2])
     end
-    self.panel = WindowManager.RegisterWindow("generic", self.displayName, "Browser", self, self.lastPosition, self.lastSize)
+    self.panel = WindowManager.RegisterWindow("generic", self.displayName, "Browser", self, self.lastPosition,
+        self.lastSize)
     self.panel.Closeable = true
 
     self.browserOptions = self.panel:AddTable("Icons Browser", 6)
-    
+
     self.topMenuBar = self.panel:AddMainMenu()
     self.editMenu = self.topMenuBar:AddMenu(GetLoca("File"))
     self.uiParamMenu = self.topMenuBar:AddMenu(GetLoca("UI"))
-    
+
     self:RenderFileMenu()
     self:RenderUiConfigMenu()
     self:RenderSearchOptionsMenu()
     self:RenderMiscMenu()
     self:RenderBrowserBase()
-    
+
     self.isVisible = true
 
     self:SetupInputSubs()
@@ -117,7 +118,7 @@ function IconBrowser:SetupInputSubs()
         if self.panel.Open == false then return end
 
         self:Search()
-    end--)
+    end --)
 
     self.quickFavoriteKeySub = InputEvents.SubscribeKeyInput({ Key = "F" }, function(e)
         if not self.isValid then return UNSUBSCRIBE_SYMBOL end
@@ -133,7 +134,6 @@ function IconBrowser:SetupInputSubs()
                     self.dataManager:AddTagToData(entry.Uuid, tag)
                 else
                     self.dataManager:RemoveTagFromData(entry.Uuid, tag)
-
                 end
                 if self.updateTagsFn[entry.Uuid] then
                     self.updateTagsFn[entry.Uuid]()
@@ -190,9 +190,12 @@ function IconBrowser:RenderUiConfigMenu()
     local iconWidth = self.iconWidth
     self.saveToConfig = self.uiParamMenu:AddButton(GetLoca("Save To Config"))
     local iconSizeSlider = ImguiHelpers.SafeAddSliderInt(self.uiParamMenu, GetLoca("Image Size"), iconWidth, 20, 200)
-    local browserWidthSlider = ImguiHelpers.SafeAddSliderInt(self.uiParamMenu, GetLoca("Image Per Row"), imagePerRow, 2, 20)
-    local browserHeightSlider = ImguiHelpers.SafeAddSliderInt(self.uiParamMenu, GetLoca("Image Per Column"), imagePerCol, 4, 30)
-    local cellsPaddingSlider = ImguiHelpers.SafeAddSliderInt(self.uiParamMenu, GetLoca("Image Padding"), cellsPadding[1], 0, 20)
+    local browserWidthSlider = ImguiHelpers.SafeAddSliderInt(self.uiParamMenu, GetLoca("Image Per Row"), imagePerRow, 2,
+        20)
+    local browserHeightSlider = ImguiHelpers.SafeAddSliderInt(self.uiParamMenu, GetLoca("Image Per Column"), imagePerCol,
+        4, 30)
+    local cellsPaddingSlider = ImguiHelpers.SafeAddSliderInt(self.uiParamMenu, GetLoca("Image Padding"), cellsPadding[1],
+        0, 20)
     cellsPaddingSlider.Components = 2
     cellsPaddingSlider.Value = RBUtils.ToVec4Int(cellsPadding[1], cellsPadding[2])
     local iconButtonBgColroEdit = self.uiParamMenu:AddColorEdit(GetLoca("Button Background Color"))
@@ -239,7 +242,7 @@ function IconBrowser:RenderUiConfigMenu()
         end
         ImagePerLine = math.floor(ImagePerLine)
         self.iconPR = ImagePerLine
-        local browserWidth = ImagePerLine * ( self.iconWidth + self.cellsPadding[1] ) + 20 * SCALE_FACTOR
+        local browserWidth = ImagePerLine * (self.iconWidth + self.cellsPadding[1]) + 20 * SCALE_FACTOR
         self.browserWidth = browserWidth
 
         self.browserWidth, self.browserHeight = clampSize(self.browserWidth, self.browserHeight)
@@ -256,9 +259,11 @@ function IconBrowser:RenderUiConfigMenu()
         end
         self.iconPC = ImagePerColumn
         if self.iconToName then
-            self.browserHeight = self.iconPC * (48 * SCALE_FACTOR + self.cellsPadding[2]) + 40 * SCALE_FACTOR + getEstimatedTopBarHeight()
+            self.browserHeight = self.iconPC * (48 * SCALE_FACTOR + self.cellsPadding[2]) + 40 * SCALE_FACTOR +
+            getEstimatedTopBarHeight()
         else
-            self.browserHeight = self.iconPC * (self.iconWidth + self.cellsPadding[2]) + 40 * SCALE_FACTOR + getEstimatedTopBarHeight()
+            self.browserHeight = self.iconPC * (self.iconWidth + self.cellsPadding[2]) + 40 * SCALE_FACTOR +
+            getEstimatedTopBarHeight()
         end
         self.browserWidth, self.browserHeight = clampSize(self.browserWidth, self.browserHeight)
         self.panel:SetSize({ self.browserWidth * 1.2, self.browserHeight * 1.2 })
@@ -419,12 +424,12 @@ function IconBrowser:RenderMiscMenu()
     local iconToNameButton = self.miscPopup:AddItem(GetLoca("Icon to Name"))
 
     self.nameAscendSelect.Label = self.nameAscend and GetLoca("Name Ascend") or
-    GetLoca("Name Descend")
+        GetLoca("Name Descend")
 
     self.nameAscendSelect.OnClick = function()
         self.nameAscend = not self.nameAscend
         self.nameAscendSelect.Label = self.nameAscend and GetLoca("Name Ascend") or
-        GetLoca("Name Descend")
+            GetLoca("Name Descend")
         self:RenderIcons()
     end
 
@@ -472,7 +477,7 @@ function IconBrowser:RenderMiscMenu()
         end
         self.iconToName = not self.iconToName
         iconToNameButton.Label = updateIconToNameText()
-        if self.iconToName then 
+        if self.iconToName then
             iconPRBefore = self.iconPR
             self.iconPR = 1
         else
@@ -511,7 +516,7 @@ function IconBrowser:RenderBrowserBase()
             self:OnSelectChange(guid)
         end
     end
-    
+
     local pageButtonsContainer = pageButtonsRow:AddCell()
 
     self.firstButton = pageButtonsContainer:AddButton("<<")
@@ -536,7 +541,7 @@ function IconBrowser:CreateCachedSort(field)
     for uuid, entry in pairs(self.searchData) do
         cnt = cnt + 1
         local value = entry[field] or "Unknown"
-        sortKeyArray[cnt] = {uuid, value}
+        sortKeyArray[cnt] = { uuid, value }
     end
 
     table.sort(sortKeyArray, function(a, b)
@@ -545,12 +550,11 @@ function IconBrowser:CreateCachedSort(field)
         else
             return a[2] < b[2]
         end
-
     end)
 
     self[cacheFiled] = sortKeyArray
 
-    for k,v in pairs(self[cacheFiled]) do
+    for k, v in pairs(self[cacheFiled]) do
         local entry = self.searchData[v[1]]
         if not entry.Uuid then
             self[cacheFiled][k] = nil
@@ -750,7 +754,7 @@ function IconBrowser:RenderPage()
         if self.uuidsSorted and #self.uuidsSorted > 0 then
             local row = self.iconsContainer:AddRow()
             for i = fromIndex, toIndex do
-                if stopRendering then 
+                if stopRendering then
                     self.panel.Disabled = false
                     return
                 end
@@ -772,7 +776,7 @@ function IconBrowser:RenderPage()
                     lastYield = Ext.Timer.MonotonicTime()
                 end
             end
-        else 
+        else
             --self.iconsBrowser:AddText(GetLoca("Not Found"))
         end
         self.panel.Disabled = false
@@ -821,7 +825,7 @@ function IconBrowser:RenderCustomizationTab(popup, entry)
     local filterTab = popup
     local custom = self.dataManager.customizationData[entry.Uuid] or {}
 
-    local noteInput = filterTab:AddInputText(GetLoca("Note")) 
+    local noteInput = filterTab:AddInputText(GetLoca("Note"))
 
     noteInput.Text = custom.Note or ""
 
@@ -922,7 +926,7 @@ function IconBrowser:RenderCustomizationTab(popup, entry)
     allTags.SameLine = true
 
     local function updateTags()
-        custom = self.dataManager.customizationData[entry.Uuid] 
+        custom = self.dataManager.customizationData[entry.Uuid]
         local tags = custom and custom.Tags or {}
         tags = RBUtils.DeepCopy(tags)
         for _, tag in ipairs(tags) do

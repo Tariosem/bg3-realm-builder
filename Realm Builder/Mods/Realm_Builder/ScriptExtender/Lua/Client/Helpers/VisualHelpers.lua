@@ -230,13 +230,24 @@ function VisualHelpers.VisualizeAABB(entity)
 end
 
 local checkMap = { A = true, B = true, C = true, D = true }
-function VisualHelpers.ChangeFrames(frames, value, isColor)
-    isColor = isColor or false
+
+--- @param frames AspkFloatKeyFrame[]
+--- @return boolean
+function VisualHelpers.AreFloakKeyFramesCubic(frames)
     for pName, pValue in pairs(frames[1]) do
         if checkMap[pName] then
-            VisualHelpers.ChangeABCDFrames(frames, value[1], value[2], value[3], value[4])
-            return
+            return true
         end
+    end
+    return false
+end
+
+function VisualHelpers.ChangeFrames(frames, value, isColor)
+    isColor = isColor or false
+    if VisualHelpers.AreFloakKeyFramesCubic(frames) then
+        VisualHelpers.ChangeDFrames(frames, value)
+        --VisualHelpers.ChangeABCDFrames(frames, value[1], value[2], value[3], value[4])
+        return
     end
 
     for _, frame in ipairs(frames) do
@@ -255,6 +266,7 @@ function VisualHelpers.ChangeKeyFrames(keyFrames, value, isColor)
     end
 end
 
+--- @param frames AspkCubicFloatKeyFrame[]
 function VisualHelpers.ChangeABCDFrames(frames, a, b, c, d)
     for _, frame in ipairs(frames) do
         frame.A = a
@@ -264,6 +276,17 @@ function VisualHelpers.ChangeABCDFrames(frames, a, b, c, d)
     end
 end
 
+--- @param frames AspkCubicFloatKeyFrame[]
+function VisualHelpers.ChangeDFrames(frames, d)
+    for _, frame in ipairs(frames) do
+        frame.D = d
+    end
+end
+
+--- @param guid string
+--- @param compIndex number
+--- @param value any
+--- @param propName string
 function VisualHelpers.ApplyValueToFrames(guid, compIndex, value, propName)
     local comp = VisualHelpers.GetEffectComponent(guid, compIndex) --[[@as AspkLightComponent]]
     if not comp then return end
@@ -286,6 +309,81 @@ local lightComponentFields = {
     OverriderLightTemplateFlickerSpeed = true,
     ModulateLightTemplateRadius = true,
 }
+
+--- @param comp AspkLightComponent
+--- @param propName string
+function VisualHelpers.GetLightComponentValue(comp, propName)
+    if lightComponentFields[propName] then
+        return comp[propName]
+    end
+
+    if RBStringUtils.TakeTail(propName, #"Property") == "Property" then
+        local property = comp[propName] --[[@as AspkFloatKeyFrameProperty|AspkColorARGBKeyFrameProperty]]
+        if not property then return nil end
+        local frameField = propName == "ColorProperty" and "Frames" or "KeyFrames"
+        if frameField == "KeyFrames" then
+            local frames = property.KeyFrames[1].Frames
+            if not frames then return nil end
+            local isCubic = VisualHelpers.AreFloakKeyFramesCubic(frames)
+            if isCubic then
+                return frames[1].D
+            else
+                return frames[1].Value
+            end
+        else
+            return property.Frames[1].Color
+        end
+
+        return nil
+    end
+
+    local lightEntity = comp.LightEntity.Light
+    if not lightEntity then return nil end
+
+    return lightEntity[propName]
+end
+
+--- @param comp AspkComponent
+--- @param propName string
+function VisualHelpers.GetEffectComponentValue(comp, propName)
+    if comp.TypeName == "Light" then
+        return VisualHelpers.GetLightComponentValue(comp --[[@as AspkLightComponent]], propName)
+    end
+
+    return comp[propName]
+end
+
+function VisualHelpers.SetEffectComponentValue(comp, propName, value)
+    if comp.TypeName == "Light" then
+        comp = comp --[[@as AspkLightComponent]]
+        if RBStringUtils.TakeTail(propName, #"Property") == "Property" then
+            -- VisualHelpers.ApplyValueToFrames not used here to avoid redundant GetEffectComponent call
+            local property = comp[propName]
+            local frameField = propName == "ColorProperty" and "Frames" or "KeyFrames"
+            if not property or not property[frameField] then return end
+
+            if frameField == "KeyFrames" then
+                VisualHelpers.ChangeKeyFrames(property.KeyFrames, value)
+            else
+                VisualHelpers.ChangeFrames(property.Frames, value, true)
+            end
+            return
+        end
+
+        if lightComponentFields[propName] then
+            comp[propName] = value
+            return
+        end
+
+        local lightEntity = comp.LightEntity.Light
+        if not lightEntity then return end
+
+        lightEntity[propName] = value
+        return
+    end
+
+    comp[propName] = value
+end
 
 --- @param guid string
 --- @param compIndex number
@@ -322,9 +420,9 @@ function VisualHelpers.ApplyVisualParams(guid, preset, retryCnt)
 
     retryCnt = retryCnt or 0
 
-    local entity = UuidToHandle(guid)
-    if not entity or not entity.Visual then
-        if not entity and retryCnt < 1 then
+    local visual = VisualHelpers.GetEntityVisual(guid)
+    if not visual then
+        if retryCnt < 1 then
             Timer:After(500, function()
                 VisualHelpers.ApplyVisualParams(guid, preset, retryCnt + 1)
             end)
@@ -334,6 +432,7 @@ function VisualHelpers.ApplyVisualParams(guid, preset, retryCnt)
         return
     end
 
+    local effectSetter = VisualHelpers.SetEffectComponentValue
     for key, compParams in pairs(preset.Effects) do
         local parsed = RBStringUtils.SplitByString(key, "::")
         local compType, compIndex = parsed[#parsed - 1], tonumber(parsed[#parsed])
@@ -349,16 +448,9 @@ function VisualHelpers.ApplyVisualParams(guid, preset, retryCnt)
                 " Expected Type: " .. tostring(compType) .. " Actual Type: " .. tostring(comp.TypeName))
             goto continue1
         end
-        if comp.TypeName == "Light" then
-            for propName, value in pairs(compParams) do
-                VisualHelpers.ApplyValueToLightComponent(guid, compIndex, value, propName)
-            end
-        else
-            for propName, value in pairs(compParams) do
-                comp[propName] = value
-            end
+        for propName, value in pairs(compParams) do
+            effectSetter(comp, propName, value)
         end
-
         ::continue1::
     end
 
@@ -370,6 +462,25 @@ function VisualHelpers.ApplyVisualParams(guid, preset, retryCnt)
                 "\n Parsed key: " .. tostring(key),
                 " DescIndex: " .. tostring(descIndex) .. " AttachIndex: " .. tostring(attachIndex))
             goto continue
+        end
+
+        --- verify attachment visual resource ID if attachIndex is provided
+        if attachIndex ~= nil then
+            local currentAttachment = VisualHelpers.GetAttachment(guid, attachIndex)
+            if not currentAttachment then
+                Warning("Attachment not found for preset key: " .. tostring(key) ..
+                    "\n Parsed key: " .. tostring(key),
+                    " AttachIndex: " .. tostring(attachIndex))
+                goto continue
+            end
+            local currentVresId = currentAttachment.Visual.VisualResource and currentAttachment.Visual.VisualResource.Guid or nil
+            local parsedVresId = parsed[1]
+            if currentVresId ~= parsedVresId then
+                Warning("Attachment visual resource ID mismatch for preset key: " .. tostring(key) ..
+                    "\n Parsed key: " .. tostring(key),
+                    " Expected VresId: " .. tostring(parsedVresId) .. " Actual VresId: " .. tostring(currentVresId))
+                goto continue
+            end
         end
 
         if preset.Transforms and preset.Transforms[key] then

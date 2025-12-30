@@ -1,7 +1,8 @@
+local EntityEffectTabClass = Ext.Require("Client/UI/Components/EntityEffectTab.lua") --[[@as RB_EntityEffectTab]]
 local VISUALTAB_WIDTH = 800 * SCALE_FACTOR
 local VISUALTAB_HEIGHT = 1000 * SCALE_FACTOR
 
-local visualTabCache = {}
+local visualTabCache = {} --[[@as table<GUIDSTRING|EntityHandle, VisualTab> ]]
 
 local ClientVisualPresetData = {}
 local ClientOriginalVisualData = {}
@@ -64,15 +65,14 @@ EventsSubscriber.RegisterOnSessionLoaded(function()
     --Debug("Visual preset data loaded in " .. (Ext.Utils.MonotonicTime() - now) .. "ms")
 end)
 
+--- @alias RB_MaterialsTable table<string, MaterialTab> -- linkId|attachment's visual resource id :: attachIndex :: descIndex -> MaterialTab
+--- @alias RB_EffectsTable table<string, table<string, any>> -- componentType::componentIndex -> { PropertyName = Value, ... }
 
 --- @class VisualTab
---- @field Materials table<string, MaterialTab>
---- @field Effects table<string, table<string, any>> -- EffectType::index -> EffectProperty -> value
+--- @field Materials RB_MaterialsTable
+--- @field EntityEffectTab RB_EntityEffectTab
 --- @field guid GUIDSTRING
 --- @field templateName string
---- @field updateFuncs table<string, table<string, fun()>> -- EffectType::index -> EffectProperty -> update function
---- @field resetFuncs table<string, table<string, fun()>> -- EffectType::index -> EffectProperty -> reset function
---- @field resetParams table<string, table<string, any>> -- EffectType::index -> EffectProperty -> reset value
 --- @field new fun(guid: GUIDSTRING?, displayName: string?, parent: ExtuiTreeParent?, templateName: string?): VisualTab
 --- @field FetchByGuid fun(guid: GUIDSTRING): VisualTab|nil
 VisualTab = {}
@@ -85,6 +85,7 @@ end
 function VisualTab.new(guid, displayName, parent, templateName, entity)
     local obj = setmetatable({}, VisualTab)
 
+    --- clear stale cache entries
     for key, value in pairs(visualTabCache) do
         if type(key) == "userdata" and #key:GetAllComponentNames() == 0 then
             visualTabCache[key] = nil
@@ -124,7 +125,7 @@ end
 function VisualTab.CreateByEntity(entity, uuid, displayName)
     if entity.Scenery then
         displayName = entity.Visual and entity.Visual.Visual and
-        RBStringUtils.GetLastPath(entity.Visual.Visual.VisualResource.SourceFile) or "Unknown Scenery"
+            RBStringUtils.GetLastPath(entity.Visual.Visual.VisualResource.SourceFile) or "Unknown Scenery"
         uuid = entity.Scenery.Uuid
     end
 
@@ -156,13 +157,9 @@ function VisualTab:__init(guid, displayName, parent, templateName)
 
     self.Materials = {}
     self.Effects = {}
-
-    self.resetParams = {}
+    self.EntityEffectTab = EntityEffectTabClass.new(nil, self.GetEntity, self.guid)
 
     self.currentPreset = EntityStore[guid] and EntityStore[guid].VisualPreset or nil
-
-    self.updateFuncs = {}
-    self.resetFuncs = {}
 
     if not templateName and self.guid ~= "" and not EntityStore[self.guid] then
         NetChannel.GetTemplate:RequestToServer({ Guid = self.guid }, function(response)
@@ -241,7 +238,7 @@ function VisualTab:Render(retryCnt)
     local hasEffect = entity.Effect and true or false
     local hasVisual = entity.Visual and entity.Visual.Visual and true or false
 
-    if not ( hasVisual or hasEffect ) then
+    if not (hasVisual or hasEffect) then
         local rerenderButton = self.panel:AddButton(GetLoca("Try to reload Visual Tab"))
         local reasons = {
             "Too far from camera",
@@ -250,7 +247,7 @@ function VisualTab:Render(retryCnt)
         }
         local tooltip = rerenderButton:Tooltip()
         tooltip:AddText(GetLoca("Visual Tab cannot load because the entity's visual data is unavailable. Possible reasons:")).TextWrapPos = 900 *
-        SCALE_FACTOR
+            SCALE_FACTOR
         for i, reason in ipairs(reasons) do
             tooltip:AddBulletText(i .. ". " .. reason)
         end
@@ -308,10 +305,15 @@ function VisualTab:Render(retryCnt)
             MaterialPresetsMenu:RenderPresetColorBox(colorRes, alignedTab:AddNewLine(fields[fieldName]))
         end
     end
-    
+
     self:RenderAttachmentSection()
     self:RenderObjectSection()
     self:RenderEffectSection()
+end
+
+function VisualTab:RenderEffectSection()
+    self.EntityEffectTab:SetUIParent(self.editorWindow)
+    self.EntityEffectTab:Render()
 end
 
 function VisualTab:RenderMaterialContextPopup()
@@ -326,7 +328,7 @@ function VisualTab:RenderMaterialContextPopup()
     contextMenu:AddItem("Copy To Other Materials", function(sel)
         local keyName = self.SelectedMaterial
         local matTab = self.Materials[keyName]
-        if not matTab then return end
+        if not matTab or not matTab.Editor then return end
         -- only copy number/vector parameters
         local paramSet = {
             [1] = matTab.Editor.Parameters[1],
@@ -356,7 +358,7 @@ function VisualTab:RenderMaterialContextPopup()
         mixerTab:Render()
     end)
 
-    contextMenu:AddItem("Edit Transform", function (selectable)
+    contextMenu:AddItem("Edit Transform", function(selectable)
         if not self:CheckVisual() then return end
         if IsInCharacterCreationMirror() then return end
         local keyName = self.SelectedMaterial
@@ -579,11 +581,7 @@ function VisualTab:RenderPresetsCell(parent)
         end
 
         if not isChara then
-            for key, func in pairs(self.resetFuncs) do
-                for propName, resetFunc in pairs(func) do
-                    resetFunc()
-                end
-            end
+            self.EntityEffectTab:ResetAllEffects()
         end
     end
 
@@ -703,7 +701,7 @@ function VisualTab:RenderAttachmentEditors()
         local attachNode = ImguiElements.AddTree(self.attachmentsHeader, displayName .. "##" .. tostring(attIndex), false)
         attachNode:AddTreeIcon(RB_ICONS.Box, IMAGESIZE.ROW).Tint = ColorUtils.HexToRGBA("FFB98634")
 
-        attachNode.OnRightClick = function ()
+        attachNode.OnRightClick = function()
             if IsInCharacterCreationMirror() then return end
             local liveAttachment = VisualHelpers.GetAttachment(self.guid, attIndex)
             if not liveAttachment then return end
@@ -758,7 +756,7 @@ function VisualTab:RenderAttachmentEditors()
 
                 local attachVisual = attach.Visual
                 if not attachVisual then return nil end
-                
+
                 local vres = attachVisual.VisualResource
                 if not vres then return nil end
 
@@ -784,7 +782,7 @@ function VisualTab:RenderAttachmentEditors()
             local keyName = initVresId .. "::" .. tostring(attIndex) .. "::" .. tostring(descIndex)
 
             local materialTab = self.Materials[keyName] or
-            MaterialTab.new(objNode, matName, getliveMat, getliveParams) --[[@as MaterialTab]]
+                MaterialTab.new(objNode, matName, getliveMat, getliveParams) --[[@as MaterialTab]]
             materialTab.Parent = objNode
             materialTab.Editor.Instance = getliveMat
             materialTab.Editor.ParamsSrc = getliveParams
@@ -857,8 +855,6 @@ function VisualTab:RenderObjectEditor()
         end
 
         local renderable = desc.Renderable --[[@as RenderableObject]]
-
-
         local material = renderable.ActiveMaterial --[[@as AppliedMaterial]]
 
         local meshName = renderable.Model and renderable.Model.Name or "Unknown Mesh"
@@ -928,881 +924,6 @@ function VisualTab:RenderObjectEditor()
     end
 end
 
---#region effects
-
-function VisualTab:RenderEffectSection()
-    local entity = self:GetEntity(self.guid) --[[@as EntityHandle]]
-    if entity.Effect == nil then
-        return
-    end
-
-    self.hasEffect = true
-
-    local renderParent = self.editorWindow
-
-    if self.effectHeader then
-        self.effectHeader:Destroy()
-        self.effectHeader = renderParent:AddCollapsingHeader(GetLoca("Effect Editor"))
-    else
-        self.effectHeader = renderParent:AddCollapsingHeader(GetLoca("Effect Editor"))
-    end
-
-    if self.isWindow then
-        self.effectHeader.DefaultOpen = true
-    end
-
-    self.effectHeader.OnHoverEnter = function()
-        self:RenderEffectEditor()
-        self.effectHeader.OnHoverEnter = nil
-    end
-end
-
-function VisualTab:RenderEffectEditor()
-    local entity = self:GetEntity(self.guid) --[[@as EntityHandle]]
-    --self.effectRoot = self.effectHeader:AddTree(GetLoca("Effects"))
-    if not entity.Effect or not entity.Effect.Timeline or not entity.Effect.Timeline.Components then
-        return
-    end
-
-    self:SetupEffectContextMenu()
-    local effectNameCnt = {}
-
-    self:RenderEffectTimelineEditor()
-
-    -- WHY is effect so disorderly
-    for compIndex, component in ipairs(entity.Effect.Timeline.Components) do
-        --_P(component.TypeName)
-        local newTree = nil
-        if component.TypeName == "Light" then
-            effectNameCnt[component.TypeName] = (effectNameCnt[component.TypeName] or 0) + 1
-            local cnt = effectNameCnt[component.TypeName]
-            local nodeName = GetLoca("Light") .. (cnt ~= 1 and " (" .. cnt .. ")" or "")
-            newTree = ImguiElements.AddTree(self.effectHeader, nodeName, false)
-            newTree.OnRightClick = function()
-                self.SelectedEffectComponent = "Light::" .. tostring(compIndex)
-                self.effectContextPopup:Open()
-            end
-
-            self:RenderLightComponent(newTree, component, compIndex, cnt)
-            self:RenderLightEntity(newTree, component, compIndex, cnt)
-        end
-
-        if component.TypeName == "ParticleSystem" then
-            effectNameCnt[component.TypeName] = (effectNameCnt[component.TypeName] or 0) + 1
-            local cnt = effectNameCnt[component.TypeName]
-            local nodeName = GetLoca("Particle System") .. (cnt ~= 1 and " (" .. cnt .. ")" or "")
-            newTree = ImguiElements.AddTree(self.effectHeader, nodeName, false)
-            newTree.OnRightClick = function()
-                self.SelectedEffectComponent = "ParticleSystem::" .. tostring(compIndex)
-                self.effectContextPopup:Open()
-            end
-            self:RenderParticleSystemComponent(newTree, component, compIndex, cnt)
-        end
-    end
-end
-
-function VisualTab:RenderEffectTimelineEditor()
-    local entity = self:GetEntity(self.guid) --[[@as EntityHandle]]
-    if not entity.Effect or not entity.Effect.Timeline then
-        return
-    end
-
-    local effectObj = entity.Effect
-    if not effectObj or not effectObj.Timeline then
-        return
-    end
-
-    local timeline = effectObj.Timeline
-
-    local timelineTree = ImguiElements.AddTree(self.effectHeader, GetLoca("Timeline"), false)
-
-    local playPauseButton = timelineTree:AddButton(timeline.IsPaused and GetLoca("Paused") or GetLoca("Playing"))
-    playPauseButton.OnClick = function()
-        local entity = self:GetEntity(self.guid) --[[@as EntityHandle]]
-        if not entity.Effect or not entity.Effect.Timeline then
-            return
-        end
-        entity.Effect.Timeline.IsPaused = not entity.Effect.Timeline.IsPaused
-        playPauseButton.Label = entity.Effect.Timeline.IsPaused and GetLoca("Paused") or GetLoca("Playing")
-    end
-
-    local tab = timelineTree:AddTable("TimelineInfoTable", 2)
-    tab.ColumnDefs[1] = { WidthFixed = true }
-    tab.ColumnDefs[2] = { WidthStretch = true }
-    tab.BordersInnerV = true
-
-    local row = tab:AddRow()
-
-
-    --local phaseCnt = #entity.Effect.Timeline.Header.Phases or 0
-    --[[local phaseSlider = ImguiElementsAddSliderWithStep(timelineTree, GetLoca("Set Phases"), timeline.PhaseIndex, 1, math.max(1, phaseCnt), 1, true)
-    phaseSlider.UserData.DisableRightClickSet = true
-    phaseSlider.OnChange = function()
-        local entity = self:GetEntity(self.guid)
-        if not entity.Effect or not entity.Effect.Timeline then
-            return
-        end
-        --entity.Effect.Timeline.PhaseIndex = phaseSlider.Value[1]
-        --entity.Effect.Timeline.JumpToPhase = phaseSlider.Value[1]
-    end
-
-    local timeSlider = ImguiElementsAddSliderWithStep(timelineTree, GetLoca("Set Time"), timeline.TimePlayed, 0, timeline.Duration, 0.1, false)
-
-    timeSlider.UserData.DisableRightClickSet = true
-    timeSlider.OnChange = function()
-        local entity = self:GetEntity(self.guid)
-        if not entity.Effect or not entity.Effect.Timeline then
-            return
-        end
-        entity.Effect.Timeline.JumpToTime = timeSlider.Value[1]
-    end]]
-
-    row:AddCell():AddText(GetLoca("Playing Speed") .. ":")
-    local playSpeedSlider = ImguiElements.AddSliderWithStep(row:AddCell(), GetLoca("Set Play Speed"),
-        timeline.PlayingSpeed, 0.1, 5.0, 0.1, false)
-    playSpeedSlider.OnChange = function()
-        local entity = self:GetEntity(self.guid) --[[@as EntityHandle]]
-        if not entity.Effect or not entity.Effect.Timeline then
-            return
-        end
-        entity.Effect.Timeline.PlayingSpeed = playSpeedSlider.Value[1]
-    end
-end
-
---- @class EffectComponentRenderInfo
---- @field Group string
---- @field RenderOrder string[]
---- @field PropertyMap EffectPropertyMap
-
---- @class EffectComponentParameterInfo
---- @field DisplayName string
---- @field Hint string
---- @field IsInt boolean
---- @field Range { Min:number, Max:number, Step:number }
---- @field Options RadioButtonOption[]?
---- @field Setter fun(value:any)
---- @field Getter fun():any
-
---- @class EffectPropertyMap
---- @field Boolean table<string, EffectComponentParameterInfo>
---- @field BitMask table<string, EffectComponentParameterInfo>
---- @field Enum table<string, EffectComponentParameterInfo>
---- @field Scalar table<string, EffectComponentParameterInfo>
---- @field Vector2 table<string, EffectComponentParameterInfo>
---- @field Vector3 table<string, EffectComponentParameterInfo>
---- @field Vector4 table<string, EffectComponentParameterInfo>
-
-function VisualTab:RenderEffectComponentEditor(parent, key, getComp, renderInfo)
-    local component = getComp()
-    if not component then return end
-
-    local propMap = renderInfo.PropertyMap
-    local renderOrder = renderInfo.RenderOrder
-
-    local renderHandlers = {
-        Scalar = function(tree, propName, propInfo)
-            self:RenderEffectComponentSliders(tree, getComp, key, propName, propInfo)
-        end,
-        Vector2 = function(tree, propName, propInfo)
-            self:RenderEffectComponentSliders(tree, getComp, key, propName, propInfo)
-        end,
-        Vector3 = function(tree, propName, propInfo)
-            self:RenderEffectComponentSliders(tree, getComp, key, propName, propInfo)
-        end,
-        Vector4 = function(tree, propName, propInfo)
-            self:RenderEffectComponentSliders(tree, getComp, key, propName, propInfo)
-        end,
-        Boolean = function(tree, propName, propInfo)
-            self:RenderEffectComponentBooleanCheckbox(tree, getComp, key, propName, propInfo)
-        end,
-        BitMask = function(tree, propName, propInfo)
-            if propInfo.EnumName then
-                propInfo.Options = ImguiHelpers.CreateRadioButtonOptionFromBitmask(propInfo.EnumName)
-            end
-            self:RenderEffectComponentBitmaskRadioButtons(tree, getComp, key, propName, propInfo)
-        end,
-        Enum = function(tree, propName, propInfo)
-            if propInfo.EnumName then
-                propInfo.Options = ImguiHelpers.CreateRadioButtonOptionFromEnum(propInfo.EnumName)
-            end
-            self:RenderEffectComponentEnumRadioButtons(tree, getComp, key, propName, propInfo)
-        end,
-    }
-
-    local groupTrees = {
-        Default = parent,
-    }
-    self.resetFuncs[key] = self.resetFuncs[key] or {}
-    self.updateFuncs[key] = self.updateFuncs[key] or {}
-    self.resetParams[key] = self.resetParams[key] or {}
-    local seen = {}
-    for _, propName in ipairs(renderOrder) do
-        local propType = nil
-        seen[propName] = true
-        for pType, propList in pairs(propMap) do
-            if propList[propName] then
-                propType = pType
-                break
-            end
-        end
-        if not propType then goto continue end
-
-        local propInfo = propMap[propType][propName]
-        local groupName = propInfo.Group or "Default"
-        if not groupTrees[groupName] then
-            groupTrees[groupName] = ImguiElements.AddTree(parent, groupName)
-            parent:AddSeparator():SetStyle("ItemSpacing", 0, 10)
-        end
-
-        renderHandlers[propType](groupTrees[groupName], propName, propInfo)
-        groupTrees[groupName]:AddSeparator()
-        ::continue::
-    end
-    for propType, propList in pairs(propMap) do
-        for propName, propInfo in pairs(propList) do
-            if seen[propName] then goto continue end
-
-            local groupName = propInfo.Group or "Default"
-            if not groupTrees[groupName] then
-                groupTrees[groupName] = ImguiElements.AddTree(parent, groupName)
-                parent:AddSeparator():SetStyle("ItemSpacing", 0, 10)
-            end
-
-            renderHandlers[propType](groupTrees[groupName], propName, propInfo)
-            groupTrees[groupName]:AddSeparator()
-            ::continue::
-        end
-    end
-end
-
---- @param panel ExtuiTreeParent
-function VisualTab:RenderEffectComponentSliders(panel, getComp, key, componentName, valueInfo)
-    local applyMethod = valueInfo.Setter or function(value)
-        local comp = getComp()
-        if not comp then return end
-
-        comp[componentName] = value
-    end
-    local getMethod = valueInfo.Getter or function()
-        local comp = getComp()
-        if not comp then return nil end
-
-        return comp[componentName]
-    end
-
-    local initValue = self.resetParams[key] and self.resetParams[key][componentName] or getMethod()
-    self.resetParams[key] = self.resetParams[key] or {}
-    self.resetParams[key][componentName] = initValue
-    if type(initValue) == "number" then
-        initValue = { initValue }
-    end
-    local isInt = valueInfo.IsInt or false
-    local range = valueInfo.Range or { Min = -10, Max = 10, Step = 0.1 }
-    local compDisplayName = valueInfo.DisplayName or componentName
-
-    local function saveChanged(value)
-        local comp = getComp()
-        if not comp then return end
-
-        if #value == 1 then
-            value = value[1]
-        end
-        applyMethod(value)
-        self.Effects[key] = self.Effects[key] or {}
-        self.Effects[key][componentName] = value
-    end
-
-    local onReset = function()
-        self.Effects[key] = self.Effects[key] or {}
-        self.Effects[key][componentName] = nil
-        if not next(self.Effects[key]) then
-            self.Effects[key] = nil
-        end
-    end
-
-    local updateMethod = ImguiElements.AddNumberSliders(panel, compDisplayName, getMethod, saveChanged,
-        { IsInt = isInt, Range = range, OnReset = onReset, ResetValue = initValue, IsColor = valueInfo.IsColor })
-
-    self.resetFuncs[key][componentName] = function()
-        applyMethod(self.resetParams[key][componentName])
-        updateMethod()
-        onReset()
-    end
-    self.updateFuncs[key][componentName] = function()
-        updateMethod()
-    end
-end
-
-function VisualTab:RenderEffectComponentBooleanCheckbox(panel, getComp, key, componentName, boolInfo)
-    local comp = getComp()
-    local initValue = self.resetParams[key] and self.resetParams[key][componentName] or comp[componentName]
-    self.resetParams[key] = self.resetParams[key] or {}
-    self.resetParams[key][componentName] = initValue
-    local displayName = boolInfo.DisplayName or componentName
-    local checkbox = panel:AddCheckbox("##EffectComponentCheckbox_" .. key, initValue)
-    checkbox.Label = displayName or componentName
-
-    checkbox.OnChange = function()
-        local comp = getComp()
-        if not comp then return end
-
-        comp[componentName] = checkbox.Checked
-        self.Effects[key] = self.Effects[key] or {}
-        self.Effects[key][componentName] = checkbox.Checked
-    end
-
-    self.resetFuncs[key][componentName] = function()
-        checkbox.Checked = initValue
-
-        local comp = getComp()
-        if not comp then return end
-        comp[componentName] = initValue
-
-        self.Effects[key] = self.Effects[key] or {}
-        self.Effects[key][componentName] = nil
-        if not next(self.Effects[key]) then
-            self.Effects[key] = nil
-        end
-    end
-
-    self.updateFuncs[key][componentName] = function()
-        local comp = getComp()
-        if not comp then return end
-        checkbox.Checked = comp[componentName]
-    end
-end
-
-function VisualTab:RenderEffectComponentBitmaskRadioButtons(panel, getComp, key, componentName, bitMaskInfo)
-    local comp = getComp()
-    local initValue = self.resetParams[key] and self.resetParams[key][componentName] or comp[componentName]
-    self.resetParams[key] = self.resetParams[key] or {}
-    self.resetParams[key][componentName] = initValue
-    local displayName = bitMaskInfo.DisplayName or componentName
-    local options = bitMaskInfo.Options or {}
-
-    local tab = panel:AddTable("SameTable" .. panel.Label, 2)
-    tab.ColumnDefs[1] = { WidthFixed = true }
-    tab.ColumnDefs[2] = { WidthStretch = true }
-    local row = tab:AddRow()
-    local titleCell = row:AddCell()
-    local radioCell = row:AddCell()
-    local title = titleCell:AddBulletText(displayName)
-    local radioGroup = ImguiElements.AddBitmaskRadioButtons(radioCell, options, initValue)
-
-    local saveChanged = function(value)
-        local comp = getComp()
-        if not comp then return end
-
-        comp[componentName] = value
-        self.Effects[key] = self.Effects[key] or {}
-        self.Effects[key][componentName] = value
-    end
-
-    local resetChange = function()
-        local comp = getComp()
-        if not comp then return end
-
-        comp[componentName] = initValue
-        radioGroup.Value = initValue
-        self.Effects[key] = self.Effects[key] or {}
-        self.Effects[key][componentName] = nil
-        if not next(self.Effects[key]) then
-            self.Effects[key] = nil
-        end
-    end
-
-    radioGroup.OnChange = function()
-        local comp = getComp()
-        if not comp then return end
-        saveChanged(radioGroup.Value)
-    end
-
-    title.OnRightClick = function()
-        resetChange()
-    end
-
-    self.resetFuncs[key][componentName] = resetChange
-    self.updateFuncs[key][componentName] = function()
-        local comp = getComp()
-        if not comp then return end
-        radioGroup.Value = comp[componentName]
-    end
-end
-
-function VisualTab:RenderEffectComponentEnumRadioButtons(panel, getComp, key, componentName, enumInfo)
-    local comp = getComp()
-    local initValue = self.resetParams[key] and self.resetParams[key][componentName] or comp[componentName]
-    self.resetParams[key] = self.resetParams[key] or {}
-    self.resetParams[key][componentName] = initValue
-    local displayName = enumInfo.DisplayName or componentName
-    local options = enumInfo.Options or {}
-
-    local tab = panel:AddTable("SameTable" .. panel.Label, 2)
-    tab.ColumnDefs[1] = { WidthFixed = true }
-    tab.ColumnDefs[2] = { WidthStretch = true }
-    local row = tab:AddRow()
-    local titleCell = row:AddCell()
-    local radioCell = row:AddCell()
-    local title = titleCell:AddBulletText(displayName)
-    local radioGroup = ImguiElements.AddEnumRadioButtons(radioCell, options, initValue)
-
-    local saveChanged = function(value)
-        local comp = getComp()
-        if not comp then return end
-
-        comp[componentName] = value
-        self.Effects[key] = self.Effects[key] or {}
-        self.Effects[key][componentName] = value
-    end
-
-    local resetChange = function()
-        local comp = getComp()
-        if not comp then return end
-
-        comp[componentName] = initValue
-        radioGroup.Value = initValue
-        self.Effects[key] = self.Effects[key] or {}
-        self.Effects[key][componentName] = nil
-        if not next(self.Effects[key]) then
-            self.Effects[key] = nil
-        end
-    end
-
-    radioGroup.OnChange = function()
-        local comp = getComp()
-        if not comp then return end
-        saveChanged(radioGroup.Value)
-    end
-
-    title.OnRightClick = function()
-        resetChange()
-    end
-
-    self.resetFuncs[key][componentName] = resetChange
-    self.updateFuncs[key][componentName] = function()
-        local comp = getComp()
-        if not comp then return end
-        radioGroup.Value = comp[componentName]
-    end
-end
-
-function VisualTab:SetupEffectContextMenu()
-    local effectContextPopup = self.panel:AddPopup("EffectContextMenu")
-    self.effectContextPopup = effectContextPopup
-    self.SelectedEffectComponent = nil
-    local contextMenu = ImguiElements.AddContextMenu(effectContextPopup, "Effect Component")
-
-    contextMenu:AddItem("Apply To Same Type", function(sel)
-        local compKey = self.SelectedEffectComponent
-        if not compKey then return end
-
-        local modfiedParams = self.Effects[compKey]
-        if not modfiedParams then return end
-
-        local parsedKey = RBStringUtils.SplitByString(compKey, "::")
-        local compIndex = tonumber(parsedKey[2])
-        if not compIndex then return end
-        local selectedComp = VisualHelpers.GetEffectComponent(self.guid, compIndex)
-        if not selectedComp then return end
-        local compType = selectedComp.TypeName
-
-        local entity = self:GetEntity(self.guid) --[[@as EntityHandle]]
-        if not entity.Effect or not entity.Effect.Timeline or not entity.Effect.Timeline.Components then
-            return
-        end
-
-        for otIdx, comp in RBUtils.FilteredPairs(entity.Effect.Timeline.Components, function(idx, comp)
-            return comp.TypeName == compType and (idx ~= compIndex)
-        end) do
-            local otherKey = compType .. "::" .. tostring(otIdx)
-            for paramName, paramValue in pairs(modfiedParams) do
-                if comp.TypeName == "Light" then
-                    VisualHelpers.ApplyValueToLightComponent(self.guid, otIdx, paramValue, paramName)
-                else
-                    comp[paramName] = paramValue
-                end
-                if self.updateFuncs[otherKey] and self.updateFuncs[otherKey][paramName] then
-                    self.updateFuncs[otherKey][paramName]()
-                end
-            end
-        end
-    end)
-end
-
----@param node ExtuiTree
----@param component AspkComponent
----@param compIndex any
-function VisualTab:RenderLightEntity(node, component, compIndex)
-    local entityNode = node
-
-    local lightEntity = component.LightEntity --[[@as LightComponent]]
-    if not lightEntity or not lightEntity.Light then
-        return
-    end
-
-    --- @type table<string, EffectComponentParameterInfo>
-    local bitMaskParamMap = {
-        LightChannelFlag = {
-            Options = {
-                { Label = "Character", Value = 1 << 5 },
-                { Label = "Scenery",   Value = 1 },
-            },
-            DisplayName = "Light Channel",
-            Group = "Light Flags",
-        },
-        Flags = {
-            EnumName = "LightFlags",
-            Options = {
-            },
-            DisplayName = "Light Flags",
-            Group = "Light Flags",
-        },
-    }
-
-
-    local enumParamMap = {
-        LightType = {
-            EnumName = "LightType",
-            Options = {
-            },
-            DisplayName = "Light Type",
-            Group = "General Light Settings",
-        },
-        DirectionLightAttenuationFunction = {
-            Options = {
-                { Label = "Linear",         Value = 0 },
-                { Label = "Inverse Square", Value = 1 },
-                { Label = "Smooth Step",    Value = 2 },
-                { Label = "Smoother Step",  Value = 3 },
-            },
-            DisplayName = "Attenuation Function",
-            Group = "Directional Light Settings",
-        },
-    }
-
-
-    local scalarParamMap = {
-        SpotLightInnerAngle = {
-            Range = { Min = 0, Max = 180, Step = 1 },
-            DisplayName = "Inner Angle",
-            Group = "Spot Light Settings",
-        },
-        SpotLightOuterAngle = {
-            Range = { Min = 0, Max = 180, Step = 1 },
-            DisplayName = "Outer Angle",
-            Group = "Spot Light Settings",
-        },
-        Gain = {
-            Range = { Min = 0, Max = 100, Step = 0.1 },
-            DisplayName = "Gain",
-            Group = "General Light Settings",
-        },
-        EdgeSharpening = {
-            Range = { Min = 0, Max = 10, Step = 0.05 },
-            DisplayName = "Edge Sharpness",
-            Group = "General Light Settings",
-        },
-        ScatteringIntensityScale = {
-            Range = { Min = 0, Max = 100, Step = 0.1 },
-            DisplayName = "Scattering Intensity Scale",
-            Group = "General Light Settings",
-        },
-        IntensityOffset = {
-            Range = { Min = -100, Max = 100, Step = 0.1 },
-            DisplayName = "Intensity Offset",
-            Group = "General Light Settings",
-        },
-        --[[Kelvin = {
-            Range = { Min = 1000, Max = 40000, Step = 100 },
-            DisplayName = "Color Temperature (Kelvin)",
-            Group = "General Light Settings",
-        },]]
-        DirectionLightAttenuationEnd = {
-            Range = { Min = 0, Max = 2, Step = 0.05 },
-            DisplayName = "Attenuation End",
-            Group = "Directional Light Settings",
-        },
-        DirectionLightAttenuationSide = {
-            Range = { Min = 0, Max = 2, Step = 0.05 },
-            DisplayName = "Attenuation Back",
-            Group = "Directional Light Settings",
-        },
-        DirectionLightAttenuationSide2 = {
-            Range = { Min = 0, Max = 2, Step = 0.05 },
-            DisplayName = "Attenuation Sides",
-            Group = "Directional Light Settings",
-        },
-    }
-    local vector3ParamMap = {
-        DirectionLightDimensions = {
-            Range = { Min = 0, Max = 100, Step = 1 },
-            DisplayName = "Direction Light Dimensions",
-            Group = "Directional Light Settings",
-            IsColor = false,
-        },
-        Color = {
-            Range = { Min = -1, Max = 1, Step = 0.01 },
-            DisplayName = "Light Entity Color",
-            Group = "General Light Settings",
-            IsColor = true,
-        },
-    }
-
-    local renderOrder = {
-        "LightChannelFlag",
-        "Flags",
-        "LightType",
-        "SpotLightInnerAngle",
-        "SpotLightOuterAngle",
-        "Gain",
-        "EdgeSharpening",
-        "ScatteringIntensityScale",
-        "DirectionLightAttenuationFunction",
-        "DirectionLightAttenuationEnd",
-        "DirectionLightAttenuationSide",
-        "DirectionLightAttenuationSide2",
-        "DirectionLightDimensions",
-        "Color",
-    }
-
-    local key = "Light::" .. compIndex
-    local function GetLiveLightEntity()
-        local entity = self:GetEntity(self.guid)
-        if not entity or not entity.Effect or not entity.Effect.Timeline or not entity.Effect.Timeline.Components[compIndex] or not entity.Effect.Timeline.Components[compIndex].LightEntity then
-            return nil
-        end
-        return entity.Effect.Timeline.Components[compIndex].LightEntity.Light
-    end
-
-    self:RenderEffectComponentEditor(entityNode, key, GetLiveLightEntity, {
-        PropertyMap = {
-            Scalar = scalarParamMap,
-            BitMask = bitMaskParamMap,
-            Enum = enumParamMap,
-            Vector3 = vector3ParamMap,
-        },
-        RenderOrder = renderOrder,
-    })
-end
-
----@param node any
----@param component AspkComponent
----@param compIndex integer
-function VisualTab:RenderLightComponent(node, component, compIndex)
-    local compNode = node
-
-    local lcomp = component --[[@as AspkLightComponent]]
-
-    local function applyToFrames(value, propName, frameField)
-        local comp = VisualHelpers.GetEffectComponent(self.guid, compIndex) --[[@as AspkLightComponent]]
-        if not comp then return end
-
-        local property = comp[propName]
-        if not property or not property[frameField] then return end
-
-        if frameField == "KeyFrames" then
-            VisualHelpers.ChangeKeyFrames(property.KeyFrames, value)
-        else
-            VisualHelpers.ChangeFrames(property.Frames, value, true)
-        end
-    end
-
-    local scalarNameMap = {
-        ["IntensityProperty"] = {
-            Range = { Min = 0, Max = 100, Step = 0.1 },
-            DisplayName = "Intensity",
-            Group = "Appearance",
-        },
-        ["RadiusProperty"] = {
-            Range = { Min = 0, Max = 100, Step = 0.1 },
-            DisplayName = "Radius",
-            Group = "Appearance",
-        },
-        ["FlickerSpeedProperty"] = {
-            Range = { Min = 0, Max = 10, Step = 0.05 },
-            DisplayName = "Flicker Speed",
-            Group = "Behavior",
-        },
-        ["FlickerAmountProperty"] = {
-            Range = { Min = 0, Max = 1, Step = 0.01 },
-            DisplayName = "Flicker Amount",
-            Group = "Behavior",
-        },
-    }
-
-    for propName, prop in pairs(scalarNameMap) do
-        if propName == "IntensityProperty" then
-            local hasABCDField = false
-            local checkMap = { A = true, B = true, C = true, D = true }
-            for _, frame in pairs(lcomp.IntensityProperty.KeyFrames or {}) do
-                for _, f in pairs(frame.Frames or {}) do
-                    for pName, value in pairs(f) do
-                        if checkMap[pName] then
-                            hasABCDField = true
-                            break
-                        end
-                    end
-                end
-                if hasABCDField then break end
-            end
-            if hasABCDField then
-                prop.Setter = function(value)
-                    lcomp = VisualHelpers.GetEffectComponent(self.guid, compIndex) --[[@as AspkLightComponent]]
-                    if not lcomp then return end
-                    for _, keyFrame in pairs(lcomp.IntensityProperty.KeyFrames or {}) do
-                        for _, frame in pairs(keyFrame.Frames or {}) do
-                            frame.A = value[1]
-                            frame.B = value[2]
-                            frame.C = value[3]
-                            frame.D = value[4]
-                        end
-                    end
-                end
-                prop.Getter = function()
-                    local comp = VisualHelpers.GetEffectComponent(self.guid, compIndex) --[[@as AspkLightComponent]]
-                    if not comp then return nil end
-
-                    local property = comp.IntensityProperty
-                    if not property or not property.KeyFrames then return nil end
-
-                    local frame = property.KeyFrames[1] and property.KeyFrames[1].Frames[1]
-                    if not frame then return nil end
-
-                    return { frame.A, frame.B, frame.C, frame.D }
-                end
-                prop.PreferSliders = true
-                goto continue
-            end
-        end
-
-        prop.Setter = function(value)
-            applyToFrames(value, propName, "KeyFrames")
-        end
-        prop.Getter = function()
-            local comp = VisualHelpers.GetEffectComponent(self.guid, compIndex) --[[@as AspkLightComponent]]
-            if not comp then return nil end
-
-            local property = comp[propName]
-            if not property or not property.KeyFrames then return nil end
-
-            return property.KeyFrames[1] and property.KeyFrames[1].Frames[1].Value or nil
-        end
-        ::continue::
-    end
-
-    local vec4NameMap = {
-        ["ColorProperty"] = {
-            Range = { Min = -1, Max = 1, Step = 0.01 },
-            DisplayName = "Color",
-            Group = "Appearance",
-            IsColor = true,
-        },
-    }
-
-    for propName, prop in pairs(vec4NameMap) do
-        prop.Setter = function(value)
-            applyToFrames(value, propName, "Frames")
-        end
-        prop.Getter = function()
-            local comp = VisualHelpers.GetEffectComponent(self.guid, compIndex) --[[@as AspkLightComponent]]
-            if not comp then return nil end
-
-            local property = comp[propName]
-            if not property or not property.Frames then return nil end
-
-            local lc = property.Frames[1] and property.Frames[1].Color or {}
-            return RBUtils.LightCToArray(lc)
-        end
-    end
-
-    local boolNameMap = {
-        ["ModulateLightTemplateRadius"] = {
-            DisplayName = "Modulate Light Template Radius",
-            Group = "Override Flags",
-        },
-        ["OverrideLightTemplateFlickerSpeed"] = {
-            DisplayName = "Override Light Template Flicker Speed",
-            Group = "Override Flags",
-        },
-        ["OverrideLightTemplateColor"] = {
-            DisplayName = "Override Light Template Color",
-            Group = "Override Flags",
-        },
-    }
-
-
-    local key = "Light::" .. compIndex
-    self:RenderEffectComponentEditor(compNode, key, function()
-        return VisualHelpers.GetEffectComponent(self.guid, compIndex) --[[@as AspkLightComponent]]
-    end, {
-        PropertyMap = {
-            Scalar = scalarNameMap,
-            Vector4 = vec4NameMap,
-            Boolean = boolNameMap,
-        },
-        RenderOrder = {
-            "IntensityProperty",
-            "RadiusProperty",
-            "ColorProperty",
-            "FlickerSpeedProperty",
-            "FlickerAmountProperty",
-            "ModulateLightTemplateRadius",
-            "OverrideLightTemplateFlickerSpeed",
-            "OverrideLightTemplateColor",
-        }
-    })
-end
-
----@param node any
----@param component AspkComponent
----@param compIndex integer
-function VisualTab:RenderParticleSystemComponent(node, component, compIndex)
-    local compNode = node
-
-    local psComp = component --[[@as AspkParticleSystemComponent]]
-    local scalarParamMap = {
-        Brightness_ = {
-            Range = { Min = 0, Max = 10, Step = 0.1 },
-            DisplayName = "Brightness",
-        },
-        UniformScale = {
-            Range = { Min = 0, Max = 10, Step = 0.1 },
-            DisplayName = "Uniform Scale",
-        },
-    }
-    local vec4PropNameMap = {
-        Color = {
-            Range = { Min = -1, Max = 1, Step = 0.01 },
-            DisplayName = "Color",
-            IsColor = true,
-        }
-    }
-
-    local key = "ParticleSystem::" .. compIndex
-
-    local function GetLiveParticleSystem()
-        local entity = self:GetEntity(self.guid)
-        if not entity or not entity.Effect or not entity.Effect.Timeline or not entity.Effect.Timeline.Components[compIndex] then
-            return nil
-        end
-        return entity.Effect.Timeline.Components[compIndex]
-    end
-
-    self:RenderEffectComponentEditor(compNode, key, GetLiveParticleSystem, {
-        PropertyMap = {
-            Scalar = scalarParamMap,
-            Vector4 = vec4PropNameMap,
-        },
-        RenderOrder = {
-            "Color",
-            "Brightness_",
-            "UniformScale",
-        }
-    })
-end
-
---#endregion effects
-
 function VisualTab:Add(guid, displayName, parent, templateName)
     if not EntityHelpers.EntityExists(guid) then
         Error("VisualTab:Add - Entity with GUID " .. guid .. " does not exist.")
@@ -1817,17 +938,18 @@ end
 --- @class RB_VisualPreset
 --- @field Name string
 --- @field TemplateName string
---- @field Effects table<string, table<string, any>> -- key <componentType :: componentIndex> -> propertyName -> value
+--- @field Effects RB_EffectsTable
 --- @field Materials table<string, RB_ParameterSet> -- key <name :: attachIndex(if any) :: descIndex> -> RB_ParameterSet
 --- @field Transforms table<string, Transform> -- key <name :: attachIndex(if any) :: descIndex> -> Transform
 
 --- @return RB_VisualPreset
 function VisualTab:SaveCurrentState()
+    local effects = self.EntityEffectTab.Effects
     local presetData = {
         Materials = {},
-        Effects = RBUtils.DeepCopy(self.Effects),
+        Effects = RBUtils.DeepCopy(effects),
     }
-    
+
     local localTransforms = {}
     local Mats = {}
     for key, mat in pairs(self.Materials) do
@@ -1867,7 +989,6 @@ function VisualTab:SaveCurrentState()
     return presetData
 end
 
-
 function VisualTab:Save(name, overwrite)
     local templateName = self.templateName or RBGetTemplateNameForGuid(self.guid)
 
@@ -1894,7 +1015,7 @@ function VisualTab:Save(name, overwrite)
     local oriFile = Ext.Json.Parse(Ext.IO.LoadFile(filePath) or "{}")
 
     local currentPresetData = self:SaveCurrentState()
-    
+
     oriFile[saveName] = {
         Name = saveName,
         TemplateName = templateName,
@@ -1934,9 +1055,10 @@ function VisualTab:Save(name, overwrite)
 end
 
 function VisualTab:ExportPreset()
+    local effects = self.EntityEffectTab.Effects
     local presetData = {
         Materials = {},
-        Effects = RBUtils.DeepCopy(self.Effects),
+        Effects = RBUtils.DeepCopy(effects),
         Transforms = {},
     }
 
@@ -2078,17 +1200,12 @@ function VisualTab:LoadPreset(name)
         return false
     end
 
-    for _, resetFunc in pairs(self.resetFuncs) do
-        for _, func in pairs(resetFunc) do
-            if func then
-                func()
-            end
-        end
-    end
+    self.EntityEffectTab:ResetAllEffects()
 
     VisualHelpers.ApplyVisualParams(self.guid, preset)
     self.currentPreset = name
     self.Effects = RBUtils.DeepCopy(preset.Effects) or {}
+    self.EntityEffectTab:UpdateEffectsTableReference(self.Effects)
     self.LocalTransforms = RBUtils.DeepCopy(preset.Transforms) or {}
 
     for key, matParams in pairs(preset.Materials or {}) do
@@ -2108,17 +1225,7 @@ function VisualTab:LoadPreset(name)
         EntityStore[self.guid].VisualPreset = name
     end
 
-    self:UpdateAll()
-end
-
-function VisualTab:UpdateAll()
-    for _, compType in pairs(self.updateFuncs) do
-        for _, updateFunc in pairs(compType) do
-            if updateFunc then
-                updateFunc()
-            end
-        end
-    end
+    self.EntityEffectTab:UpdateAllEffects()
 end
 
 function VisualTab:_getAllPresetNames()
@@ -2140,8 +1247,7 @@ function VisualTab:Collapsed()
         return
     end
 
-    self.resetFuncs = {}
-    self.updateFuncs = {}
+    self.EntityEffectTab:Collapsed()
 
     for key, matTab in pairs(self.Materials) do
         matTab:ClearRefs()
