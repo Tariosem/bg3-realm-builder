@@ -18,34 +18,40 @@ local function safeResume()
         return
     end
 
-    if spawnCoroutine and coroutine.status(spawnCoroutine) ~= "dead" then
-        local ok, err = coroutine.resume(spawnCoroutine)
-        if not ok then
-            Error("Error in spawn coroutine: " .. tostring(err))
-        else
-            return
-        end
+    if not spawnCoroutine then
+        RBPrintBlue("[SpawnCoroutine] No spawn coroutine to resume.")
+        return
     end
 
-    spawnCoroutine = nil
-    createCoroutine()
+    local isRunning = coroutine.status(spawnCoroutine) == "running"
+
+    if isRunning then
+        RBPrintBlue("[SpawnCoroutine] Spawn coroutine is already running, not resuming.")
+        return
+    end
+
+    local ok, err = coroutine.resume(spawnCoroutine)
+    if not ok then
+        Error("Error when resuming spawn coroutine: " .. tostring(err))
+    end
 end
 
 local function waitForTicks(cnt, user)
     cnt = cnt or 30
     isWaitingForResume = true
-    local callbacked = false
+    local antiSpammer = nil
     Timer:ClientOnTicks(cnt, function(timerID)
-        callbacked = true
+        if antiSpammer then
+            Timer:Cancel(antiSpammer)
+            antiSpammer = nil
+        end
         isWaitingForResume = false
         safeResume()
     end, user)
 
-    Timer:Ticks(600, function (timerID)
-        if not callbacked then
-            isWaitingForResume = false
-            safeResume()
-        end
+    antiSpammer = Timer:Ticks(600, function (timerID)
+        isWaitingForResume = false
+        safeResume()
     end)
 end
 
@@ -113,11 +119,21 @@ function createCoroutine()
     spawnCoroutine = coroutine.create(function()
         while true do
             if #queuedSpawnData == 0 then
-                Debug("[SpawnCoroutine] Spawn queue empty, going idle.")
-                
-                NetChannel.Spawn:Broadcast({ Idle = true })
-                spawnBroadcastDirty = true
+                --- wait for some time before checking the queue again
+                --- so we don't spam the network with idle messages
+                local antiSpammer = Timer:Ticks(30, function (timerID)
+                    safeResume()
+                end)
                 coroutine.yield()
+                Timer:Cancel(antiSpammer)
+
+                if #queuedSpawnData == 0 then
+                    RBPrintBlue("[SpawnCoroutine] Spawn queue is empty, broadcasting idle.")
+                
+                    NetChannel.Spawn:Broadcast({ Idle = true })
+                    spawnBroadcastDirty = true
+                    coroutine.yield()
+                end
             end
 
             if spawnBroadcastDirty then
@@ -125,7 +141,7 @@ function createCoroutine()
                 spawnBroadcastDirty = false
             end
 
-            Debug("[SpawnCoroutine] Processing spawn queue. Queue length: " .. tostring(#queuedSpawnData))
+            RBPrintBlue("[SpawnCoroutine] Processing spawn queue. Queue length: " .. tostring(#queuedSpawnData))
             --- @type {Data:SpawnData, RequestId:integer, UserId:integer}?
             local data = table.remove(queuedSpawnData, 1)
             if data then

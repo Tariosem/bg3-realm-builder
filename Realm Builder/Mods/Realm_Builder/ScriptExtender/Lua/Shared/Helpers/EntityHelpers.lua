@@ -112,7 +112,7 @@ function EntityHelpers.EntityExists(guid)
         return true
     end
 
-    local entity = UuidToHandle(guid)
+    local entity = Ext.Entity.Get(guid)
     if not entity then
         return false
     end
@@ -382,6 +382,7 @@ function RBGetScale(guid)
     return scale[1], scale[2], scale[3]
 end
 
+--- @return number|nil, number|nil, number|nil
 function GetHostPosition()
     return RBGetPosition(RBGetHostCharacter())
 end

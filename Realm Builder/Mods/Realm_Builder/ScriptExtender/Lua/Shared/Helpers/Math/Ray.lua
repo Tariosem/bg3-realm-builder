@@ -370,6 +370,24 @@ function Ray:IntersectAll(dis)
     return simp
 end
 
+--- @param dis number?
+--- @return Hit|nil
+function Ray:IntersectCloseat(dis)
+    dis = dis or 1000.0
+    local simp = nil --simplified hit
+    --- @diagnostic disable-next-line
+    local hit = Ext.Level.RaycastClosest(self.Origin, self:At(dis), allPhyType, allInclude, 0, 1) 
+    if hit and hit.Distance >= 0 then
+        simp = Hit.new(
+            Vec3.new(hit.Position),
+            Vec3.new(hit.Normal),
+            hit.Distance,
+            hit.Shape.PhysicsObject.Entity
+        )
+    end
+    return simp
+end
+
 function Ray:Debug()
     NetChannel.Visualize:RequestToServer({
         Type = "Line",

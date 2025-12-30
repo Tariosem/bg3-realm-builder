@@ -3,6 +3,12 @@ local nearByEntries = {
 
 NearbyMap = NearbyMap or {}
 
+local function safeGetSceneryName(entity)
+    local vres = entity.Visual and entity.Visual.Visual and entity.Visual.Visual.VisualResource
+    local displayName = vres and RBStringUtils.GetLastPath(vres.SourceFile) or "Unknown_Scenery"
+    return displayName
+end
+
 --- @type table<string,EntityHandle>
 local SceneryRegistry = {}
 
@@ -19,8 +25,7 @@ local function ClearNearbyMap(pos, radius)
         else
             local newEntry = {
                 Guid = guid,
-                DisplayName = ent.Visual and ent.Visual.Visual and
-                RBStringUtils.GetLastPath(ent.Visual.Visual.VisualResource.SourceFile),
+                DisplayName = safeGetSceneryName(ent),
                 Entity = ent,
                 Distance = newDis,
                 IsScenery = true,
@@ -61,6 +66,7 @@ function NearbyMap.PopulateSceneryNearby(pos, radius, onComplete)
     radius = radius or 18
     local thread
     local lastYieldTime = Ext.Timer.MicrosecTime()
+    local yieldThreshold = 100 -- microseconds
     thread = coroutine.create(function()
         local entities = Ext.Entity.GetAllEntitiesWithComponent("Scenery")
         for _, entity in pairs(entities) do
@@ -76,18 +82,16 @@ function NearbyMap.PopulateSceneryNearby(pos, radius, onComplete)
             if SceneryRegistry[guid] then
                 goto continue
             end
-            local displayName = entity.Visual and entity.Visual.Visual and
-            RBStringUtils.GetLastPath(entity.Visual.Visual.VisualResource.SourceFile)
             local entry = {
                 Guid = guid,
-                DisplayName = displayName,
+                DisplayName = safeGetSceneryName(entity),
                 Entity = entity,
                 Distance = dis,
                 IsScenery = true,
             }
             table.insert(nearByEntries, entry)
             SceneryRegistry[guid] = entity
-            if Ext.Timer.MicrosecTime() - lastYieldTime > 1 then
+            if Ext.Timer.MicrosecTime() - lastYieldTime > yieldThreshold then
                 lastYieldTime = Ext.Timer.MicrosecTime()
                 Ext.OnNextTick(function()
                     local ok, err = coroutine.resume(thread)

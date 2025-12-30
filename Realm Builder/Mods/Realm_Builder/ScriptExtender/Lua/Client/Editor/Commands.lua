@@ -245,8 +245,6 @@ function Commands.AddMarker(target, markerType)
     NetChannel.Spawn:RequestToServer(spwanPost, function(response)
         local newGuid = response.Guid
         if newGuid then
-            PickingUtils:RegisterGuidRedirect(newGuid, target)
-
             Commands.Bind(newGuid, target)
         end
     end)

@@ -72,7 +72,19 @@ function Timer:EveryFrame(callback)
     local id
     id = Ext.Events.Tick:Subscribe(function()
         if Timer._active[id] then
+            --local startTime = Ext.Timer.MicrosecTime()
             local result = callback(id)
+            --local endTime = Ext.Timer.MicrosecTime()
+            --local elapsed = endTime - startTime
+            
+            --[[
+            if elapsed > 1000 then
+                local callbackInfo = debug.getinfo(callback)
+                startTime = math.floor(startTime)
+                endTime = math.floor(endTime)
+                _P(string.format("Timer:EveryFrame callback took %d microseconds! Function: %s:%d", elapsed, callbackInfo.short_src, callbackInfo.linedefined))
+            end
+            ]]
 
             if result == UNSUBSCRIBE_SYMBOL then
                 Timer:Cancel(id)
@@ -153,6 +165,13 @@ function Timer:Every(ms, callback)
         Timer:Cancel(id)
     end
     return id, cancelFunction
+end
+
+---@param callback fun(timerID:integer)
+---@return TimerID integer
+---@return function cancelFunction
+function Timer:Second(callback)
+    return self:After(1000, callback)
 end
 
 ---@param id integer?

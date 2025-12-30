@@ -128,8 +128,22 @@ function TransformToolbar:RegisterKeyInputEvents()
         local targets = RB_GLOBALS.TransformEditor.Target or {}
         if #targets == 0 then return end
 
-        local pos, rot = PickingUtils.GetPickingHitPosAndRot()
-        if not pos or not rot then return end
+        local ray = ScreenToWorldRay()
+        if not ray then
+            Debug("Can't get picking ray")
+            return
+        end
+        local hit = ray:IntersectCloseat()
+        if not hit then
+            Debug("No valid position to move to")
+            return
+        end
+        local pos, normal = hit.Position, hit.Normal
+        if not pos or not normal then
+            Debug("No valid position to move to")
+            return
+        end
+        local rot = MathUtils.DirectionToQuat(normal, nil, "Y")
         local minY = math.huge
         local centerXZ = Vec3.new(0, 0, 0)
 
@@ -277,6 +291,54 @@ function TransformToolbar:RegisterKeyInputEvents()
         Commands.SnapToTarget(targets, targetTransform)
     end, GetLoca("Snap selected entities to hovered entity"))
 
+    ttMod:RegisterEvent("LookAt3DCursor", function(e)
+        if e.Event ~= "KeyDown" then return end
+        if not RB_GLOBALS.TransformEditor.Target or #RB_GLOBALS.TransformEditor.Target == 0 then return end
+
+        local focusPoint = nil
+        if not self.Cursor then
+            local mouseRay = ScreenToWorldRay()
+            if not mouseRay then return end
+
+            local hit = mouseRay:IntersectCloseat()
+            if not hit then
+                Debug("No valid target to look at")
+                return
+            end
+            focusPoint = hit.Position
+        else
+            local cursorProxy = MovableProxy.CreateByGuid(self.Cursor)
+            if not cursorProxy then
+                Debug("No valid target to look at")
+                return
+            end
+            focusPoint = cursorProxy:GetWorldTranslate()
+        end
+        
+        if not focusPoint then
+            Debug("No valid target to look at")
+            return
+        end
+        local targets = {} --[[@type RB_MovableProxy[] ]]
+
+        for _, proxy in pairs(RB_GLOBALS.TransformEditor.Target or {}) do
+            table.insert(targets, proxy)
+        end
+
+        local transforms = {}
+        for _, proxy in pairs(targets) do
+            local startPos = proxy:GetWorldTranslate()
+            local dir = (focusPoint - startPos):Normalize()
+            local rot = MathUtils.DirectionToQuat(dir, nil, "Z")
+
+            transforms[proxy] = {
+                RotationQuat = rot,
+            }
+        end
+
+        Commands.SetTransformSeparate(targets, transforms)
+    end, GetLoca("Rotate selected entities to look at the 3D cursor."))
+
     ttMod:RegisterEvent("SnapToGround", function (e)
         if e.Event ~= "KeyDown" then return end
         if not RB_GLOBALS.TransformEditor.Target or #RB_GLOBALS.TransformEditor.Target == 0 then return end
@@ -377,6 +439,7 @@ function TransformToolbar:RegisterKeyInputEvents()
             })
         end)
     end
+
     --registerToggleEvent("LookAt", "SetType", "KeepLookingAt", true, false, buMod)
     --registerToggleEvent("StopLookAt", "SetType", "KeepLookingAt", false, true, buMod)
     --registerToggleEvent("Follow", "SetType", "FollowParent", true, false, buMod)
@@ -1124,6 +1187,23 @@ function TransformToolbar:CreateNearbyPopup()
     end
 end
 
+local function getCursorTransform()
+    local mouseRay = ScreenToWorldRay()
+    if not mouseRay then return end
+
+    local dis = 30
+    local hit = mouseRay:IntersectCloseat(dis)
+    local pos, rot = nil, nil
+    if hit then
+        pos = hit.Position
+        rot = MathUtils.DirectionToQuat(hit.Normal)
+    else
+        pos = mouseRay:At(dis)
+        rot = Quat.new(CameraHelpers.GetCameraRotation())
+    end
+    return pos, rot
+end
+
 function TransformToolbar:CreateCursor(pos, onCreated)
     if self.Cursor and EntityHelpers.EntityExists(self.Cursor) or (self.creatingCursor) then
         return
@@ -1131,14 +1211,21 @@ function TransformToolbar:CreateCursor(pos, onCreated)
 
     self.creatingCursor = true
 
-    pos = pos or ScreenToWorldRay():At(10)
-    local hostPosition = Vec3.new(pos)
-    local hostRotation = Quat.new(CameraHelpers.GetCameraRotation())
+    local rot = nil
+    if not pos or not rot then
+        pos, rot = getCursorTransform()
+    end
+    rot = rot or Quat.Identity()
+
+    if not pos or not rot then
+        self.creatingCursor = false
+        return
+    end
 
     NetChannel.Visualize:RequestToServer({
         Type = "Cursor",
-        Position = hostPosition,
-        Rotation = hostRotation,
+        Position = pos,
+        Rotation = rot,
         Duration = -1,
     }, function(response)
         for _, viz in pairs(response or {}) do
@@ -1161,8 +1248,8 @@ function TransformToolbar:MoveCursor()
         return
     end
 
-    local pos = ScreenToWorldRay():At(10)
-    local rot = Quat.new(CameraHelpers.GetCameraRotation())
+    local pos, rot = getCursorTransform()
+    if not pos or not rot then return end
 
     NetChannel.SetTransform:RequestToServer({
         Guid = self.Cursor,

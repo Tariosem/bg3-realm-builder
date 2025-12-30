@@ -2,6 +2,12 @@ MATERIALPRESET_DRAGDROP_TYPE = "MaterialPreset"
 
 --- @alias MaterialPresetExportType "CharacterCreationEyeColors"|"CharacterCreationHairColors"|"CharacterCreationSkinColors"
 
+local isExportType = {
+    CharacterCreationEyeColors = true,
+    CharacterCreationHairColors = true,
+    CharacterCreationSkinColors = true,
+}
+
 --- @class MaterialPresetData
 --- @field DisplayName string
 --- @field UIColor vec4
@@ -536,7 +542,6 @@ function MaterialPresetsMenu:RenderImportSection(parent, exportSettings, onImpor
             self:SaveModCacheRef()
 
             refreshCached()
-            Warning("Failed to import CC mod pack for mod " .. modName .. " version " .. version)
             return
         end
 
@@ -633,7 +638,6 @@ function MaterialPresetsMenu:RenderImportSection(parent, exportSettings, onImpor
                     self.cachedMods[modName].Cache[version] = nil
                     self:SaveModCacheRef()
                     refreshCached()
-                    Warning("Failed to import CC mod pack for mod " .. modName .. " version " .. version)
                     return
                 end
                 ccaModPack = RBUtils.DeepCopy(ccaModPack)
@@ -1029,6 +1033,65 @@ function MaterialPresetsMenu:RenderExportPresetRow(parentTab, obj, uuid, onDelet
     return row
 end
 
+--- @param modPack CCMod_Pack
+--- @return boolean, string? -- valid, errorMessage
+local function validateImportModPack(modPack)
+    if not modPack.MaterialPresets or type(modPack.MaterialPresets) ~= "table" then
+        return false, "Mod pack does not contain valid MaterialPresets data."
+    end
+
+    for guid, preset in pairs(modPack.MaterialPresets) do
+        if type(preset.DisplayName) ~= "string" or type(preset.UIColor) ~= "table" or
+            type(preset.Parameters) ~= "table" or not MaterialParamUtils.IsValidParamSet(preset.Parameters) then
+            return false, "MaterialPreset with GUID " .. tostring(guid) .. " is invalid."
+        end
+    end
+
+    for folderName, folderObj in pairs(modPack.Folders or {}) do
+        if type(folderName) ~= "string" or type(folderObj) ~= "table" then
+            return false, "Folder with name " .. tostring(folderName) .. " is invalid."
+        end
+        for guid, _ in pairs(folderObj) do
+            if not modPack.MaterialPresets[guid] then
+                return false, "Folder " .. tostring(folderName) .. " contains invalid MaterialPreset GUID " ..
+                    tostring(guid) .. "."
+            end
+        end
+    end
+
+    for folderName, folderDef in pairs(modPack.FolderDefinitions or {}) do
+        if type(folderName) ~= "string" or type(folderDef) ~= "table" then
+            return false, "FolderDefinition with name " .. tostring(folderName) .. " is invalid."
+        end
+        if folderDef.ExportType and not isExportType[folderDef.ExportType] then
+            return false, "FolderDefinition " .. tostring(folderName) .. " has invalid ExportType " ..
+                tostring(folderDef.ExportType) .. "."
+        end
+    end
+
+    if not RBUtils.IsUuidShape(modPack.ModuleUUID) then
+        return false, "Mod pack has invalid ModuleUUID."
+    end
+
+    local toleranceText = ""
+    if not modPack.ModName or type(modPack.ModName) ~= "string" then
+        modPack.ModName = "Unnamed Mod"
+        toleranceText = toleranceText .. "\n Mod pack has invalid ModName."
+    end
+
+    if not modPack.Author or type(modPack.Author) ~= "string" then
+        modPack.Author = ""
+        toleranceText = toleranceText .. "\n Mod pack has invalid Author."
+    end
+
+    if modPack.Description and type(modPack.Description) ~= "string" then
+        modPack.Description = ""
+        toleranceText = toleranceText .. "\n Mod pack has invalid Description."
+    end
+
+    return true, toleranceText ~= "" and toleranceText or nil
+end
+
 --- simply load from CC_Cache folder
 ---@param modName string
 ---@param version vec4|string
@@ -1061,6 +1124,16 @@ function MaterialPresetsMenu:ImportFromFile(modName, version)
     if not cacheFile or not cacheFile.MaterialPresets then
         Warning("ImportFromFile: Invalid CC mod cache file at " .. filePath)
         return nil
+    end
+
+    local valid, errMsg = validateImportModPack(cacheFile)
+    if not valid then
+        Warning("ImportFromFile: CC mod cache file validation failed at " .. filePath .. ".\n Error: " .. tostring(errMsg))
+        return nil
+    end
+
+    if errMsg then
+        Warning("ImportFromFile: CC mod cache file at " .. filePath .. " has some issues:\n" .. errMsg)
     end
 
     self.cachedMods[modName].Cache[versionStr] = cacheFile

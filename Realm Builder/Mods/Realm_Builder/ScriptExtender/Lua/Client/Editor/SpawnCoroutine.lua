@@ -58,11 +58,11 @@ local function spawnPrefab(prefabObj, entInfo)
     local childrenCnt = #prefabObj.Children
     setSpawnIdCallback(reqId, function(data)
         table.insert(spawned, data.Guid)
-        _P("Spawned: " .. #spawned .. " / " .. childrenCnt)
+        --_P("Spawned: " .. #spawned .. " / " .. childrenCnt)
         if #spawned == childrenCnt then
             pushCommand()
             setSpawnIdCallback(reqId, nil)
-            _P("Prefab spawn complete.")
+            --_P("Prefab spawn complete.")
         end
     end)
 
@@ -226,11 +226,11 @@ function Commands.DuplicateCommand(targets, path)
     local reqId = getSpawnId()
     setSpawnIdCallback(reqId, function(data)
         table.insert(spawnedDuplications, data.Guid)
-        _P("Duplicated: " .. #spawnedDuplications .. " / " .. duplicateCnt)
+        --_P("Duplicated: " .. #spawnedDuplications .. " / " .. duplicateCnt)
         if #spawnedDuplications == duplicateCnt then
             selectAndPushCommand()
             setSpawnIdCallback(reqId, nil)
-            _P("Duplication complete.")
+            --_P("Duplication complete.")
         end
     end)
 
@@ -276,11 +276,11 @@ function Commands.SpawnPreset(data)
     local reqId = getSpawnId()
     setSpawnIdCallback(reqId, function(data)
         table.insert(spawnedGuids, data.Guid)
-        _P("Spawned: " .. #spawnedGuids .. " / " .. toSpawnCnt)
+        --_P("Spawned: " .. #spawnedGuids .. " / " .. toSpawnCnt)
         if #spawnedGuids == toSpawnCnt then
             pushCommand()
             setSpawnIdCallback(reqId, nil)
-            _P("Preset spawn complete.")
+            --_P("Preset spawn complete.")
         end
     end)
 

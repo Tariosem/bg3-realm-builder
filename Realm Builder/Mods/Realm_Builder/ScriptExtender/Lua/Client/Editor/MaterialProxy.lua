@@ -135,6 +135,54 @@ function MaterialParamUtils.SameParamSet(paramSetA, paramSetB)
     return true
 end
 
+function MaterialParamUtils.IsValidParamSet(paramSet)
+    if type(paramSet) ~= "table" then
+        return false
+    end
+
+    for typeRef, params in pairs(paramSet) do
+        if not MaterialEnums.MaterialParamType[typeRef] then
+            return false
+        end
+
+        for paramName, value in pairs(params) do
+            if type(paramName) ~= "string" then
+                return false
+            end
+
+            if typeRef == 1 then
+                if type(value) ~= "number" then
+                    return false
+                end
+            elseif typeRef > 1 and typeRef <= 4 then
+                if type(value) ~= "table" then
+                    return false
+                end
+
+                if #value ~= typeRef then
+                    return false
+                end
+
+                for i = 1, #value do
+                    if typeRef <= 4 and type(value[i]) ~= "number" then
+                        return false
+                    elseif typeRef > 4 and type(value[i]) ~= "string" then
+                        return false
+                    end
+                end
+            elseif typeRef > 4 then
+                if type(value) ~= "string" then
+                    return false
+                end
+            else
+                return false
+            end
+        end
+    end
+
+    return true
+end
+
 ---@param materialName string
 ---@return MaterialProxy? mp
 function MaterialProxy.new(materialName)

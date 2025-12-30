@@ -1,11 +1,5 @@
 PickingUtils = {
-    GuidRedirects = {},
 }
-
---- for markers
-function PickingUtils:RegisterGuidRedirect(fromGuid, toGuid)
-    self.GuidRedirects[fromGuid] = toGuid
-end
 
 --- @param ray Ray?
 --- @return GUIDSTRING|nil
@@ -27,9 +21,6 @@ function PickingUtils.GetPickingGuid(ray)
             return uuid
         end
         if uuid then
-            if PickingUtils.GuidRedirects[uuid] then
-                uuid = PickingUtils.GuidRedirects[uuid]
-            end
             return uuid
         end
         ::continue::
