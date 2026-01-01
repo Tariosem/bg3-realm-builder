@@ -122,71 +122,6 @@ function TransformToolbar:RegisterKeyInputEvents()
         self.Selecting = {}
     end)
 
-    ttMod:RegisterEvent("MoveToCursor", function(e)
-        if e.Event ~= "KeyDown" then return end
-
-        local targets = RB_GLOBALS.TransformEditor.Target or {}
-        if #targets == 0 then return end
-
-        local ray = ScreenToWorldRay()
-        if not ray then
-            Debug("Can't get picking ray")
-            return
-        end
-        local hit = ray:IntersectCloseat()
-        if not hit then
-            Debug("No valid position to move to")
-            return
-        end
-        local pos, normal = hit.Position, hit.Normal
-        if not pos or not normal then
-            Debug("No valid position to move to")
-            return
-        end
-        local rot = MathUtils.DirectionToQuat(normal, nil, "Y")
-        local minY = math.huge
-        local centerXZ = Vec3.new(0, 0, 0)
-
-        for _, proxy in ipairs(targets) do
-            local p = proxy:GetWorldTranslate()
-            centerXZ[1] = centerXZ[1] + p[1]
-            centerXZ[3] = centerXZ[3] + p[3]
-            if p[2] < minY then minY = p[2] end
-        end
-
-        centerXZ[1] = centerXZ[1] / #targets
-        centerXZ[3] = centerXZ[3] / #targets
-
-
-        local center = Vec3.new(centerXZ[1], minY, centerXZ[3])
-        local locals = {}
-
-        for _, proxy in ipairs(targets) do
-            local p = proxy:GetWorldTranslate()
-            locals[proxy] = {
-                localPos = p - center,
-            }
-        end
-
-        --- @type table<RB_MovableProxy, Transform>
-        local transforms = {}
-
-        for proxy, data in pairs(locals) do
-            local newPos = pos + data.localPos
-
-            transforms[proxy] = {
-                Translate = newPos,
-            }
-        end
-
-        -- if only one target, also apply rotation
-        if #targets == 1 then
-            transforms[targets[1]].RotationQuat = rot
-        end
-
-        Commands.SetTransformSeparate(targets, transforms)
-    end, GetLoca("Move selected objects to the picking position."))
-
     ttMod:RegisterEvent("Duplicate", function(e)
         if e.Event ~= "KeyDown" then return end
         if not RB_GLOBALS.TransformEditor.Target or #RB_GLOBALS.TransformEditor.Target == 0 then return end
@@ -291,7 +226,7 @@ function TransformToolbar:RegisterKeyInputEvents()
         Commands.SnapToTarget(targets, targetTransform)
     end, GetLoca("Snap selected entities to hovered entity"))
 
-    ttMod:RegisterEvent("LookAt3DCursor", function(e)
+    ttMod:RegisterEvent("LookAtCursor", function(e)
         if e.Event ~= "KeyDown" then return end
         if not RB_GLOBALS.TransformEditor.Target or #RB_GLOBALS.TransformEditor.Target == 0 then return end
 
@@ -337,7 +272,84 @@ function TransformToolbar:RegisterKeyInputEvents()
         end
 
         Commands.SetTransformSeparate(targets, transforms)
-    end, GetLoca("Rotate selected entities to look at the 3D cursor."))
+    end, GetLoca("Rotate selected entities to look at the cursor."))
+
+    ttMod:RegisterEvent("MoveToCursor", function(e)
+        if e.Event ~= "KeyDown" then return end
+
+        local targets = RB_GLOBALS.TransformEditor.Target or {}
+        if #targets == 0 then return end
+
+        local pos, rot = nil, nil
+
+        if not self.Cursor or not EntityHelpers.EntityExists(self.Cursor) then
+            local ray = ScreenToWorldRay()
+            if not ray then
+                Debug("Can't get picking ray")
+                return
+            end
+            local hit = ray:IntersectCloseat()
+            if not hit then
+                Debug("No valid position to move to")
+                return
+            end
+            pos = hit.Position
+            local normal = hit.Normal
+            if not pos or not normal then
+                Debug("No valid position to move to")
+                return
+            end
+            rot = MathUtils.DirectionToQuat(normal, nil, "Y")
+        else
+            local cursorProxy = MovableProxy.CreateByGuid(self.Cursor)
+            if not cursorProxy then
+                Debug("3D Cursor movable not found")
+                return
+            end
+            pos = cursorProxy:GetWorldTranslate()
+            rot = cursorProxy:GetWorldRotationQuat()
+        end
+        local minY = math.huge
+        local centerXZ = Vec3.new(0, 0, 0)
+
+        for _, proxy in ipairs(targets) do
+            local p = proxy:GetWorldTranslate()
+            centerXZ[1] = centerXZ[1] + p[1]
+            centerXZ[3] = centerXZ[3] + p[3]
+            if p[2] < minY then minY = p[2] end
+        end
+
+        centerXZ[1] = centerXZ[1] / #targets
+        centerXZ[3] = centerXZ[3] / #targets
+
+        local center = Vec3.new(centerXZ[1], minY, centerXZ[3])
+        local locals = {}
+
+        for _, proxy in ipairs(targets) do
+            local p = proxy:GetWorldTranslate()
+            locals[proxy] = {
+                localPos = p - center,
+            }
+        end
+
+        --- @type table<RB_MovableProxy, Transform>
+        local transforms = {}
+
+        for proxy, data in pairs(locals) do
+            local newPos = pos + data.localPos
+
+            transforms[proxy] = {
+                Translate = newPos,
+            }
+        end
+
+        -- if only one target, also apply rotation
+        if #targets == 1 then
+            transforms[targets[1]].RotationQuat = rot
+        end
+
+        Commands.SetTransformSeparate(targets, transforms)
+    end, GetLoca("Move selected objects to the cursor position."))
 
     ttMod:RegisterEvent("SnapToGround", function (e)
         if e.Event ~= "KeyDown" then return end
@@ -387,8 +399,6 @@ function TransformToolbar:RegisterKeyInputEvents()
         Commands.Unbind(targets)
     end)
 
-
-
     buMod:RegisterEvent("BindPopup", function(e)
         if e.Event ~= "KeyDown" then return end
         local targets = {}
@@ -412,7 +422,6 @@ function TransformToolbar:RegisterKeyInputEvents()
             self:CreateBindPopup(guid)
         end
     end)
-
 
     local function registerToggleEvent(eventName, netType, field, valueOn, valueOff, mod)
         local channel = netType == "SetAttributes" and NetChannel.SetAttributes or NetChannel.Bind
@@ -691,7 +700,7 @@ function TransformToolbar:RenderTopBar()
     local screenWidth, screenHeight = UIHelpers.GetScreenSize()
     local windowSize = { screenWidth * 0.6, 80 * SCALE_FACTOR }
     local windowPos = { screenWidth * 0.1, 0 }
-    local panel = WindowManager.RegisterWindow("generic", "Transform ToolBar", "ToolBar", self, windowPos, windowSize)
+    local panel = WindowManager.RegisterWindow("generic", "Transform ToolBar", windowPos, windowSize)
     self.TopToolBar = panel
 
     panel.OnClose = function()
@@ -810,7 +819,7 @@ function TransformToolbar:RenderTopBar()
 end
 
 function TransformToolbar:RenderConfigMenu()
-    local panel = WindowManager.RegisterWindow("generic", "Key Bind", "Menu", self, { 0, 0 }, { 0, 0 })
+    local panel = WindowManager.RegisterWindow("generic", "Key Bind", { 0, 0 }, { 0, 0 })
     self.KeybindConfigWindow = panel
 
     panel.Open = false
@@ -1187,11 +1196,12 @@ function TransformToolbar:CreateNearbyPopup()
     end
 end
 
+local cursorMaxDistance = 100
 local function getCursorTransform()
     local mouseRay = ScreenToWorldRay()
     if not mouseRay then return end
 
-    local dis = 30
+    local dis = cursorMaxDistance
     local hit = mouseRay:IntersectCloseat(dis)
     local pos, rot = nil, nil
     if hit then
@@ -1207,6 +1217,10 @@ end
 function TransformToolbar:CreateCursor(pos, onCreated)
     if self.Cursor and EntityHelpers.EntityExists(self.Cursor) or (self.creatingCursor) then
         return
+    end
+
+    if self.Cursor then
+        NetChannel.Delete:SendToServer({ Guid = self.Cursor })
     end
 
     self.creatingCursor = true

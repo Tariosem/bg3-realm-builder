@@ -1,6 +1,8 @@
 local EFFECTSMENU_WIDTH = 1000 * SCALE_FACTOR
 local EFFECTSMENU_HEIGHT = 1200 * SCALE_FACTOR
 
+--- @class EffectsMenu
+--- @field customEffects RB_CustomEffectData[]
 EffectsMenu = _Class("EffectsMenu")
 
 --- @class EffectsMenu
@@ -28,7 +30,7 @@ function EffectsMenu:Render()
         self.panel = self.parent:AddTabItem(GetLoca("Effects"))
         self.isWindow = false
     else
-        self.panel = WindowManager.RegisterWindow("generic", GetLoca("Effects"), "Effects Menu", self)
+        self.panel = WindowManager.RegisterWindow("generic", "Effects Menu")
         self.panel:SetSize({ EFFECTSMENU_WIDTH, EFFECTSMENU_HEIGHT })
         self.isWindow = true
     end
@@ -39,7 +41,7 @@ function EffectsMenu:Render()
 
     local loadOpe = function()
         self:Load()
-        self:RenderCustomEffects()
+        self:RenderCustomEffects(self.customEffectsChildWin)
     end
 
     local clearAllOpe = function()
@@ -128,268 +130,156 @@ function EffectsMenu:Render()
         end
     end
 
+    local childWin = self.panel:AddChildWindow("EffectsMenuPanelChildWindow")
+    self.customEffectsChildWin = childWin
 
-    local collapsingTable = ImguiElements.AddCollapsingTable(self.panel, nil, "Filters",
-        { CollapseDirection = "Right", HoverToExpand = false, Collapsed = true })
-    self.customEffectsCollapsingTable = collapsingTable
-    local customEffectsContainer = collapsingTable.MainArea
-    local optionsContainer = collapsingTable.SideBar
-
-
-    self.customEffectsCell = customEffectsContainer:AddChildWindow("CustomEffectsContainer")
-
-    self:RenderCustomEffects()
-
-
-    local searchCell = optionsContainer:AddChildWindow("SearchOptions")
-
-    searchCell:AddText("This part is not implemented yet").TextWrapPos = collapsingTable.SideBarWidth + 80
+    self:RenderCustomEffects(childWin)
 end
 
-function EffectsMenu:RenderCustomEffects()
-    if self.customEffectsWindow then
-        self.customEffectsWindow:Destroy()
-        self.customEffectsWindow = nil
-    end
+--- @param parent ExtuiTreeParent
+function EffectsMenu:RenderCustomEffects(parent)
+    if not parent then return end
+    ImguiHelpers.DestroyAllChildren(parent)
+    local customEffectsTable = parent:AddTable("CustomEffectsTable", self.customEffectsCols or 4)
+    local imageSize = IMAGESIZE.MEDIUM
 
-    if self.customEffectsConfigButton then
-        self.customEffectsConfigButton:Destroy()
-        self.customEffectsConfigButton = nil
-    end
+    local function renderPlusSquare() end
+    local customEffectsRow = customEffectsTable:AddRow()
+    local function refreshCustomEffects()
+        ImguiHelpers.DestroyAllChildren(customEffectsRow)
 
-    if self.customEffectsTitle then
-        self.customEffectsTitle:Destroy()
-        self.customEffectsTitle = nil
-    end
-
-    if self.customEffectsConfigPopup then
-        self.customEffectsConfigPopup:Destroy()
-        self.customEffectsConfigPopup = nil
-    end
-
-    self.customEffectsWindow = self.customEffectsCell:AddChildWindow("CustomEffects")
-
-    local customEffectsTable = self.customEffectsWindow:AddTable("CustomEffectsTable", self.customEffectsCols or 4)
-    local imageSize = self.customEffectsImageSize or (64 * SCALE_FACTOR)
-    local images = {}
-    local titleCell = self.customEffectsCollapsingTable.TitleCell
-    local configButton = titleCell:AddImageButton("ConfigButton", RB_ICONS.Gear, IMAGESIZE.SMALL)
-    configButton:SetColor("Button", { 0, 0, 0, 0 })
-    self.customEffectsConfigButton = configButton
-    local title = titleCell:AddSeparatorText("Custom Effects")
-    self.customEffectsTitle = title
-    title.SameLine = true
-    title:SetStyle("SeparatorTextAlign", 0.48)
-
-    local configPopup = titleCell:AddPopup("ConfigPopup")
-    self.customEffectsConfigPopup = configPopup
-
-    local function renderConfig()
-        local columnsSlider = ImguiHelpers.SafeAddSliderInt(configPopup, GetLoca("Columns"), self.customEffectsCols or 4, 1, 20)
-        columnsSlider.OnChange = function()
-            self.customEffectsCols = columnsSlider.Value[1]
-            customEffectsTable.Columns = self.customEffectsCols
+        local sortedUuid = {}
+        local sortCache = {}
+        for uuid, entry in pairs(self.customEffects) do
+            sortCache[uuid] = entry.DisplayName
+            table.insert(sortedUuid, uuid)
         end
+        table.sort(sortedUuid, function(a, b)
+            return sortCache[a] < sortCache[b]
+        end)
 
-        local imageSizeSlider = ImguiHelpers.SafeAddSliderInt(configPopup, GetLoca("Icon Size"),
-            self.customEffectsImageSize or (64 * SCALE_FACTOR), 16, 256)
-        imageSizeSlider.OnChange = function()
-            imageSize = imageSizeSlider.Value[1]
-            for _, img in pairs(images) do
-                img.Image.Size = { imageSize, imageSize }
-            end
-            self.customEffectsImageSize = imageSize
-        end
-    end
+        for _, uuid in ipairs(sortedUuid) do
+            local entry = self.customEffects[uuid]
+            if not entry then goto continue end
 
-    renderConfig()
+            local effectCell = customEffectsRow:AddCell()
+            local existingTab = self.customEffectsTabs[uuid]
 
-    configButton.OnClick = function()
-        configPopup:Open()
-    end
-
-    local customEffectsRow = customEffectsTable:AddRow("CustomEffectsRow")
-
-    local sortedNames = {}
-    for displayName, _ in pairs(self.customEffects) do
-        table.insert(sortedNames, displayName)
-    end
-    table.sort(sortedNames, function(a, b)
-        if self.nameAscend then
-            return a < b
-        else
-            return a > b
-        end
-    end)
-
-    for i, displayName in pairs(sortedNames) do
-        local customEffect = self.customEffects[displayName]
-        if not customEffect then goto continue end
-        local effectCell = customEffectsRow:AddCell()
-        local effectButton = effectCell:AddImageButton(customEffect.DisplayName, customEffect.Icon)
-        local effectNameText = effectCell:AddText(customEffect.DisplayName)
-        effectButton.Image.Size = { imageSize, imageSize }
-        table.insert(images, effectButton)
-        local effectButtonTooltipText = effectButton:Tooltip():AddText(customEffect.Description or
-        customEffect.DisplayName)
-        local tab = self.customEffectsTabs[displayName] or nil
-
-        local function effectButtonOnClick() end
-
-        local function effectTabOnChange()
-            --_P("[EffectsMenu] Tab for custom effect " .. customEffect.DisplayName .. " changed, updating button.")
-            if not tab or not tab.isExist then
-                --_P("[EffectsMenu] Tab for custom effect " .. customEffect.DisplayName .. " is invalid, removing button.")
-                self:ClearRef(displayName)
-                self.customEffects[displayName] = nil
-                self:RenderCustomEffects()
-                return
-            end
-            local newName = self:RegisterNewName(displayName, tab.displayName)
-            displayName = newName
-            tab.displayName = newName
-            effectButton:Destroy()
-            effectButton = effectCell:AddImageButton(tab.displayName, tab.icon, RBUtils.ToVec2(imageSize))
-            effectButton:Tooltip():AddText(tab.description or tab.displayName or "")
-            effectButton.OnClick = effectButtonOnClick
-            effectNameText:Destroy()
-            effectNameText = effectCell:AddText(tab.displayName)
-            self.customEffects[displayName].DisplayName = newName
-            self.customEffects[displayName].Icon = tab.icon
-            self.customEffects[displayName].Note = tab.Note
-            self.customEffects[displayName].Group = tab.Group
-            self.customEffects[displayName].Tags = tab.Tags
-            self.customEffects[displayName].Description = tab.description
-            if self.autoSave then
-                self:Save(displayName)
-            end
-        end
-
-        effectButtonOnClick = function()
-            if tab then
-                --_P("[EffectsMenu] Tab for custom effect " .. customEffect.DisplayName .. " already exists, selecting it.")
-                tab:Focus()
-            else
-                tab = CustomEffectTab:Add(displayName, self.panel, customEffect.DisplayName, self.customEffects,
-                    customEffect.StatsType)
-                if tab then
-                    self.customEffectsTabs[displayName] = tab
-                    tab.OnChange = effectTabOnChange
-                    tab:Focus()
-                else
-                    --Error("[EffectsMenu] Failed to create tab for custom effect " .. customEffect.DisplayName)
+            local function tabOnChange()
+                if self.autoSave then
+                    self:Save(uuid)
                 end
+                refreshCustomEffects()
             end
+
+            if existingTab then
+                existingTab.OnChange = tabOnChange
+            end
+
+            local effectButton = effectCell:AddImageButton("##CustomEffectButton_" .. entry.Uuid, entry.Icon, imageSize)
+            effectButton:Tooltip():AddText(entry.DisplayName or "Unknown Effect")
+
+            effectButton.OnClick = function()
+                local tab = existingTab
+                if tab then
+                    tab:Focus()
+                    return
+                end
+
+                if entry.StatsType == "SpellData" then
+                    --- @diagnostic disable-next-line
+                    tab = SpellTab:Add(entry)
+                elseif entry.StatsType == "StatusData" then
+                    --- @diagnostic disable-next-line
+                    tab = StatusTab:Add(entry)
+                else
+                    tab = CustomEffectTab:Add(entry)
+                end
+                tab.OnChange = tabOnChange
+                self.customEffectsTabs[uuid] = tab
+            end
+
+            ::continue::
         end
 
-        if tab then
-            tab.OnChange = effectTabOnChange
-            self.customEffectsTabs[displayName] = tab
-        else
-            --Error("[EffectsMenu] Failed to create tab for custom effect " .. customEffect.DisplayName)
-        end
-
-        effectButton.OnClick = effectButtonOnClick
-
-        ::continue::
+        renderPlusSquare()
     end
 
     --- Create
+    function renderPlusSquare()
+        local createEffectCell = customEffectsRow:AddCell()
+        local createEffectButton = createEffectCell:AddImageButton("##CreateCustomEffect", RB_ICONS.Plus_Square, imageSize)
 
-    local createEffectCell = customEffectsRow:AddCell()
+        createEffectButton.OnClick = function()
+            local createPopup = createEffectCell:AddPopup("createPopup")
+            local ctxMenu = ImguiElements.AddContextMenu(createPopup, "Create A Blank Effect")
+            ctxMenu:AddItem("New Effect", function()
+                local newName, entry = self:RegisterNewEntry(GetLoca("New Effect"))
+                local tab = CustomEffectTab:Add(entry)
+                self.customEffectsTabs[newName] = tab
+                refreshCustomEffects()
+            end)
 
-    local createEffectButton = createEffectCell:AddImageButton("CreateCustomEffect", RB_ICONS.Plus_Square)
-    table.insert(images, createEffectButton)
-    createEffectButton.Image.Size = { imageSize, imageSize }
-    createEffectButton:Tooltip():AddText(GetLoca("Create a new blank effect"))
+            ctxMenu:AddItem("New Spell", function()
+                local uuid, entry = self:RegisterNewEntry(GetLoca("New Spell"))
+                entry.Icon = "GenericIcon_Intent_Damage"
+                entry.StatsType = "SpellData"
 
-    local createPopup = createEffectCell:AddPopup("createPopup")
+                for effectType, _ in pairs(Enums.SpellEffectType) do
+                    entry.Effects[effectType] = {}
+                end
 
-    local spellButton = createPopup:AddSelectable(GetLoca("Spell"))
-    local statusButton = createPopup:AddSelectable(GetLoca("Status"))
-    local effectButton = createPopup:AddSelectable(GetLoca("Effects"))
-    spellButton:Tooltip():AddText("Targets")
-    statusButton:Tooltip():AddText("Plays in a loop")
-    effectButton:Tooltip():AddText("More customizable, but hidden on party members in photo mode")
+                --- @diagnostic disable-next-line
+                local tab = SpellTab:Add(entry)
+                self.customEffectsTabs[uuid] = tab
+                refreshCustomEffects()
+            end)
 
-    createEffectButton.OnClick = function()
-        createPopup:Open()
+            ctxMenu:AddItem("New Status", function()
+                local uuid, entry = self:RegisterNewEntry(GetLoca("New Status"))
+                entry.Icon = "PassiveFeature_CosmicOmen"
+                entry.StatsType = "StatusData"
+
+                for effectType, _ in pairs(Enums.StatusEffectType) do
+                    entry.Effects[effectType] = {}
+                end
+
+                --- @diagnostic disable-next-line
+                local tab = StatusTab:Add(entry)
+                self.customEffectsTabs[uuid] = tab
+                refreshCustomEffects()
+            end)
+
+            createEffectButton.OnClick = function ()
+                createPopup:Open()
+            end
+            createPopup:Open()
+        end
     end
 
-    effectButton.OnClick = function()
-        local newName = self:RegisterNewEntry()
-        local tab = CustomEffectTab:Add(newName, self.panel, self.customEffects[newName].DisplayName, self.customEffects)
-        self.customEffectsTabs[newName] = tab
-        self:RenderCustomEffects()
-    end
-
-    spellButton.OnClick = function()
-        local newName = self:RegisterNewEntry(GetLoca("New Spell"))
-        self.customEffects[newName].Icon = "GenericIcon_Intent_Damage"
-        local tab = SpellTab:Add(newName, self.panel, self.customEffects[newName].DisplayName, self.customEffects)
-        self.customEffectsTabs[newName] = tab
-        self.customEffects[newName].StatsType = "SpellData"
-        self:RenderCustomEffects()
-    end
-
-    statusButton.OnClick = function()
-        local newName = self:RegisterNewEntry(GetLoca("New Status"))
-        self.customEffects[newName].Icon = "PassiveFeature_CosmicOmen"
-        local tab = StatusTab:Add(newName, self.panel, self.customEffects[newName].DisplayName, self.customEffects)
-        self.customEffectsTabs[newName] = tab
-        self.customEffects[newName].StatsType = "StatusData"
-        self:RenderCustomEffects()
-    end
+    refreshCustomEffects()
 end
 
 function EffectsMenu:RegisterNewEntry(basename)
+    local uuid = RBUtils.Uuid_v4()
+
+    --- @type RB_CustomEffectData
     local entry = {
-        DisplayName = self:GetNewName(basename),
+        DisplayName = basename or "New Effect",
+        Uuid = uuid,
+        Description = "",
         Icon = "GenericIcon_Intent_Utility",
-        FxNames = {},
+        Effects = {},
         Note = "",
         Group = "",
         Tags = {},
     }
-    self.customEffects[entry.DisplayName] = entry
-    return entry.DisplayName
+
+    self.customEffects[uuid] = entry
+    return uuid, entry
 end
 
-function EffectsMenu:RegisterNewName(oldName, newName)
-    if oldName == newName then
-        return oldName
-    end
-
-    if not self.customEffects[oldName] then
-        Error("[EffectsMenu] Old name " .. oldName .. " not found in customEffects table")
-        return nil
-    end
-
-    local availableName = newName
-    local cnt = 1
-    while self.customEffects[availableName] do
-        cnt = cnt + 1
-        availableName = newName .. " (" .. cnt .. ")"
-    end
-
-    self.customEffects[availableName] = self.customEffects[oldName]
-    self.customEffects[availableName].DisplayName = availableName
-    self.customEffects[oldName] = nil
-
-    return availableName
-end
-
-function EffectsMenu:GetNewName(basename)
-    local name = basename or GetLoca("New Effect")
-    local cnt = 1
-    while self.customEffects[name] do
-        cnt = cnt + 1
-        name = basename .. " (" .. cnt .. ")"
-    end
-    return name
-end
-
-function EffectsMenu:Save(diaplayName)
+function EffectsMenu:Save(uuid)
     if not self.customEffects or next(self.customEffects) == nil then
         Warning("[EffectsMenu] No custom effects to save.")
         return false
@@ -397,21 +287,20 @@ function EffectsMenu:Save(diaplayName)
 
     local toSave = {}
 
-    if not diaplayName then
-        for name, effect in pairs(self.customEffects) do
-            toSave[name] = self.customEffects[name]
+    if not uuid then
+        for effectId, effect in pairs(self.customEffects) do
+            toSave[effectId] = self.customEffects[effectId]
         end
     else
-        if not self.customEffects[diaplayName] then
+        if not self.customEffects[uuid] then
             return false
         end
-        toSave[diaplayName] = self.customEffects[diaplayName]
+        toSave[uuid] = self.customEffects[uuid]
     end
-
 
     for name, effect in pairs(toSave) do
         if not effect then goto continue end
-        local filePath = FilePath.GetCustomEffectPath(effect.DisplayName)
+        local filePath = FilePath.GetCustomEffectPath(effect.DisplayName .. "_" .. effect.Uuid)
         local jsonData = Ext.Json.Stringify(effect)
         if not Ext.IO.SaveFile(filePath, jsonData) then
             Error("[EffectsMenu] Failed to save custom effect: " .. effect.DisplayName)
@@ -422,7 +311,7 @@ function EffectsMenu:Save(diaplayName)
 
     local toRef = {}
     for _, effect in pairs(self.customEffects) do
-        toRef[effect.DisplayName] = {}
+        toRef[effect.Uuid] = effect.DisplayName
     end
 
     local refFilePath = FilePath.GetEffectReferencePath()
@@ -441,7 +330,7 @@ function EffectsMenu:ClearRefs()
     end
 end
 
-function EffectsMenu:ClearRef(name)
+function EffectsMenu:ClearRef(uuid)
     local refFilePath = FilePath.GetEffectReferencePath()
     local refData = Ext.IO.LoadFile(refFilePath)
     if not refData then
@@ -454,21 +343,10 @@ function EffectsMenu:ClearRef(name)
         Error("[EffectsMenu] Failed to parse custom effects reference file: " .. refFilePath)
         return false
     end
-    local effect = self.customEffects[name]
-    if not effect then
-        return false
-    end
-
-    if toRef[effect.DisplayName] then
-        toRef[effect.DisplayName] = nil
-    else
-        --Warning("[EffectsMenu] No reference found for custom effect: " .. effect.DisplayName)
-        return false
-    end
-
+    toRef[uuid] = nil
     local newRefData = Ext.Json.Stringify(toRef)
     if not Ext.IO.SaveFile(refFilePath, newRefData) then
-        Error("[EffectsMenu] Failed to save custom effects reference file: " .. refFilePath)
+        Error("[EffectsMenu] Failed to clear custom effect reference from file: " .. refFilePath)
         return false
     end
 
@@ -490,13 +368,14 @@ function EffectsMenu:Load()
     end
 
     self.customEffects = {}
-    for displayName, _ in pairs(toRef) do
-        local filePath = FilePath.GetCustomEffectPath(displayName)
+    for uuid, displayName in pairs(toRef) do
+        local fileName = displayName .. "_" .. uuid
+        local filePath = FilePath.GetCustomEffectPath(fileName)
         local jsonData = Ext.IO.LoadFile(filePath)
         if jsonData then
             local effect = Ext.Json.Parse(jsonData)
             if effect then
-                self.customEffects[effect.DisplayName] = effect
+                self.customEffects[effect.Uuid] = effect
             else
                 Error("[EffectsMenu] Failed to parse custom effect file: " .. filePath)
             end
@@ -516,7 +395,7 @@ function EffectsMenu:ClearAll()
                 end
             end
             self.customEffects = {}
-            self:RenderCustomEffects()
+            self:RenderCustomEffects(self.customEffectsChildWin)
             self:ClearRefs()
         end,
         nil
@@ -530,26 +409,11 @@ function EffectsMenu:Add(parent)
 end
 
 function EffectsMenu:Collapsed()
-    if self.customEffectsWindow then
-        self.customEffectsWindow:Destroy()
-        self.customEffectsWindow = nil
+    for uuid, tab in pairs(self.customEffectsTabs) do
+        if tab then
+            tab.OnChange = nil
+        end
     end
-
-    if self.customEffectsConfigButton then
-        self.customEffectsConfigButton:Destroy()
-        self.customEffectsConfigButton = nil
-    end
-
-    if self.customEffectsTitle then
-        self.customEffectsTitle:Destroy()
-        self.customEffectsTitle = nil
-    end
-
-    if self.customEffectsConfigPopup then
-        self.customEffectsConfigPopup:Destroy()
-        self.customEffectsConfigPopup = nil
-    end
-
 
     if self.isWindow then
         WindowManager.DeleteWindow(self.panel)
@@ -560,18 +424,11 @@ function EffectsMenu:Collapsed()
     end
 
     self.panel = nil
-
-    self.customEffectsTabs = {}
-
     self.isVisible = false
 end
 
 function EffectsMenu:Destroy()
     self:Collapsed()
-    if self.iconBrowser then
-        self.iconBrowser:Destroy()
-        self.iconBrowser = nil
-    end
     self.parent = nil
     self.customEffects = {}
     for _, tab in pairs(self.customEffectsTabs) do

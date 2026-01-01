@@ -107,12 +107,13 @@ NetChannel.UpdateCamera = Ext.Net.CreateChannel(ModuleUUID, "UpdateCamera")
 --- @field SendToServer fun(channel:self , data: { Deactive: boolean?, DummyInfos: table<GUIDSTRING, {Position: Vec3, Rotation: Quat}>|nil })
 NetChannel.UpdateDummies = Ext.Net.CreateChannel(ModuleUUID, "UpdateDummies")
 
---- @class PlayEffectChannel
---- @field SendToServer fun(self, data: EffectData)
+--- @class PlayEffectChannel : NetChannel
+--- @field SendToServer fun(self, data: RB_EffectPlayData[])
+--- @field RequestToServer fun(self, data: RB_EffectPlayData[], callback: fun(response: integer[])) -- returns handles of loop effects
 NetChannel.PlayEffect = Ext.Net.CreateChannel(ModuleUUID, "PlayEffect")
 
 --- @class StopEffectChannel
---- @field SendToServer fun(self, data: {Type: "All"|"FxName"|"Object"|"Both", FxName: string|nil, Object: GUIDSTRING|nil})
+--- @field SendToServer fun(self, data: {Type: "All"|"FxName"|"Object"|"Both"|"Handles", FxName: string|nil, Object: GUIDSTRING|nil, Handles: integer[]|nil})
 NetChannel.StopEffect = Ext.Net.CreateChannel(ModuleUUID, "StopEffect")
 
 --- @class CreateStatChannel

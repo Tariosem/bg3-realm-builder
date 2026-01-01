@@ -34,7 +34,11 @@ local KEYBIND_EVENT_RENDER_ORDER = {
         "ApplyGravity",
         "FreezeGravity",
         "SnapToGround",
-        "LookAt3DCursor",
+        "SnapToHover",
+        "LookAtCursor",
+        "MoveToCursor",
+        "Move3DCursor",
+        "Snap3DCursor",
         "OpenNearbyPopup",
         "Undo",
         "Redo",
@@ -78,7 +82,7 @@ local localizedNames = {
     SnapToGround = "Snap To Ground",
     OpenNearbyPopup = "Open Nearby Popup",
     MoveToCursor = "Move To Cursor",
-    LookAt3DCursor = "Look At 3D Cursor",
+    LookAtCursor = "Look At Cursor",
     Move3DCursor = "Move 3D Cursor",
     Snap3DCursor = "Snap 3D Cursor",
     SnapToHover = "Snap To Hover",
@@ -108,7 +112,7 @@ function KeybindMenu:Render(parent)
         self.isWindow = false
         self:OnAttach()
     else
-        self.panel = WindowManager.RegisterWindow("generic", "Keybind", "Menu", self)
+        self.panel = WindowManager.RegisterWindow("generic", "Keybind")
         self.panel.AlwaysAutoResize = true
         self.isWindow = true
         self:OnDetach()

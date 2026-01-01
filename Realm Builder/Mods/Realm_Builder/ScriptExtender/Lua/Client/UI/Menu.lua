@@ -100,7 +100,7 @@ function RealmBuilderMainMenu:RenderBrowserMenu()
         
     end
 
-    local browserMenu = WindowManager.RegisterWindow("generic", "Browser Menu", "Browser Menu")
+    local browserMenu = WindowManager.RegisterWindow("generic", "Browser Menu")
     browserMenu.Closeable = true
     browserMenu:SetSize({ 300 * SCALE_FACTOR, 600 * SCALE_FACTOR })
 
@@ -140,8 +140,10 @@ function RealmBuilderMainMenu:Render()
     local MENU_X = screenWidth - MENU_WIDTH
     local MENU_Y = 0
 
-    self.panel = WindowManager.RegisterWindow("Citadel", "Realm Builder", "MainMenu", self, { MENU_X, MENU_Y}, {MENU_WIDTH, MENU_HEIGHT})
-    self.panel.Closeable = true
+    local panel = WindowManager.RegisterWindow("Citadel", "Realm Builder", {MENU_X, MENU_Y}, {MENU_WIDTH, MENU_HEIGHT})
+    self.panel = panel
+    panel.Closeable = true
+    WindowManager.SetMainWindowHandle(panel)
 
     self.tabBar = self.panel:AddTabBar("TabBar")
     self.tabBar.Reorderable = true
@@ -240,7 +242,7 @@ function RealmBuilderMainMenu:Render()
     Timer:Ticks(10, function()
         local tab = self.tabBar:AddTabItem("Materials")
         local childWin = tab:AddChildWindow("Material Presets Workshop")
-        local window = WindowManager.RegisterWindow("generic", "Material Presets Workshop", "Material Presets Workshop", MaterialPresetsMenu)
+        local window = WindowManager.RegisterWindow("generic", "Material Presets Workshop")
         local render = MaterialPresetsMenu:RenderCCModExportMenu(childWin)
         local isWindow = false
 

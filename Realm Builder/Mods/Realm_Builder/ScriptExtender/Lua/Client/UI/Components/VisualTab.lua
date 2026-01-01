@@ -224,7 +224,7 @@ function VisualTab:Render(retryCnt)
         self.panel = self.parent:AddTabItem(GetLoca("Visual"))
         self.isWindow = false
     else
-        self.panel = WindowManager.RegisterWindow(self.guid, self.displayName .. " - Visual Editor", "VisualTab", self,
+        self.panel = WindowManager.RegisterWindow(self.guid, self.displayName .. " - Visual Editor",
             self.lastPosition,
             self.lastSize or { VISUALTAB_WIDTH, VISUALTAB_HEIGHT })
         self.isWindow = true

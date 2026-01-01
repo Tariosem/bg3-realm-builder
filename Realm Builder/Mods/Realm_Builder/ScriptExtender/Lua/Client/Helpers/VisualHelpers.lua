@@ -279,7 +279,7 @@ end
 --- @param frames AspkCubicFloatKeyFrame[]
 function VisualHelpers.ChangeDFrames(frames, d)
     for _, frame in ipairs(frames) do
-        frame.D = d
+        frame.D = frame.D * d
     end
 end
 

@@ -162,7 +162,7 @@ function TreeList:RenderTopBar()
     openSettingsBtn.OnClick = function()
         settingPopup:Open()
     end
-    ImguiHelpers.SetupImageButton(openSettingsBtn)]]
+    StyleHelpers.ApplyBorderlessImageButtonStyle(openSettingsBtn)]]
     --local alignedTable = ImguiElements.AddAlignedTable(self.panel)
     
 
@@ -382,7 +382,7 @@ function TreeList:RenderList(onComplete)
                 else
                     local icon = self.collapsedTree[key] and RB_ICONS.Tree_Collapsed or RB_ICONS.Tree_Expanded
                     local arrowImage = leftCell:AddImageButton("##" .. key, icon, IMAGESIZE.ROW)
-                    ImguiHelpers.SetupImageButton(arrowImage)
+                    StyleHelpers.ApplyBorderlessImageButtonStyle(arrowImage)
                     ele = self:RenderTree(key, leftCell, fixedCell)
                     ele.SameLine = true
                     self.arrowRefs[key] = arrowImage
@@ -791,7 +791,7 @@ function TreeList:SetupArrow(arrow, key)
         show = true
     end
 
-    ImguiHelpers.SetupImageButton(arrow)
+    StyleHelpers.ApplyBorderlessImageButtonStyle(arrow)
 
     arrow.OnClick = function()
         if self.itemRefs[key] and self.itemRefs[key].UserData and self.itemRefs[key].UserData.Toggle then

@@ -820,6 +820,7 @@ function EntityEffectTab:RenderLightComponent(node, component, compIndex)
                 isCubic = VisualHelpers.AreFloakKeyFramesCubic(frames)
             end
             if isCubic then
+                RainbowDumpTable(lcomp.IntensityProperty.KeyFrames)
                 prop.Setter = function(value)
                     lcomp = VisualHelpers.GetEffectComponent(self.guid, compIndex) --[[@as AspkLightComponent]]
                     if not lcomp then return end
@@ -830,19 +831,14 @@ function EntityEffectTab:RenderLightComponent(node, component, compIndex)
                     end
                 end
                 prop.Getter = function()
-                    local comp = VisualHelpers.GetEffectComponent(self.guid, compIndex) --[[@as AspkLightComponent]]
-                    if not comp then return nil end
-
-                    local property = comp.IntensityProperty
+                    lcomp = VisualHelpers.GetEffectComponent(self.guid, compIndex) --[[@as AspkLightComponent]]
+                    if not lcomp then return nil end
+                    local property = lcomp.IntensityProperty
                     if not property or not property.KeyFrames then return nil end
-
-                    local frame = property.KeyFrames[1] and property.KeyFrames[1].Frames[1]
-                    if not frame then return nil end
-
-                    return frame.D or nil
+                    return property.KeyFrames[1] and property.KeyFrames[1].Frames[1].D or nil
                 end
                 prop.PreferSliders = true
-                goto continue
+                goto continue 
             end
         end
 

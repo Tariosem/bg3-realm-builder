@@ -78,7 +78,7 @@ function EntityTab:Render()
         self.isWindow = false
         self:OnAttach()
     else
-        self.panel = WindowManager.RegisterWindow(self.guid, self.displayName, "EntityTab", self, self.lastPosition, self.lastSize or {ENTTAB_WIDTH, ENTTAB_HEIGHT})
+        self.panel = WindowManager.RegisterWindow(self.guid, self.displayName, self.lastPosition, self.lastSize or {ENTTAB_WIDTH, ENTTAB_HEIGHT})
         self.panel.Closeable = true
         self.isWindow = true
         self:OnDetach()

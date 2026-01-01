@@ -721,7 +721,7 @@ MaterialMixerTab = _Class("MaterialMixerTab", MaterialTab)
 --- @param parameters RB_ParameterSet
 function MaterialMixerTab:__init(parameters)
     self.Label = RBUtils.Uuid_v4()
-    self.Parent = WindowManager.RegisterWindow(self.Label, "Material Mixer", "Material Mixer Tab", self)
+    self.Parent = WindowManager.RegisterWindow(self.Label, "Material Mixer")
     self.Parent.Closeable = true
 
     self.Parent.OnClose = function(win)

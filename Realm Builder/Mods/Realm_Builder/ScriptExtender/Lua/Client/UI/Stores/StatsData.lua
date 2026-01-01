@@ -1,5 +1,10 @@
 local StatsObjectInit = false
 
+--- @class RB_StatsHelper
+--- @field GetEffectInfo fun(effectUuid: GUIDSTRING|string): RB_EffectInfo|nil
+--- @field GetEffectAnimation fun(any: GUIDSTRING|string): RB_EffectAnimationSet|nil
+StatsHelpers = StatsHelpers or {}
+
 local spellEffectTypes = Enums.SpellEffectType
 local statusEffectTypes = Enums.StatusEffectType
 local passiveEffectTypes = {}
@@ -7,6 +12,17 @@ local passiveEffectTypes = {}
 local EffectToInfo = {}
 local EffectToAnimation = {}
 local StaticDataNameToUuid = {}
+
+--- @class RB_EffectAnimationSet
+--- @field SpellAnimation string
+--- @field WeaponTypes string
+--- @field Sheathing SpellSheathing
+
+--- @class RB_EffectInfo
+--- @field Type string
+--- @field Icon string
+--- @field DisplayName string -- spell's display name
+--- @field Description string|nil
 
 local function InitEffectStats()
     if StatsObjectInit then return end
@@ -91,7 +107,9 @@ local function InitEffectStats()
     StatsObjectInit = true
 end
 
-function GetEffectInfo(effectUuid)
+--- @param effectUuid GUIDSTRING|string
+--- @return RB_EffectInfo|nil
+function StatsHelpers.GetEffectInfo(effectUuid)
     if not next(EffectToInfo) then
         InitEffectStats()
     end
@@ -147,7 +165,9 @@ function GetStaticDataByName(name)
     return resourceObj, savedEntry.Type
 end
 
-function GetEffectAnimation(any)
+--- @param any GUIDSTRING|string
+--- @return RB_EffectAnimationSet|nil
+function StatsHelpers.GetEffectAnimation(any)
     if not StatsObjectInit then
         InitEffectStats()
     end
@@ -156,7 +176,10 @@ function GetEffectAnimation(any)
         return EffectToAnimation[any]
     end
 
-    if RB_GLOBALS.MultiEffectManager.UuidToEffectName[any] and EffectToAnimation[RB_GLOBALS.MultiEffectManager.UuidToEffectName[any]] then
+    local effectManager = RB_GLOBALS.MultiEffectManager
+    local idToName = effectManager.UuidToEffectName
+    local nameToAnimation = effectManager.EffectNameToAnimation
+    if idToName[any] and nameToAnimation[idToName[any]] then
         return EffectToAnimation[RB_GLOBALS.MultiEffectManager.UuidToEffectName[any]]
     end
 

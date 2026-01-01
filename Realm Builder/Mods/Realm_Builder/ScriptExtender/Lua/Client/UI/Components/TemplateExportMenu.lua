@@ -22,7 +22,7 @@ function TemplateExportMenu.new(entDatas)
 end
 
 function TemplateExportMenu:Render()
-    local panel = WindowManager.RegisterWindow("generic", "Realm Builder - Template Exporter", "Template Exporter", self)
+    local panel = WindowManager.RegisterWindow("generic", "Realm Builder - Template Exporter")
     panel.Closeable = true
 
     panel.OnClose = function()

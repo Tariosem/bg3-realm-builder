@@ -1,20 +1,18 @@
---- @class EffectFlags
+--- @class RB_EffectsPlayFlags
 --- @field PlayLoop boolean
---- @field PlayOnObject boolean
---- @field PlayAtObject boolean
 --- @field PlayAtPosition boolean
 --- @field PlayAtPositionAndRotation boolean
 --- @field PlayBeamEffect boolean
 
---- @class EffectData
+--- @class RB_EffectPlayData
 --- @field DisplayName string
 --- @field FxName string
---- @field Object GUIDSTRING|GUIDSTRING[]
---- @field Target GUIDSTRING|GUIDSTRING[]
+--- @field Object GUIDSTRING[]
+--- @field Target GUIDSTRING[]
 --- @field SourceBone string
 --- @field TargetBone string
 --- @field Scale number
---- @field Tags EffectFlags
+--- @field Flags RB_EffectsPlayFlags
 --- @field Duration number
 --- @field SpellAnimation string
 
@@ -25,10 +23,10 @@
 --- @field _activeStatuses {Object:GUIDSTRING, Status:string}[]
 --- @field Spells table<string, string>
 --- @field init fun(self:RB_EffectsManager, name?:string):RB_EffectsManager
---- @field PlayLoopEffect fun(self:RB_EffectsManager, data:EffectData):integer
---- @field PlayEffect fun(self:RB_EffectsManager, data:EffectData)
---- @field PlayEffects fun(self:RB_EffectsManager, datas:EffectData[])
---- @field PlayLoopEffects fun(self:RB_EffectsManager, datas:EffectData[])
+--- @field PlayLoopEffect fun(self:RB_EffectsManager, data:RB_EffectPlayData):integer
+--- @field PlayEffect fun(self:RB_EffectsManager, data:RB_EffectPlayData)
+--- @field PlayEffects fun(self:RB_EffectsManager, datas:RB_EffectPlayData[]):integer[]
+--- @field PlayLoopEffects fun(self:RB_EffectsManager, datas:RB_EffectPlayData[])
 --- @field StopEffect fun(self:RB_EffectsManager, object:GUIDSTRING, name:string)
 --- @field StopEffectByObject fun(self:RB_EffectsManager, object:GUIDSTRING)
 --- @field StopEffectByFxName fun(self:RB_EffectsManager, fxName:string|string[])
@@ -50,8 +48,10 @@ end
 
 --#region Multi Effect Management
 
+--- @param data RB_EffectPlayData
+--- @return RB_EffectPlayData
 local function NormalizeData(data)
-    local tags = data.Tags or {}
+    local flags = data.Flags or {}
     return {
         DisplayName = data.DisplayName or "",
         FxName = data.FxName or "",
@@ -61,13 +61,11 @@ local function NormalizeData(data)
         TargetBone = data.TargetBone or "",
         Scale = data.Scale or 1.0,
         Duration = data.Duration or 5000,
-        Tags = {
-            PlayLoop = tags.PlayLoop or table.find(tags, "PlayLoop") or false,
-            PlayOnObject = tags.PlayOnObject or table.find(tags, "PlayOnObject") or false,
-            PlayAtObject = tags.PlayAtPosition or table.find(tags, "PlayAtObject") or false,
-            PlayAtPosition = tags.PlayAtPosition or table.find(tags, "PlayAtPosition") or false,
-            PlayAtPositionAndRotation = tags.PlayAtPositionAndRotation or table.find(tags, "PlayAtPositionAndRotation") or false,
-            PlayBeamEffect = tags.PlayBeamEffect or table.find(tags, "PlayBeamEffect") or false
+        Flags = {
+            PlayLoop = flags.PlayLoop or table.find(flags, "PlayLoop") or false,
+            PlayAtPosition = flags.PlayAtPosition or table.find(flags, "PlayAtPosition") or false,
+            PlayAtPositionAndRotation = flags.PlayAtPositionAndRotation or table.find(flags, "PlayAtPositionAndRotation") or false,
+            PlayBeamEffect = flags.PlayBeamEffect or table.find(flags, "PlayBeamEffect") or false
         }
     }
 end
@@ -88,12 +86,13 @@ function EffectsManager:StoreLoopEffect(fxhandle, obj, fx)
     return fxhandle
 end
 
+--- @param data RB_EffectPlayData
 function EffectsManager:PlayLoopEffect(data)
     data = NormalizeData(data)
     local fxname = data.FxName
     local fxhandle = nil
 
-    local tags = data.Tags or {}
+    local flags = data.Flags or {}
     local sourceBone = data.SourceBone or ""
     local targetBone = data.TargetBone or ""
 
@@ -102,17 +101,17 @@ function EffectsManager:PlayLoopEffect(data)
             Warning("PlayLoopEffect: Cannot play loop effect on camera object.")
             goto continue
         end
-        if tags.PlayBeamEffect then
+        if flags.PlayBeamEffect then
             for _, tgt in ipairs(data.Target) do
                 fxhandle = Osi.PlayLoopBeamEffect(obj, tgt, fxname, sourceBone, targetBone)
                 self:StoreLoopEffect(fxhandle, obj, fxname)
             end
-        elseif tags.PlayAtPositionAndRotation then
+        elseif flags.PlayAtPositionAndRotation then
             local x, y, z = RBGetPosition(obj)
             local pitch, yaw, roll = Osi.GetRotation(obj)
             fxhandle = Osi.PlayLoopEffectAtPositionAndRotation(fxname, x, y, z, pitch, yaw, roll, data.Scale)
             self:StoreLoopEffect(fxhandle, obj, fxname)
-        elseif tags.PlayAtPosition then
+        elseif flags.PlayAtPosition then
             local x, y, z = RBGetPosition(obj)
             fxhandle = Osi.PlayLoopEffectAtPosition(fxname, x, y, z, data.Scale)
             self:StoreLoopEffect(fxhandle, obj, fxname)
@@ -140,7 +139,7 @@ function EffectsManager:PlayLoopEffect(data)
     return fxhandle --[[@as integer]]
 end
 
---- @param data EffectData
+--- @param data RB_EffectPlayData
 function EffectsManager:PlayEffect(data)
     data = NormalizeData(data)
     local fxname = data.FxName
@@ -148,24 +147,24 @@ function EffectsManager:PlayEffect(data)
     local sourceBone = data.SourceBone or ""
     local targetBone = data.TargetBone or ""
 
-    local tags = data.Tags or {}
+    local flags = data.Flags or {}
     for _, obj in ipairs(data.Object) do
         if RBUtils.IsCamera(obj) then
             Warning("PlayEffect: Cannot play effect on camera object.")
             goto continue
         end
-        if tags.PlayBeamEffect then
+        if flags.PlayBeamEffect then
             for _, tgt in ipairs(data.Target) do
                 Osi.PlayBeamEffect(obj, tgt, fxname, sourceBone, targetBone)
             end
-        elseif tags.PlayAtPositionAndRotation then
+        elseif flags.PlayAtPositionAndRotation then
             local x, y, z = RBGetPosition(obj)
             local p, yaw = RBGetRotation(obj)
             Osi.PlayEffectAtPositionAndRotation(fxname, x, y, z, yaw, data.Scale)  
-        elseif tags.PlayAtPosition then
+        elseif flags.PlayAtPosition then
             local x, y, z = RBGetPosition(obj)
             Osi.PlayEffectAtPosition(fxname, x, y, z, data.Scale)
-        elseif tags.PlayOnObject then
+        else
             if targetBone then
                 Osi.PlayEffect(obj, fxname, targetBone, data.Scale)
             elseif sourceBone then
@@ -173,27 +172,30 @@ function EffectsManager:PlayEffect(data)
             else
                 Osi.PlayEffect(obj, fxname, nil, data.Scale)
             end
-        else
-            Osi.PlayEffect(obj, fxname)
         end
         --_P("Playing effect: " .. fxname .. " on object: " .. tostring(obj) .. " with target: " .. tostring(targetBone) .. " and source: " .. tostring(sourceBone))
         ::continue::
     end
 end
 
+--- @param datas RB_EffectPlayData[]
+--- @return integer[] Handles of loop effects
 function EffectsManager:PlayEffects(datas)
     if type(datas) ~= "table" then
         Warning("PlayEffects: Invalid parameter. Expected table, got " .. type(datas))
-        datas = {datas}
+        return {}
     end
+    local allLoopHandles = {}
     for _, data in ipairs(datas) do
-        if data.Tags and (data.Tags.PlayLoop or table.find(data.Tags, "PlayLoop")) then
-            self:PlayLoopEffect(data)
+        if data.Flags and (data.Flags.PlayLoop or table.find(data.Flags, "PlayLoop")) then
+            local handle = self:PlayLoopEffect(data)
+            table.insert(allLoopHandles, handle)
         else
             self:PlayEffect(data)
         end
         ::continue::
     end
+    return allLoopHandles
 end
 
 function EffectsManager:PlayLoopEffects(datas)
@@ -304,6 +306,27 @@ function EffectsManager:StopEffectByComb(fxName, object)
     end
 end
 
+function EffectsManager:StopEffectByHandle(handle)
+    if not handle then
+        Warning("StopEffectByHandle: Invalid handle parameter.")
+        return
+    end
+
+    Osi.StopLoopEffect(handle)
+    for object, fxData in pairs(self.ActivatedFX) do
+        for obj, fxHandle in pairs(fxData) do
+            if fxHandle.Handle == handle then
+                fxData[obj] = nil
+                --Info("Stopped effect with handle: " .. tostring(handle) .. " for object: " .. tostring(object))
+            end
+        end
+
+        if next(fxData) == nil then
+            self.ActivatedFX[object] = nil
+        end
+    end
+end
+
 function EffectsManager:StopAllEffects()
     for object, fxData in pairs(self.ActivatedFX) do
         for obj, fxHandle in pairs(fxData) do
@@ -319,10 +342,18 @@ end
 
 --#region Status Management
 
-function EffectsManager:CreateStatus(data)
-    local newStatName = STATUS_PREFIX .. data.DisplayName
+--- @param data RB_CustomStatusData
+--- @return string
+local function makeStatusName(data)
+    return STATUS_PREFIX .. data.Uuid
+end
 
-    local newStat = Ext.Stats.Create(newStatName, "StatusData", "_PASSIVES")
+--- @param data RB_CustomStatusData
+--- @return StatusData
+function EffectsManager:CreateStatus(data)
+    local newStatName = makeStatusName(data)
+
+    local newStat = Ext.Stats.Create(newStatName, "StatusData", "_PASSIVES") --[[@as StatusData]]
     for name,_ in pairs(Enums.StatusEffectType) do
         if data[name] then
             newStat[name] = data[name]
@@ -340,8 +371,10 @@ function EffectsManager:CreateStatus(data)
     return newStat
 end
 
+--- @param data RB_CustomStatusData
+--- @return StatusData
 function EffectsManager:UpdateStatus(data)
-    local statName = STATUS_PREFIX .. data.DisplayName
+    local statName = makeStatusName(data)
     local stat = Ext.Stats.Get(statName)
     if not stat then
         stat = self:CreateStatus(data)
@@ -362,8 +395,9 @@ function EffectsManager:UpdateStatus(data)
     return stat
 end
 
+--- @param data RB_CustomStatusData
 function EffectsManager:PlayStatus(data)
-    local statName = STATUS_PREFIX .. data.DisplayName
+    local statName = makeStatusName(data)
     local stat = self:UpdateStatus(data)
     if not stat then
         stat = self:CreateStatus(data)
@@ -374,11 +408,15 @@ function EffectsManager:PlayStatus(data)
     end
 
     local removeData = {
-        DisplayName = data.DisplayName
+        Uuid = data.Uuid,
+        Object = data.Object,
     }
     self:RemoveStatus(removeData)
 
-    local toApply = RBUtils.NormalizeGuidList(data.Object) or { Osi.GetHostCharacter()}
+    local toApply = RBUtils.NormalizeGuidList(data.Object)
+    if #toApply == 0 then
+        toApply = { Osi.GetHostCharacter() }
+    end
 
     for _, obj in ipairs(toApply) do
         if EntityHelpers.EntityExists(obj) then
@@ -394,8 +432,9 @@ function EffectsManager:PlayStatus(data)
     return stat
 end
 
+--- @param data RB_CustomStatusData
 function EffectsManager:RemoveStatus(data)
-    local statName = STATUS_PREFIX .. data.DisplayName
+    local statName = makeStatusName(data)
     local stat = Ext.Stats.Get(statName)
     if not stat then
         --Error("RemoveStatus: Status with name " .. statName .. " does not exist.")
@@ -437,14 +476,25 @@ end
 
 --#region Spell Management
 
+local function makeSpellName(data)
+    return SPELL_PREFIX .. data.Uuid
+end
+
+--- @alias SpellSheathing 'Melee'|'Ranged'|'Instrument'|'Sheathed'|'WeaponSet'|'Somatic'|'DontChange'
+
 function EffectsManager:CreateSpell(data)
-    local newSpellName = SPELL_PREFIX .. data.DisplayName
+    local newSpellName = makeSpellName(data)
     if Ext.Stats.Get(newSpellName) then
         Info("Spell with name " .. newSpellName .. " already exists.")
         return self:UpdateSpell(data)
     end
 
     local newSpell = Ext.Stats.Create(newSpellName, "SpellData")
+    if not newSpell then
+        Error("CreateSpell: Failed to create spell " .. newSpellName)
+        return
+    end
+    RBPrintBlue("Creating new spell: " .. newSpellName)
     for name,_ in pairs(Enums.SpellEffectType) do
         if data[name] then
             newSpell[name] = data[name]
@@ -453,6 +503,10 @@ function EffectsManager:CreateSpell(data)
     if not data.SpellAnimation or data.SpellAnimation == "" then
         data.SpellAnimation = DEFAULT_SPELL_ANIM
     end
+
+    local displayNameHandle = RBUtils.MakeTranslatedHandle()
+    Ext.Loca.UpdateTranslatedString(displayNameHandle, data.DisplayName)
+
     newSpell.SpellType = "Target"
     newSpell.Level = 0
     newSpell.MemoryCost = 0
@@ -461,7 +515,7 @@ function EffectsManager:CreateSpell(data)
     newSpell.CastTextEvent = "Cast"
     newSpell.TargetRadius = tostring(data.TargetRadius) or "18"
     newSpell.AreaRadius = data.AreaRadius or 9
-    newSpell.DisplayName = "h16fe61ec41a74a86b9973ef6185543421ege"
+    newSpell.DisplayName = displayNameHandle
     newSpell.Description = "h16fe61ec41a74a86b9973ef6185543421ege"
     newSpell.ReappearEffectTextEvent = "Cast"
     newSpell.Icon = "Skill_Wizard_LearnSpell"
@@ -470,25 +524,22 @@ function EffectsManager:CreateSpell(data)
     newSpell.SpellAnimation = data.SpellAnimation
     newSpell.HitAnimationType = "MagicalNonDamage"
     newSpell.Sheathing = data.Sheathing or "Melee"
-    newSpell.WeaponTypes = data.WeaponTypes or "Melee"
+    --newSpell.WeaponTypes = data.WeaponTypes or "Melee"
     --newSpell.Autocast = "Yes"
 
-    -- Helper 
     ---@diagnostic disable-next-line: missing-parameter
     newSpell:Sync()
 
     self.Spells[newSpellName] = newSpellName
-    --_P("CreateSpell")
-    --_D(newSpell)
 
     return newSpell
 end
 
 function EffectsManager:UpdateSpell(data)
-    local spellName = SPELL_PREFIX .. data.DisplayName
-    local spell = Ext.Stats.Get(spellName)
+    local spellName = makeSpellName(data)
+    local spell = Ext.Stats.Get(spellName) --[[@as SpellData]]
     if not spell then
-        spell = self:CreateSpell(data)
+        spell = self:CreateSpell(data) --[[@as SpellData]]
         return spell
     end
 
@@ -509,11 +560,17 @@ function EffectsManager:UpdateSpell(data)
     if data.SpellAnimation == "" or not data.SpellAnimation then
         data.SpellAnimation = DEFAULT_SPELL_ANIM
     end
+
+    if data.DisplayName ~= nil then
+        Ext.Loca.UpdateTranslatedString(spell.DisplayName, data.DisplayName)
+    end
+
     spell.SpellAnimation = data.SpellAnimation
-    spell.WeaponTypes = data.WeaponTypes or "Melee"
+    --spell.WeaponTypes = data.WeaponTypes or "Melee"
     spell.Sheathing = data.Sheathing or "Melee"
     spell.AreaRadius = data.AreaRadius or 9
     spell.TargetRadius = tostring(data.TargetRadius) or "18"
+    spell.Icon = data.Icon or "Skill_Wizard_LearnSpell"
     if data.FXScale then
         spell.FXScale = data.FXScale
     end
@@ -521,24 +578,31 @@ function EffectsManager:UpdateSpell(data)
     --PrintDivider("UpdateSpell")
     --_D(spell)
 
+    --- @diagnostic disable-next-line: missing-parameter
     spell:Sync()
 
     return spell
 end
 
 function EffectsManager:PlaySpell(data)
-    local spellName = SPELL_PREFIX .. data.DisplayName
+    local spellName = makeSpellName(data)
     local spell = self:UpdateSpell(data)
     if not spell then
-        spell = self:CreateSpell(data)
+        spell = self:CreateSpell(data) --[[@as SpellData]]
         if not spell then
             Error("PlaySpell: Failed to create spell " .. spellName)
             return
         end
     end
 
-    local toUse = RBUtils.NormalizeGuidList(data.Object) or { Osi.GetHostCharacter()}
-    local toTgt = RBUtils.NormalizeGuidList(data.Target) or { Osi.GetHostCharacter()}
+    local toUse = RBUtils.NormalizeGuidList(data.Object)
+    local toTgt = RBUtils.NormalizeGuidList(data.Target)
+    if #toUse == 0 then
+        toUse = { Osi.GetHostCharacter() }
+    end
+    if #toTgt == 0 then
+        toTgt = { Osi.GetHostCharacter() }
+    end
 
     for _, obj in ipairs(toUse) do
         if not EntityHelpers.EntityExists(obj) then

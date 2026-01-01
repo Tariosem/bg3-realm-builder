@@ -378,3 +378,69 @@ function NearbyCombo:RenderIcons()
 end
 
 function NearbyCombo:OnChange(Guid, displayName)end
+
+--- @param parent ExtuiTreeParent
+--- @param label string?
+--- @param obj table<GUIDSTRING, boolean> -- set of selected guids
+--- @return NearbyCombo
+function ImguiElements.AddEntityPicker(parent, label, obj)
+    local uuid = RBUtils.Uuid_v4()
+    local aligned = ImguiElements.AddAlignedTable(parent)
+    local cell = aligned:AddNewLine(label or GetLoca("Select Entity"))
+
+    local upTab = cell:AddGroup("EntityPickerGroup" .. uuid)
+    local picker = NearbyCombo.new(upTab)
+
+    local function updatePresentation()
+    end
+
+    local clearBtn = aligned:AddButton(GetLoca("Clear"))
+    clearBtn.OnClick = function ()
+        picker:SetSelected(nil)
+        for k,v in pairs(obj) do
+            obj[k] = nil
+        end
+        updatePresentation()
+    end
+
+    local lowTab = cell:AddGroup("EntityPickerPresentation")
+
+    local function renderPicked(guid, name, index)
+        local group = lowTab:AddGroup("PickedEntityGroup" .. guid)
+        local icon = RBGetIcon(guid)
+        local imgBtn = group:AddImageButton("", icon, IMAGESIZE.FRAME)
+        local nameText = group:AddText(name)
+        nameText.SameLine = true
+
+        imgBtn.IDContext = "PickedEntity" .. guid
+        StyleHelpers.ApplyImageButtonHoverStyle(imgBtn)
+        imgBtn.OnClick = function ()
+            obj[guid] = nil
+            group:Destroy()
+        end
+    end
+
+    function updatePresentation()
+        ImguiHelpers.DestroyAllChildren(lowTab)
+        local sortedNames = {}
+        for guid, _ in pairs(obj) do
+            local name = RBGetName(guid) or GetLoca("Unknown")
+            table.insert(sortedNames, {Guid = guid, Name = name})
+        end
+        table.sort(sortedNames, function(a,b) return a.Name < b.Name end)
+        local cnt = 0
+        for _,entry in ipairs(sortedNames) do
+            local guid = entry.Guid
+            cnt = cnt + 1
+            renderPicked(guid, entry.Name, cnt)
+        end
+    end
+
+    picker.OnChange = function (self, guid, displayName)
+        obj[guid] = true
+        picker:SetSelected(nil)
+        updatePresentation()
+    end
+
+    return picker
+end

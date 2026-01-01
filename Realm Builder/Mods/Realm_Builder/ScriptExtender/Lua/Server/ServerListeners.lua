@@ -398,6 +398,10 @@ NetChannel.PlayEffect:SetHandler(function(data, userID)
     RB_GLOBALS.EffectManager:PlayEffects(data)
 end)
 
+NetChannel.PlayEffect:SetRequestHandler(function(data, userID)
+    return RB_GLOBALS.EffectManager:PlayEffects(data)
+end)
+
 NetChannel.StopEffect:SetHandler(function(data, userID)
     if data.Type == "All" then
         RB_GLOBALS.EffectManager:StopAllEffects()
@@ -407,12 +411,14 @@ NetChannel.StopEffect:SetHandler(function(data, userID)
         RB_GLOBALS.EffectManager:StopEffectByObject(data.Object)
     elseif data.Type == "Both" then
         RB_GLOBALS.EffectManager:StopEffectByComb(data.FxName, data.Object)
+    elseif data.Type == "Handles" then
+        for i, handle in ipairs(data.Handles) do
+            RB_GLOBALS.EffectManager:StopEffectByHandle(handle)
+        end
     end
 end)
 
 NetChannel.CreateStat:SetHandler(function(data, userID)
-    data.DisplayName = data.DisplayName .. tostring(userID)
-
     if data.Type == "StatusData" then
         RB_GLOBALS.EffectManager:PlayStatus(data)
     elseif data.Type == "SpellData" then

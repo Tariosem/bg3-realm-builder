@@ -9,7 +9,7 @@ local renderFolder --[[@type fun(parent: ExtuiTreeParent, path: string[], setter
 local function renderPopupItem(parent, label, icon, onclick)
     local group = parent:AddGroup("##" .. label)
     local imgBtn = group:AddImageButton("##" .. label, icon, IMAGESIZE.FRAME)
-    ImguiHelpers.SetupImageButton(imgBtn)
+    StyleHelpers.ApplyBorderlessImageButtonStyle(imgBtn)
     local selectable = group:AddSelectable(label)
     selectable.DontClosePopups = true
     selectable.SameLine = true

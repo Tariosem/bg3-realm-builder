@@ -1,6 +1,7 @@
 --- @class RadioButtonOption
 --- @field Label string
 --- @field Value integer
+--- @field Tooltip string|nil
 
 --- @class EnumRadioButtonsGroup : ExtuiGroup
 --- @field OnChange fun(radioBtn: ExtuiRadioButton, value: integer)
@@ -119,6 +120,12 @@ function ImguiElements.AddEnumRadioButtons(parent, options, initValue)
         radio.UserData = {
             EnumValue = enumValue
         }
+        if option.Tooltip then
+            radio.OnHoverEnter = function(r)
+                r:Tooltip():AddText(tostring(option.Tooltip))
+                r.OnHoverEnter = nil
+            end
+        end
         radio.OnChange = function(r)
             if current == enumValue then
                 return

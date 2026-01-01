@@ -227,14 +227,16 @@ StatsBoostHandlers = {
 
             parent:AddText(" on ").SameLine = true
 
-            local rollTypeText = parent:AddText(rollType)
-            rollTypeText.SameLine = true
-
             if specific ~= "" then
                 local specificText = parent:AddText(specific)
                 specificText.SameLine = true
                 specificText:SetColor("Text", UI_COLORS.HighLight)
-            else
+            end
+
+            local rollTypeText = parent:AddText(rollType)
+            rollTypeText.SameLine = true
+
+            if specific == "" then
                 rollTypeText:SetColor("Text", UI_COLORS.HighLight)
             end
 

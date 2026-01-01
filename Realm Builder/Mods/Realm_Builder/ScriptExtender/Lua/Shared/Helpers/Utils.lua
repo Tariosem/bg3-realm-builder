@@ -10,6 +10,15 @@ function RBUtils.Uuid_v4()
     return uuid
 end
 
+---@return string
+function RBUtils.MakeTranslatedHandle()
+    local template = "hxxxxxxxxgxxxxgxxxxgxxxxgxxxxxxxxxxx"
+    local handle = template:gsub("x", function()
+        return string.format("%x", math.random(0, 15))
+    end)
+
+    return handle
+end
 
 ---@param object string?
 ---@return boolean

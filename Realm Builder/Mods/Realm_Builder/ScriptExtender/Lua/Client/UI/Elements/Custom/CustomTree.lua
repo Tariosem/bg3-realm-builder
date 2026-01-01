@@ -14,6 +14,7 @@ local treeClosed = RB_ICON_UV01[treeClosedIcon]
 --- @field AddHint fun(self: RB_UI_Tree, hintText: string): ExtuiText
 --- @field AddTreeIcon fun(self: RB_UI_Tree, iconPath: string, iconSize?: Vec2): ExtuiImage
 --- @field AddChild fun(self: RB_UI_Tree, child: RB_UI_Tree) -- add a logical child tree, does not add to UI
+--- @field ClearContent fun(self: RB_UI_Tree) -- clears all child UI elements
 --- @field Destroy fun()
 --- @field DestroyChildren fun()
 --- @field ToggleAll fun(self: RB_UI_Tree)
@@ -74,7 +75,7 @@ function ImguiElements.AddTree(parent, label, open)
         end
     end
 
-    ImguiHelpers.SetupImageButton(arrowReserved)
+    StyleHelpers.ApplyBorderlessImageButtonStyle(arrowReserved)
     arrowReserved.OnClick = function()
         if isFramed then
             selectable.Selected = true
@@ -162,7 +163,6 @@ function ImguiElements.AddTree(parent, label, open)
                 end
                 table.remove(children, i)
             end
-            ImguiHelpers.DestroyAllChildren(panel)
         end,
         GetStyle = function(_, varName)
             return panelGroup:GetStyle(varName)
@@ -175,7 +175,10 @@ function ImguiElements.AddTree(parent, label, open)
         end,
         SetColor = function(_, colorName, colorValue)
             panelGroup:SetColor(colorName, colorValue)
-        end
+        end,
+        ClearContent = function()
+            ImguiHelpers.DestroyAllChildren(panel)
+        end,
     }
 
     selectable.UserData = closure.__UserData

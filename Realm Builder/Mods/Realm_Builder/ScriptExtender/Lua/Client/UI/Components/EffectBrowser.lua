@@ -2,38 +2,53 @@
 --- @field SaveToConfig fun(self:EffectBrowser)
 EffectBrowser = _Class("EffectBrowser", IconBrowser)
 
-EffectBrowser.tooltipNameOptions = {"DisplayName", "TemplateName", "Uuid"}
+function EffectBrowser:SubclassInit()
+    self.iconTooltipName = "EffectName"
+    self.tooltipNameOptions = {
+        "EffectName",
+        "SpellName",
+        "Uuid",
+    }
+    self.selectedFields = {
+        EffectName = true,
+        SpellName = true,
+        Uuid = true,
+    }
+end
 
 local function previewEffect(guid, entry)
-        local effectsData = {}
-        local FxNames = entry.FxNames or {}
-        if #FxNames == 0 then
-            return
-        end
-        for _, fxName in ipairs(FxNames) do
-            local fxData = RB_GLOBALS.MultiEffectManager.Data[fxName] or {}
-            local effectData = {
-                Object = guid,
-                Target = guid,
-                FxName = fxName,
-                TargetBone = fxData.TargetBone or "",
-                SourceBone = fxData.SourceBone or "",
-                Tags = {
-                    PlayBeamEffect = fxData.isBeam or false,
-                }
-            }
-            
-            local loopEffectData = RBUtils.DeepCopy(effectData)
-            loopEffectData.Tags.PlayLoop = true
-            loopEffectData.Duration = 5000
-
-            
-            table.insert(effectsData, effectData)
-            table.insert(effectsData, loopEffectData)
-        end
-        local data = effectsData
-        NetChannel.PlayEffect:SendToServer(data)
+    --- @type RB_EffectPlayData[]
+    local effectsData = {} 
+    local FxNames = entry.FxNames or {}
+    if #FxNames == 0 then
+        return
     end
+    for _, fxName in ipairs(FxNames) do
+        local fxData = RB_GLOBALS.MultiEffectManager.Data[fxName] or {}
+
+        --- @type RB_EffectPlayData
+        local effectData = {
+            Object = guid,
+            Target = guid,
+            FxName = fxName,
+            TargetBone = fxData.TargetBone or "",
+            SourceBone = fxData.SourceBone or "",
+            Flags = {
+                PlayBeamEffect = fxData.isBeam or false,
+            }
+        }
+        
+        local loopEffectData = RBUtils.DeepCopy(effectData)
+        loopEffectData.Flags.PlayLoop = true
+        loopEffectData.Duration = 5000
+
+        
+        table.insert(effectsData, effectData)
+        table.insert(effectsData, loopEffectData)
+    end
+    local data = effectsData
+    NetChannel.PlayEffect:SendToServer(data)
+end
 
 --- @param entry RB_Effect
 --- @param cell ExtuiTableCell
@@ -72,8 +87,7 @@ function EffectBrowser:RenderIcon(entry, cell)
 
             local attrs = {
                 Uuid = entry.Uuid,
-                DisplayName = entry.DisplayName,
-                TemplateName = entry.TemplateName,
+                EffectName = entry.EffectName,
                 Icon = entry.Icon,
             }
 
@@ -110,10 +124,12 @@ function EffectBrowser:RenderIcon(entry, cell)
     rPopup = rPopup or nil
 
     iconImage.CanDrag = true
-    iconImage.DragDropType = "EffectInfo"
-    iconImage.UserData = entry
+    iconImage.DragDropType = EffectDragDropFlag
+
+    iconImage.UserData = {}
 
     iconImage.OnDragStart = function()
+        iconImage.UserData.Effect = RBEffectUtils.CreateEffectDragDropDataFromEffect(entry)
         iconImage.DragPreview:AddImage(entry.Icon)
         iconImage.DragPreview:AddText(entry[self.iconTooltipName] or "Unknown").SameLine = true
     end
@@ -180,7 +196,7 @@ function EffectBrowser:RenderPlayEffectPopup(getPopupFunc, entry)
     end
 
     infoButton.OnClick = function()
-        EffectTab:Add(entry.Uuid, nil, entry.TemplateName)
+        RBEffectTab.Add(entry.Uuid)
     end
 end
 

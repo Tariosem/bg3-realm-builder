@@ -1,14 +1,3 @@
----@return string
-function MakeTranslatedHandle()
-    local template = "hxxxxxxxxgxxxxgxxxxgxxxxgxxxxxxxxxxx"
-    local handle = template:gsub("x", function()
-        return string.format("%x", math.random(0, 15))
-    end)
-
-    return handle
-end
-
-
 local StringToHandle = {}
 local unseenStrings = {}
 

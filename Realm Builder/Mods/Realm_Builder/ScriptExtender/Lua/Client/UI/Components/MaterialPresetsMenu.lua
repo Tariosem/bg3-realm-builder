@@ -340,7 +340,7 @@ function MaterialPresetsMenu:RenderFolderPanel(presetTab, presetHeaders, exportS
         local newFolderCell = newFolderRow:AddCell()
         local createFolderBtn = newFolderCell:AddImageButton("##CreateMaterialPresetFolderBtn", RB_ICONS.Plus_Square,
             IMAGESIZE.ROW)
-        ImguiHelpers.SetupImageButton(createFolderBtn)
+        StyleHelpers.ApplyBorderlessImageButtonStyle(createFolderBtn)
         createFolderBtn.OnClick = function()
             local folderName = "merged"
             local suffix = 1
@@ -645,8 +645,7 @@ function MaterialPresetsMenu:RenderImportSection(parent, exportSettings, onImpor
                     RBUtils.BuildVersionString(ccaModPack.Version[1], ccaModPack.Version[2], ccaModPack.Version[3],
                         ccaModPack.Version
                         [4]) or version
-                local newWindow = WindowManager.RegisterWindow("generic", ccaModPack.ModName .. " - " .. versionStr,
-                    "Character Creation Material Editor", nil, nil, { 1200 * SCALE_FACTOR, 900 * SCALE_FACTOR })
+                local newWindow = WindowManager.RegisterWindow("generic", ccaModPack.ModName .. " - " .. versionStr, nil, { 1200 * SCALE_FACTOR, 900 * SCALE_FACTOR })
                 newWindow.Closeable = true
                 newWindow.OnClose = function()
                     WindowManager.DeleteWindow(newWindow)

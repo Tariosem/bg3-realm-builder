@@ -351,6 +351,10 @@ function BoneHelpers.IsBone(name)
     return BoneName[name] ~= nil
 end
 
+--- input: righthand,leftHand output: Dummy_R_HandFX,Dummy_L_HandFX etc
+--- @param bonestr string
+--- @param dontFindMatch boolean?
+--- @return string
 function BoneHelpers.ParseBoneList(bonestr, dontFindMatch)
     if not bonestr or type(bonestr) ~= "string" or bonestr == "" then
         return ""

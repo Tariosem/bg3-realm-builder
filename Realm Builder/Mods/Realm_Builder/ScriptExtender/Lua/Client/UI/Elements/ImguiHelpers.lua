@@ -23,33 +23,6 @@ function ImguiHelpers.SafeAddSliderInt(parent, label, default, min, max)
     return parent:AddSliderInt(label or "", math.floor(default or 0), math.floor(min or 0), math.floor(max or 100))
 end
 
---- @param arrowImage ExtuiImageButton
---- @param tooltipText string?
-function ImguiHelpers.SetupImageButton(arrowImage, tooltipText)
-    StyleHelpers.ClearAllBorders(arrowImage)
-    arrowImage.Tint = arrowImage.Tint or { 1, 1, 1, 1 }
-    
-    arrowImage.OnHoverEnter = function()
-        arrowImage.Tint = { arrowImage.Tint[1], arrowImage.Tint[2], arrowImage.Tint[3], arrowImage.Tint[4] * 0.8 }
-    end
-    if tooltipText then
-        local notAddedTooltip = true --[[@type boolean?]]
-        arrowImage.OnHoverEnter = function()
-            arrowImage.Tint = { arrowImage.Tint[1], arrowImage.Tint[2], arrowImage.Tint[3], arrowImage.Tint[4] * 0.8 }
-            if notAddedTooltip then
-                ImguiHelpers.Tooltip(tooltipText)
-                notAddedTooltip = nil
-            end
-        end
-    end
-    arrowImage.OnHoverLeave = function()
-        arrowImage.Tint = { arrowImage.Tint[1], arrowImage.Tint[2], arrowImage.Tint[3], arrowImage.Tint[4] / 0.8 }
-    end
-    arrowImage:SetColor("Button", { 0, 0, 0, 0 })
-    arrowImage:SetColor("ButtonHovered", { 0, 0, 0, 0 })
-    arrowImage:SetColor("ButtonActive", { 0, 0, 0, 0 })
-end
-
 --- @param c ExtuiCombo
 --- @return string
 function ImguiHelpers.GetCombo(c)

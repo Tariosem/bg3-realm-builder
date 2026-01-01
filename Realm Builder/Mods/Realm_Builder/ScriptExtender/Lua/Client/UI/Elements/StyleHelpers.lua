@@ -146,3 +146,45 @@ function StyleHelpers.ApplyWarningTooitipStyle(tooltip)
     tooltip:SetStyle("ChildBorderSize", 2)
 end
 
+--- @param img ExtuiImageButton
+function StyleHelpers.ApplyImageButtonHoverStyle(img)
+    img:SetStyle("FrameBorderSize", 0)
+    img:SetColor("Button", { 0, 0, 0, 0 })
+    img.Background = {0,0,0,0}
+    img.OnHoverEnter = function()
+        img:SetStyle("FrameBorderSize", 2)
+        img:SetColor("Border", ColorUtils.HexToRGBA("FFFFD500"))
+    end
+
+    img.OnHoverLeave = function()
+        img:SetStyle("FrameBorderSize", 0)
+        img:SetColor("Border", ColorUtils.HexToRGBA("FFFFFFFF"))
+    end
+end
+
+--- @param imgBtn ExtuiImageButton
+--- @param tooltipText string?
+function StyleHelpers.ApplyBorderlessImageButtonStyle(imgBtn, tooltipText)
+    StyleHelpers.ClearAllBorders(imgBtn)
+    imgBtn.Tint = imgBtn.Tint or { 1, 1, 1, 1 }
+    
+    imgBtn.OnHoverEnter = function()
+        imgBtn.Tint = { imgBtn.Tint[1], imgBtn.Tint[2], imgBtn.Tint[3], imgBtn.Tint[4] * 0.8 }
+    end
+    if tooltipText then
+        local notAddedTooltip = true --[[@type boolean?]]
+        imgBtn.OnHoverEnter = function()
+            imgBtn.Tint = { imgBtn.Tint[1], imgBtn.Tint[2], imgBtn.Tint[3], imgBtn.Tint[4] * 0.8 }
+            if notAddedTooltip then
+                ImguiHelpers.Tooltip(tooltipText)
+                notAddedTooltip = nil
+            end
+        end
+    end
+    imgBtn.OnHoverLeave = function()
+        imgBtn.Tint = { imgBtn.Tint[1], imgBtn.Tint[2], imgBtn.Tint[3], imgBtn.Tint[4] / 0.8 }
+    end
+    imgBtn:SetColor("Button", { 0, 0, 0, 0 })
+    imgBtn:SetColor("ButtonHovered", { 0, 0, 0, 0 })
+    imgBtn:SetColor("ButtonActive", { 0, 0, 0, 0 })
+end

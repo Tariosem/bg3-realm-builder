@@ -106,8 +106,7 @@ function ResourceEditor:Render()
     end
 
     local window = WindowManager.RegisterWindow(self.ResourceUUID,
-        "Realm Builder - Resource Editor - " .. self.ResourceType,
-        "Resource Editor")
+        "Realm Builder - Resource Editor - " .. self.ResourceType)
     window.Closeable = true
 
     self.Panel = window

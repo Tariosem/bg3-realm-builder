@@ -669,6 +669,69 @@ function ImguiElements.AddSelectableButton(parent, label, onClick)
     return button
 end
 
+---@param parent ExtuiTreeParent
+---@param label string
+---@param icon string
+---@return ExtuiStyledRenderable
+function ImguiElements.AddImageSelectable(parent, label, icon)
+    local group = parent:AddGroup(label)
+
+    local imgBtn = group:AddImageButton("##" .. label .. "_ImgBtn", icon, IMAGESIZE.FRAME) --[[@as ExtuiImageButton]]
+    local selectable = group:AddSelectable(label .. "##" .. "_Selectable") --[[@as ExtuiSelectable]]
+
+    imgBtn.OnHoverLeave = function()
+        selectable.Highlight = false
+    end
+    imgBtn.OnHoverEnter = function()
+        selectable.Highlight = true
+    end
+    selectable.SameLine = true
+
+    selectable.OnClick = function ()
+        selectable.Selected = false
+    end
+
+    local obj = {
+    }
+
+    local keys = {
+        OnClick = true,
+        OnRightClick = true,
+    }
+
+    setmetatable(obj, {
+        __newindex = function (t, k, v)
+            if keys[k] then
+                imgBtn[k] = v
+                selectable[k] = function ()
+                    selectable.Selected = false
+                    v(selectable)
+                end
+            elseif k == "OnHoverEnter" or k == "OnHoverLeave" then
+                local originFunc = imgBtn[k]
+                imgBtn[k] = function(...)
+                    if originFunc then
+                        originFunc(...)
+                    end
+                    v(...)
+                end
+                originFunc = selectable[k]
+                selectable[k] = function(...)
+                    if originFunc then
+                        originFunc(...)
+                    end
+                    v(...)
+                end
+            else
+                group[k] = v
+            end
+        end
+    })
+
+    return obj
+
+end
+
 --- @class AttrTable : ExtuiTable
 --- @field AddNewLine fun(self: AttrTable, label:string): ExtuiTableCell
 --- @field SetValue fun(self: AttrTable, name: string, value: string)
@@ -703,13 +766,21 @@ function ImguiElements.AddReadOnlyAttrTable(parent, contents)
     end
 
     local function addRow(name, value)
+        if type(value) == "table" then
+            value = table.concat(value, ",")
+        end
+        local valueStr = tostring(value)
+        if not valueStr or valueStr == "nil" or valueStr == "" then
+            return
+        end
+
         local row = tab:AddRow() --[[@as ExtuiTableRow]]
         local nameCell = row:AddCell()
         nameCell:AddText(name)
         addLittleSpacer(nameCell)
 
         local valueCell = row:AddCell()
-        local input = valueCell:AddInputText("", tostring(value))
+        local input = valueCell:AddInputText("", valueStr) --[[@as ExtuiInputText]]
         inputs[name] = input
         input.Text = tostring(value)
         input.IDContext = "ReadOnlyAttrInput##" .. name
@@ -766,6 +837,7 @@ function ImguiElements.AddAlignedTable(parent)
     local tab = parent:AddTable(parent.Label, 2) --[[@as ExtuiTable]]
     tab.BordersInnerV = true
     tab.ColumnDefs[1] = { WidthFixed = true }
+    tab.ColumnDefs[2] = { WidthStretch = true }
 
     local row = tab:AddRow() --[[@as ExtuiTableRow]]
     local clos = {

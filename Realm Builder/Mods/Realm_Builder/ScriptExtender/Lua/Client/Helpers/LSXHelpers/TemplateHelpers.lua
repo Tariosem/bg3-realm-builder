@@ -304,7 +304,7 @@ function LSXHelpers.GenerateLocalization(names, version)
             ver = version
         end
 
-        local handle = MakeTranslatedHandle()
+        local handle = RBUtils.MakeTranslatedHandle()
 
         local contentNode = XMLNode.new("content", {
             contentuid = handle,
@@ -375,7 +375,7 @@ function LSXHelpers.BuildAndGenerateLocalization(existingNameToHandles, names)
     end
 
     for _, name in ipairs(toGen) do
-        local handle = MakeTranslatedHandle()
+        local handle = RBUtils.MakeTranslatedHandle()
         handleToString[handle] = name
 
         stringToHandles[name] = stringToHandles[name] or {}

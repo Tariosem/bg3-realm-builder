@@ -14,6 +14,7 @@
 --- @field RenderPage fun(self:IconBrowser)
 --- @field SaveToFile fun(self:IconBrowser, field:string, content:any):boolean ok
 --- @field new fun(dataManager:ManagerBase, displayName:string):IconBrowser
+--- @field SubclassInit fun(self:IconBrowser)
 IconBrowser = _Class("IconBrowser")
 
 --- @param dataManager ManagerBase
@@ -69,7 +70,7 @@ function IconBrowser:Render()
     if self.lastPosition[2] + self.lastSize[2] > screenHeight then
         self.lastPosition[2] = math.max(0, screenHeight - self.lastSize[2])
     end
-    self.panel = WindowManager.RegisterWindow("generic", self.displayName, "Browser", self, self.lastPosition,
+    self.panel = WindowManager.RegisterWindow("generic", self.displayName, self.lastPosition,
         self.lastSize)
     self.panel.Closeable = true
 
@@ -260,10 +261,10 @@ function IconBrowser:RenderUiConfigMenu()
         self.iconPC = ImagePerColumn
         if self.iconToName then
             self.browserHeight = self.iconPC * (48 * SCALE_FACTOR + self.cellsPadding[2]) + 40 * SCALE_FACTOR +
-            getEstimatedTopBarHeight()
+                getEstimatedTopBarHeight()
         else
             self.browserHeight = self.iconPC * (self.iconWidth + self.cellsPadding[2]) + 40 * SCALE_FACTOR +
-            getEstimatedTopBarHeight()
+                getEstimatedTopBarHeight()
         end
         self.browserWidth, self.browserHeight = clampSize(self.browserWidth, self.browserHeight)
         self.panel:SetSize({ self.browserWidth * 1.2, self.browserHeight * 1.2 })
