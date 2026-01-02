@@ -12,7 +12,23 @@ function TransformToolbar:__init()
         Scenery = false,
     }
     self.isInputing = false
+
+    local inputStateLookup = {
+        MultiSelecting = "Ctrl",
+    }
+    local ref = InputEvents.GetGlobalInputStatesRef()
+    self.InputStates = setmetatable({}, {
+        __index = function(t, k)
+            local stateKey = inputStateLookup[k]
+            if stateKey and ref[stateKey] ~= nil then
+                return ref[stateKey]
+            end
+            return nil
+        end
+    })
+
     self:RegisterKeyInputEvents()
+
 end
 
 function TransformToolbar:RegisterKeyInputEvents()
@@ -43,7 +59,7 @@ function TransformToolbar:RegisterKeyInputEvents()
         end
 
         if guid and guid ~= "" then
-            if self.MultiSelecting then
+            if self.InputStates.MultiSelecting then
                 self.Selecting[guid] = {}
 
                 local proxies = {}
@@ -53,6 +69,7 @@ function TransformToolbar:RegisterKeyInputEvents()
 
                 RB_GLOBALS.TransformEditor:Select(proxies)
             else
+                self.Selecting = {}
                 RB_GLOBALS.TransformEditor:Select({ MovableProxy.CreateByGuid(guid) })
             end
         else
@@ -69,6 +86,12 @@ function TransformToolbar:RegisterKeyInputEvents()
         return not IsInCharacterCreationMirror()
     end
 
+    local restrains = {
+        restrainInputing,
+        restrainOpening,
+        restrainInCharacterCreation,
+    }
+
     local ttMod = KeybindManager:CreateModule("TransformToolbar")
     local buMod = KeybindManager:CreateModule("BindUtility")
 
@@ -76,14 +99,10 @@ function TransformToolbar:RegisterKeyInputEvents()
     self.BindUtilityModule = buMod
     self:RegisterTransformEditorEvents()
 
-    buMod:AddModuleCondition(restrainOpening)
-    ttMod:AddModuleCondition(restrainOpening)
-
-    ttMod:AddModuleCondition(restrainInputing)
-    buMod:AddModuleCondition(restrainInputing)
-
-    ttMod:AddModuleCondition(restrainInCharacterCreation)
-    buMod:AddModuleCondition(restrainInCharacterCreation)
+    for _, restrain in ipairs(restrains) do
+        ttMod:AddModuleCondition(restrain)
+        buMod:AddModuleCondition(restrain)
+    end
 
     self.Subscriptions["NumericInput"] = InputEvents.SubscribeKeyInput({}, function(e)
         if not restrainInputing(e) then return end
@@ -102,18 +121,27 @@ function TransformToolbar:RegisterKeyInputEvents()
         end
     end)
 
-    ttMod:RegisterEvent("MultiSelect", function(e)
+    local realSelectSub = InputEvents.SubscribeKeyAndMouse(function (e)
         if e.Event ~= "KeyDown" or e.Repeat then return end
-        self.MultiSelecting = true
+        for _, restrain in ipairs(restrains) do
+            if not restrain(e) then
+                return
+            end
+        end
+        local modEvent = ttMod:GetKeyByEvent("Select")
+
+        if not modEvent then
+            return
+        end
+        if e.Key ~= modEvent.Key then return end
+
         singleSelect()
     end)
 
     ttMod:RegisterEvent("Select", function(e)
-        if e.Event ~= "KeyDown" or e.Repeat then return end
-        self.MultiSelecting = false
-        self.Selecting = {} 
-        singleSelect()
-    end)
+        --if e.Event ~= "KeyDown" or e.Repeat then return end
+        --singleSelect()
+    end, "Ignore Modifiers")
 
 
     ttMod:RegisterEvent("ClearSelection", function(e)
@@ -618,7 +646,7 @@ function TransformToolbar:SetupBoxSelect()
         end
 
         if next(selected) then
-            if self.MultiSelecting then
+            if self.InputStates.MultiSelecting then
                 for guid, _ in pairs(selected) do
                     self.Selecting[guid] = {}
                 end

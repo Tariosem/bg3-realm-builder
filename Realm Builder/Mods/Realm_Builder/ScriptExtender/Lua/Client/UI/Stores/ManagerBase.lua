@@ -114,6 +114,9 @@ end
 function ManagerBase:UpdateTagTree()
     for tag, count in pairs(self.tagCount) do
         self.tagTree:SetLeafValue(tag, count)
+        if not self.tagTree:Find(tag) then
+            self.tagTree:AddLeaf(tag, count, self.tagTree:GetRootKey())
+        end
     end
 end
 
@@ -132,6 +135,9 @@ function ManagerBase:AddTagToData(uuid, tag)
         return
     end
 
+    if not self.tagTree:Find(tag) then
+        self.tagTree:AddLeaf(tag)
+    end
     self.tagCount[tag] = (self.tagCount[tag] or 0) + 1
     self.tagMap[tag] = self.tagMap[tag] or {}
     self.tagMap[tag][uuid] = true
@@ -149,6 +155,50 @@ function ManagerBase:ClearTag(tagName)
             self:RemoveTagFromData(uuid, tagName)
         end
     end
+end
+
+function ManagerBase:RenameTag(oldName, newName)
+    if not oldName or oldName == "" or not newName or newName == "" then
+        return false
+    end
+
+    if self.tagMap and self.tagMap[oldName] then
+        local suc = self.tagTree:Rename(oldName, newName)
+        if not suc then
+            Warning(string.format("[ManagerBase] Cannot rename tag '%s' to '%s' because the new name is already used as a category in the tag hierarchy.", oldName, newName))
+            return false
+        end
+        self.tagIcons[newName] = self.tagIcons[oldName]
+        self.tagIcons[oldName] = nil
+        local uuids = {}
+        for uuid, _ in pairs(self.tagMap[oldName]) do
+            table.insert(uuids, uuid)
+        end
+
+        for _, uuid in ipairs(uuids) do
+            self:RemoveTagFromData(uuid, oldName)
+            self:AddTagToData(uuid, newName)
+        end
+    end
+
+    return true
+end
+
+function ManagerBase:RenameTagCollection(oldName, newName)
+    if not oldName or oldName == "" or not newName or newName == "" then
+        return false
+    end
+
+    local suc = self.tagTree:Rename(oldName, newName)
+    if not suc then
+        Warning(string.format("[ManagerBase] Cannot rename tag collection '%s' to '%s' because the new name is already used as a category in the tag hierarchy.", oldName, newName))
+        return false
+    end
+
+    self.tagIcons[newName] = self.tagIcons[oldName]
+    self.tagIcons[oldName] = nil
+
+    return true
 end
 
 function ManagerBase:AddTagToDataNonCustomization(uuid, tag)
@@ -170,6 +220,7 @@ function ManagerBase:AddTagToDataNonCustomization(uuid, tag)
         return
     end
 
+    self.tagTree:AddLeaf(tag)
     self.tagCount[tag] = (self.tagCount[tag] or 0) + 1
     self.tagMap[tag] = self.tagMap[tag] or {}
     self.tagMap[tag][uuid] = true

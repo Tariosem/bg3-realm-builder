@@ -31,7 +31,7 @@ end
 
 function CCAVBrowser:OnSelectChange(guid)
     self.dataManager:CreateDynamicTags(guid)
-    self:AddTagsFilter()
+    self:RefreshTagFilder()
 end
 
 function CCAVBrowser:RenderIcon(entry, cell)

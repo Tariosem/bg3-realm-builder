@@ -5,7 +5,7 @@ ItemBrowser.tooltipNameOptions = {"DisplayName", "TemplateName", "StatsName"}
 
 function ItemBrowser:OnSelectChange(guid)
     if self.dataManager:CheckHostValidEquipmentVisual(guid) then
-        self:AddTagsFilter()
+        self:RefreshTagFilder()
     end
 end
 

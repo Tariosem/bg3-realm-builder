@@ -17,8 +17,8 @@
 --- @field RemoveButKeepChildren fun(self:TreeTable, key:any):boolean
 --- @field Reparent fun(self:TreeTable, key:any, newParent?:any):boolean
 --- @field Rename fun(self:TreeTable, oldKey:any, newKey:any):boolean
---- @field SortTreesByDepth fun(self:TreeTable, order?:any, candidates?:table, ignoreRoot?:boolean):table<{Key:any, Depth:integer}>
---- @field SortNodesByDepth fun(self:TreeTable, order?:any, candidates?:table, ignoreRoot?:boolean):table<{Key:any, Node:any, Depth:integer, IsLeaf:boolean}>
+--- @field SortTreesByDepth fun(self:TreeTable, order?:"asc"|"desc", candidates?:table, ignoreRoot?:boolean):{Key:any, Depth:integer}[]|nil
+--- @field SortNodesByDepth fun(self:TreeTable, order?:"asc"|"desc", candidates?:table, ignoreRoot?:boolean):{Key:any, Node:any, Depth:integer, IsLeaf:boolean}[]|nil
 --- @field GetDepth fun(self:TreeTable, key:any):number|nil
 --- @field IsLeaf fun(self:TreeTable, key:any):boolean
 --- @field IsAncestor fun(self:TreeTable, ancestorKey:any, descendantKey:any):boolean
@@ -158,6 +158,10 @@ function TreeTable:_wrapNode(node, parentKey)
     })
 end
 
+function TreeTable:GetRoot()
+    return self._table
+end
+
 ---@param key any
 ---@param parent? any default to root
 ---@return table|nil
@@ -260,13 +264,10 @@ function TreeTable:AddLeaf(key, value, parent)
         return nil
     end
 
-    local parentNode = parent and self._nodeRefs[parent] or self._table
+    local parentKey = parent or ROOT
+    local parentNode = self._nodeRefs[parentKey]
     if not parentNode then
         return nil
-    end
-
-    if parentNode == self._table then
-        parent = ROOT
     end
 
     if self._nodeRefs[key] then
@@ -757,32 +758,35 @@ function TreeTable:Reparent(key, newParent)
     return true
 end
 
+--- @param oldKey any
+--- @param newKey any
+--- @return boolean
 function TreeTable:Rename(oldKey, newKey)
     if oldKey == ROOT or newKey == ROOT then
-        --Debug("Cannot rename to or from reserved key '" .. ROOT .. "'.")
+        Debug("Cannot rename to or from reserved key '" .. ROOT .. "'.")
         return false
     end
 
     if oldKey == newKey then
-        --Debug("Old key and new key are the same. No action taken.")
+        Debug("Old key and new key are the same. No action taken.")
         return false
     end
 
     local node = self._nodeRefs[oldKey]
     if not node then
-        --Debug("Key '" .. tostring(oldKey) .. "' not found.")
+        Debug("Key '" .. tostring(oldKey) .. "' not found.")
         return false
     end
 
     if self._nodeRefs[newKey] then
-        --Debug("New key '" .. tostring(newKey) .. "' already exists.")
+        Debug("New key '" .. tostring(newKey) .. "' already exists.")
         return false
     end
 
     local oldParent = self._parentRefs[oldKey]
     local parentNode = self._nodeRefs[oldParent] or self._table
     if not parentNode then
-        --Debug("Parent of '" .. tostring(oldKey) .. "' not found.")
+        Debug("Parent of '" .. tostring(oldKey) .. "' not found.")
         return false
     end
 
@@ -904,7 +908,10 @@ function TreeTable:SortTreesByDepth(order, candidates, ignoreRoot)
 end
 
 --- default ascending
---- @return table<{Key:any, Node:any, Depth:integer, IsLeaf:boolean}>|nil
+--- @param order "asc"|"desc"
+--- @param candidates any[]|nil
+--- @param ignoreRoot boolean|nil
+--- @return {Key:any, Node:any, Depth:integer, IsLeaf:boolean}[]|nil
 function TreeTable:SortNodesByDepth(order, candidates, ignoreRoot)
     if self._ancestorDirty then
         self:__buildAncestorTable()

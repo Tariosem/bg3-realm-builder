@@ -48,471 +48,367 @@ function IconBrowser:CheckIfAnySearchCriteria()
     return hasIncludeConditions or hasExcludeConditions
 end
 
-function IconBrowser:AddTagsFilter()
-    if self.tagsFilterMenu then
-        self:RenderTagsFilter()
-        return
-    end
-    self.tagsFilterMenu = self.tagsFilterMenu or self.topMenuBar:AddMenu("Tags Filter >")
-    self.tagsFilterMenu.OnHoverEnter = function()
-        self:RenderTagsFilter()
+function IconBrowser:RefreshTagFilder()
+    local menu = self.topMenuBar:AddMenu("Tags Filter >") --[[@as ExtuiMenu]]
+    menu.OnHoverEnter = function()
+        local refreshFn = self:RenderTagsFilter(menu)
+        refreshFn()
+        menu.OnHoverEnter = refreshFn
+        self.RefreshTagFilder = refreshFn
     end
 end
 
 -- Abomination
-function IconBrowser:RenderTagsFilter()
+--- @param parent ExtuiTreeParent
+function IconBrowser:RenderTagsFilter(parent)
     local allGroups, allTags, groupMap, tagsMap = self.dataManager:CountGroupsAndTags(self.selectedGuid)
-    local tagTree = self.dataManager.tagTree
     
+    local function refreshFn() end
     self.tagsMap = tagsMap
     self.groupMap = groupMap
     self:ClearNonExistTagsAndGroups()
-    local sortWay = self.nameAscend and "asc" or "desc"
-    local sortedParents = tagTree:SortTreesByDepth(nil, nil, true)
+    
+    local tagTree = self.dataManager.tagTree
     local collectionCnt = {}
-    self.tagRerendered = true
+    local updateFns = {}
+    local tagIcons = self.dataManager.tagIcons
+    local dragDropType = "IconBrowserTag"
+    local browser = self
+    
+    local setupImageFunc = StyleHelpers.ApplyImageButtonHoverStyle
 
-    for _, ele in pairs(self.tagsFilterElements or {}) do
-        ele:Destroy()
-    end
-    local dragDropType = "TagCollection" .. self.displayName
-    if #dragDropType > 31 then
-        dragDropType = string.sub(dragDropType, 1, 31)
-    end
-    self.tagsParentElements = self.tagsParentElements or {}
-    self.oldSortedParents = self.oldSortedParents or {}
-
-    --local oldParentDelete = {}
-    for i = #self.oldSortedParents or {}, 1, -1 do
-        local parent = self.oldSortedParents[i].Key
-        --table.insert(oldParentDelete, parent)
-        local parentElement = self.tagsParentElements[parent]
-        if parentElement then
-            local ud = parentElement.UserData
-            if ud and ud.Subcriptions then
-                for _, sub in pairs(ud.Subcriptions) do
-                    if sub and sub.Unsubscribe then
-                        sub:Unsubscribe()
-                    end
+    local function updateCollectionCnt()
+        browser:ClearNonExistTagsAndGroups()
+        local function process(key)
+            local node = tagTree:Find(key)
+            if not node then return 0 end
+            local cnt = 0
+            for childKey, childNode in pairs(node) do
+                local type = type(childNode)
+                if type == "table" then
+                    cnt = cnt + process(childKey)
+                elseif type == "number" then
+                    cnt = cnt + childNode
                 end
-                ud.Subcriptions = nil
             end
-            if ud and ud.RenameInput then
-                ud.RenameInput:Destroy()
-                ud.RenameInput = nil
-            end
-
-            self.tagsParentElements[parent] = nil
-            parentElement:Destroy()
+            collectionCnt[key] = cnt
+            return cnt
         end
-        ::continue::
-    end
-    --Debug("Old parent removed order:", table.concat(oldParentDelete, " > "))
 
-    for i = #sortedParents, 1, -1 do
-        local parent = sortedParents[i].Key
-        local children = tagTree:Find(parent)
-        for key, tagOrCol in pairs(children) do
-            if type(tagOrCol) == "table" then
-                collectionCnt[parent] = (collectionCnt[parent] or 0) + (collectionCnt[key] or 0)
-            elseif type(tagOrCol) == "number" then
-                collectionCnt[parent] = (collectionCnt[parent] or 0) + tagOrCol
-            else
-                Warning("[IconsBrowser] Invalid tag or collection count for key: " .. tostring(key) .. ". Skipping.")
+        local root = tagTree:GetRootKey()
+        local rootNode = tagTree:Find(root)
+        for key, obj in pairs(rootNode) do
+            if type(obj) == "table" then
+                process(key)
             end
         end
     end
 
-    self.tagsFilterElements = {}
-
-    if not self.tagsFilterMenu then
-        self.tagsFilterMenu = self.topMenuBar:AddMenu("Tags Filter >")
-    end
-
-    self.tagsPopup = self.tagsFilterMenu --[[@as ExtuiTreeParent]]
-    local topTable, leftCe, rightCe = self.tagsFilterTopTable, nil, nil
-    if not topTable then
-        topTable, leftCe, rightCe = ImguiElements.AddTwoColTable(self.tagsPopup, "TagsTopTable")
-        self.tagsFilterTopTable = topTable
-    end
-    if not topTable.UserData then
-        --- @diagnostic disable-next-line
-        local undoAllIncBtn = leftCe:AddSelectable(GetLoca("Uninclude All") .. "##UndoAllIncludeButton")
-        --- @diagnostic disable-next-line
-        local undoAllExcBtn = rightCe:AddSelectable(GetLoca("Unexclude All") .. "##UndoAllExcludeButton")
-        undoAllIncBtn.DontClosePopups = true
-        undoAllIncBtn:SetStyle("SelectableTextAlign", 0.5)
-        undoAllExcBtn:SetStyle("SelectableTextAlign", 0.5)
-        undoAllExcBtn.DontClosePopups = true
-        topTable.UserData = {
-            UndoIncludeAllButton = undoAllIncBtn,
-            UndoExcludeAllButton = undoAllExcBtn
-        }
-    end
-
-    local preassignedParent = {}
-    self.tagsParentElements = {}
-
-    local uninclFuncs = {}
-    local unexclFuncs = {}
-    local inclFuncs = {}
-    local exclFuncs = {}
-    local tagToParent = {}
-    local tagRenderOrder = {}
-
-    self.oldSortedParents = sortedParents
-    --local parentRenderOrder = {}
-    for _, pair in ipairs(sortedParents) do
-        local parent = pair.Key
-        --table.insert(parentRenderOrder, parent)
-        local children = tagTree:Find(parent)
-        local parentUiElement = preassignedParent[parent] or self.tagsPopup
-        if type(parent) ~= "string" then
-            Warning("[IconsBrowser] Invalid tag parent: " .. tostring(parent) .. ". Skipping.")
-            goto continue
+    local function sortTreeKeys(key)
+        local node = tagTree:Find(key)
+        if not node then return {} end
+        local keyArr = {}
+        local sortCache = {}
+        for k, v in pairs(node) do
+            sortCache[k] = type(v) == "table" and 0 or 1
+            table.insert(keyArr, k)
         end
-
-        if type(children) ~= "table" then
-            Warning("[IconsBrowser] Invalid children for parent: " .. tostring(parent) .. ". Skipping.")
-            goto continue
-        end
-        if next(children) == nil then
-            goto continue
-        end
-        if self.dataManager.tagIcons[parent] then
-            local tempimage = parentUiElement:AddImage(self.dataManager.tagIcons[parent], IMAGESIZE.FRAME)
-            table.insert(self.tagsFilterElements, tempimage)
-        end
-        local allCnt = collectionCnt[parent] or 0
-        local parentMenu = parentUiElement:AddMenu(parent .. " (" .. allCnt .. ") >")
-        local changeNamePopup = parentMenu:AddPopup("ChangeParentNamePopup")
-        local renameInput = changeNamePopup:AddInputText("")
-        renameInput.Text = parent
-        renameInput.IDContext = "RenameInput"
-        renameInput:Tooltip():AddText(GetLoca("Press ENTER to confirm"))
-        parentMenu.UserData = parentMenu.UserData or {}
-        parentMenu.UserData.RenameInput = renameInput
-        parentMenu.UserData.Subcriptions = {}
-
-        local function updateParentName(newName)
-            local success = true
-            if newName and newName ~= parent and newName ~= "" and not allTags[newName] then
-                success = tagTree:Rename(parent, newName)
-            elseif newName == "" then
-                tagTree:RemoveButKeepChildren(parent)
-            elseif newName == parent then
-                return -- no change
-            else
-                success = false
+        table.sort(keyArr, function(a, b)
+            if sortCache[a] == sortCache[b] then
+                return a < b
             end
-            if not success then
-                ConfirmPopup:Popup(GetLoca("Invalid name, try another one."))
-                return
-            end
-            self:AddTagsFilter()
-            self:SaveTagHierarchy()
-        end
-
-        renameInput.OnRightClick = function()
-            if renameInput.Text == parent then
-                return
-            end
-
-            updateParentName(renameInput.Text)
-        end
-
-        local function openPopup()
-            changeNamePopup:Open()
-
-            parentMenu.UserData.Subcriptions.KeySub = InputEvents.SubscribeKeyInput({ Key = "RETURN" }, function()
-                if self.tagsParentElements[parent] == nil then return UNSUBSCRIBE_SYMBOL end
-                local liveParent = self.tagsParentElements[parent]
-                local liveInput = liveParent.UserData and liveParent.UserData.RenameInput
-
-                if ImguiHelpers.IsFocused(liveInput) then
-                    updateParentName(liveInput.Text)
-                end
-            end)
-        end
-
-
-
-        parentMenu.CanDrag = true
-        parentMenu.UserData.TagCollection = parent
-        parentMenu.OnRightClick = openPopup
-        parentMenu.DragDropType = dragDropType
-
-        local function menuDragDropSingle(menu, drop)
-            local data = drop.UserData
-
-            if data and data.Tag then
-                tagTree:ForceAddLeaf(data.Tag, allTags[data.Tag], parent)
-                self:AddTagsFilter()
-                self:SaveTagHierarchy()
-            end
-        end
-
-        parentMenu.OnDragDrop = menuDragDropSingle
-
-        self.tagsParentElements[parent] = parentMenu
-        parentMenu.SameLine = self.dataManager.tagIcons[parent] ~= nil
-
-        for key, tags in pairs(children) do
-            tagToParent[key] = parent
-            preassignedParent[key] = parentMenu
-        end
-
-        parentMenu.UserData.Subcriptions.ShiftModSub = InputEvents.SubscribeKeyInput({ Key = "LSHIFT" }, function(e)
-            if self.tagsParentElements[parent] == nil or not parentMenu then return UNSUBSCRIBE_SYMBOL end
-            local liveParent = self.tagsParentElements[parent]
-
-            if e.Event == "KeyDown" then
-                local function processTags(children, actionMap)
-                    for tag, cont in pairs(children) do
-                        if type(cont) ~= "table" then
-                            local cond = actionMap.string
-                            if cond then cond(tag) end
-                        else
-                            processTags(cont, actionMap)
-                        end
-                    end
-                end
-
-                liveParent.OnClick = function()
-                    self.tempDisableSearch = true
-                    processTags(children, {
-                        string = function(tag)
-                            if not self.selectedTags[tag] and not self.excludeTags[tag] and inclFuncs[tag] then
-                                inclFuncs[tag]()
-                            elseif self.selectedTags[tag] and uninclFuncs[tag] then
-                                uninclFuncs[tag]()
-                            end
-                        end
-                    })
-                    self.tempDisableSearch = false
-                    self:Search()
-                end
-
-                liveParent.OnRightClick = function()
-                    self.tempDisableSearch = true
-                    processTags(children, {
-                        string = function(tag)
-                            if not self.excludeTags[tag] and not self.selectedTags[tag] and exclFuncs[tag] then
-                                exclFuncs[tag]()
-                            elseif self.excludeTags[tag] and unexclFuncs[tag] then
-                                unexclFuncs[tag]()
-                            end
-                        end
-                    })
-                    self.tempDisableSearch = false
-                    self:Search()
-                end
-            elseif e.Event == "KeyUp" then
-                liveParent.OnClick = nil
-                liveParent.OnRightClick = openPopup
-            end
+            return sortCache[a] < sortCache[b]
         end)
-
-        ::continue::
-    end
-    --Debug("Tag parents render order:", table.concat(parentRenderOrder, " > "))
-
-    self.tagsPopup.DragDropType = dragDropType
-    self.tagsPopup.OnDragDrop = function(menu, drop)
-        local data = drop.UserData
-
-        if data and data.Tag then
-            tagTree:ForceAddLeaf(data.Tag, allTags[data.Tag])
-            self:AddTagsFilter()
-            self:SaveTagHierarchy()
-        end
+        return keyArr
     end
 
-    for currentTag, currentCnt in RBUtils.SortedPairs(allTags, function(a, b)
-        if sortWay == "asc" then
-            return a < b
-        else
-            return a > b
-        end
-    end) do
-        local tagArea = preassignedParent[currentTag] or self.tagsPopup
-        table.insert(tagRenderOrder, currentTag)
-        local parent = tagToParent[currentTag]
-        if parent then
-            collectionCnt[parent] = (collectionCnt[parent] or 0) + currentCnt
-        end
+    local inputting = false
+    --- @param selectable ExtuiStyledRenderable
+    --- @param input ExtuiInputText
+    --- @param label string
+    --- @param updateFn fun(newName:string)
+    local function subscribeRename(selectable, input, label, updateFn)
+        inputting = true
+        selectable.Visible = false
+        input.Visible = true
+        input.Text = label
+        input.EnterReturnsTrue = true
 
-        local hasIcon = self.dataManager.tagIcons[currentTag] ~= nil
-        local tagIcon = nil
+        input.OnChange = function (s)
+            if not input.EnterReturnsTrue then return end
+
+            inputting = false
+            selectable.Visible = true
+            input.Visible = false
+            input.OnChange = nil
+            updateFn(tostring(input.Text))
+        end
+    end
+
+    --- @param tableRow ExtuiTreeParent
+    --- @param tag string
+    --- @return fun()
+    local function renderTagEntry(tableRow, tag)
+        local cnt = allTags[tag] or 0
+        if cnt == 0 then
+            return function () end
+        end
+        local parent = tableRow:AddCell()
+        local hasIcon = tagIcons[tag]
+        local icon = {} --[[@as ExtuiImageButton]]
         if hasIcon then
-            --- @type ExtuiImageButton
-            tagIcon = tagArea:AddImageButton(currentTag .. "IconButton", self.dataManager.tagIcons[currentTag], IMAGESIZE.FRAME)
-            table.insert(self.tagsFilterElements, tagIcon)
+            icon = parent:AddImageButton("##" .. tag .. "IconButton", hasIcon, IMAGESIZE.FRAME)
+            setupImageFunc(icon)
         end
 
-        local selection = tagArea:AddSelectable(currentTag .. " (" .. currentCnt .. ")")
-
-        selection.CanDrag = true
-        selection.DragDropType = dragDropType
-        selection.UserData = { Tag = currentTag }
-
-        selection.OnDragStart = function(sel)
-            if hasIcon then
-                sel.DragPreview:AddImage(self.dataManager.tagIcons[currentTag], IMAGESIZE.FRAME)
-            end
-            sel.DragPreview:AddText(currentTag .. " (" .. currentCnt .. ")").SameLine = hasIcon
-        end
-
-        selection.OnDragDrop = function(sel, drop)
-            local data = drop.UserData
-            if data and data.Tag then
-                tagTree:ForceAddTree("New Collection", parent)
-
-                local depth = tagTree:GetDepth("New Collection")
-                --Debug("New Collection depth:", depth)
-                if depth > 2 then
-                    Warning("[IconsBrowser] Cannot create collection deeper than 2 level. Operation cancelled.")
-                    ConfirmPopup:Popup("That's too deep")
-                    tagTree:Remove("New Collection")
-                    return
-                end
-
-                tagTree:ForceAddLeaf(data.Tag, allTags[data.Tag], "New Collection")
-                tagTree:ForceAddLeaf(currentTag, allTags[currentTag], "New Collection")
-                self:AddTagsFilter()
-                self:SaveTagHierarchy()
-            end
-        end
-
-        if hasIcon then
-            tagIcon.OnHoverEnter = function()
-                selection.Highlight = true
-            end
-            tagIcon.OnHoverLeave = function()
-                selection.Highlight = false
-            end
-        end
-
-        selection.SameLine = hasIcon
-        if self.excludeTags[currentTag] then
-            StyleHelpers.SetAlphaByBool(selection, false)
-            if tagIcon then
-                tagIcon.Tint = { 1, 1, 1, 0.5 }
-                tagIcon.Disabled = true
-            end
-        end
-        if self.selectedTags[currentTag] then
-            selection.Selected = true
-        end
-
-        if self.dataManager.dynamicTags and self.dataManager.dynamicTags[currentTag] then
-            selection:Tooltip():AddText(self.dataManager.dynamicTags[currentTag]).TextWrapPos = self.browserWidth
-            if hasIcon and tagIcon then
-                tagIcon:Tooltip():AddText(self.dataManager.dynamicTags[currentTag]).TextWrapPos = self.browserWidth
-            end
-        end
-
+        local selection = parent:AddSelectable(tag .. " (" .. cnt .. ")")
+        selection.SameLine = hasIcon ~= nil
         selection.DontClosePopups = true
         selection.AllowItemOverlap = true
 
-        local excludeHandler = function()
-            self.excludeTags[currentTag] = true
-            StyleHelpers.SetAlphaByBool(selection, false)
-            if tagIcon then
-                tagIcon.Tint = { 1, 1, 1, 0.5 }
-            end
+        local eles = { selection, icon }
+
+        local function updateState()
+            selection.Selected = browser.selectedTags[tag] ~= nil
+            local alpha = browser.excludeTags[tag] and 0.5 or 1
+            selection:SetStyle("Alpha", alpha)
+            icon.Tint = {1, 1, 1, alpha}
         end
 
-        local includeHandler = function()
-            self.selectedTags[currentTag] = true
-            if tagIcon then
-                tagIcon.Tint = { 1, 1, 1, 1 }
-            end
-            selection.Selected = true
-        end
-
-        local unexcludeHandler = function()
-            self.excludeTags[currentTag] = nil
-            StyleHelpers.SetAlphaByBool(selection, true)
-            if tagIcon then
-                tagIcon.Tint = { 1, 1, 1, 1 }
-            end
-        end
-
-        local unincludeHandler = function()
-            self.selectedTags[currentTag] = nil
-
-            selection.Selected = false
-        end
-
-        selection.OnClick = function()
-            selection.Selected = false
-            if self.selectedTags[currentTag] then
-                unincludeHandler()
-            elseif self.excludeTags[currentTag] then
-                unexcludeHandler()
+        local function toggleEntry(onTable, offTable)
+            if onTable[tag] then
+                onTable[tag] = nil
             else
-                includeHandler()
+                onTable[tag] = true
+                offTable[tag] = nil
             end
-
-            self:Search()
         end
 
-        selection.OnRightClick = function()
-            selection.Selected = false
-            if self.excludeTags[currentTag] then
-                unexcludeHandler()
-            elseif self.selectedTags[currentTag] then
-                unincludeHandler()
+        local onSingleClick = function ()
+            toggleEntry(browser.selectedTags, browser.excludeTags)
+            updateState()
+            browser:Search()
+        end
+
+        local onRightClick = function ()
+            toggleEntry(browser.excludeTags, browser.selectedTags)
+            updateState()
+            browser:Search()
+        end
+
+        local renameInput = nil
+        local onDoubleClick = function ()
+            if inputting then return end
+            if not renameInput then
+                renameInput = parent:AddInputText("##" .. tag .. "RenameInput")
+                renameInput.Visible = false
+                renameInput.SameLine = true
+            end
+            subscribeRename(selection, renameInput, tag, function (newName)
+                if newName == "" or newName == tag then
+                    return
+                end
+                local suc = browser.dataManager:RenameTag(tag, newName)
+                if not suc then return end
+                tag = newName
+
+                selection.Label = newName .. " (" .. cnt .. ")"
+
+                browser.selectedTags[newName] = browser.selectedTags[tag]
+                browser.selectedTags[tag] = nil
+                browser.excludeTags[newName] = browser.excludeTags[tag]
+                browser.excludeTags[tag] = nil
+                updateState()
+            end)
+        end
+
+        local onClick = RBUtils.DoubleClick(onSingleClick, onDoubleClick)
+        
+        local onDragStart = function(sel)
+            sel.UserData = { Browser = browser, Tag = tag }
+            if hasIcon then
+                sel.DragPreview:AddImage(hasIcon, IMAGESIZE.FRAME)
+            end
+            sel.DragPreview:AddText(tag .. " (" .. cnt .. ")").SameLine = hasIcon ~= nil
+        end
+
+        local onDragDrop = function (sel, dropped)
+            if not dropped or not dropped.UserData then return  end
+            local droppedBrowser = dropped.UserData.Browser
+            if browser ~= droppedBrowser then
+                return
+            end
+            local droppedTag = dropped.UserData.Tag
+            local thisParent = tagTree:GetParentKey(tag)
+            tagTree:Reparent(droppedTag, thisParent or tagTree.GetRootKey())
+            refreshFn()
+        end
+
+        for _, ele in pairs(eles) do
+            ele.OnClick = onClick
+            ele.OnRightClick = onRightClick
+            ele.OnDragStart = onDragStart
+            ele.OnDragDrop = onDragDrop
+
+            ele.CanDrag = true
+            ele.DragDropType = dragDropType
+        end
+
+        return updateState
+    end
+
+    --- @param tableRow ExtuiTreeParent
+    --- @param collection string
+    local function renderTagCollectionEntry(tableRow, collection)
+        local cnt = collectionCnt[collection] or 0
+        if cnt == 0 then
+            return
+        end
+        local parent = tableRow:AddCell()
+        local hasIcon = tagIcons[collection]
+        local icon = {} --[[@as ExtuiImageButton]]
+        local collectionName = collection .. " (" .. tostring(cnt) .. ")"
+        if hasIcon then
+            icon = parent:AddImage(hasIcon, IMAGESIZE.FRAME)
+        end
+
+        local menu = parent:AddMenu(collectionName .. " >.") --[[@as ExtuiMenu]]
+        menu.SameLine = hasIcon ~= nil
+        local eles = { menu, icon }
+
+        local onDragStart = function(sel)
+            sel.UserData = { Browser = browser, Tag = collection }
+            if hasIcon then
+                sel.DragPreview:AddImage(hasIcon, IMAGESIZE.FRAME)
+            end
+            sel.DragPreview:AddText(collection)
+        end
+
+        local onDragDrop = function (sel, dropped)
+            if not dropped or not dropped.UserData then return  end
+            local droppedBrowser = dropped.UserData.Browser
+            if browser ~= droppedBrowser then
+                return
+            end
+            local droppedTag = dropped.UserData.Tag
+            tagTree:Reparent(droppedTag, collection)
+            refreshFn()
+        end
+
+        local renameInput = nil
+        local onDoubleClick = function ()
+            if inputting then return end
+            if not renameInput then
+                renameInput = parent:AddInputText("##" .. collection .. "RenameInput")
+                renameInput.Visible = false
+                renameInput.SameLine = true
+            end
+            subscribeRename(menu, renameInput, collection, function (newName)
+                if newName == "" or newName == collection then
+                    return
+                end
+
+                local suc = browser.dataManager:RenameTagCollection(collection, newName)
+                if not suc then return end
+
+                collection = newName
+                collectionName = newName .. " (" .. tostring(cnt) .. ")"
+                collectionCnt[newName] = collectionCnt[collection]
+                collectionCnt[collection] = nil
+                
+                menu.Label = collectionName
+            end)
+        end
+
+        local onClick = RBUtils.DoubleClick(function () end, onDoubleClick)
+
+        for _, ele in pairs(eles) do
+            ele.OnClick = onClick
+            ele.OnDragStart = onDragStart
+            ele.OnDragDrop = onDragDrop
+
+            ele.CanDrag = true
+            ele.DragDropType = dragDropType
+        end
+
+        menu.OnHoverEnter = function ()
+            local keyArr = sortTreeKeys(collection)
+            local tab = menu:AddTable("TagCollectionTable_" .. collection, 1)
+            local row = tab:AddRow()
+            for _, key in ipairs(keyArr) do
+                if tagTree:IsLeaf(key) then
+
+                    local updateFn = renderTagEntry(row, key)
+                    updateFns[key] = updateFn
+                    updateFn()
+                else
+                    renderTagCollectionEntry(row, key)
+                end
+            end
+
+            menu.OnHoverEnter = nil
+        end
+
+        return menu
+    end
+
+    local topGroup = parent:AddGroup("TagsFilterRootGroup")
+    local topTab = topGroup:AddTable("TagsFilterTopTable", 2):AddRow()
+    local cells = { topTab:AddCell(), topTab:AddCell() }
+
+    local function addSeletable(parent, label, onClick)
+        local sel = parent:AddSelectable(label)
+        sel.DontClosePopups = true
+        sel.AllowItemOverlap = true
+        sel.OnClick = onClick
+        return sel
+    end
+    
+    addSeletable(cells[1], "Uninclude All", function (s)
+        s.Selected = false
+        for tag, _ in pairs(browser.selectedTags) do
+            browser.selectedTags[tag] = nil
+            if updateFns[tag] then
+                updateFns[tag]()
+            end
+        end
+        browser:Search()
+    end)
+
+    addSeletable(cells[2], "Unexclude All", function (s)
+        s.Selected = false
+        for tag, _ in pairs(browser.excludeTags) do
+            browser.excludeTags[tag] = nil
+            if updateFns[tag] then
+                updateFns[tag]()
+            end
+        end
+        browser:Search()
+    end)
+
+    function refreshFn()
+        updateCollectionCnt()
+        updateFns = {}
+        for i, child in ipairs(parent.Children) do
+            if child ~= topGroup then
+                child:Destroy()
+            end
+        end
+        local keyArr = sortTreeKeys(tagTree:GetRootKey())
+        local tab = parent:AddTable("TagsFilterMainTable", 1)
+        local row = tab:AddRow()
+        for _, key in ipairs(keyArr) do
+            if tagTree:IsLeaf(key) then
+                local updateFn = renderTagEntry(row, key)
+                updateFns[key] = updateFn
+                updateFn()
             else
-                excludeHandler()
-            end
-            self:Search()
-        end
-
-        if tagIcon then
-            tagIcon.OnClick = selection.OnClick
-            tagIcon.OnRightClick = selection.OnRightClick
-        end
-
-        if self.selectedTags[currentTag] then
-            selection.OnRightClick = nil
-            if tagIcon then
-                tagIcon.OnRightClick = nil
+                renderTagCollectionEntry(row, key)
             end
         end
-
-        table.insert(self.tagsFilterElements, selection)
-
-        unexclFuncs[currentTag] = unexcludeHandler
-        uninclFuncs[currentTag] = unincludeHandler
-        inclFuncs[currentTag] = includeHandler
-        exclFuncs[currentTag] = excludeHandler
     end
 
-    topTable.UserData.UndoIncludeAllButton.OnClick = function(btn)
-        self.tempDisableSearch = true
-        for tag, _ in pairs(self.selectedTags) do
-            if uninclFuncs[tag] then
-                uninclFuncs[tag]()
-            end
-        end
-        self.tempDisableSearch = false
-        self:Search()
-        btn.Selected = false
-    end
-
-    topTable.UserData.UndoExcludeAllButton.OnClick = function(btn)
-        self.tempDisableSearch = true
-        for tag, _ in pairs(self.excludeTags) do
-            if unexclFuncs[tag] then
-                unexclFuncs[tag]()
-            end
-        end
-        self.tempDisableSearch = false
-        self:Search()
-        btn.Selected = false
-    end
+    return refreshFn
 end
 
 function IconBrowser:AddGroupFilter()
@@ -649,4 +545,6 @@ function IconBrowser:Search()
     --Debug("Search completed in " .. tostring(Ext.Timer.MonotonicTime() - now) .. " ms.")
     --Debug("Found " .. CountMap(self.searchResult) .. " matching entries.")
     self:RenderIcons()
+
+
 end

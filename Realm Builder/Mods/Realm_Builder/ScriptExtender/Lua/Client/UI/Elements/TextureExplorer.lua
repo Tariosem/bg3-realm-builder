@@ -276,12 +276,16 @@ local function renderFolderPath(parent, currentPath, setter, pathUpdater)
         pathGroup.Visible = false
         pathInput.Text = currentPathText
         pathInput.SizeHint = { 1000 * SCALE_FACTOR, 0 }
+        pathInput.EnterReturnsTrue = true
+        pathInput.EscapeClearsAll = true
     end
 
     local function leaveFocus()
         pathGroup.Visible = true
         pathInput.Text = ""
         pathInput.SizeHint = { 200 * SCALE_FACTOR, 0 }
+        pathInput.EnterReturnsTrue = false
+        pathInput.EscapeClearsAll = false
     end
 
     pathInput.OnClick = function()
@@ -303,15 +307,14 @@ local function renderFolderPath(parent, currentPath, setter, pathUpdater)
             pathUpdater(newValidPath)
         end
 
-        confirmKeySub = InputEvents.SubscribeKeyInput({}, function(e)
-            if e.Event == "KeyDown" and e.Key == 'RETURN' then
-                pcall(confirmInput)
-                return UNSUBSCRIBE_SYMBOL
-            elseif e.Event == "KeyDown" and e.Key == 'ESCAPE' then
-                pcall(cancelInput)
-                return UNSUBSCRIBE_SYMBOL
+        pathInput.OnChange = function ()
+            if pathInput.EnterReturnsTrue then
+                confirmInput()
+            elseif pathInput.Text == "" then
+                cancelInput()
             end
-        end)
+        end
+        
         Timer:After(1000, function()
             Timer:EveryFrame(function()
                 local ok, focused = pcall(function()

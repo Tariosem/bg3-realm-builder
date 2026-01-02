@@ -9,7 +9,6 @@ return {
     },
 
     TransformToolbar = {
-        ["MultiSelect"] = { Key = "MMB", Modifiers = { "SHIFT" } },
         ["Select"] = { Key = "MMB" },
         ["ClearSelection"] = { Key = "ESCAPE" },
         ["Duplicate"] = { Key = "D", Modifiers = { "SHIFT" } },

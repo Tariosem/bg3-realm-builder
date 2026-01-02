@@ -65,15 +65,15 @@ function SceneMenu:Render()
     local presetNameInput = r1:AddInputText("")
     local tryLoadButton = r1:AddButton(GetLoca("Load"))
 
-    local presetNameInputKeySub = InputEvents.SubscribeKeyInput({ Key = "RETURN" }, function()
-        if saveButton and ImguiHelpers.IsFocused(presetNameInput) then
-            saveButton.OnClick()
-        end
-    end)
-
     --saveButton.SameLine = true
     tryLoadButton.SameLine = true
     presetNameInput.SameLine = true
+    presetNameInput.EnterReturnsTrue = true
+
+    presetNameInput.OnChange = function()
+        if not presetNameInput.EnterReturnsTrue then return end
+        saveButton:OnClick()
+    end
 
     presetNameInput.IDContext = "PresetNameInput"
 
@@ -91,7 +91,6 @@ function SceneMenu:Render()
     end
 
     local visibleOnlyCheckbox = self.panel:AddCheckbox(GetLoca("Visible Props Only"), self.visibleOnly)
-    --local autoSaveCheckbox = self.panel:AddCheckbox(GetLoca("Auto Save To File"), self.autoSave)
     local relativeCheckbox = self.panel:AddCheckbox(GetLoca("Relative"), self.isRelative)
 
     local attentionImage = self.panel:AddImage(RB_ICONS.Warning, IMAGESIZE.TINY) --[[@as ExtuiImageButton]]
@@ -111,11 +110,6 @@ function SceneMenu:Render()
         self.visibleOnly = visibleOnlyCheckbox.Checked
     end
 
-    --[[autoSaveCheckbox.OnChange = function()
-        self.autoSave = autoSaveCheckbox.Checked
-        CONFIG.PresetMenu.autoSave = self.autoSave
-        SaveConfig("PresetMenu")
-    end]]
 
     relativeCheckbox.OnChange = function()
         self.isRelative = relativeCheckbox.Checked

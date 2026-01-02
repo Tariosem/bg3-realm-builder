@@ -63,24 +63,17 @@ function TreeList:__init(parent, label, tree)
 end
 
 function TreeList:SetupKeyListeners()
-    self.selectModeKeySub = InputEvents.SubscribeKeyInput({}, function(e)
-        if e.Repeat then return end
-        if e.Key == "LCTRL" or e.Key == "RCTRL" then
-            if e.Event == "KeyDown" then
-                self.MultiSelect = true
-                self.GroupSelect = false
-            elseif e.Event == "KeyUp" then
-                self.MultiSelect = false
-            end
-        elseif e.Key == "LSHIFT" or e.Key == "RSHIFT" then
-            if e.Event == "KeyDown" then
-                self.GroupSelect = true
-                self.MultiSelect = false
-            elseif e.Event == "KeyUp" then
-                self.GroupSelect = false
-            end
+    local stateToMap = {
+        GroupSelect = "Shift",
+        MultiSelect = "Ctrl"
+    }
+    self.InputStates = {}
+    local o = InputEvents.GetGlobalInputStatesRef()
+    setmetatable(self.InputStates, {
+        __index = function(_, key)
+            return o[stateToMap[key]]
         end
-    end)
+    })
 end
 
 function TreeList:Render()
@@ -518,9 +511,9 @@ function TreeList:GetLowestSelected()
 end
 
 function TreeList:SelectLogic(key, parent)
-    if self.MultiSelect then
+    if self.InputStates.MultiSelect then
             self:ToggleSelected(key)
-    elseif self.GroupSelect then
+    elseif self.InputStates.GroupSelect then
         if self.lastSelectedKey and self.indexRefs and self.indexRefs[self.lastSelectedKey] and self.indexRefs[key] then
             local lastSelectedKey = self.lastSelectedKey
             local lastRef = self.itemRefs[self.lastSelectedKey]
@@ -580,7 +573,7 @@ function TreeList:SetupDragAndDrop(selectable, key)
     local userOnDragStart = selectable.OnDragStart or emptyFunc
 
     selectable.OnDragStart = function(sel)
-        if not self.GroupSelect and not self.MultiSelect then
+        if not self.InputStates.GroupSelect and not self.InputStates.MultiSelect then
             self:ClearSelection(true)
         end
         self.selectedItems[key] = true
@@ -827,14 +820,10 @@ function TreeList:SetupRenameInput(key, userLabel)
 
     userLabel = userLabel:gsub("##.*", "") -- remove id suffix
     local input = node:AddInputText("", userLabel) --[[@type ExtuiInputText?]]
+    input.EnterReturnsTrue = true
     input.IDContext = "TreeList" .. self.label .. "RenameInput"
     input.SameLine = true
     --input.SizeHint = { #userLabel * 16 + 32, IMAGESIZE.SMALL[2] }
-
-    input.OnChange = function(e)
-        if not input then return end
-        --input.SizeHint = { #input.Text * 16 + 32, IMAGESIZE.SMALL[2] }
-    end
 
     local function rerender()
         selec.Visible = true
@@ -852,6 +841,12 @@ function TreeList:SetupRenameInput(key, userLabel)
         self:RenderList()
     end
 
+    input.OnChange = function(e)
+        if not e.EnterReturnsTrue then return end
+        rename()
+    end
+
+
     Timer:After(1000, function (timerID)
         local focusTimer = Timer:EveryFrame(function (timerID)
             local ok, focused = pcall(ImguiHelpers.IsFocused, input)
@@ -865,16 +860,6 @@ function TreeList:SetupRenameInput(key, userLabel)
                 return UNSUBSCRIBE_SYMBOL
             end
         end)
-    end)
-
-    local enterSub = InputEvents.SubscribeKeyInput({ Key = "RETURN" }, function (e)
-        local ok, focused = pcall(ImguiHelpers.IsFocused, input)
-        if not ok then return UNSUBSCRIBE_SYMBOL end
-
-        if focused and input then
-            rename()
-            return UNSUBSCRIBE_SYMBOL
-        end
     end)
 
 end

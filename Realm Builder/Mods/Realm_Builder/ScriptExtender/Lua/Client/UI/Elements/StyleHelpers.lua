@@ -149,8 +149,7 @@ end
 --- @param img ExtuiImageButton
 function StyleHelpers.ApplyImageButtonHoverStyle(img)
     img:SetStyle("FrameBorderSize", 0)
-    img:SetColor("Button", { 0, 0, 0, 0 })
-    img.Background = {0,0,0,0}
+    --img:SetColor("Button", { 0, 0, 0, 0 })
     img.OnHoverEnter = function()
         img:SetStyle("FrameBorderSize", 2)
         img:SetColor("Border", ColorUtils.HexToRGBA("FFFFD500"))

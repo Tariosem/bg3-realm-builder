@@ -163,10 +163,10 @@ Enums.SpellEffectType = {
     --MaleImpactEffects
     PositionEffect = "PositionEffect",
     PrepareEffect = "PrepareEffect",
-    PrepareEffectBone = "PrepareEffectBone",
+    --PrepareEffectBone = "PrepareEffectBone",
     PreviewEffect = "PreviewEffect",
     ReappearEffect = "ReappearEffect",
-    ReappearEffectTextEvent = "ReappearEffectTextEvent",
+    --ReappearEffectTextEvent = "ReappearEffectTextEvent",
     SelectedCharacterEffect = "SelectedCharacterEffect",
     SelectedObjectEffect = "SelectedObjectEffect",
     SelectedPositionEffect = "SelectedPositionEffect",

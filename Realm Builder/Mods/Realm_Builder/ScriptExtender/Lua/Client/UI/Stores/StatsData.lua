@@ -178,9 +178,9 @@ function StatsHelpers.GetEffectAnimation(any)
 
     local effectManager = RB_GLOBALS.MultiEffectManager
     local idToName = effectManager.UuidToEffectName
-    local nameToAnimation = effectManager.EffectNameToAnimation
-    if idToName[any] and nameToAnimation[idToName[any]] then
-        return EffectToAnimation[RB_GLOBALS.MultiEffectManager.UuidToEffectName[any]]
+    local name = idToName[any]
+    if name then
+        return EffectToAnimation[name]
     end
 
     return nil

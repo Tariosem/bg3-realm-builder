@@ -19,7 +19,6 @@ function EffectsMenu:__init(parent)
     self.searchNote = ""
     self.nameAscend = true
 
-    self.autoSave = RBUICONFIG.EffectMenu.autoSave and RBUICONFIG.EffectMenu.autoSave or false
     self:Load()
 end
 
@@ -46,11 +45,6 @@ function EffectsMenu:Render()
 
     local clearAllOpe = function()
         self:ClearAll()
-    end
-
-    local autoSaveOpe = function()
-        self.autoSave = not self.autoSave
-        RBUICONFIG.EffectMenu.autoSave = self.autoSave
     end
 
     local stopAllOpe = function()
@@ -97,15 +91,6 @@ function EffectsMenu:Render()
 
     local saveButton = ImguiElements.AddMenuButton(self.fileMenu, GetLoca("Save Custom Effects"), saveOpe, self.isWindow)
     local loadButton = ImguiElements.AddMenuButton(self.fileMenu, GetLoca("Load Custom Effects"), loadOpe, self.isWindow)
-    local autoSaveButton
-    autoSaveButton = ImguiElements.AddMenuButton(self.fileMenu, GetLoca("Auto Save") .. (self.autoSave and "(On)" or "(Off)"),
-        function()
-            autoSaveOpe()
-            autoSaveButton.Label = GetLoca("Auto Save") .. (self.autoSave and "(On)" or "(Off)")
-            StyleHelpers.SetAlphaByBool(autoSaveButton, self.autoSave)
-            UIConfig.SaveConfig("EffectsMenu")
-        end, self.isWindow)
-    StyleHelpers.SetAlphaByBool(autoSaveButton, self.autoSave)
     local clearAllButton = ImguiElements.AddMenuButton(self.fileMenu, GetLoca("Clear All"), clearAllOpe, self.isWindow)
 
     local bruteForceDeleteAllButton = ImguiElements.AddMenuButton(self.debugMenu, GetLoca("Stop all effects"), stopAllOpe,
@@ -130,6 +115,7 @@ function EffectsMenu:Render()
         end
     end
 
+    self.panel:AddText("Remember to save your changes!"):SetColor("Text", {1, 0.5, 0.5, 1})
     local childWin = self.panel:AddChildWindow("EffectsMenuPanelChildWindow")
     self.customEffectsChildWin = childWin
 
@@ -166,9 +152,6 @@ function EffectsMenu:RenderCustomEffects(parent)
             local existingTab = self.customEffectsTabs[uuid]
 
             local function tabOnChange()
-                if self.autoSave then
-                    self:Save(uuid)
-                end
                 refreshCustomEffects()
             end
 
@@ -178,6 +161,8 @@ function EffectsMenu:RenderCustomEffects(parent)
 
             local effectButton = effectCell:AddImageButton("##CustomEffectButton_" .. entry.Uuid, entry.Icon, imageSize)
             effectButton:Tooltip():AddText(entry.DisplayName or "Unknown Effect")
+
+            StyleHelpers.ApplyImageButtonHoverStyle(effectButton)
 
             effectButton.OnClick = function()
                 local tab = existingTab
@@ -353,6 +338,53 @@ function EffectsMenu:ClearRef(uuid)
     return true
 end
 
+local function checkStatEffectTypes(data)
+    local enums = {}
+    if data.StatsType == "SpellData" then
+        enums = Enums.SpellEffectType
+    elseif data.StatsType == "StatusData" then
+        enums = Enums.StatusEffectType
+    else
+        return false
+    end
+
+    local seenEffectTypes = {}
+    for effectType, _ in pairs(data.Effects) do
+        if not enums[effectType] then
+            --Warning("[EffectsMenu] Effect has invalid effect type: " .. effectType .. " in effect UUID: " .. data.Uuid)
+            data.Effects[effectType] = nil
+        else
+            seenEffectTypes[effectType] = true
+        end
+    end
+
+    for effectType, _ in pairs(enums) do
+        if not seenEffectTypes[effectType] then
+            --Warning("[EffectsMenu] Effect missing effect type: " .. effectType .. " in effect UUID: " .. data.Uuid)
+            data.Effects[effectType] = {}
+        end
+    end
+
+    return true
+end
+
+--- @param data RB_CustomEffectData
+local function isValidEffectData(data)
+    if not data then return false end
+    if not data.Uuid or data.Uuid == "" then return false end
+    local validIcon = RBCheckIcon(data.Icon)
+    if not validIcon or validIcon == "Item_Unknown" then
+        validIcon = "GenericIcon_Intent_Utility"
+        --Warning("[EffectsMenu] Effect with UUID: " .. tostring(data.Uuid) .. " has invalid icon: " .. tostring(data.Icon) .. ". Reverting to default icon.")
+        data.Icon = validIcon
+    end
+    if data.StatsType then
+        checkStatEffectTypes(data)
+    else
+    end
+    return true
+end
+
 function EffectsMenu:Load()
     local refFilePath = FilePath.GetEffectReferencePath()
     local refData = Ext.IO.LoadFile(refFilePath)
@@ -374,10 +406,10 @@ function EffectsMenu:Load()
         local jsonData = Ext.IO.LoadFile(filePath)
         if jsonData then
             local effect = Ext.Json.Parse(jsonData)
-            if effect then
+            if effect and isValidEffectData(effect) then
                 self.customEffects[effect.Uuid] = effect
             else
-                Error("[EffectsMenu] Failed to parse custom effect file: " .. filePath)
+                Error("[EffectsMenu] Invalid custom effect data in file: " .. filePath)
             end
         else
             Warning("[EffectsMenu] Custom effect file not found: " .. filePath)

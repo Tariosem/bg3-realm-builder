@@ -42,7 +42,9 @@ function ImguiHelpers.SetCombo(c, Value, ifNotFoundAdd, noTrigger)
         end
     end
     if ifNotFoundAdd then
-        table.insert(c.Options, Value)
+        local arr = RBUtils.LightCToArray(c.Options)
+        table.insert(arr, Value)
+        c.Options = arr
         c.SelectedIndex = #c.Options - 1
     end
 
@@ -78,7 +80,6 @@ end
 function ImguiHelpers.DestroyAllChildren(parent)
     if not parent then return end
     if not parent.Children then
-        parent:Destroy()
         return
     end
     for _, child in ipairs(parent.Children) do

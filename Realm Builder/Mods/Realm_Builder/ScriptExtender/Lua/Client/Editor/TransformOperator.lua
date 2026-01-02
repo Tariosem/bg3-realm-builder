@@ -297,7 +297,12 @@ function TransformOperator:Apply()
         local func = Ext.Utils.LoadString(expr)
         if func then
             local ok, res = pcall(func)
-            if ok then num = res end
+            if ok then num = tonumber(res) end
+
+            if not ok or not num then
+                --Warning("Failed to parse expression: "..tostring(self.Num))
+                return
+            end
         end
     end
     if not num then return end

@@ -144,11 +144,27 @@ function CustomEffectTab:RenderProfileTab(parent)
     local entry = self.entry
     local imageGroup = parent:AddGroup("Icon##" .. self.uuid)
     local imageHeader = imageGroup:AddImage(entry.Icon, IMAGESIZE.LARGE)
+    
+    local function renameIcon() end
+
+    local function iconHeaderOnDragDrop(sel, dropped)
+        if not dropped.UserData or not dropped.UserData.Effect then return end
+        local dropEffect = dropped.UserData.Effect
+        if not dropEffect or not dropEffect.Icon then return end
+        renameIcon(dropEffect.Icon)
+    end
 
     local function updateImage()
         imageHeader:Destroy()
         imageHeader = imageGroup:AddImage(entry.Icon, IMAGESIZE.LARGE)
+
+        imageHeader.DragDropType = EffectDragDropFlag
+        imageHeader.OnDragDrop = iconHeaderOnDragDrop
     end
+
+    imageHeader.DragDropType = EffectDragDropFlag
+    imageHeader.OnDragDrop = iconHeaderOnDragDrop
+
 
     local function updateDisplayName()
         local lastPos, lastSize = self.panel.LastPosition, self.panel.LastSize
@@ -163,9 +179,9 @@ function CustomEffectTab:RenderProfileTab(parent)
     alignedTable.SameLine = true
 
     local displayNameInput, valueCell = alignedTable:AddInputText("DisplayName", entry.DisplayName or "")
-    local confirmButton = valueCell:AddButton("<")
-    confirmButton.SameLine = true
-    confirmButton.OnClick = function ()
+    displayNameInput.EnterReturnsTrue = true
+
+    local function renameDisplayName()
         entry.DisplayName = displayNameInput.Text
         updateDisplayName()
         if self.OnChange then
@@ -173,21 +189,32 @@ function CustomEffectTab:RenderProfileTab(parent)
         end
     end
 
-    local iconInput, iconCell = alignedTable:AddInputText("Icon", entry.Icon or "")
-    local iconConfirmButton = iconCell:AddButton("<")
-    iconConfirmButton.SameLine = true
-    iconConfirmButton.OnClick = function ()
-        local newIcon = iconInput.Text
+    displayNameInput.OnChange = function ()
+        if not displayNameInput.EnterReturnsTrue then return end
+        renameDisplayName()
+    end
+
+    local iconInput = alignedTable:AddInputText("Icon", entry.Icon or "")
+    iconInput.EnterReturnsTrue = true
+
+    function renameIcon(newIcon)
+        newIcon = newIcon or iconInput.Text
         local isIcon = RBCheckIcon(newIcon)
         if isIcon == "Item_Unknown" then
             iconInput.Text = entry.Icon
             return
         end
         entry.Icon = newIcon
+        iconInput.Text = newIcon
         updateImage()
         if self.OnChange then
             self:OnChange()
         end
+    end
+
+    iconInput.OnChange = function ()
+        if not iconInput.EnterReturnsTrue then return end
+        renameIcon()
     end
 
     local descriptionInput = alignedTable:AddInputText("Description", entry.Description or "")
@@ -277,7 +304,8 @@ function CustomEffectTab:RenderEffectList(parent)
         managePopup:Open()
     end
 
-    refreshFn = EffectTabComponents:AddEffectList(childWindow:AddGroup("Effects"), "Effects", effectListTable,
+    local refreshListFn
+    refreshListFn = EffectTabComponents:AddEffectList(childWindow:AddGroup("Effects"), "Effects", effectListTable,
     function(tree, effectEntry, idx)
         local renderEditorFunc = function ()
             renderCustomEffectEditor(tree, effectEntry)
@@ -295,6 +323,17 @@ function CustomEffectTab:RenderEffectList(parent)
         table.insert(effectListTable, dropped)
         refreshFn()
     end)
+
+    refreshFn = function ()
+        table.sort(effectListTable, function (a, b)
+            if a.TimeOffset ~= b.TimeOffset then
+                return (a.TimeOffset or 0) < (b.TimeOffset or 0)
+            end
+
+            return (a.EffectName or "") < (b.EffectName or "")
+        end)
+        refreshListFn()
+    end
 
     EffectTabComponents:AddEffectListPlusCircle(childWindow:AddGroup("NewEffects"), function (droppedData)
         droppedData = RBUtils.DeepCopy(droppedData)

@@ -505,7 +505,8 @@ function EffectsManager:CreateSpell(data)
     end
 
     local displayNameHandle = RBUtils.MakeTranslatedHandle()
-    Ext.Loca.UpdateTranslatedString(displayNameHandle, data.DisplayName)
+    local defaultName = "RB_Spell_" .. data.Uuid .. "_Name"
+    Ext.Loca.UpdateTranslatedString(displayNameHandle, data.DisplayName or defaultName)
 
     newSpell.SpellType = "Target"
     newSpell.Level = 0
@@ -559,6 +560,10 @@ function EffectsManager:UpdateSpell(data)
 
     if data.SpellAnimation == "" or not data.SpellAnimation then
         data.SpellAnimation = DEFAULT_SPELL_ANIM
+    end
+
+    if data.PrepareEffectBone and data.PrepareEffectBone ~= "" then
+        spell.PrepareEffectBone = data.PrepareEffectBone
     end
 
     if data.DisplayName ~= nil then

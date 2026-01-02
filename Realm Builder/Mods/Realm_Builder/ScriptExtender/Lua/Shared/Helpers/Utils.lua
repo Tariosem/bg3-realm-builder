@@ -385,6 +385,22 @@ function RBUtils.WaitUntil(check, callback, fallback, timeOutFrame)
     end)
 end
 
+function RBUtils.DoubleClick(onClick, onDoubleClick, interval)
+    interval = interval or 400
+    local lastClickTime = 0
+
+    return function(...)
+        local currentTime = Ext.Utils.MonotonicTime()
+        if currentTime - lastClickTime <= interval then
+            onDoubleClick(...)
+            lastClickTime = 0
+        else
+            onClick(...)
+            lastClickTime = currentTime
+        end
+    end
+end
+
 
 
 function RBUtils.GetFormatTime()

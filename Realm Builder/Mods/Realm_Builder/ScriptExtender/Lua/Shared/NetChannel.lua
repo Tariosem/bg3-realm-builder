@@ -117,7 +117,7 @@ NetChannel.PlayEffect = Ext.Net.CreateChannel(ModuleUUID, "PlayEffect")
 NetChannel.StopEffect = Ext.Net.CreateChannel(ModuleUUID, "StopEffect")
 
 --- @class CreateStatChannel
---- @field SendToServer fun(self, data: StatusData|SpellData)
+--- @field SendToServer fun(self, data: RB_CustomStatusData|RB_CustomSpellData)
 NetChannel.CreateStat = Ext.Net.CreateChannel(ModuleUUID, "CreateStat")
 
 --- @class StopStatusChannel

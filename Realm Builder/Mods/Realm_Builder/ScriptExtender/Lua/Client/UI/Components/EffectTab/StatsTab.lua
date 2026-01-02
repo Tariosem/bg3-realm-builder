@@ -1,4 +1,4 @@
---- @class StatsTab : RB_EffectTab
+--- @class StatsTab : CustomEffectTab
 --- @field entry RB_CustomStatsData
 --- @field new fun(entry: RB_CustomStatsData): StatsTab
 --- @field Add fun(entry: RB_CustomStatsData): StatsTab
@@ -31,11 +31,55 @@ StatusTab = _Class("StatusTab", StatsTab)
 --- @class RB_CustomStatusData : RB_CustomStatsData
 --- @field Duration number
 
-function StatsTab:RenderEffectList(parent)
-    local effectList = ImguiElements.AddTree(parent, "Effects")
+--- @type table<SpellEffectType, boolean>
+local spellActiveEffectTypes = {
+    BeamEffect = true,
+    TargetEffect = true,
+    CastEffect = true,
+    HitEffect = true,
+    PositionEffect = true,
+    SpellEffect = true,
+    PrepareEffect = true,
+}
 
-    for effectType, _ in pairs(self.entry.Effects) do
-        self:RenderEffectTypeList(effectList, effectType)
+--- @type table<StatusEffectType, boolean>
+local statusActiveEffectTypes = {
+    StatusEffect = true,
+}
+
+--- @type table<"SpellData"|"StatusData", table<string, boolean>>
+local activeEffectTypes = {
+    SpellData = spellActiveEffectTypes,
+    StatusData = statusActiveEffectTypes,
+}
+
+function StatsTab:RenderEffectList(parent)
+    local entry = self.entry
+    local childWindow = parent:AddChildWindow("EffectListWindow")
+    local effectList = ImguiElements.AddTree(childWindow, "Effects")
+
+    local activeList = activeEffectTypes[entry.StatsType] or {}
+
+    local allEffectTypes = {}
+    for effectType, _ in pairs(entry.Effects) do
+        table.insert(allEffectTypes, effectType)
+    end
+    table.sort(allEffectTypes)
+
+
+    for _, effectType in ipairs(allEffectTypes) do
+        if activeList[effectType] then
+            self:RenderEffectTypeList(effectList, effectType)
+        end
+    end
+
+    local hiddenEffectList = ImguiElements.AddTree(childWindow, "Other Effects")
+    hiddenEffectList.OnExpand = function ()
+        for _, effectType in ipairs(allEffectTypes) do
+            if not activeList[effectType] then
+                self:RenderEffectTypeList(hiddenEffectList, effectType)
+            end
+        end
     end
 end
 
@@ -76,7 +120,6 @@ function StatsTab:RenderEffectTypeList(parent, effectType)
 
     --- @param dropped RB_EffectDragDropData
     local function handleDragDrop(dropped)
-        RainbowDumpTable(dropped)
         if not dropped or not next(dropped) then
             return
         end
@@ -179,9 +222,27 @@ local function parseCustomStatsData(obj)
         end
         postData[effectType] = effectTypeValue
     end
-    postData.DisplayName = obj.DisplayName
+    postData.Uuid = obj.Uuid
 
     return postData
+end
+
+--- @param obj RB_CustomSpellData
+--- @return RB_CustomSpellData
+local function parseSpellStatsData(obj)
+    local data = parseCustomStatsData(obj)
+
+    data.SpellAnimation = obj.SpellAnimation or nil
+    data.WeaponTypes = obj.WeaponTypes
+    data.Sheathing = obj.Sheathing
+    data.AreaRadius = obj.AreaRadius or 9
+    data.TargetRadius = tostring(obj.TargetRadius) or "18"
+    data.FXScale = obj.FXScale or 1
+    data.Icon = obj.Icon or "Skill_Wizard_LearnSpell"
+    data.DisplayName = obj.DisplayName or ("RB_Spell_" .. obj.Uuid .. "_Name")
+    data.PrepareEffectBone = obj.PrepareEffectBone or nil
+
+    return data
 end
 
 --- @param parent ExtuiTreeParent
@@ -198,7 +259,7 @@ local function renderSpellEditor(parent, spellData)
     animationInput.Hint = "Drag an effect here to auto-fill"
     animationInput.DragDropType = EffectDragDropFlag
     animationInput.OnDragDrop = function(input, drop)
-        local data = drop.UserData
+        local data = drop.UserData and drop.UserData.Effect or nil
         if data and data.Uuid then
             local animSet = StatsHelpers.GetEffectAnimation(data.Uuid)
             if not animSet then
@@ -207,9 +268,15 @@ local function renderSpellEditor(parent, spellData)
             spellData.SpellAnimation = animSet and animSet.SpellAnimation
             --spellData.WeaponTypes = animSet and animSet.WeaponAttack
             spellData.Sheathing = animSet and animSet.Sheathing
-            ImguiHelpers.SetCombo(sheathingCombo, animSet and animSet.Sheathing or "Melee", true)
             animationInput.Text = animSet and animSet.SpellAnimation or ""
+            local idx = table.find(sheathingCombo.Options, animSet.Sheathing) or 1
+            sheathingCombo.SelectedIndex = idx - 1
         end
+    end
+
+    local prepareBoneInputCell = alignedTable:AddNewLine("Prepare Effect Bone")
+    EffectTabComponents:AddBoneInput(prepareBoneInputCell, "Prepare Effect Bone", spellData.PrepareEffectBone or "").OnChange = function (input)
+        spellData.PrepareEffectBone = input.Text
     end
 
     local scalarParams = {
@@ -227,11 +294,23 @@ end
 
 local SPELL_PREFIX = "VFX_RB_SPELL_"
 
+local function makeSpellName(data)
+    return SPELL_PREFIX .. data.Uuid
+end
+
 --- @param parent ExtuiTreeParent
 function SpellTab:RenderControlPanel(parent)
     local playBtn = parent:AddButton("Cast Spell")
     playBtn.OnClick = function()
         self:PlayEffect()
+    end
+
+    local updateBtn = parent:AddButton("Update Spell")
+    updateBtn.SameLine = true
+    updateBtn.OnClick = function()
+        local data = parseSpellStatsData(self.entry)
+        data.Action = "Update"
+        NetChannel.CreateStat:SendToServer(data)
     end
 
     local learnSpellBtn = parent:AddButton("Learn Spell")
@@ -240,11 +319,10 @@ function SpellTab:RenderControlPanel(parent)
             Function = "AddSpell",
             Args = {
                 RBGetHostCharacter(),
-                SPELL_PREFIX .. self.entry.Uuid,
+                makeSpellName(self.entry),
             },
         })
     end
-
     learnSpellBtn.SameLine = true
 
     local unlearnSpellBtn = parent:AddButton("Unlearn Spell")
@@ -253,7 +331,7 @@ function SpellTab:RenderControlPanel(parent)
             Function = "RemoveSpell",
             Args = {
                 RBGetHostCharacter(),
-                SPELL_PREFIX .. self.entry.Uuid,
+                makeSpellName(self.entry),
             },
         })
     end
@@ -264,18 +342,8 @@ end
 
 function SpellTab:PlayEffect()
     local entry = self.entry
-    local data = parseCustomStatsData(entry)
+    local data = parseSpellStatsData(entry) 
 
-    data.Uuid = entry.Uuid
-    data.SpellAnimation = entry.SpellAnimation or nil
-    data.WeaponTypes = entry.WeaponTypes
-    data.Sheathing = entry.Sheathing
-    data.AreaRadius = entry.AreaRadius or 9
-    data.TargetRadius = tostring(entry.TargetRadius) or "18"
-    data.FXScale = entry.FXScale or 1
-    data.Icon = entry.Icon or "Skill_Wizard_LearnSpell"
-
-    RainbowDumpTable(data)
     for caster, targets in pairs(self.Casters) do
         data.Object = caster
         data.Targets = targets
@@ -320,11 +388,6 @@ end
 
 --- @param parent ExtuiTreeParent
 function StatusTab:RenderControlPanel(parent)
-    local durationInput = parent:AddInputInt("Duration (ms)", self.entry.Duration or 6000)
-    durationInput.OnChange = function (sel, value)
-        self.entry.Duration = value[1]
-    end
-
     local playBtn = parent:AddButton("Apply Status")
     playBtn.OnClick = function()
         self:PlayEffect()
@@ -338,19 +401,27 @@ function StatusTab:RenderControlPanel(parent)
             NetChannel.StopStatus:SendToServer({
                 Type = "Status",
                 DisplayName = entry.DisplayName,
+                Uuid = entry.Uuid,
                 Object = caster,
             })
         end
     end
+
+    local alignedTable = ImguiElements.AddAlignedTable(parent)
+    local durationInput = alignedTable:AddInputInt("Duration (turn)", self.entry.Duration or 10)
+    durationInput:Tooltip():AddText("Enter -1 for infinite duration.")
+    durationInput.OnChange = function (sel, value)
+        self.entry.Duration = value[1]
+    end
+
+
 end
 
 function StatusTab:PlayEffect()
     local entry = self.entry
     local data = parseCustomStatsData(entry)
 
-    data.Duration = entry.Duration or 6000
-
-    RainbowDumpTable(data)
+    data.Duration = entry.Duration or 10
     for caster, _ in pairs(self.Casters) do
         data.Object = caster
         NetChannel.CreateStat:SendToServer(data)

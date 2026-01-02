@@ -10,9 +10,16 @@ local originIconPrefix = ECMODLoaded and "EC_Portrait_" or nil
 local defaultPartyMemberIcon = RB_ICONS.Character_Fill
 local windowForCheckIcon = GLOBAL_DEBUG_WINDOW
 
+--- @param icon string?
+--- @param fallback string?
+--- @return string|'Item_Unknown'
 function RBCheckIcon(icon, fallback)
     if not windowForCheckIcon then
         return "Item_Unknown"
+    end
+
+    if not icon or icon == "" then
+        return fallback or "Item_Unknown"
     end
 
     local isValid = true

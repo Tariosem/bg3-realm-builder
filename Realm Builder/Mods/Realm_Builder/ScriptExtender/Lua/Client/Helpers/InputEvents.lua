@@ -221,3 +221,36 @@ function InputEvents.SubscribeKeyAndMouse(callback, filterKey)
 
     return { Unsubscribe = unsub }
 end
+
+--- @alias GlobalInputStates {Shift:boolean, Ctrl:boolean, Alt:boolean}
+local RB_GLOBAL_INPUT_STATES = {
+    Shift = false,
+    Ctrl = false,
+    Alt = false,
+}
+
+local keyEnums = Ext.Enums.SDLScanCode
+local sub = InputEvents.SubscribeKeyInput({}, function (e)
+    if e.Key == keyEnums.LSHIFT or e.Key == keyEnums.RSHIFT then
+        RB_GLOBAL_INPUT_STATES.Shift = e.Pressed
+    elseif e.Key == keyEnums.LCTRL or e.Key == keyEnums.RCTRL then
+        RB_GLOBAL_INPUT_STATES.Ctrl = e.Pressed
+    elseif e.Key == keyEnums.LALT or e.Key == keyEnums.RALT then
+        RB_GLOBAL_INPUT_STATES.Alt = e.Pressed
+    end
+end)
+
+local inputStateRef = {}
+setmetatable(inputStateRef, {
+    __index = function(_, key)
+        return RB_GLOBAL_INPUT_STATES[key]
+    end,
+    __newindex = function()
+        Error("RB_GLOBAL_INPUT_STATES is read-only")
+    end
+})
+
+--- @return GlobalInputStates
+function InputEvents.GetGlobalInputStatesRef()
+    return inputStateRef
+end

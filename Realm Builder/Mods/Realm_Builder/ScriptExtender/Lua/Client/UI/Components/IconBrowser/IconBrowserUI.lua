@@ -139,7 +139,7 @@ function IconBrowser:SetupInputSubs()
                 if self.updateTagsFn[entry.Uuid] then
                     self.updateTagsFn[entry.Uuid]()
                 end
-                self:AddTagsFilter()
+                self:RefreshTagFilder()
                 if self.selectedTags[tag] or self.excludeTags[tag] then
                     debounceSearch()
                 end
@@ -376,7 +376,7 @@ function IconBrowser:RenderSearchOptionsMenu()
 
     self.tagsFilterContainer = self.optionRow:AddCell()
 
-    self:AddTagsFilter()
+    self:RefreshTagFilder()
 
     self.groupFilterContainer = self.optionRow:AddCell()
 
@@ -963,10 +963,10 @@ function IconBrowser:RenderCustomizationTab(popup, entry)
             self.dataManager:AddTagToData(entry.Uuid, tag)
             tagsInput.Text = ""
             updateTags()
-            self:AddTagsFilter()
+            self:RefreshTagFilder()
         else
             updateTags()
-            self:AddTagsFilter()
+            self:RefreshTagFilder()
         end
         self.tempDisableSearch = false
     end
@@ -980,7 +980,7 @@ function IconBrowser:RenderCustomizationTab(popup, entry)
             tagsAddButton.Disabled = true
             tagsRemoveButton.Disabled = true
             updateTags()
-            self:AddTagsFilter()
+            self:RefreshTagFilder()
         else
         end
         self.tempDisableSearch = false
@@ -1002,7 +1002,7 @@ function IconBrowser:Destroy()
     end
 
     if self.tagsFilterMenu then
-        WindowManager.DeleteWindow(self.tagsFilterMenu)
+        self.tagsFilterMenu:Destroy()
         self.tagsFilterMenu = nil
     end
 

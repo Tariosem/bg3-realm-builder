@@ -441,6 +441,7 @@ function VisualTab:RenderMaterialContextPopup()
     end)
 end
 
+--- @param parent ExtuiTreeParent
 function VisualTab:RenderPresetsCell(parent)
     if self:GetEntity(self.guid) and not self.isAttach then
         local icon = RBGetIcon(self.guid) or "Item_Unknown"
@@ -469,10 +470,28 @@ function VisualTab:RenderPresetsCell(parent)
 
     self.loadCombo.IDContext = "SelectPreset"
 
-    self.saveInput.OnChange = function()
-        --Info("VisualTab:SaveInput - Preset name changed to: " .. self.saveInput.Text)
-        local text = self.saveInput.Text
+    self.saveButton.OnClick = function()
+        local name = self.saveInput.Text
+        if name == "" then
+            --Warning("Preset name cannot be empty!")
+            return
+        end
 
+        if not self:Save(name) then
+            Error("Failed to save VisualTab preset.")
+        end
+        self.saveInput.Text = ""
+        self.saveInput:OnChange()
+    end
+
+    self.saveInput.EnterReturnsTrue = true
+    self.saveInput.OnChange = function ()
+        if self.saveInput.EnterReturnsTrue then
+            self.saveButton:OnClick()
+            return
+        end
+
+        local text = self.saveInput.Text
         if text == "" then
             self.loadCombo.Options = self:_getAllPresetNames()
             self.saveButton.Disabled = true
@@ -494,27 +513,8 @@ function VisualTab:RenderPresetsCell(parent)
                 self.loadCombo.SelectedIndex = index - 1
             end
         end
+        
     end
-
-    self.saveButton.OnClick = function()
-        local name = self.saveInput.Text
-        if name == "" then
-            --Warning("Preset name cannot be empty!")
-            return
-        end
-
-        if not self:Save(name) then
-            Error("Failed to save VisualTab preset.")
-        end
-        self.saveInput.Text = ""
-        self.saveInput:OnChange()
-    end
-
-    self.saveInputKeySub = InputEvents.SubscribeKeyInput({ Key = "RETURN" }, function()
-        if ImguiHelpers.IsFocused(self.saveInput) and not self.saveButton.Disabled then
-            self.saveButton:OnClick()
-        end
-    end)
 
     self.loadButton.OnClick = function()
         local selectedName = ImguiHelpers.GetCombo(self.loadCombo)
@@ -527,7 +527,6 @@ function VisualTab:RenderPresetsCell(parent)
     self.loadCombo.OnHoverEnter = function()
         --self.saveInput:OnChange()
     end
-    self.saveInput:OnChange()
 
     StyleHelpers.ApplyDangerButtonStyle(removeButton)
     removeButton.OnClick = function()

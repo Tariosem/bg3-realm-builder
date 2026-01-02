@@ -418,12 +418,31 @@ NetChannel.StopEffect:SetHandler(function(data, userID)
     end
 end)
 
+
+
 NetChannel.CreateStat:SetHandler(function(data, userID)
-    if data.Type == "StatusData" then
-        RB_GLOBALS.EffectManager:PlayStatus(data)
-    elseif data.Type == "SpellData" then
-        RB_GLOBALS.EffectManager:PlaySpell(data)
+    local eM = RB_GLOBALS.EffectManager
+
+    --- @type table<string, table<string, fun(effectManager: RB_EffectsManager, data: any)>>
+    local handler = {
+        StatusData = {
+            Play = eM.PlayStatus,
+            Update = eM.UpdateStatus,
+        },
+        SpellData = {
+            Play = eM.PlaySpell,
+            Update = eM.UpdateSpell,
+        }
+    }
+    data.Action = data.Action or "Play"
+
+    local func = handler[data.Type] and handler[data.Type][data.Action]
+    if not func then
+        Warning("Invalid CreateStat request: " .. tostring(data.Type) .. " with action " .. tostring(data.Action))
+        return
     end
+
+    func(eM, data)
 end)
 
 NetChannel.StopStatus:SetHandler(function(data, userID)
@@ -431,8 +450,6 @@ NetChannel.StopStatus:SetHandler(function(data, userID)
         RB_GLOBALS.EffectManager:RemoveAllStatuses()
         return
     end
-
-    data.DisplayName = data.DisplayName .. tostring(userID)
 
     RB_GLOBALS.EffectManager:RemoveStatus(data)
 end)

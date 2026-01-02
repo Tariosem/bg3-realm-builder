@@ -63,6 +63,7 @@ function EffectBrowser:RenderIcon(entry, cell)
 
     local iconImage = nil
 
+    local iconSize = { self.iconWidth, self.iconWidth }
     if not self.iconToName then
         iconImage = cell:AddImageButton(entry.Uuid, entry.Icon)
         if iconImage.Image.Icon == "" then
@@ -73,9 +74,9 @@ function EffectBrowser:RenderIcon(entry, cell)
         if self.iconButtonBgColor then
             iconImage.Background = self.iconButtonBgColor
         end
-        iconImage.Image.Size = {self.iconWidth, self.iconWidth}
+        iconImage.Image.Size = iconSize
     else
-        local image = cell:AddImage(entry.Icon, { self.iconWidth, self.iconWidth })
+        local image = cell:AddImage(entry.Icon, iconSize)
         iconImage = cell:AddSelectable(entry[self.iconTooltipName] or "Unknown")
         iconImage.SameLine = true
     end
@@ -129,8 +130,9 @@ function EffectBrowser:RenderIcon(entry, cell)
     iconImage.UserData = {}
 
     iconImage.OnDragStart = function()
+        iconSize = { self.iconWidth, self.iconWidth }
         iconImage.UserData.Effect = RBEffectUtils.CreateEffectDragDropDataFromEffect(entry)
-        iconImage.DragPreview:AddImage(entry.Icon)
+        iconImage.DragPreview:AddImage(entry.Icon, iconSize)
         iconImage.DragPreview:AddText(entry[self.iconTooltipName] or "Unknown").SameLine = true
     end
 
