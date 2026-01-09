@@ -1,4 +1,9 @@
+--- @class MathUtils : Ext_Math
 MathUtils = MathUtils or {}
+
+setmetatable(MathUtils, {
+    __index = Ext.Math
+})
 
 --- @param position Vec3
 --- @param rotationQuat quat
@@ -48,9 +53,9 @@ setmetatable(LHCS, {
 --- @type {X: Vec3, Y: Vec3, Z: Vec3}
 GLOBAL_COORDINATE = LHCS
 
----@param quat vec4
+---@param quat quat
 ---@param axis "X"|"Y"|"Z"
----@return vec4 Flipped
+---@return quat Flipped
 function MathUtils.FlipAxis(quat, axis)
     if not quat or #quat ~= 4 then
         Error("Invalid quaternion: " .. tostring(quat))

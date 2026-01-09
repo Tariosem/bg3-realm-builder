@@ -51,6 +51,9 @@ local function CubicBezier(p0, p1, p2, p3, t)
     return u ^ 3 * p0 + 3 * u ^ 2 * t * p1 + 3 * u * t ^ 2 * p2 + t ^ 3 * p3
 end
 
+--- @param p1y number
+--- @param p2y number
+--- @return fun(t:number):number
 local function MakeBezierEasing(p1y, p2y)
     return function(t)
         return CubicBezier(0, p1y, p2y, 1, t)

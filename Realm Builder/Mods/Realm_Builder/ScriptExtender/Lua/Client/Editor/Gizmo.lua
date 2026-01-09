@@ -7,7 +7,7 @@
 --- @field StartHit Hit | nil
 --- @field DraggingTimer TimerID|nil -- emit drag events every frame while dragging
 --- @field IsDragging boolean
---- @field SlowDown boolean
+--- @field InputStates { SlowDown: boolean }
 --- @field PivotPosition Vec3 -- current pivot position
 --- @field PivotRotation Quat -- current pivot rotation
 --- @field Step number -- multiplier for delta steps
@@ -49,6 +49,19 @@ function TransformGizmo:__init()
     self.SlowDown = false
 
     self.Step = 1.0
+
+    self.InputStates = {
+    }
+
+    local inputStateRef = InputEvents.GetGlobalInputStatesRef()
+    setmetatable(self.InputStates, {
+        __index = function(t, k)
+            if k == "SlowDown" then
+                return inputStateRef.Shift
+            end
+            return nil
+        end
+    })
 
     Ext.Events.Shutdown:Subscribe(function()
         self:Disable()
@@ -216,16 +229,6 @@ function TransformGizmo:SetupActionSubscriptions()
         self:RestartDragging(mouseRay, axes)
     end)
     ]]
-
-    self.Subscriptions["SlowDown"] = InputEvents.SubscribeKeyInput({ Key = "LSHIFT" }, function(e)
-        if e.Repeat then return end
-        if not self.IsDragging then return end
-        if e.Event == "KeyDown" then
-            self.SlowDown = true
-        else
-            self.SlowDown = false
-        end
-    end)
 
     self.Subscriptions["DragStart"] = InputEvents.SubscribeMouseInput({}, function(e)
         if e.Button == 1 and e.Pressed and self.Picker and not self.IsDragging then
@@ -794,13 +797,18 @@ function TransformGizmo:StepDelta(delta)
 end
 
 local lerpFactor = 0.1
+
+--- @type table<TransformEditorMode, fun(o: TransformGizmo, delta: Vec3|number|QuatInfo): (Vec3|number|QuatInfo|nil)>
 local slowDownhandlers = {
+    --- @param o TransformGizmo
+    --- @param delta Vec3
+    --- @return Vec3|nil
     Translate = function(o, delta)
-        if o.SlowDown and not o._delta then
+        if o.InputStates.SlowDown and not o._delta then
             o._delta = delta
-        elseif o.SlowDown and o._delta then
+        elseif o.InputStates.SlowDown and o._delta then
             delta = (delta - o._delta) * lerpFactor + o._delta
-        elseif o._delta and not o.SlowDown then
+        elseif o._delta and not o.InputStates.SlowDown then
             o:RegetStartHit()
             delta = (delta - o._delta) * lerpFactor + o._delta
             o._accuDelta = (o._accuDelta or Vec3.new { 0, 0, 0 }) + delta
@@ -814,13 +822,16 @@ local slowDownhandlers = {
         return delta
     end,
 
+    --- @param o TransformGizmo
+    --- @param delta QuatInfo
+    --- @return QuatInfo|nil
     Rotate = function(o, delta)
         local deltaAngle = delta[4]
-        if o.SlowDown and not o._delta then
+        if o.InputStates.SlowDown and not o._delta then
             o._delta = deltaAngle
-        elseif o.SlowDown and o._delta then
+        elseif o.InputStates.SlowDown and o._delta then
             deltaAngle = (deltaAngle - o._delta) * lerpFactor + o._delta
-        elseif o._delta and not o.SlowDown then
+        elseif o._delta and not o.InputStates.SlowDown then
             o:RegetStartHit()
             deltaAngle = (deltaAngle - o._delta) * lerpFactor + o._delta
             o._accuDelta = (o._accuDelta or 0) + deltaAngle
@@ -830,18 +841,20 @@ local slowDownhandlers = {
 
         delta[4] = deltaAngle
         if o._accuDelta then
-            --return { Angle = o._accuDelta + deltaAngle, Axis = delta.Axis }
             return { delta[1], delta[2], delta[3], o._accuDelta + deltaAngle }
         end
         return delta
     end,
 
+    --- @param o TransformGizmo
+    --- @param delta Vec3
+    --- @return Vec3|nil
     Scale = function(o, delta)
-        if o.SlowDown and not o._delta then
+        if o.InputStates.SlowDown and not o._delta then
             o._delta = delta
-        elseif o.SlowDown and o._delta then
+        elseif o.InputStates.SlowDown and o._delta then
             delta = (delta - o._delta) * lerpFactor + o._delta
-        elseif o._delta and not o.SlowDown then
+        elseif o._delta and not o.InputStates.SlowDown then
             o:RegetStartHit()
             delta = (delta - o._delta) * 0.1 + o._delta
             o._accuDelta = (o._accuDelta or Vec3.new { 1, 1, 1 }) * delta

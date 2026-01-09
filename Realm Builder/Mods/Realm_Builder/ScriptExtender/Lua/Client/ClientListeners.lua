@@ -8,19 +8,17 @@ NetChannel.SetVisualTransform:SetHandler(function (data)
     for _, guid in pairs(toSet) do
         local transform = data.Transforms[guid]
         if not transform then 
-            Warning("SetVisualTransform: No transform data for guid: " .. guid)
             goto continue
         end
 
         local visual = VisualHelpers.GetEntityVisual(guid)
         if not visual then
-            Timer:Ticks(30, function()
-                local delayedVisual = VisualHelpers.GetEntityVisual(guid)
-                if delayedVisual then
-                    VisualHelpers.SetVisualTransform({guid}, {[guid] = transform})
-                else
-                    Warning("SetVisualTransform (delayed): No visual found for guid: " .. guid)
-                end
+            RBUtils.WaitUntil(function()
+                return VisualHelpers.GetEntityVisual(guid) ~= nil
+            end, function ()
+                VisualHelpers.SetVisualTransform({guid}, {[guid] = transform})
+            end, function ()
+                Warning("SetVisualTransform: No visual found for guid: " .. guid .. " after waiting.")
             end)
             --Debug("SetVisualTransform: No visual found for guid: " .. guid .. ", retrying in 30 ticks.")
             goto continue

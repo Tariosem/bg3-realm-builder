@@ -295,7 +295,7 @@ function BindManager:SortByDepth(candiates, order)
     local sortedByTree = self.BindTree:SortNodesByDepth(order, candiates, true)
 
     local sorted = {}
-    for _, node in ipairs(sortedByTree) do
+    for _, node in ipairs(sortedByTree or {}) do
         table.insert(sorted, node.Key)
     end
 

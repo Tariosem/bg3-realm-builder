@@ -98,8 +98,9 @@ function ScreenToWorldRay(cameraHandle, mouseX, mouseY, screenW, screenH)
     local ndcX       = (2.0 * mouseX) / screenW - 1.0
     local ndcY       = 1.0 - (2.0 * mouseY) / screenH
 
-    local zNearClip  = 0
-    local zFarClip   = 1.0
+    --- reverse z
+    local zNearClip  = 1.0
+    local zFarClip   = 0.0 
 
     local clipNear   = { ndcX, ndcY, zNearClip, 1.0 }
     local clipFar    = { ndcX, ndcY, zFarClip, 1.0 }
@@ -110,7 +111,8 @@ function ScreenToWorldRay(cameraHandle, mouseX, mouseY, screenW, screenH)
     --local projMat = Matrix.new(controller.Camera.ProjectionMatrix)
     --local viewMat = Matrix.new(controller.Camera.ViewMatrix)
 
-    -- (A * B)^-1 = B^-1 * A^-1
+    -- (A * B)^-1 = B^-1 * A^-1 
+    -- the reverse of MVP is PVM
     local inverse    = Ext.Math.Mul(invView, invProj)
     --local inverse = (projMat * viewMat):Inverse()
 
@@ -121,8 +123,7 @@ function ScreenToWorldRay(cameraHandle, mouseX, mouseY, screenW, screenH)
     local worldNear  = { worldNear4[1] / worldNear4[4], worldNear4[2] / worldNear4[4], worldNear4[3] / worldNear4[4] }
     local worldFar   = { worldFar4[1] / worldFar4[4], worldFar4[2] / worldFar4[4], worldFar4[3] / worldFar4[4] }
 
-    ---
-    local dir        = { worldNear[1] - worldFar[1], worldNear[2] - worldFar[2], worldNear[3] - worldFar[3] }
+    local dir        = { worldFar[1] - worldNear[1], worldFar[2] - worldNear[2], worldFar[3] - worldNear[3] }
 
     local origin     = Vec3.new(cameraHandle.Transform.Transform.Translate)
 
@@ -158,11 +159,11 @@ function WorldToScreenPoint(worldPos, cameraHandle, screenW, screenH)
     local viewMat = Matrix.new(controller.Camera.ViewMatrix)
     local projMat = Matrix.new(controller.Camera.ProjectionMatrix)
 
-    local viewProj = projMat * viewMat
+    local viewProj = projMat * viewMat --[[@as Matrix]]
 
-    local clipPos = viewProj * worldPos4
+    local clipPos = viewProj * worldPos4 --[[@as Vec4]]
 
-    if clipPos.w == 0 then
+    if clipPos[4] == 0 then
         return { 0, 0 }
     end
 

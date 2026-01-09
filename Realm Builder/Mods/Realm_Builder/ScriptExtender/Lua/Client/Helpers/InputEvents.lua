@@ -172,6 +172,7 @@ function InputEvents.SubscribeKeyAndMouse(callback, filterKey)
         end
     end
 
+    --- @param e EclLuaKeyInputEvent
     subs.KeyInput = Ext.Events.KeyInput:Subscribe(function(e)
         if isCalling then return end
         isCalling = true
@@ -197,6 +198,7 @@ function InputEvents.SubscribeKeyAndMouse(callback, filterKey)
         end
     end)
 
+    --- @param e EclLuaMouseButtonEvent
     subs.MouseButtonInput = Ext.Events.MouseButtonInput:Subscribe(function(e)
         if isCalling then return end
         isCalling = true

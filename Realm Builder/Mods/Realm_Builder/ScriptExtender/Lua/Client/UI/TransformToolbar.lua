@@ -4,6 +4,8 @@
 --- @field new fun(): TransformToolbar
 TransformToolbar = _Class("TransformToolbar")
 
+local INIT_WINDOW_POS = 0.1
+
 function TransformToolbar:__init()
     self.Subscriptions = {}
     self.Selecting = {}
@@ -727,7 +729,7 @@ end
 function TransformToolbar:RenderTopBar()
     local screenWidth, screenHeight = UIHelpers.GetScreenSize()
     local windowSize = { screenWidth * 0.6, 80 * SCALE_FACTOR }
-    local windowPos = { screenWidth * 0.1, 0 }
+    local windowPos = { screenWidth * INIT_WINDOW_POS, 10 * SCALE_FACTOR }
     local panel = WindowManager.RegisterWindow("generic", "Transform ToolBar", windowPos, windowSize)
     self.TopToolBar = panel
 
@@ -863,6 +865,23 @@ function TransformToolbar:RenderConfigMenu()
     closeSel.OnClick = function()
         panel.Open = false
         closeSel.Selected = true
+    end
+
+    local aligned = ImguiElements.AddAlignedTable(panel)
+
+    local barPos = aligned:AddSliderWithStep("Toolbar Position", 0.5, 0, 1, 0.01, false)
+    barPos.OnChange = function(e)
+        local toolbarBar = self.TopToolBar
+        local screenWidth, screenHeight = UIHelpers.GetScreenSize()
+        local windowSize = toolbarBar.LastSize[1]
+        local freeSpace = screenWidth - windowSize
+        local u = e.Value[1]
+        local pos = MathUtils.Clamp(u, 0, 1)
+        local actuallPos = freeSpace * pos
+        local windowPos = { actuallPos, 0 }
+        if self.TopToolBar then
+            self.TopToolBar:SetPos(windowPos)
+        end
     end
 
     local ignoreScenerySel = panel:AddCheckbox("Ignore Scenery When Selecting")

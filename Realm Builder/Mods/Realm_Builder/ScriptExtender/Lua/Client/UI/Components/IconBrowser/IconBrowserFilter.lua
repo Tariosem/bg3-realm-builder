@@ -133,16 +133,36 @@ function IconBrowser:RenderTagsFilter(parent)
         input.Visible = true
         input.Text = label
         input.EnterReturnsTrue = true
+        input.EscapeClearsAll = true
 
-        input.OnChange = function (s)
-            if not input.EnterReturnsTrue then return end
-
+        local function complete()
             inputting = false
             selectable.Visible = true
             input.Visible = false
             input.OnChange = nil
             updateFn(tostring(input.Text))
         end
+
+        input.OnChange = function (s)
+            if not input.EnterReturnsTrue and input.Text ~= "" then return end
+            
+            complete()
+        end
+
+        Timer:After(1000, function (timerID)
+            Timer:EveryFrame(function (timerID)
+                local ok, focused = pcall(function (...)
+                    return ImguiHelpers.IsFocused(input)
+                end)
+                if not ok or not focused then
+                    pcall(function ()
+                        input.Text = ""
+                        complete()
+                    end)
+                    return UNSUBSCRIBE_SYMBOL
+                end
+            end)
+        end)
     end
 
     --- @param tableRow ExtuiTreeParent
@@ -209,8 +229,10 @@ function IconBrowser:RenderTagsFilter(parent)
                     return
                 end
                 local suc = browser.dataManager:RenameTag(tag, newName)
-                if not suc then return end
-                tag = newName
+                if not suc then
+                    updateState()
+                    return
+                end
 
                 selection.Label = newName .. " (" .. cnt .. ")"
 
@@ -218,6 +240,7 @@ function IconBrowser:RenderTagsFilter(parent)
                 browser.selectedTags[tag] = nil
                 browser.excludeTags[newName] = browser.excludeTags[tag]
                 browser.excludeTags[tag] = nil
+                tag = newName
                 updateState()
             end)
         end

@@ -165,7 +165,7 @@ function ManagerBase:RenameTag(oldName, newName)
     if self.tagMap and self.tagMap[oldName] then
         local suc = self.tagTree:Rename(oldName, newName)
         if not suc then
-            Warning(string.format("[ManagerBase] Cannot rename tag '%s' to '%s' because the new name is already used as a category in the tag hierarchy.", oldName, newName))
+            Warning(string.format("[Manager] Cannot rename tag '%s' to '%s' ", oldName, newName))
             return false
         end
         self.tagIcons[newName] = self.tagIcons[oldName]

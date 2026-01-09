@@ -135,7 +135,7 @@ function TransformOperator:InitStartTransforms(ifInit)
 end
 
 function TransformOperator:Visualize()
-    if next(self.Visualizations) then
+    --[[if next(self.Visualizations) then
         self:ChangeVisualization()
         return
     end
@@ -167,7 +167,7 @@ function TransformOperator:Visualize()
             end)
             table.insert(self.Visualizations, viz)
         end)
-    end
+    end]]
 end
 
 function TransformOperator:ChangeVisualization()
@@ -318,8 +318,8 @@ function TransformOperator:Apply()
 end
 
 
----@param proxy any
----@param num any
+---@param proxy RB_MovableProxy
+---@param num number
 ---@return Vec3
 function TransformOperator:ApplyTranslate(proxy, num)
     if self.Mode ~= "Translate" then return proxy:GetSavedTransform().Translate end
@@ -336,8 +336,8 @@ function TransformOperator:ApplyTranslate(proxy, num)
     return Ext.Math.Add(startPos, moveVec) --[[@as Vec3]]
 end
 
----@param proxy any
----@param num any
+---@param proxy RB_MovableProxy
+---@param num number
 ---@return Quat
 function TransformOperator:ApplyRotate(proxy, num)
     if self.Mode ~= "Rotate" then return proxy:GetSavedTransform().RotationQuat end
@@ -354,7 +354,7 @@ function TransformOperator:ApplyRotate(proxy, num)
     return Ext.Math.QuatNormalize(newRot)
 end
 
---- @param proxy any
+--- @param proxy RB_MovableProxy
 --- @param num any
 --- @return Vec3
 function TransformOperator:ApplyScale(proxy, num)

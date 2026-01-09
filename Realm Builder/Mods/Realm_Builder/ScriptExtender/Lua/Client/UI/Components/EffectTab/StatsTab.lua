@@ -413,8 +413,6 @@ function StatusTab:RenderControlPanel(parent)
     durationInput.OnChange = function (sel, value)
         self.entry.Duration = value[1]
     end
-
-
 end
 
 function StatusTab:PlayEffect()

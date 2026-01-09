@@ -6,7 +6,7 @@ Ext.Require("Shared/Helpers/Bones.lua")
 Ext.Require("Shared/Helpers/Enums.lua")
 Ext.Require("Shared/Helpers/Math/__init.lua")
 Ext.Require("Shared/Helpers/Color.lua")
-Ext.Require("Shared/Helpers/Animation.lua")
+Ext.Require("Shared/Helpers/Easing.lua")
 Ext.Require("Shared/Helpers/TreeTable.lua")
 
 Ext.Require("Shared/Helpers/Timer.lua")

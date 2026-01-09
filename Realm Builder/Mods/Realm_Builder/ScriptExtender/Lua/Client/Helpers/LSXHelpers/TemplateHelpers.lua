@@ -68,7 +68,6 @@ end
 
 local lsattrNode = LSXHelpers.AttrNode
 
---E:/SteamLibrary/steamapps/common/Baldurs Gate 3/Data/Generated/Public/EnchantedThreads/Assets/EnchantedThreads_Overskirt_Normal_Merged__NM.DDS
 --- @param path string
 --- @return string
 function RBStringUtils.GetPathAfterData(path)
