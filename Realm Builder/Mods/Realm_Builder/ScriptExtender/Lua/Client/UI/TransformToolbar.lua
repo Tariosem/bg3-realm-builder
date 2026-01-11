@@ -5,6 +5,7 @@
 TransformToolbar = _Class("TransformToolbar")
 
 local INIT_WINDOW_POS = 0.1
+local cursorMaxDistance = 100
 
 function TransformToolbar:__init()
     self.Subscriptions = {}
@@ -261,23 +262,27 @@ function TransformToolbar:RegisterKeyInputEvents()
         if not RB_GLOBALS.TransformEditor.Target or #RB_GLOBALS.TransformEditor.Target == 0 then return end
 
         local focusPoint = nil
-        if not self.Cursor then
-            local mouseRay = ScreenToWorldRay()
-            if not mouseRay then return end
 
-            local hit = mouseRay:IntersectCloseat()
+        local getPointFromRay = function()
+            local mouseRay = ScreenToWorldRay()
+            if not mouseRay then return nil end
+
+            local hit = mouseRay:IntersectCloseat(cursorMaxDistance)
             if not hit then
-                Debug("No valid target to look at")
-                return
+                return nil
             end
-            focusPoint = hit.Position
+            return hit.Position
+        end
+
+        if not self.Cursor then
+            focusPoint = getPointFromRay()
         else
             local cursorProxy = MovableProxy.CreateByGuid(self.Cursor)
             if not cursorProxy then
-                Debug("No valid target to look at")
-                return
+                focusPoint = getPointFromRay()
+            else
+                focusPoint = cursorProxy:GetWorldTranslate()
             end
-            focusPoint = cursorProxy:GetWorldTranslate()
         end
         
         if not focusPoint then
@@ -1243,7 +1248,6 @@ function TransformToolbar:CreateNearbyPopup()
     end
 end
 
-local cursorMaxDistance = 100
 local function getCursorTransform()
     local mouseRay = ScreenToWorldRay()
     if not mouseRay then return end
