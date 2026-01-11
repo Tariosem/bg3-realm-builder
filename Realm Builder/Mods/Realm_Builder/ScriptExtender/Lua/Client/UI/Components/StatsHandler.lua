@@ -724,6 +724,8 @@ local StatsConditionHandlers = {}
 StatsConditionHandlers = {
     HasPassive = function(args)
         local passiveName = args[1] or "Unknown"
+        passiveName = passiveName:gsub("'", "")
+
         --- @type PassiveData?
         local passive = Ext.Stats.Get(passiveName)
         local icon = nil
@@ -732,6 +734,7 @@ StatsConditionHandlers = {
             icon = nil
         end
 
+        --- @type RB_TextToken[]
         local tokens = {
             { Text = "Has passive: " },
             { Text = RBStringUtils.StripLSTags(GetLoca(passive and passive.DisplayName or args[1])), Icon = icon, TooltipRef = { Type = "PassiveData", Name = passiveName } }

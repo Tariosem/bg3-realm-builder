@@ -485,24 +485,12 @@ function VisualTab:RenderPresetsCell(parent)
     end
 
     self.saveInput.EnterReturnsTrue = true
-    self.saveInput.OnChange = function ()
-        if self.saveInput.EnterReturnsTrue then
-            self.saveButton:OnClick()
-            return
-        end
 
-        local text = self.saveInput.Text
-        if text == "" then
-            self.loadCombo.Options = self:_getAllPresetNames()
-            self.saveButton.Disabled = true
-        else
-            self.saveButton.Disabled = false
-        end
-
+    local function updatePresetOptions(keyword)
         local comboOpts = {}
 
         for _, name in ipairs(self:_getAllPresetNames()) do
-            if name:find(text) then
+            if keyword == "" or name:find(keyword, 1, true) then
                 table.insert(comboOpts, name)
             end
         end
@@ -513,8 +501,27 @@ function VisualTab:RenderPresetsCell(parent)
                 self.loadCombo.SelectedIndex = index - 1
             end
         end
-        
     end
+
+    self.__updatePresetOptions = updatePresetOptions
+
+    self.saveInput.OnChange = function (sel)
+        local saveInputText = sel.Text
+        if saveInputText ~= "" and sel.EnterReturnsTrue then
+            self.saveButton:OnClick()
+            return
+        end
+
+        if saveInputText == "" then
+            self.saveButton.Disabled = true
+        else
+            self.saveButton.Disabled = false
+        end
+
+        updatePresetOptions(saveInputText)
+    end
+
+    self.__updatePresetOptions("")
 
     self.loadButton.OnClick = function()
         local selectedName = ImguiHelpers.GetCombo(self.loadCombo)
@@ -539,7 +546,7 @@ function VisualTab:RenderPresetsCell(parent)
                 local selectedName = ImguiHelpers.GetCombo(self.loadCombo)
                 if selectedName and selectedName ~= "" then
                     self:Remove(selectedName)
-                    self.saveInput:OnChange()
+                    self.__updatePresetOptions("")
                     --Info("Removed VisualTab preset: " .. selectedName)
                 end
             end)
@@ -1116,8 +1123,8 @@ function VisualTab:Load(notoverwrite)
         end
     end
 
-    if self.saveInput and self.saveInput.OnChange then
-        self.saveInput.OnChange()
+    if self.__updatePresetOptions then
+        self.__updatePresetOptions("")
     end
 
     local refFilePath = FilePath.GetVisualReferencePath()
@@ -1227,6 +1234,7 @@ function VisualTab:LoadPreset(name)
     self.EntityEffectTab:UpdateAllEffects()
 end
 
+--- @return string[]
 function VisualTab:_getAllPresetNames()
     if not self.savedPresets then
         return {}
@@ -1237,7 +1245,6 @@ function VisualTab:_getAllPresetNames()
         table.insert(names, name)
     end
     table.sort(names)
-    --Debug("VisualTab:_getAllPresetNames - Found presets: " .. table.concat(names, ", "))
     return names
 end
 
@@ -1245,6 +1252,8 @@ function VisualTab:Collapsed()
     if not self.isValid or not self.isVisible then
         return
     end
+    
+    self.__updatePresetOptions = nil
 
     self.EntityEffectTab:Collapsed()
 
