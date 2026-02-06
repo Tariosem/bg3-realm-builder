@@ -90,7 +90,11 @@ function PlacementPreview:BeginPlacementPreview(entry, entryDisplayName)
         if not response.Guid then
             Warning("[IconBrowser] Failed to spawn preview for templateId: " .. tostring(entry.Uuid))
             IsPreviewing = false
-            notif:Dismiss()
+            notif:Close()
+            notif:Show("Placement Preview Failed", function (panel)
+                StyleHelpers.ApplyWarningTooltipStyle(panel)
+                panel:AddText("Failed to spawn preview for the selected item.")
+            end)
             return
         end
         previewObject = response.Guid

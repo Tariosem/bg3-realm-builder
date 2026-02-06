@@ -734,7 +734,7 @@ end
 function TransformToolbar:RenderTopBar()
     local screenWidth, screenHeight = UIHelpers.GetScreenSize()
     local windowSize = { screenWidth * 0.6, 80 * SCALE_FACTOR }
-    local windowPos = { screenWidth * INIT_WINDOW_POS, 10 * SCALE_FACTOR }
+    local windowPos = { screenWidth * INIT_WINDOW_POS, 0 }
     local panel = WindowManager.RegisterWindow("generic", "Transform ToolBar", windowPos, windowSize)
     self.TopToolBar = panel
 

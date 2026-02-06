@@ -191,7 +191,6 @@ function Notification:StartAnimation(dir, direction)
         panel:SetStyle("Alpha", alpha)
     end
     
-
     local onComplete = function()
         if dir == "FadeOut" then
             self:Close()

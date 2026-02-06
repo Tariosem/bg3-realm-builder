@@ -724,6 +724,8 @@ local StatsConditionHandlers = {}
 StatsConditionHandlers = {
     HasPassive = function(args)
         local passiveName = args[1] or "Unknown"
+
+        -- dirty fix for "'SomePassive'"
         passiveName = passiveName:gsub("'", "")
 
         --- @type PassiveData?
