@@ -575,12 +575,13 @@ function TemplateExportMenu:__export(exportSettings, progressCallback)
     local progressStep = 100 / actCnt
     local currentProgress = 0
     local lastYieldTime = Ext.Timer.MicrosecTime()
-    local yieldInterval = 50 -- microseconds
+    local yieldInterval = 2000 -- microseconds
     local suc = true
 
     local function throwError(message)
         Error(debug.traceback(message))
         throwExportError(message, exportSettings, progressCallback)
+        error(message)
     end
 
     local function yield()

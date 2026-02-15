@@ -275,6 +275,13 @@ function KeybindManager:RebindByInput(module, eventName, callback)
                 if callback then callback(nil, nil, nil) end
                 return UNSUBSCRIBE_SYMBOL
             end
+
+            if e.Key == "ESCAPE" then
+                self:Unbind(module, eventName)
+                if callback then callback({}) end
+                return UNSUBSCRIBE_SYMBOL
+            end
+
             local newKeybinding = Keybinding.new(e.Key, e.Modifiers or {})
             if callback then callback(newKeybinding) end
             return UNSUBSCRIBE_SYMBOL
@@ -301,6 +308,16 @@ end
 function KeybindManager:AddModuleCondition(module, condition)
     local mod = self:CreateModule(module)
     table.insert(mod.Conditions, condition)
+end
+
+function KeybindManager:IsModuleActive(module)
+    if self.Modules[module] then
+        for _, cond in ipairs(self.Modules[module].Conditions) do
+            if not cond({}) then return false end
+        end
+        return true
+    end
+    return false
 end
 
 function KeybindManager:TriggerEvent(module, eventName, e)
@@ -362,11 +379,15 @@ end
 function KeybindManager:LoadFromFile()
     local path = FilePath.GetKeybindPath()
     local content = Ext.IO.LoadFile(path)
-    if not content then return end
+    if not content then return false end
+    
     local data = Ext.Json.Parse(content)
     if data then
         self:Load(data)
+        return true
     end
+
+    return false
 end
 
 --- @class KeybindModule
@@ -433,8 +454,9 @@ function KeybindManager:CreateModule(moduleName)
 end
 
 EventsSubscriber.RegisterOnSessionLoaded(function()
-    KeybindManager:Load(DEFAULT_KEYBINDS)
-    KeybindManager:LoadFromFile()
+    if not KeybindManager:LoadFromFile() then
+        KeybindManager:Load(DEFAULT_KEYBINDS)
+    end
 end)
 
 RegisterConsoleCommand("rb_dump_keybinds", function()

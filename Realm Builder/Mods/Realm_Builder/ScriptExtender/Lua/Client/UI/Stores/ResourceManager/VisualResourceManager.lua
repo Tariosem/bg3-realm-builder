@@ -18,6 +18,7 @@ function CCAVManager:PopulateAll()
     local now = Ext.Timer.MonotonicTime()
     
     local ccavIds = Ext.StaticData.GetAll("CharacterCreationAppearanceVisual")
+    local uuid_blacklist = RESOUCE_UUID_BLACKLIST or {}
 
     local bodyTypeToBodyShapeToTag = {
         [0] = {
@@ -53,6 +54,7 @@ function CCAVManager:PopulateAll()
     local isModdedCache = {}
     local newSlot = {}
     for _,ccavId in pairs(ccavIds) do
+        if uuid_blacklist[ccavId] then goto continue end
         local ccav = Ext.StaticData.Get(ccavId, "CharacterCreationAppearanceVisual") --[[@as ResourceCharacterCreationAppearanceVisual]]
         local raceRes = Ext.StaticData.Get(ccav.RaceUUID, "Race") --[[@as ResourceRace]]
 
@@ -105,7 +107,10 @@ function VisualResourceManager:PopulateAllVisualResources()
     local visualResources = Ext.Resource.GetAll("Visual")
     local now = Ext.Timer.MonotonicTime()
     RBPrintPurple("[Realm Builder] Populating Visual Resources...")
+    local uuid_blacklist = RESOUCE_UUID_BLACKLIST or {}
     for _, resId in pairs(visualResources) do
+        if uuid_blacklist[resId] then goto continue end
+
         local res = Ext.Resource.Get(resId, "Visual") --[[@as ResourceVisualResource]]
         local fileName = RBStringUtils.GetLastPath(res.SourceFile)
         local path = RBStringUtils.GetPathAfterData(res.SourceFile)
@@ -114,6 +119,8 @@ function VisualResourceManager:PopulateAllVisualResources()
             Uuid = resId,
             Path = path,
         }
+    
+        ::continue::
     end
     
     local elapsed = Ext.Timer.MonotonicTime() - now

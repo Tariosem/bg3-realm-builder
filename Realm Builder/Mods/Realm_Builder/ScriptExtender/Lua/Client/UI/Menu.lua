@@ -111,7 +111,7 @@ function RealmBuilderMainMenu:RenderBrowserMenu()
         {Key = "character", Label = "Character"},
         {Key = "scenery", Label = "Scenery"},
         {Key = "prefab", Label = "Prefab"},
-        {Key = "construction", Label = "Tile Construction"},
+        --{Key = "construction", Label = "Tile Construction"},
         {Key = "CCAV", Label = "Character Creation Appearance Visuals"},
     }
     table.sort(allAvailableBrowsers, function(a,b) return a.Label < b.Label end)
@@ -193,6 +193,7 @@ function RealmBuilderMainMenu:Render()
 
     Timer:Ticks(9, function()
         self.browsers.character = RootTemplateBrowser.new(RB_GLOBALS.CharacterManager, "Character - Browser")
+        self.browsers.character.templateType = "character"
         self.browsers.character:CreateCachedSort("TemplateName")
         Debug("Character Browser initialized.")
     end)
@@ -310,6 +311,7 @@ function RealmBuilderMainMenu:Destroy()
         self.effectsMenu = nil
     end
     if self.panel then
+        --- @diagnostic disable-next-line
         WindowManager.DeleteWindow(self.panel)
         self.panel = nil
     end

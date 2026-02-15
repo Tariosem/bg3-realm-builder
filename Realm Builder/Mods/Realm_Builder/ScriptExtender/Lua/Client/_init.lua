@@ -69,6 +69,7 @@ local function PopulateAllTemplates()
     local sceneryCnt = 0
     local constructionsCnt = 0
     local prefabCnt = 0
+    local uuid_blacklist = RESOUCE_UUID_BLACKLIST or {}
 
     local allWeaponStats = Ext.Stats.GetStats("Weapon")
     for _, statsId in pairs(allWeaponStats) do
@@ -103,6 +104,7 @@ local function PopulateAllTemplates()
 
     local raw = Ext.ClientTemplate.GetAllRootTemplates()
     for uuid, object in pairs(raw) do
+        if uuid_blacklist[uuid] then goto continue end
         if object.TemplateType == "item" and not itemManager.Data[uuid] then
             object = object --[[@as ItemTemplate]]
             itemManager.Data[object.Id] = itemManager:PopulateItem(object)
@@ -125,6 +127,8 @@ local function PopulateAllTemplates()
             prefabManager:PopulatePrefab(object)
             prefabCnt = prefabCnt + 1
         end
+
+        ::continue::
     end
 
     characterManager.populated = true

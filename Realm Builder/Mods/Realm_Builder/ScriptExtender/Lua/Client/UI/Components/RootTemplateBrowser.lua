@@ -95,7 +95,7 @@ function RootTemplateBrowser:RenderIcon(entry, cell)
     end
 
     iconImage.OnDragEnd = function()
-        if self.templateType == "prefab" then
+        if self.templateType == "prefab" or self.templateType == "character" then
             Timer:Ticks(20, function (timerID)
                 local spawnPos, spawnRot = PickingUtils.GetPickingHitPosAndRot()
                 if not spawnPos or not spawnRot then return end

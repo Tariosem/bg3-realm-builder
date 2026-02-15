@@ -1,7 +1,11 @@
 local Debug = Debug or print
 local Error = Error or print
 local Warning = Warning or print
-local RealmPath = FilePath or {}
+local FilePath = FilePath or {}
+
+FilePath.GetXMLErrorLogPath = FilePath.GetXMLErrorLogPath or function(fileName)
+    return "Logs/XMLStringifyErrors/" .. fileName .. ".json"
+end
 
 --- @enum LSValueType
 LSValueType = {
@@ -154,6 +158,13 @@ local function validateInit(name, attrs, children, comments)
         else
             comments = {}
         end
+    else
+        for i = #comments, 1, -1 do
+            if type(comments[i]) ~= "string" then
+                Error("LSXTableNode: Invalid comment, must be string, skipping")
+                table.remove(comments, i)
+            end
+        end
     end
 
     return name, attrs or {}, children or {}, comments or {}
@@ -220,7 +231,7 @@ local function throwXMLStringifyError(node, message)
         Stack = debug.traceback(),
         Node = node,
     }
-    Ext.IO.SaveFile(RealmPath.GetXMLErrorLogPath(RBUtils.GetFormatTime()),
+    Ext.IO.SaveFile(FilePath.GetXMLErrorLogPath(RBUtils.GetFormatTime()),
         Ext.Json.Stringify(errLog,
             {
                 Beautify = true,

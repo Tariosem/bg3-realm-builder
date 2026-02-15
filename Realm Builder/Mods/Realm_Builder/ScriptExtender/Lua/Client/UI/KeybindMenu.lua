@@ -192,6 +192,19 @@ function KeybindMenu:RenderModule(module)
     local localName = GetLoca(localizedNames[name] or name)
     local header = cell:AddCollapsingHeader(localName)
     header.DefaultOpen = true
+
+    header:Tooltip():AddText("Module is "):SetColor("Text", {1, 1, 1, 1})
+    local activeText = header:Tooltip():AddText("Active")
+    header.OnHoverEnter = function ()
+        if module:IsModuleActive() then
+            activeText:SetColor("Text", {0, 1, 0, 1})
+            activeText.Label = "Active"
+        else
+            activeText:SetColor("Text", {1, 0, 0, 1})
+            activeText.Label = "Inactive"
+        end       
+    end
+
     local tTable = header:AddTable("", 4)
     applyTableStyle(tTable)
     applyHeaderStyle(header)
@@ -223,6 +236,9 @@ end
 --- @param keybind Keybinding
 local function getPresentation(keybind)
     if not keybind then
+        return "Unbound"
+    end
+    if not keybind.Key then
         return "Unbound"
     end
 

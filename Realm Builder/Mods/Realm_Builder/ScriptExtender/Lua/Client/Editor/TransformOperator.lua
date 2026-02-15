@@ -135,6 +135,7 @@ function TransformOperator:InitStartTransforms(ifInit)
 end
 
 function TransformOperator:Visualize()
+    -- disable for now 
     --[[if next(self.Visualizations) then
         self:ChangeVisualization()
         return

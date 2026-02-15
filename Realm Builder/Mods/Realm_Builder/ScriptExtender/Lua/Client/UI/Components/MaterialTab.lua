@@ -76,6 +76,7 @@ function MaterialTab:Render(parent)
             drop.UserData.SuccessApply = true
             self:ApplyParameters(params)
             self:UpdateUIState()
+            return
         end
         if drop.UserData and drop.UserData.ParameterName then
             local paramName = drop.UserData.ParameterName --[[@as string ]]
@@ -179,6 +180,7 @@ function MaterialTab:Render(parent)
 
                 drop.UserData.SuccessApply = true
                 self:ApplyParameters(udParams)
+                return
             end
             if drop.UserData and drop.UserData.ParameterName then
                 local paramName = drop.UserData.ParameterName --[[@as string ]]
@@ -506,6 +508,20 @@ function MaterialTab:RenderTextProperty(node, propertyName, propertyValue, prope
         textBox.OnRightClick = function()
             editSourceFilePopup:Open()
         end
+
+        return editSourceFilePopup
+    end
+
+    if propertyType == MaterialEnums.MaterialParamType.Texture2D then
+        local btn = node:AddButton("=##" .. self.MaterialName .. propertyName)
+        btn.ItemWidth = 20 * SCALE_FACTOR
+        btn.OnClick = function ()
+            local popup = textBox.OnRightClick()
+            btn.OnClick = function ()
+                popup:Open()
+            end
+        end
+        btn.SameLine = true
     end
 
     local resetButton = ImguiElements.AddResetButton(node, true)

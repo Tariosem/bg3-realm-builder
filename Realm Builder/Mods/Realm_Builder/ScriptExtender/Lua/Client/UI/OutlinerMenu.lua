@@ -64,7 +64,7 @@ function OutlinerMenu:Render()
         self.panel = self.parent:AddTabItem(GetLoca("Outliner"))
         self.isWindow = false
     else
-        self.panel = WindowManager.RegisterWindow("generic", "Outliner", "Outliner", self)
+        self.panel = WindowManager.RegisterWindow("generic", GetLoca("Outliner"))
         self.panel.Closeable = true
         self.panel.OnClose = function()
             self:ToggleDetach()

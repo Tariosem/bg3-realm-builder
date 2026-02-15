@@ -158,18 +158,6 @@ local function mapTLDummies()
 
 end
 
-function GetTLPreviewDummy(entity)
-    local dummies = Ext.Entity.GetAllEntitiesWithComponent("ClientTimelineActorControl")
-    for _, dummy in pairs(dummies) do
-        if dummy.TLPreviewDummy ~= nil and dummy.ClientTimelineActorControl ~= nil then
-            local actorLink = dummy.ClientTimelineActorControl.field_0
-            if entity.TimelineActorData ~= nil and entity.TimelineActorData.field_0 == actorLink then
-                return dummy
-            end
-        end
-    end 
-end
-
 local function debounceMapping()
     if mapTimer then
         Timer:Cancel(mapTimer)

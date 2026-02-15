@@ -57,3 +57,7 @@ ICON_BLACKLIST = {
     anim_test_cat = true,
     ICON_WREATH_OF_BLOOD = true,
 }
+
+RESOUCE_UUID_BLACKLIST = {
+    ["00000000-0000-0000-0000-000000000000"] = true,
+}

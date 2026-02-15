@@ -76,6 +76,7 @@ function StyleMenu:RenderSaveLoad()
         self.saveFuncs = {}
         self.isAttach = not self.isAttach
         if self.isWindow then
+            --- @diagnostic disable-next-line
             WindowManager.DeleteWindow(self.panel)
             self.panel = nil
         else

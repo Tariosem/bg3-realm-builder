@@ -28,6 +28,15 @@ local mainWindowHandle = nil
 function WindowManager.RegisterWindow(guid, displayName, pos, size)
     local screenWH = Ext.ClientIMGUI.GetViewportSize()
     local screenWidth, screenHeight = screenWH[1], screenWH[2]
+
+    if not screenWidth then
+        screenWidth = 3840 * (SCALE_FACTOR or 1)
+    end
+
+    if not screenHeight then
+        screenHeight = 2160 * (SCALE_FACTOR or 1)
+    end
+
     if WindowMap[guid] == nil then
         WindowMap[guid] = {}
     end

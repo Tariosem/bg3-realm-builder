@@ -332,14 +332,6 @@ function GizmoPicker:Hit(ray)
         end
     end
 
-    -- since this function is only used for hovering and clicking, there is no need to transform the hit back to world space
-    --[[if bestHit.Hit.Position then
-        bestHit.Hit = bestHit.Hit:Transform({
-            Translate = origin,
-            RotationQuat = rotation,
-        })
-    end]]
-
     return bestHit.Hit.Position and bestHit or nil
 end
 

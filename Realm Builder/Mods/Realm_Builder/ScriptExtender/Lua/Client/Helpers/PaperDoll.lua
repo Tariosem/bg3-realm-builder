@@ -21,7 +21,6 @@ end
 ---@param entity EntityHandle
 ---@return boolean
 local function EntityIsPaperDoll(entity)
-    --return entity.ClientEquipmentVisuals ~= nil and Helpers.Loca:GetDisplayName(entity) == nil
     local dNComp = entity.DisplayName
     if dNComp == nil then
         return true
@@ -67,58 +66,4 @@ function Paperdoll.GetDollOwner(doll)
             end
         end
     end
-end
-
----@param owner EntityHandle
----@return EntityHandle?
-function Paperdoll.GetOwnersDoll(owner)
-    local slotTemplates = {}
-    for _, entry in pairs(owner.ClientEquipmentVisuals.Equipment) do
-        if entry.Item ~= nil then
-            local slot = GetItemSlot(entry.Item)
-            local template = GetItemTemplate(entry.Item)
-            if slot and template then
-                slotTemplates[slot] = template
-            end
-        end
-    end
-
-    for _, character in pairs(Ext.Entity.GetAllEntitiesWithComponent("ClientEquipmentVisuals")) do
-        if EntityIsPaperDoll(character) then
-            local isOwnersDoll = true
-            for _,item in pairs(character.ClientEquipmentVisuals.Equipment) do
-                if item.Item ~= nil then
-                    local slot = GetItemSlot(item.Item)
-                    local template = GetItemTemplate(item.Item)
-                    if slot and template and slotTemplates[slot] ~= template then
-                        isOwnersDoll = false
-                        break
-                    end
-                end
-            end
-
-            if isOwnersDoll then
-                return character
-            end
-        end
-    end
-end
-
----@return {Doll:EntityHandle, Owner:EntityHandle, OwnerName:string}[]
-function Paperdoll.GetAllDollOwners()
-    local dolls = {}
-    for _, entity in pairs(Ext.Entity.GetAllEntitiesWithComponent("ClientEquipmentVisuals")) do
-        if EntityIsPaperDoll(entity) then
-            local owner = Paperdoll.GetDollOwner(entity)
-            if owner ~= nil then
-                table.insert(dolls, {
-                    Doll = entity,
-                    Owner = owner,
-                    OwnerName = owner.DisplayName.Name:Get()
-                })
-            end
-        end
-    end
-
-    return dolls
 end

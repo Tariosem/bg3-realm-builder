@@ -4,7 +4,6 @@ local notif = Notification.new("Is Previewing Item...")
 notif.Pivot = { 0.5, 0 }
 notif.AutoFadeOut = false
 
-
 PlacementPreview = {}
 
 --- @param entry {Uuid:string}

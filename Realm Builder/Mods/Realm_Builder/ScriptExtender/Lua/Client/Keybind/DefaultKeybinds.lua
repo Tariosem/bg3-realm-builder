@@ -2,15 +2,15 @@
 return {
     GeneralShortcuts = {
         ["OpenMainMenu"] = { Key = "GRAVE" },
-        ["OpenBrowserMenu"] = { Key = "F1" },
-        ["OpenTransformToolbar"] = { Key = "TAB" },
-        ["OpenVisualTab"] = { Key = "SLASH" },
+        --["OpenBrowserMenu"] = { Key = "F1" },
+        --["OpenTransformToolbar"] = { Key = "TAB" },
+        --["OpenVisualTab"] = { Key = "SLASH" },
         ["DeleteAllGizmos"] = { Key = "X", Modifiers = { "SHIFT" } },
     },
 
     TransformToolbar = {
         ["Select"] = { Key = "MMB" },
-        ["ClearSelection"] = { Key = "ESCAPE" },
+        --["ClearSelection"] = { Key = "ESCAPE" },
         ["Duplicate"] = { Key = "D", Modifiers = { "SHIFT" } },
         ["BoxSelect"] = { Key = "LMB", Modifiers = { "SHIFT" } },
         ["DeleteSelection"] = { Key = "DEL" },

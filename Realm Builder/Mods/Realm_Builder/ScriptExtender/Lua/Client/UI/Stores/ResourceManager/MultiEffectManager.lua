@@ -111,7 +111,9 @@ end
 function MultiEffectManager:PopulateAllEffects()
     if self.populated then return -1 end
     local raw = Ext.StaticData.GetAll("MultiEffectInfo")
+    local uuid_blacklist = RESOUCE_UUID_BLACKLIST or {}
     for _, ResourceId in ipairs(raw) do
+        if uuid_blacklist[ResourceId] then goto continue end
         local entries = self:PopulateMultiEffectInfo(ResourceId)
         for _, entry in ipairs(entries) do
             if entry.Uuid and entry.isMultiEffect then
@@ -122,13 +124,13 @@ function MultiEffectManager:PopulateAllEffects()
                 self.Data[entry.Uuid] = entry
             end
         end
+
+        ::continue::
     end
 
     local rawEffects = Ext.Resource.GetAll("Effect")
     for _, effect in ipairs(rawEffects) do
-        if self.Data[effect] then
-            goto continue
-        end
+        if self.Data[effect] or uuid_blacklist[effect] then goto continue end
         local res = Ext.Resource.Get(effect, "Effect") --[[@as ResourceEffectResource]]
         local entry = self:PopulateEffect(res)
         self.Data[res.Guid] = entry

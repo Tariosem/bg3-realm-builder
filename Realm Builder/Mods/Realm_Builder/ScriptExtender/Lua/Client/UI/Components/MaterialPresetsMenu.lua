@@ -1189,7 +1189,7 @@ function MaterialPresetsMenu:__exportToMod(modPack, progressCallback, exportThre
     local existUuid = modPack.ModuleUUID --[[@type GUIDSTRING?]]
     local folderDefs = modPack.FolderDefinitions or {}
     local existingLoca = self.modLocalizations[modFolderName] or {}
-    local yieldThreshold = 50 -- microseconds
+    local yieldThreshold = 2000 -- microseconds
 
     local modFolderDisplayName = modFolderName ..
         "_" ..
@@ -1229,6 +1229,7 @@ function MaterialPresetsMenu:__exportToMod(modPack, progressCallback, exportThre
                 Stack = debug.traceback(),
                 ModPack = modPack,
             }, { Beautify = true, StringifyInternalTypes = true }))
+        error(message)
     end
 
     local function yieldyield()
@@ -1603,6 +1604,14 @@ function MaterialPresetsMenu:RenderPresetColorBox(preset, parent)
     colorBox.OnHoverLeave = function()
         colorBox:SetStyle("FrameBorderSize", 0)
         colorBox:SetColor("Border", ColorUtils.HexToRGBA("FFFFFFFF"))
+    end
+
+    local uuid_blacklist = RESOUCE_UUID_BLACKLIST or {}
+    if preset.ResourceUUID and uuid_blacklist[preset.ResourceUUID] then
+        colorBox.Disabled = true
+        colorBox:SetStyle("Alpha", 0.3)
+        colorBox:Tooltip()
+            :AddText("This preset is in the blacklist")
     end
 
     return colorBox
