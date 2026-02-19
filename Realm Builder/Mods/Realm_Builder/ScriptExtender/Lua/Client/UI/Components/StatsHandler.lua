@@ -172,7 +172,7 @@ StatsBoostHandlers = {
         local prof = boost.args[1] or "Unknown"
         local function render(parent, iconSize)
             local bulletText = parent:AddBulletText(GetLoca("Gain Proficiency : "))
-            local icon = "Item_Unknown"
+            local icon = RB_ICONS.Box
             if RB_GLOBALS.ItemManager then
                 icon = RB_GLOBALS.ItemManager.tagIcons[prof]
             end
@@ -338,7 +338,7 @@ StatsBoostHandlers = {
     StatusImmunity = function(boost)
         local statusName = boost.args[1] or "Unknown"
         local status = Ext.Stats.Get(statusName) --[[@as StatusData]]
-        local icon = RBCheckIcon(status and status.Icon or "Item_Unknown")
+        local icon = RBCheckIcon(status and status.Icon or RB_ICONS.Box)
 
         local function render(parent)
             local bulletText = parent:AddBulletText("Immunity to status:")
@@ -380,14 +380,14 @@ StatsBoostHandlers = {
     Tag = function(boost)
         local tag = boost.args[1] or "Unknown"
         local tagRes = GetStaticDataByName(tag)
-        local icon = RBCheckIcon(tagRes and tagRes.Icon or "Item_Unknown")
+        local icon = RBCheckIcon(tagRes and tagRes.Icon or RB_ICONS.Box)
         local displayName = tagRes and tagRes.DisplayName:Get() or tag
         displayName = RBStringUtils.StripLSTags(displayName)
         local description = tagRes and GetLoca(tagRes.Description) or ""
         local function render(parent, iconSize)
             local bulletText = parent:AddBulletText(string.format("Tag: %s", displayName))
             local image = nil
-            if icon ~= "Item_Unknown" then
+            if icon ~= RB_ICONS.Box then
                 image = parent:AddImage(icon, RBUtils.ToVec2((iconSize or 32) * SCALE_FACTOR))
                 image.SameLine = true
             end
@@ -580,7 +580,7 @@ StatsParameterHandler = {
     ApplyStatus = function(param)
         local statusName = param.args[1] or "Unknown"
         local status = Ext.Stats.Get(statusName) --[[@as StatusData]]
-        local icon = RBCheckIcon(status and status.Icon or "Item_Unknown")
+        local icon = RBCheckIcon(status and status.Icon or RB_ICONS.Box)
         return {
             { Text = "Applies status: " },
             { Text = GetLoca(status and status.DisplayName or statusName), Icon = icon, Tooltip = StatsParser:ParseDesc(status and status.Description or nil, nil, status and status.DescriptionParams) }
@@ -628,7 +628,7 @@ StatsParameterHandler = {
     StatusImmunity = function(param)
         local statusName = param.args[1] or "Unknown"
         local status = Ext.Stats.Get(statusName) --[[@as StatusData]]
-        local icon = RBCheckIcon(status and status.Icon or "Item_Unknown")
+        local icon = RBCheckIcon(status and status.Icon or RB_ICONS.Box)
         return {
             { Text = "Immunity to status: " },
             { Text = GetLoca(status and status.DisplayName or statusName), Icon = icon, TooltipRef = { Type = "StatusData", Name = statusName } }
@@ -732,7 +732,7 @@ StatsConditionHandlers = {
         local passive = Ext.Stats.Get(passiveName)
         local icon = nil
         icon = RBCheckIcon(passive and passive.Icon)
-        if icon == "Item_Unknown" then
+        if icon == RB_ICONS.Box then
             icon = nil
         end
 
@@ -748,10 +748,10 @@ StatsConditionHandlers = {
         --- @type ResourceTag?
         local tagRes = GetStaticDataByName(args[1])
         local icon = nil
-        icon = RBCheckIcon(tagRes and tagRes.Icon or "Item_Unknown")
+        icon = RBCheckIcon(tagRes and tagRes.Icon or RB_ICONS.Box)
         local displayName = RBStringUtils.StripLSTags(tagRes and tagRes.DisplayName:Get() or args[1])
         local description = RBStringUtils.StripLSTags(tagRes and GetLoca(tagRes.Description or "No description") or "")
-        if icon == "Item_Unknown" then
+        if icon == RB_ICONS.Box then
             icon = nil
         end
         local tokens = {
@@ -777,7 +777,7 @@ StatsConditionHandlers = {
     HasStatus = function(args)
         local statusName = args[1] or "Unknown"
         local status = Ext.Stats.Get(statusName) --[[@as StatusData]]
-        local icon = RBCheckIcon(status and status.Icon or "Item_Unknown")
+        local icon = RBCheckIcon(status and status.Icon or RB_ICONS.Box)
         local tokens = {
             { Text = "Has status: " },
             { Text = GetLoca(status and status.DisplayName or args[1]), Icon = icon, TooltipRef = { Type = "StatusData", Name = statusName } }

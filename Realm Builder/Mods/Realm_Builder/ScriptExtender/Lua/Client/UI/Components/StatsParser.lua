@@ -485,12 +485,12 @@ function StatsParser:ParsePassives(passives)
             local desc = statsObj.Description
             local descRef = statsObj.DescriptionRef
             local descParams = statsObj.DescriptionParams
-            local icon = RBCheckIcon(statsObj.Icon or "Item_Unknown")
+            local icon = RBCheckIcon(statsObj.Icon or RB_ICONS.Box)
 
             local renderDesc = self:ParseDesc(desc, descRef, descParams)
             local function render(parent)
                 local bulletText = parent:AddBulletText("")
-                if icon ~= "Item_Unknown" then
+                if icon ~= RB_ICONS.Box then
                     local image = parent:AddImage(icon, RBUtils.ToVec2(48 * SCALE_FACTOR))
                     image.SameLine = true
                 else

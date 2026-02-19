@@ -24,7 +24,7 @@
 					<attribute id="CanClickThrough" type="bool" value="False" />
 					<attribute id="WadableSurfaceType" type="FixedString" value="SurfaceDeepWater" />
 					<attribute id="CanShineThrough" type="bool" value="True" />
-					<attribute id="Icon" type="FixedString" value="Item_Unknown" />
+					<attribute id="Icon" type="FixedString" value=RB_ICONS.Box />
 					<attribute id="Stats" type="FixedString" value="OBJ_GenericImmutableObject" />
 					<attribute id="GravityType" type="uint8" value="1" />
 					<attribute id="BloodSurfaceType" type="FixedString" value="SurfaceNone" />

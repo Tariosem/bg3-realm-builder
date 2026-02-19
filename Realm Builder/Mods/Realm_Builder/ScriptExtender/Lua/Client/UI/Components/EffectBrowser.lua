@@ -68,7 +68,7 @@ function EffectBrowser:RenderIcon(entry, cell)
         iconImage = cell:AddImageButton(entry.Uuid, entry.Icon)
         if iconImage.Image.Icon == "" then
            iconImage:Destroy()
-           iconImage = cell:AddImageButton(entry.Uuid, "Item_Unknown")
+           iconImage = cell:AddImageButton(entry.Uuid, RB_ICONS.Box)
         end
 
         if self.iconButtonBgColor then

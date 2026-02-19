@@ -157,6 +157,7 @@ function VisualTab:__init(guid, displayName, parent, templateName)
 
     self.Materials = {}
     self.Effects = {}
+    self.resetParams = {}
     self.EntityEffectTab = EntityEffectTabClass.new(nil, self.GetEntity, self.guid)
 
     self.currentPreset = EntityStore[guid] and EntityStore[guid].VisualPreset or nil
@@ -444,7 +445,7 @@ end
 --- @param parent ExtuiTreeParent
 function VisualTab:RenderPresetsCell(parent)
     if self:GetEntity(self.guid) and not self.isAttach then
-        local icon = RBGetIcon(self.guid) or "Item_Unknown"
+        local icon = RBGetIcon(self.guid) or RB_ICONS.Box
         self.symbol = parent:AddImage(icon)
         self.symbol.ImageData.Size = { 64 * SCALE_FACTOR, 64 * SCALE_FACTOR }
         if EntityStore[self.guid] and EntityStore[self.guid].IconTintColor then
@@ -950,7 +951,8 @@ end
 
 --- @return RB_VisualPreset
 function VisualTab:SaveCurrentState()
-    local effects = self.EntityEffectTab.Effects
+    local effects = self.EntityEffectTab.Effects or {}
+    local resetParams = self.resetParams or {}
     local presetData = {
         Materials = {},
         Effects = RBUtils.DeepCopy(effects),
@@ -973,7 +975,7 @@ function VisualTab:SaveCurrentState()
         end
 
 
-        local objStart = self.resetParams[key]
+        local objStart = resetParams[key]
 
         if objStart == nil then
             goto continue

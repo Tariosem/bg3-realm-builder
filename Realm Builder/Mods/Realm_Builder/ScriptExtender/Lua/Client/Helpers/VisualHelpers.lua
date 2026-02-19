@@ -305,8 +305,8 @@ function VisualHelpers.ApplyValueToFrames(guid, compIndex, value, propName)
 end
 
 local lightComponentFields = {
-    OverriderLightTemplateColor = true,
-    OverriderLightTemplateFlickerSpeed = true,
+    OverrideLightTemplateColor = true,
+    OverrideLightTemplateFlickerSpeed = true,
     ModulateLightTemplateRadius = true,
 }
 
@@ -356,7 +356,7 @@ end
 function VisualHelpers.SetEffectComponentValue(comp, propName, value)
     if comp.TypeName == "Light" then
         comp = comp --[[@as AspkLightComponent]]
-        if RBStringUtils.TakeTail(propName, #"Property") == "Property" then
+        if RBStringUtils.EndsWith(propName, "Property") then
             -- VisualHelpers.ApplyValueToFrames not used here to avoid redundant GetEffectComponent call
             local property = comp[propName]
             local frameField = propName == "ColorProperty" and "Frames" or "KeyFrames"
@@ -375,7 +375,7 @@ function VisualHelpers.SetEffectComponentValue(comp, propName, value)
             return
         end
 
-        local lightEntity = comp.LightEntity.Light
+        local lightEntity = comp.LightEntity.Light --[[@as LightComponent]]
         if not lightEntity then return end
 
         lightEntity[propName] = value

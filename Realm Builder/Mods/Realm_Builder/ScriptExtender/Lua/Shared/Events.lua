@@ -41,24 +41,20 @@ end
 
 local function OnStatsLoaded()
     for _, entry in ipairs(onStatsLoadedFuncs) do
-        if entry.func == nil or type(entry.func) ~= "function" then return end
-        entry.func()
-        --[[local success, err = pcall(entry.func)
+        local success, err = xpcall(entry.func, debug.traceback)
         if not success then
             Error("Error in StatsLoaded callback (priority " .. entry.priority .. "): " .. tostring(err))
-        end]]
+        end
     end
 end
 
 local function OnSessionLoaded()
-    Debug("Realm Builder On Session Loaded")
+    _P("Realm Builder On Session Loaded")
     for _, entry in ipairs(onSessionLoadedFuncs) do
-        if entry.func == nil or type(entry.func) ~= "function" then return end
-        entry.func()
-        --[[local success, err = pcall(entry.func)
+        local success, err = xpcall(entry.func, debug.traceback)
         if not success then
             Error("Error in SessionLoaded callback (priority " .. entry.priority .. "): " .. tostring(err))
-        end]]
+        end
     end
 end
 

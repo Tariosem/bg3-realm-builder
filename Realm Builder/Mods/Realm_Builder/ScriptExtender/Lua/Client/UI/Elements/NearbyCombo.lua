@@ -84,7 +84,7 @@ function NearbyCombo:Render()
     self.IDContext = "NearbyComboParent" .. RBUtils.Uuid_v4()
     local overGroup = parent:AddGroup("NearbyComboOver##" .. self.IDContext)
     local reservedForImage = overGroup:AddGroup("NearbyCombo##" .. self.IDContext .. "ImageReserved")
-    reservedForImage:AddImage("Item_Unknown", IMAGESIZE.FRAME)
+    reservedForImage:AddImage(RB_ICONS.Box, IMAGESIZE.FRAME)
     self.panel = overGroup
     self.combo = overGroup:AddCombo("")
     self.combo.UserData = self.combo.UserData or {}

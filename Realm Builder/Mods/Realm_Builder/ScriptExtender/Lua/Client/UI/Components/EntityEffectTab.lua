@@ -90,8 +90,23 @@ function EntityEffectTab:__init(parent, entityGetter, guid)
     self:SaveCurrentState()
 end
 
+local function isEntityHasEffect(entity)
+    return entity and entity.Effect and entity.Effect.Timeline and entity.Effect.Timeline.Components and #entity.Effect.Timeline.Components > 0
+end
+
+local function getEntityEffectComponent(entity, compIndex)
+    if not isEntityHasEffect(entity) then
+        return nil
+    end
+
+    return entity.Effect.Timeline.Components[compIndex]
+end
+
 function EntityEffectTab:SaveCurrentState()
     local entity = self:GetEntity() --[[@as EntityHandle]]
+    if not isEntityHasEffect(entity) then
+        return
+    end
     local effectComp = entity.Effect
     local timeline = effectComp and effectComp.Timeline
     local comps = timeline and timeline.Components
@@ -153,7 +168,11 @@ function EntityEffectTab:Render()
     end
 
     local entity = self:GetEntity() --[[@as EntityHandle]]
-    if not entity.Effect or not entity.Effect.Timeline or not entity.Effect.Timeline.Components then
+    if not isEntityHasEffect(entity) then
+        if self.effectHeader then
+            pcall(self.effectHeader.Destroy, self.effectHeader)
+            self.effectHeader = nil
+        end
         return
     end
 
@@ -173,7 +192,7 @@ end
 function EntityEffectTab:RenderEffectEditor()
     local entity = self:GetEntity() --[[@as EntityHandle]]
     --self.effectRoot = self.effectHeader:AddTree(GetLoca("Effects"))
-    if not entity.Effect or not entity.Effect.Timeline or not entity.Effect.Timeline.Components then
+    if not isEntityHasEffect(entity) then
         return
     end
 
@@ -212,7 +231,7 @@ end
 
 function EntityEffectTab:RenderEffectTimelineEditor()
     local entity = self:GetEntity() --[[@as EntityHandle]]
-    if not entity.Effect or not entity.Effect.Timeline then
+    if not isEntityHasEffect(entity) then
         return
     end
 
@@ -228,7 +247,7 @@ function EntityEffectTab:RenderEffectTimelineEditor()
     local playPauseButton = timelineTree:AddButton(timeline.IsPaused and GetLoca("Paused") or GetLoca("Playing"))
     playPauseButton.OnClick = function()
         local entity = self:GetEntity(self.guid) --[[@as EntityHandle]]
-        if not entity.Effect or not entity.Effect.Timeline then
+        if not isEntityHasEffect(entity) then
             return
         end
         entity.Effect.Timeline.IsPaused = not entity.Effect.Timeline.IsPaused
@@ -247,7 +266,7 @@ function EntityEffectTab:RenderEffectTimelineEditor()
         timeline.PlayingSpeed, 0.1, 5.0, 0.1, false)
     playSpeedSlider.OnChange = function()
         local entity = self:GetEntity(self.guid) --[[@as EntityHandle]]
-        if not entity.Effect or not entity.Effect.Timeline then
+        if not isEntityHasEffect(entity) then
             return
         end
         entity.Effect.Timeline.PlayingSpeed = playSpeedSlider.Value[1]
@@ -588,7 +607,7 @@ function EntityEffectTab:SetupEffectContextMenu()
         local compType = selectedComp.TypeName
 
         local entity = self:GetEntity(self.guid) --[[@as EntityHandle]]
-        if not entity.Effect or not entity.Effect.Timeline or not entity.Effect.Timeline.Components then
+        if not isEntityHasEffect(entity) then
             return
         end
 
@@ -775,10 +794,14 @@ function EntityEffectTab:RenderLightComponent(node, component, compIndex)
     local lcomp = component --[[@as AspkLightComponent]]
 
     local function applyToFrames(value, propName, frameField)
-        local comp = VisualHelpers.GetEffectComponent(self.guid, compIndex) --[[@as AspkLightComponent]]
-        if not comp then return end
+        local entity = self:GetEntity() --[[@as EntityHandle]]
+        local effectComp = entity and entity.Effect
+        local timeline = effectComp and effectComp.Timeline
+        local compInTimeline = timeline and timeline.Components and timeline.Components[compIndex]
 
-        local property = comp[propName]
+        if not compInTimeline then return end
+
+        local property = compInTimeline[propName]
         if not property or not property[frameField] then return end
 
         if frameField == "KeyFrames" then
@@ -822,7 +845,7 @@ function EntityEffectTab:RenderLightComponent(node, component, compIndex)
             if isCubic then
                 RainbowDumpTable(lcomp.IntensityProperty.KeyFrames)
                 prop.Setter = function(value)
-                    lcomp = VisualHelpers.GetEffectComponent(self.guid, compIndex) --[[@as AspkLightComponent]]
+                    lcomp = getEntityEffectComponent(self:GetEntity(self.guid), compIndex) --[[@as AspkLightComponent]]
                     if not lcomp then return end
                     for _, keyFrame in pairs(lcomp.IntensityProperty.KeyFrames or {}) do
                         for _, frame in pairs(keyFrame.Frames or {}) do
@@ -831,7 +854,7 @@ function EntityEffectTab:RenderLightComponent(node, component, compIndex)
                     end
                 end
                 prop.Getter = function()
-                    lcomp = VisualHelpers.GetEffectComponent(self.guid, compIndex) --[[@as AspkLightComponent]]
+                    lcomp = getEntityEffectComponent(self:GetEntity(self.guid), compIndex) --[[@as AspkLightComponent]]
                     if not lcomp then return nil end
                     local property = lcomp.IntensityProperty
                     if not property or not property.KeyFrames then return nil end
@@ -846,7 +869,7 @@ function EntityEffectTab:RenderLightComponent(node, component, compIndex)
             applyToFrames(value, propName, "KeyFrames")
         end
         prop.Getter = function()
-            local comp = VisualHelpers.GetEffectComponent(self.guid, compIndex) --[[@as AspkLightComponent]]
+            local comp = getEntityEffectComponent(self:GetEntity(self.guid), compIndex) --[[@as AspkLightComponent]]
             if not comp then return nil end
 
             local property = comp[propName]
@@ -871,7 +894,7 @@ function EntityEffectTab:RenderLightComponent(node, component, compIndex)
             applyToFrames(value, propName, "Frames")
         end
         prop.Getter = function()
-            local comp = VisualHelpers.GetEffectComponent(self.guid, compIndex) --[[@as AspkLightComponent]]
+            local comp = getEntityEffectComponent(self:GetEntity(self.guid), compIndex) --[[@as AspkLightComponent]]
             if not comp then return nil end
 
             local property = comp[propName]
@@ -900,7 +923,7 @@ function EntityEffectTab:RenderLightComponent(node, component, compIndex)
 
     local key = "Light::" .. compIndex
     self:RenderEffectComponentEditor(compNode, key, function()
-        return VisualHelpers.GetEffectComponent(self.guid, compIndex) --[[@as AspkLightComponent]]
+        return getEntityEffectComponent(self:GetEntity(self.guid), compIndex) --[[@as AspkLightComponent]]
     end, {
         PropertyMap = {
             Scalar = scalarNameMap,

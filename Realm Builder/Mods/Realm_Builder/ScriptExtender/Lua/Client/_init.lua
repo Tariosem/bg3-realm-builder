@@ -105,27 +105,33 @@ local function PopulateAllTemplates()
     local raw = Ext.ClientTemplate.GetAllRootTemplates()
     for uuid, object in pairs(raw) do
         if uuid_blacklist[uuid] then goto continue end
-        if object.TemplateType == "item" and not itemManager.Data[uuid] then
-            object = object --[[@as ItemTemplate]]
-            itemManager.Data[object.Id] = itemManager:PopulateItem(object)
-            itemManager.UuidToTemplateName[object.Id] = object.Name
-            itemManager.TemplateNameToUuid[object.Name] = object.Id
-            itemCnt = itemCnt + 1
-        elseif object.TemplateType == "character" then
-            --- @diagnostic disable-next-line
-            characterManager:PopulateCharacter(object)
-            characterCnt = characterCnt + 1
-        elseif object.TemplateType == "scenery" then
-            object = object --[[@as SceneryTemplate]]
-            sceneryManager:PopulateScenery(object)
-            sceneryCnt = sceneryCnt + 1
-        elseif object.TemplateType == "TileConstruction" then
-            object = object --[[@as ConstructionTemplate]]
-            tileConstructionManager:PopulateConstruction(object)
-            constructionsCnt = constructionsCnt + 1
-        elseif object.TemplateType == "prefab" then
-            prefabManager:PopulatePrefab(object)
-            prefabCnt = prefabCnt + 1
+
+        local ok, err = xpcall(function (...)
+            if object.TemplateType == "item" and not itemManager.Data[uuid] then
+                object = object --[[@as ItemTemplate]]
+                itemManager.Data[object.Id] = itemManager:PopulateItem(object)
+                itemManager.UuidToTemplateName[object.Id] = object.Name
+                itemManager.TemplateNameToUuid[object.Name] = object.Id
+                itemCnt = itemCnt + 1
+            elseif object.TemplateType == "character" then
+                --- @diagnostic disable-next-line
+                characterManager:PopulateCharacter(object)
+                characterCnt = characterCnt + 1
+            elseif object.TemplateType == "scenery" then
+                object = object --[[@as SceneryTemplate]]
+                sceneryManager:PopulateScenery(object)
+                sceneryCnt = sceneryCnt + 1
+            elseif object.TemplateType == "TileConstruction" then
+                object = object --[[@as ConstructionTemplate]]
+                tileConstructionManager:PopulateConstruction(object)
+                constructionsCnt = constructionsCnt + 1
+            elseif object.TemplateType == "prefab" then
+                prefabManager:PopulatePrefab(object)
+                prefabCnt = prefabCnt + 1
+            end
+        end, debug.traceback)
+        if not ok then
+            _P("Error populating template with UUID " .. uuid .. ": " .. err)
         end
 
         ::continue::
@@ -148,9 +154,22 @@ end
 
 local function Realm_Builder_Population()
     local now = Ext.Timer:MonotonicTime()
-    local cnts, sumCnt = PopulateAllTemplates()
+
+    local cnts, sumCnt = {}, -1
+    local ok, err = xpcall(function ()
+        cnts, sumCnt = PopulateAllTemplates()
+    end, debug.traceback)
+    if not ok then
+        _P("[Realm Builder] Error populating templates: " .. err)  
+    end
+    
     local itemsFinished = Ext.Timer:MonotonicTime()
-    local effectCnt = RB_GLOBALS.MultiEffectManager:PopulateAllEffects()
+    
+    local effectCnt = nil
+    local ok2, err2 = xpcall(function ()
+        effectCnt = RB_GLOBALS.MultiEffectManager:PopulateAllEffects()
+    end, debug.traceback)
+    
     local effectsFinished = Ext.Timer:MonotonicTime()
     if sumCnt >= 0 then
         RBPrintPurple("[Realm Builder] Populating " ..

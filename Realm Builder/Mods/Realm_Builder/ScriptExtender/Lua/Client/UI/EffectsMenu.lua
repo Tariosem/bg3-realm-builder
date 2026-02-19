@@ -373,7 +373,7 @@ local function isValidEffectData(data)
     if not data then return false end
     if not data.Uuid or data.Uuid == "" then return false end
     local validIcon = RBCheckIcon(data.Icon)
-    if not validIcon or validIcon == "Item_Unknown" then
+    if not validIcon or validIcon == RB_ICONS.Box then
         validIcon = "GenericIcon_Intent_Utility"
         --Warning("[EffectsMenu] Effect with UUID: " .. tostring(data.Uuid) .. " has invalid icon: " .. tostring(data.Icon) .. ". Reverting to default icon.")
         data.Icon = validIcon

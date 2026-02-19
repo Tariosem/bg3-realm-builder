@@ -244,7 +244,7 @@ function ItemManager:PopulateItem(template, statsObj)
         TemplateId = template.Name .. "_" .. uuid,
         TemplateName = template.Name,
         DisplayName = template.DisplayName:Get() or "",
-        Icon = template.Icon or "Item_Unknown",
+        Icon = template.Icon or RB_ICONS.Box,
         Description = template.Description:Get() or "",
         ShortDescription = template.ShortDescription:Get() or "",
         Mod = "",
@@ -258,7 +258,13 @@ function ItemManager:PopulateItem(template, statsObj)
 
     statsObj = statsObj or Ext.Stats.Get(template.Stats) --[[@as StatsObject]]
     if statsObj then
-        self:CategorizeItem(entry, statsObj, templateName)
+        local ok, err = xpcall(function ()
+            self:CategorizeItem(entry, statsObj, templateName)
+        end, debug.traceback)
+    
+        if not ok then
+            _P("Error categorizing item " .. entry.TemplateId .. ": " .. err)
+        end
     else
     end
 
@@ -272,9 +278,9 @@ function ItemManager:PopulateItem(template, statsObj)
     end
 
     if ICON_BLACKLIST[entry.Icon] then
-        entry.Icon = "Item_Unknown"
+        entry.Icon = RB_ICONS.Box
     end
-    if entry.Icon == "Item_Unknown" then
+    if entry.Icon == RB_ICONS.Box then
         self:AddTagToData(entry.Uuid, "Unknown Icon")
     end
 

@@ -28,7 +28,7 @@ function ItemBrowser:RenderIcon(entry, cell)
         iconImage = cell:AddImageButton(entry.Uuid, entry.Icon)
         if iconImage.Image.Icon == "" then
             iconImage:Destroy()
-            iconImage = cell:AddImageButton(entry.Uuid, "Item_Unknown")
+            iconImage = cell:AddImageButton(entry.Uuid, RB_ICONS.Box)
         end
         local iconWidth = self.iconWidth
         local rarityColor = RARITY_COLORS[entry.Rarity]
@@ -351,6 +351,11 @@ function ItemBrowser:RenderItemSpawnTab(popup, iconImage, entry)
     local target = self.selectedGuid or RBGetHostCharacter()
 
     local function spawnHandle()
+        target = self.selectedGuid or RBGetHostCharacter()
+        if not target then
+            RBPrintRed("No valid target selected for spawning item.")
+            return
+        end
         local data = {
             Guid = entry.Uuid,
             TemplateId = entry.TemplateId,

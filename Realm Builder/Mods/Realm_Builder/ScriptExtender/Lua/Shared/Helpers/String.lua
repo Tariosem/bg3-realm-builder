@@ -7,6 +7,12 @@ function RBStringUtils.StripLSTags(desc)
     return desc:gsub("%b<>", ""):gsub("%s+", " "):gsub("^%s+", ""):gsub("%s+$", "")
 end
 
+function RBStringUtils.EndsWith(str, pattern)
+    if type(str) ~= "string" or type(pattern) ~= "string" then
+        return false
+    end
+    return str:sub(-#pattern) == pattern
+end
 
 --- @param input string
 --- @param trimWhitespace boolean?

@@ -269,7 +269,6 @@ function TransformGizmo:SetupIdleTimers()
         if lastRay and mouseRay == lastRay then return end
         lastRay = mouseRay
 
-        self:UpdatePicker()
         local hit = self.Picker:Hit(mouseRay)
         if hit and hit.Axis then
             self.HoveredAxis = hit.Axis
@@ -291,6 +290,7 @@ function TransformGizmo:SetupIdleTimers()
 
         self.PivotPosition = pos
         self.PivotRotation = rot
+        self:UpdatePicker()
 
         local transforms = {}
         for _, guid in ipairs(allGuids) do

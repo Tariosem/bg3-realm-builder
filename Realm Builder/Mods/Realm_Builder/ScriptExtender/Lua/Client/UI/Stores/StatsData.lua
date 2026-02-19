@@ -128,10 +128,10 @@ function StatsHelpers.GetEffectInfo(effectUuid)
     end
 
     if info.Icon == "" or info.Icon == "unknown" or ICON_BLACKLIST[info.Icon] then
-        info.Icon = "Item_Unknown"
+        info.Icon = RB_ICONS.Box
     end
 
-    info.Icon = RBCheckIcon(info.Icon, "Item_Unknown")
+    info.Icon = RBCheckIcon(info.Icon, RB_ICONS.Box)
 
     return info
 end

@@ -2,7 +2,8 @@ local specialGuids = {
     [CAMERA_SYMBOL] = "Item_DEN_VoloOperation_ErsatzEye",
 }
 
-local defaultIcon = "Item_Unknown"
+GLOBAL_DEFAULT_ICON = RB_ICONS.Box
+local defaultIcon = GLOBAL_DEFAULT_ICON
 local ECMODLoaded = Ext.Mod.IsModLoaded("5b5ad5b6-ce37-4a63-8dea-a1fee4cee156")
 local FocusAddonLoaded = Ext.Mod.IsModLoaded("ff8b5278-f929-45d1-9a51-7efa609620c4")
 local defautlCharacterIcon = RB_ICONS.Character
@@ -12,14 +13,14 @@ local windowForCheckIcon = GLOBAL_DEBUG_WINDOW
 
 --- @param icon string?
 --- @param fallback string?
---- @return string|'Item_Unknown'
+--- @return string|"RB_Box_Icon"
 function RBCheckIcon(icon, fallback)
     if not windowForCheckIcon then
-        return "Item_Unknown"
+        return fallback or defaultIcon
     end
 
     if not icon or icon == "" then
-        return fallback or "Item_Unknown"
+        return fallback or defaultIcon
     end
 
     local isValid = true
@@ -29,7 +30,7 @@ function RBCheckIcon(icon, fallback)
     end
     image:Destroy()
 
-    return isValid and icon or fallback or "Item_Unknown"
+    return isValid and icon or fallback or defaultIcon
 end
 
 function RBGetIcon(guid)
@@ -142,7 +143,7 @@ function RBGetIconForTemplateId(uuid)
     uuid = RBUtils.TakeTailTemplate(uuid)
     local template = Ext.Template.GetTemplate(uuid)
     if not template then
-        return "Item_Unknown"
+        return RB_ICONS.Box
     end
     if template.TemplateType == "item" then
         local icon = template.Icon
@@ -150,7 +151,7 @@ function RBGetIconForTemplateId(uuid)
     else
         return templateTypeToIcon[template.TemplateType] or defaultIcon
     end
-    return "Item_Unknown"
+    return RB_ICONS.Box
 end
 
 function RBGetDisplayNameForTemplateId(uuid)

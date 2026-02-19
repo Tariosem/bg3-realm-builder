@@ -29,9 +29,9 @@ function PlacementPreview:BeginPlacementPreview(entry, entryDisplayName)
         midAlighTab.ColumnDefs[3] = { WidthStretch = true }
         local row = midAlighTab:AddRow()
         local midCell = ({row:AddCell(), row:AddCell(), row:AddCell()})[2]
-        local icon = RBCheckIcon(entry.Icon or "Item_Unknown")
+        local icon = RBCheckIcon(entry.Icon or RB_ICONS.Box)
         local image = nil
-        if icon == "Item_Unknown" then
+        if icon == RB_ICONS.Box then
         else
             image = midCell:AddImage(icon, RBUtils.ToVec2(64 * SCALE_FACTOR))
         end

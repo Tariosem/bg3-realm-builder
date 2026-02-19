@@ -73,14 +73,14 @@ local function makeCache(obj)
             nameCache[guid] = getName(guid)
         end
         if not iconCache[guid] then
-            iconCache[guid] = getIcon(guid) or "Item_Unknown"
+            iconCache[guid] = getIcon(guid) or RB_ICONS.Box
         end
         for _, targetGuid in ipairs(guids) do
             if not nameCache[targetGuid] then
                 nameCache[targetGuid] = getName(targetGuid)
             end
             if not iconCache[targetGuid] then
-                iconCache[targetGuid] = getIcon(targetGuid) or "Item_Unknown"
+                iconCache[targetGuid] = getIcon(targetGuid) or RB_ICONS.Box
             end
         end
     end
@@ -110,7 +110,7 @@ function effectTabComponents:AddCasterTargetSelector(parent, obj)
             return nameA < nameB
         end) do
             local casterName = nameCache[casterGuid] or casterGuid
-            local casterIcon = iconCache[casterGuid] or "Item_Unknown"
+            local casterIcon = iconCache[casterGuid] or RB_ICONS.Box
             local casterTree = ImguiElements.AddTree(rightCell, casterName .. "##" .. casterGuid, expanded[casterGuid] ~= nil)
             casterTree:AddTreeIcon(casterIcon)
 
@@ -129,7 +129,7 @@ function effectTabComponents:AddCasterTargetSelector(parent, obj)
 
                 for i, targetGuid in ipairs(targetGuids) do
                     local targetName = nameCache[targetGuid] or targetGuid
-                    local targetIcon = iconCache[targetGuid] or "Item_Unknown"
+                    local targetIcon = iconCache[targetGuid] or RB_ICONS.Box
 
                     local id = targetName .. "##" .. targetGuid .. "##" .. i
                     local targetGroup = casterTree:AddGroup(id)
@@ -173,13 +173,13 @@ function effectTabComponents:AddCasterTargetSelector(parent, obj)
         selectedCaster = guid
         ImguiHelpers.DestroyAllChildren(selectedCasterGroup)
         if not selectedCaster or not RBUtils.IsUuidShape(guid) then
-            local imgSel = ImguiElements.AddImageSelectable(selectedCasterGroup, "None Selected", "Item_Unknown")
+            local imgSel = ImguiElements.AddImageSelectable(selectedCasterGroup, "None Selected", RB_ICONS.Box)
             imgSel.Disabled = true
             return
         end
 
         local name = nameCache[guid] or getName(guid)
-        local icon = iconCache[guid] or getIcon(guid) or "Item_Unknown"
+        local icon = iconCache[guid] or getIcon(guid) or RB_ICONS.Box
         local imgSel = ImguiElements.AddImageSelectable(selectedCasterGroup, name, icon)
         imgSel.Disabled = true
     end
@@ -218,7 +218,7 @@ function effectTabComponents:AddEffectEntry(parent, effectEntry, expanded)
         return errorTree
     end
     local tree = parent:AddTree(managerEntry.EffectName .. "## " .. uid, expanded or false)
-    tree:AddTreeIcon(managerEntry.Icon or "Item_Unknown")
+    tree:AddTreeIcon(managerEntry.Icon or RB_ICONS.Box)
 
     tree.UserData = {
         Effect = effectEntry,

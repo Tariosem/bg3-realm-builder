@@ -6,6 +6,6 @@ function DecalManager:PopulateDecal(template)
         MaterialId = template.MaterialUUID,
         TemplateId = template.Name .. "_" .. template.Id,
         TemplateName = template.Name,
-        Icon = "Item_Unknown",
+        Icon = RB_ICONS.Box,
     }
 end

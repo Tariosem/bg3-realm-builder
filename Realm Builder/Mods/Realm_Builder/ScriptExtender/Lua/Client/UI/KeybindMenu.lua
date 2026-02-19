@@ -59,7 +59,7 @@ local KEYBIND_EVENT_RENDER_ORDER = {
 }
 
 local localizedNames = {
-    GeneralShortcuts = "Genetal Shortcuts",
+    GeneralShortcuts = "General Shortcuts",
 
     OpenMainMenu = "Toggle Main Menu",
     OpenBrowserMenu = "Toggle Browser Menu",
@@ -118,15 +118,17 @@ function KeybindMenu:Render(parent)
         self:OnDetach()
     end
 
-    self:RenderFileMenu()
+    local refreshFunc = function() end
+
+    self:RenderFileMenu(function () refreshFunc() end)
     self.rootTable = self.panel:AddTable("KetbindMenu", 1)
 
     self.isVisible = true
 
-    self:RenderContents()
+    refreshFunc = self:RenderContents()
 end
 
-function KeybindMenu:RenderFileMenu()
+function KeybindMenu:RenderFileMenu(refreshFunc)
     local saveBtn = self.panel:AddButton("Save Keybindings")
     saveBtn.OnClick = function()
         KeybindManager:SaveToFile()
@@ -136,6 +138,7 @@ function KeybindMenu:RenderFileMenu()
     loadBtn.SameLine = true
     loadBtn.OnClick = function()
         KeybindManager:LoadFromFile()
+        refreshFunc()
     end
 end
 
@@ -148,16 +151,24 @@ function KeybindMenu:RenderContents()
         orderedSet[name] = true
     end
 
+    local refreshFuncs = {}
+
     for _, name in ipairs(order) do
         local module = modules[name]
         if module then
-            self:RenderModule(module)
+            table.insert(refreshFuncs, self:RenderModule(module))
         end
     end
 
     for name, module in pairs(modules) do
         if not orderedSet[name] then
-            self:RenderModule(module)
+            table.insert(refreshFuncs, self:RenderModule(module))
+        end
+    end
+
+    return function()
+        for _, func in ipairs(refreshFuncs) do
+            func()
         end
     end
 end
@@ -217,18 +228,25 @@ function KeybindMenu:RenderModule(module)
         orderedSet[ev] = true
     end
 
+    local refreshFuncs = {}
     for _, eventName in ipairs(order) do
         local registry = events[eventName]
         if registry then
             local row = tTable:AddRow()
-            self:RenderEvent(row, module.Name, eventName, module, registry)
+            table.insert(refreshFuncs, self:RenderEvent(row, module.Name, eventName, module, registry))
         end
     end
 
     for eventName, registry in pairs(events) do
         if not orderedSet[eventName] then
             local row = tTable:AddRow()
-            self:RenderEvent(row, module.Name, eventName, module, registry)
+            table.insert(refreshFuncs, self:RenderEvent(row, module.Name, eventName, module, registry))
+        end
+    end
+
+    return function()
+        for _, func in ipairs(refreshFuncs) do
+            func()
         end
     end
 end
@@ -267,6 +285,7 @@ conflictNotif.ChangeDirectionWhenFadeOut = true
 ---@param eventName string
 ---@param module KeybindModule
 ---@param registry KeybindRegistry
+---@return function refreshFunc
 function KeybindMenu:RenderEvent(row, moduleName, eventName, module, registry)
     local enableCell, eventCell, keyCell, resetCell = row:AddCell(), row:AddCell(), row:AddCell(), row:AddCell()
 
@@ -343,6 +362,11 @@ function KeybindMenu:RenderEvent(row, moduleName, eventName, module, registry)
         local defaultKeybind = initKeybind or {}
         module:Rebind(eventName, defaultKeybind.Key, defaultKeybind.Modifiers)
         keyButton.Label = getPresentation(module:GetKeyByEvent(eventName))
+    end
+
+    return function()
+        local keybind = module:GetKeyByEvent(eventName)
+        keyButton.Label = getPresentation(keybind)
     end
 end
 

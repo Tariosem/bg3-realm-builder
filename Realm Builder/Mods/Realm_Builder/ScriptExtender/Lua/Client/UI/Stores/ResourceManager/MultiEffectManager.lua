@@ -27,7 +27,7 @@ function MultiEffectManager:PopulateMultiEffectInfo(uuid)
     local Entries, FxNameMap, BoneNameCounter = {}, {}, {}
     local MultiEffectEntry = {
         Uuid = uuid,
-        Icon = "Item_Unknown",
+        Icon = RB_ICONS.Box,
         EffectName = raw.Name or "Unknown Multi-Effect",
         SpellName = "",
         FxNames = {},
@@ -63,7 +63,7 @@ function MultiEffectManager:PopulateMultiEffectInfo(uuid)
                 Uuid = fxName,
                 FxNames = {fxName},
                 EffectName = res.EffectName,
-                Icon = "Item_Unknown",
+                Icon = RB_ICONS.Box,
                 SpellName = "",
                 SourceBone = sourceBoneStr,
                 TargetBone = targetBoneStr,
@@ -97,7 +97,7 @@ function MultiEffectManager:PopulateEffect(res)
         Uuid = res.Guid,
         EffectName = res.EffectName or "Unknown",
         SpellName = "",
-        Icon = "Item_Unknown",
+        Icon = RB_ICONS.Box,
         FxNames = {res.Guid},
         isBeam = false,
         isLoop = res.Looping or false,
@@ -138,7 +138,7 @@ function MultiEffectManager:PopulateAllEffects()
     end
 
     local function isValidIcon(icon)
-        return icon and icon ~= "Item_Unknown" and icon ~= ""
+        return icon and icon ~= RB_ICONS.Box and icon ~= ""
     end
 
     for uuid, entry in pairs(self.Data) do
@@ -173,7 +173,7 @@ function MultiEffectManager:PopulateAllEffects()
 
     for uuid, entry in pairs(self.Data) do
         if not isValidIcon(entry.Icon) then
-            entry.Icon = "Item_Unknown"
+            entry.Icon = RB_ICONS.Box
             self:AddTagToData(uuid, "Unknown Icon")
         end
         if entry.DisplayName == '<LSTag Type="Image" Info="SoftWarning"/> Add <b>Elf</b> Tag.' or entry.DisplayName == "" then

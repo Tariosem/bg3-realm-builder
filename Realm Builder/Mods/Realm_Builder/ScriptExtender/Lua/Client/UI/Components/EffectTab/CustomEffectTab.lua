@@ -132,7 +132,7 @@ local function renderCustomEffectEditor(parent, effectEntry)
         for attrName, displayName in pairs(attrFields) do
             local checkBox = alignedTab:AddCheckbox(displayName, effectEntry[attrName] or false)
             checkBox.OnChange = function ()
-                effectEntry[attrName] = checkBox.Value
+                effectEntry[attrName] = checkBox.Checked
             end
         end
         debugTable.OnExpand = function() end
@@ -200,7 +200,7 @@ function CustomEffectTab:RenderProfileTab(parent)
     function renameIcon(newIcon)
         newIcon = newIcon or iconInput.Text
         local isIcon = RBCheckIcon(newIcon)
-        if isIcon == "Item_Unknown" then
+        if isIcon == RB_ICONS.Box then
             iconInput.Text = entry.Icon
             return
         end

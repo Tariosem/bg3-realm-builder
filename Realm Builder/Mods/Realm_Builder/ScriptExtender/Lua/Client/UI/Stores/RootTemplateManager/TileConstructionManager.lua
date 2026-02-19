@@ -13,6 +13,6 @@ function TileConstructionManager:PopulateConstruction(template)
         TemplateName = template.Name,
         VisualTemplate = template.VisualTemplate,
         DisplayName = template.Name,
-        Icon = "Item_Unknown",
+        Icon = RB_ICONS.Box,
     }
 end

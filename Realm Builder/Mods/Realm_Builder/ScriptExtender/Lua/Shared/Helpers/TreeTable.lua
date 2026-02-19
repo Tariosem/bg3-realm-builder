@@ -163,9 +163,9 @@ function TreeTable:GetRoot()
 end
 
 ---@param key any
----@param parent? any default to root
+---@param parentKey? any default to root
 ---@return table|nil
-function TreeTable:AddTree(key, parent)
+function TreeTable:AddTree(key, parentKey)
     if rawget(TreeTable, key) then
         --Debug("Cannot use method name '" .. key .. "' as a table key.")
         return nil
@@ -176,15 +176,15 @@ function TreeTable:AddTree(key, parent)
         return nil
     end
 
-    local parentNode = parent and self._nodeRefs[parent] or self._table
+    local parentNode = parentKey and self._nodeRefs[parentKey] or self._table
     if not parentNode then
         --Debug("Parent '" .. tostring(parent) .. "' not found.")
         return nil
     end
     if parentNode == self._table then
-        parent = ROOT
+        parentKey = ROOT
     end
-    if type(parentNode) ~= "table" or self:IsLeaf(parent) then
+    if type(parentNode) ~= "table" or self:IsLeaf(parentKey) then
         --Debug("Trying to index a leaf. Cannot add child '" .. tostring(key) .. "'.")
         return nil
     end 
@@ -193,7 +193,7 @@ function TreeTable:AddTree(key, parent)
         --Debug("Key '" .. key .. "' already exists.")
         return nil
     end
-    if key == parent then
+    if key == parentKey then
         --Debug("Cannot add a node as its own child")
         return nil
     end
@@ -201,7 +201,7 @@ function TreeTable:AddTree(key, parent)
     local node = {}
     rawset(parentNode, key, node)
     self._nodeRefs[key] = node
-    self._parentRefs[key] = parent
+    self._parentRefs[key] = parentKey
     self._leafRefs[key] = nil
     self:_wrapNode(node, key)
     self._ancestorDirty = true
@@ -256,15 +256,15 @@ end
 
 --- @param key any
 --- @param value any
---- @param parent? any
+--- @param parentKey? any
 --- @return any|nil
-function TreeTable:AddLeaf(key, value, parent)
+function TreeTable:AddLeaf(key, value, parentKey)
     --Warning("Adding leaf " .. key .. " with value " .. tostring(value) .. " under parent " .. tostring(parent))
     if key == ROOT then
         return nil
     end
 
-    local parentKey = parent or ROOT
+    parentKey = parentKey or ROOT
     local parentNode = self._nodeRefs[parentKey]
     if not parentNode then
         return nil
@@ -274,17 +274,17 @@ function TreeTable:AddLeaf(key, value, parent)
         return nil
     end
 
-    if self:IsLeaf(parent) then
+    if self:IsLeaf(parentKey) then
         return nil
     end
 
-    if key == parent then
+    if key == parentKey then
         return nil
     end
 
     rawset(parentNode, key, value)
     self._nodeRefs[key] = value
-    self._parentRefs[key] = parent
+    self._parentRefs[key] = parentKey
     self._leafRefs[key] = true
     self._ancestorDirty = true
 
@@ -596,6 +596,10 @@ function TreeTable:_LCA(key1, key2)
 end
 
 function TreeTable:FindLCA(keys)
+    if not keys or #keys == 0 then
+        return nil
+    end
+    
     if #keys < 2 then
         return self:GetParentKey(keys[1])
     end
@@ -722,16 +726,16 @@ function TreeTable:Reparent(key, newParent)
     if newParent then
         newParentNode = self._nodeRefs[newParent]
         if not newParentNode then
-            --Debug("New parent '" .. tostring(newParent) .. "' Not Found.")
+            Debug("New parent '" .. tostring(newParent) .. "' Not Found.")
             return false
         end
         if self:IsLeaf(newParent) then
-            --Debug("New parent '" .. tostring(newParent) .. "' is a leaf, cannot reparent to it.")
+            Debug("New parent '" .. tostring(newParent) .. "' is a leaf, cannot reparent to it.")
             return false
         end
 
         if self:IsAncestor(key, newParent) then
-            --Debug("Cannot reparent '" .. tostring(key) .. "' to its descendant '" .. tostring(newParent) .. "'.")
+            Debug("Cannot reparent '" .. tostring(key) .. "' to its descendant '" .. tostring(newParent) .. "'.")
             return false
         end
     else
@@ -739,7 +743,14 @@ function TreeTable:Reparent(key, newParent)
         newParent = ROOT
     end
 
-    local oriParentNode = self:GetParent(key)
+    local oriParentKey = self._parentRefs[key]
+    local oriParentNode = oriParentKey and self._nodeRefs[oriParentKey]
+
+    if not oriParentNode then
+        Debug("Original parent of '" .. tostring(key) .. "' not found.")
+        return false
+    end
+
     if oriParentNode == newParentNode then
         --Debug("Node '" .. tostring(key) .. "' is already under the specified parent.")
         return false
@@ -755,6 +766,7 @@ function TreeTable:Reparent(key, newParent)
     --Debug("Reparented '" .. tostring(key) .. "' to '" .. tostring(newParent or "root") .. "'.")
     self._ancestorDirty = true
     self:__CheckIfAnyDuplicateKey()
+
     return true
 end
 

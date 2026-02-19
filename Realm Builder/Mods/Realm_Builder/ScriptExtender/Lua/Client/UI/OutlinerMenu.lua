@@ -509,17 +509,19 @@ function OutlinerMenu:CommonContext()
     local function group()
         local selected = self:DecideSelectedKeys()
 
-        local lca = EntityStore.Tree:FindLCA(selected)
+        local tree = EntityStore.Tree
+        local lca = tree:FindLCA(selected)
         if not lca then lca = TreeTable.GetRootKey() end
+
 
         local baseName = GetLoca("New Collection")
         local name = baseName
         local cnt = 1
-        while EntityStore.Tree:Find(name) do
+        while tree:Find(name) do
             cnt = cnt + 1
             name = baseName .. " ( " .. cnt .. " )"
         end
-        local newTree = EntityStore.Tree:AddTree(name, lca)
+        local newTree = tree:AddTree(name, lca)
 
         if not newTree then
             Warning("Failed to create new collection tree. Name: " .. name)
@@ -527,7 +529,7 @@ function OutlinerMenu:CommonContext()
         end
 
         for _, key in pairs(selected) do
-            EntityStore.Tree:Reparent(key, name)
+            tree:Reparent(key, name)
         end
         self.propTreeList:ClearSelection()
         self:UpdateList(function()
@@ -726,10 +728,9 @@ function OutlinerMenu:CommonContext()
         {
             Label = GetLoca("Group"),
             OnClick = group,
-            Hint = "Ctrl G",
+            Hint = "G",
             HotKey = {
                 Key = "G",
-                Modifiers = {"CTRL"}
             }
         },
         {
