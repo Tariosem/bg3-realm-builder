@@ -549,6 +549,18 @@ function TransformToolbar:RegisterTransformEditorEvents()
         end
         avgPos = avgPos / #globalEditor.Target
         CameraHelpers.CameraMoveToPosition(avgPos)
+
+        local oba = self.OrbitalCameraApp
+        if not oba then return end
+        if not oba:IsRunning() then
+            oba:Run()
+
+            if oba.ToggleConfigWindow then
+                oba.ToggleConfigWindow()
+            end
+        end
+
+        self.OrbitalCameraApp:SetTarget(avgPos)
     end)
 
     self.Subscriptions["ResetTransform"] = InputEvents.SubscribeKeyInput({}, function(e)
@@ -851,6 +863,43 @@ function TransformToolbar:RenderTopBar()
     self.GetCurrentSpace = function()
         return indexToMode[spaceCombo.SelectedIndex + 1]
     end
+
+
+end
+
+--- @param parent ExtuiTreeParent
+function TransformToolbar:RenderOrbitalCamera(parent)
+
+    local oba = OrbitalCameraApp.new()
+    self.OrbitalCameraApp = oba
+    local configWin = nil
+
+    local runningLable = "Orbital Camera is Running"
+    local stoppedLable = "Start Orbital Camera"
+
+    local runningBtn = parent:AddButton(stoppedLable)
+    runningBtn.OnClick = function()
+        local isRunning = oba:IsRunning()
+        if isRunning then
+            oba:Stop()
+        else
+            oba:Run()
+        end
+        isRunning = oba:IsRunning()
+        runningBtn.Label = isRunning and runningLable or stoppedLable
+        configWin.Visible = isRunning
+    end
+
+    configWin = parent:AddChildWindow("OrbitalCameraConfig")
+    configWin:AddSeparatorText("Orbital Camera Configurations")
+
+    oba:RenderConfigTable(configWin)
+
+    oba.ToggleConfigWindow = function()
+        configWin.Visible = true
+    end
+
+    configWin.Visible = false
 end
 
 function TransformToolbar:RenderConfigMenu()
@@ -902,6 +951,8 @@ function TransformToolbar:RenderConfigMenu()
     end
 
     self:RenderOtherConfigOptions(panel)
+
+    self:RenderOrbitalCamera(panel)
 end
 
 --- @param panel ExtuiWindow
@@ -1248,12 +1299,23 @@ function TransformToolbar:CreateNearbyPopup()
     end
 end
 
-local function getCursorTransform()
+local function getCursorTransform(cursorUUID)
     local mouseRay = ScreenToWorldRay()
     if not mouseRay then return end
 
     local dis = cursorMaxDistance
-    local hit = mouseRay:IntersectCloseat(dis)
+    local hits = mouseRay:IntersectAll(dis)
+    local hit = nil
+
+    for _, h in pairs(hits or {}) do
+        local targetUuid = h.Target and h.Target.Uuid and h.Target.Uuid.EntityUuid or nil
+        if (not cursorUUID) or (not targetUuid) or (targetUuid ~= cursorUUID) then
+            hit = h
+            break
+        end
+    end
+    if not hit then return end
+
     local pos, rot = nil, nil
     if hit then
         pos = hit.Position
@@ -1313,7 +1375,7 @@ function TransformToolbar:MoveCursor()
         return
     end
 
-    local pos, rot = getCursorTransform()
+    local pos, rot = getCursorTransform(self.Cursor) 
     if not pos or not rot then return end
 
     NetChannel.SetTransform:RequestToServer({

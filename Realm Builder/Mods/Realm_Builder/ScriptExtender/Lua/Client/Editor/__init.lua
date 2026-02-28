@@ -11,4 +11,5 @@ RBUtils.RequireFiles("Client/Editor/", {
     "MaterialProxy",
     "MaterialEditor",
     "PlacementPreview",
+    "OrbitalCamera"
 })

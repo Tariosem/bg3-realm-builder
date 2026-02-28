@@ -4,6 +4,7 @@
 local dummyUpdateTimer = nil 
 local clientVisualDummies = {}
 local isInMirror = false
+local isInPhotoMode = false
 
 local function postUpdateDummies()
     local dummiesInfo = {}
@@ -41,6 +42,7 @@ Ext.Entity.OnCreate("Visual", function (entity)
             local memberHandle = UuidToHandle(uuid)
             if RBTableUtils.EqualArrays(memberHandle.Transform.Transform.Translate, entity.Transform.Transform.Translate) then
                 Debug("Found dummy and coresponding party member : " .. memberHandle.DisplayName.Name:Get())
+                isInPhotoMode = true
                 DummyHelpers.SetClientDummyEntity(uuid, entity)
 
                 Timer:Ticks(10, function (timerID)
@@ -50,6 +52,7 @@ Ext.Entity.OnCreate("Visual", function (entity)
                         visualTab:ReapplyCurrentChanges()
                     end
                 end)
+
             end
         end
 
@@ -188,6 +191,10 @@ function IsInCharacterCreationMirror()
     return isInMirror
 end
 
+function IsIsPhotoMode()
+    return isInPhotoMode
+end
+
 ---@param ownerUuid string
 ---@return EntityHandle|nil
 function GetClientVisualDummy(ownerUuid)
@@ -196,6 +203,7 @@ function GetClientVisualDummy(ownerUuid)
     if dummy and #dummy:GetAllComponentNames() == 0 then
         clientVisualDummies[ownerUuid] = nil
         isInMirror = false
+        isInPhotoMode = false
         return nil
     end
 

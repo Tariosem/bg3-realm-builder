@@ -12,7 +12,14 @@ function ItemManager:__init()
     self.dynamicTags = {}
     self.tagMap = {}
     self.tagCount = {}
-    self:HardCodeHierachy()
+
+    local ok, err = xpcall(function ()
+        self:HardCodeHierachy()
+    end, debug.traceback)
+
+    if not ok then
+        RBPrintRed("Error initializing ItemManager: " .. err)
+    end
 end
 
 function ItemManager:AddEquipmentToRace(equipmentUuid, raceUuid)

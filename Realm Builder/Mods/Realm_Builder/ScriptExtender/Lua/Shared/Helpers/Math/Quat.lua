@@ -7,6 +7,9 @@
 --- @field Rotate fun(self: Quat, v: Vec4): Vec4
 --- @field ToEuler fun(self: Quat): Vec3
 --- @field Identity Quat
+--- @field FromEuler fun(euler: Vec3): Quat
+--- @field FromTo fun(fromVec: Vec3, toVec: Vec3): Quat
+--- @field FromAxisAngle fun(axis: Vec3, angle: number): Quat
 Quat = Quat or {}
 
 Quat.__index = Quat
@@ -83,6 +86,14 @@ function Quat.FromTo(fromVec, toVec)
         return Quat.Identity()
     end
     return Quat.new(Ext.Math.QuatFromToRotation(fromVec, toVec))
+end
+
+function Quat.FromAxisAngle(axis, angle)
+    if #axis ~= 3 then
+        Warning("Quat.FromAxisAngle: Invalid axis length, expected 3 got "..tostring(#axis))
+        return Quat.Identity()
+    end
+    return Quat.new(Ext.Math.QuatRotateAxisAngle(Quat.Identity(), axis, angle))
 end
 
 Quat.IsQuat = true

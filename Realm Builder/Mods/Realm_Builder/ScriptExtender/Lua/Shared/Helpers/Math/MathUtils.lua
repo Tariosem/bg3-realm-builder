@@ -153,6 +153,17 @@ function MathUtils.DirectionToQuat(direction, up, alignedAxis)
     return Quat.new(Ext.Math.QuatNormalize(quat))
 end
 
+--- @param source Vec3
+--- @param target Vec3
+--- @param up? Vec3
+function MathUtils.LookAt(source, target, up)
+    local direction = Ext.Math.Sub(target, source)
+    if Ext.Math.Length(direction) < 0.001 then
+        return Quat.Identity()
+    end
+    return MathUtils.DirectionToQuat(direction, up)
+end
+
 --- @param quat quat
 --- @return Vec3 euler in degrees
 function MathUtils.QuatToEuler(quat)

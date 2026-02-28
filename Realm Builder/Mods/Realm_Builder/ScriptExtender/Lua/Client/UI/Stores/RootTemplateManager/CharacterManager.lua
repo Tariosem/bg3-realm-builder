@@ -224,19 +224,40 @@ function CharacterManager:HardCodeHierachy()
         }
     }
 
+    local safeCopy = RBUtils.DeepCopy(raceTagTree)
     local tabStack = {raceTagTree}
 
-    while #tabStack > 0 do
-        local t = table.remove(tabStack)
-        for k,v in pairs(t) do
-            if type(v) == "table" then
-                table.insert(tabStack, v)
-            else
-                local localized = GetLoca(k)
-                t[k] = nil
-                t[localized] = v
+    local ok, err = pcall(function()
+        while #tabStack > 0 do
+            local t = table.remove(tabStack)
+
+            local changes = {}
+
+            for k,v in pairs(t) do
+                if type(v) == "table" then
+                    table.insert(tabStack, v)
+                end
+                local localizedTag = GetLoca(k)
+                if localizedTag and localizedTag ~= "" and localizedTag ~= k then
+                    changes[k] = localizedTag
+                else
+                end
+            end
+
+            for originTag, localizedTag in pairs(changes) do
+                if t[localizedTag] then
+                    RBPrintRed("Localization conflict for character tag: " .. localizedTag .. ". Skipping localization for this tag.")
+                else
+                    t[localizedTag] = t[originTag]
+                    t[originTag] = nil
+                end
             end
         end
+    end)
+
+    if not ok then
+        RBPrintRed("Error localizing character tags: " .. err)
+        raceTagTree = safeCopy
     end
 
     self.tagTree:FromTable(raceTagTree)

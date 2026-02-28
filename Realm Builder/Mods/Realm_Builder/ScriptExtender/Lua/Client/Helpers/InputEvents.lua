@@ -122,6 +122,8 @@ end
 --- @class SimplifiedInputEvent
 --- @field Event "KeyDown"|"KeyUp"
 --- @field Key  SimplifiedInputCode
+--- @field X number? -- For mouse events
+--- @field Y number? -- For mouse events
 --- @field Pressed boolean
 --- @field Repeat boolean
 --- @field Modifiers? SimplifiedModfier[]
@@ -169,6 +171,7 @@ function InputEvents.SubscribeKeyAndMouse(callback, filterKey)
     local function unsub()
         for subEvent, sub in pairs(subs) do
             Ext.Events[subEvent]:Unsubscribe(sub)
+            subs[subEvent] = nil
         end
     end
 
@@ -206,9 +209,11 @@ function InputEvents.SubscribeKeyAndMouse(callback, filterKey)
         local event = {
             Event = e.Pressed and "KeyDown" or "KeyUp",
             Modifiers = lastModifiers,
-            Key = MouseToCode[e.Button],
+            Key = MouseToCode[e.Button] or ("MouseButton" .. e.Button),
             Pressed = e.Pressed,
             Repeat = e.Clicks > 1,
+            X = e.X,
+            Y = e.Y,
         }
         if not checkKeyBinding(event) then
             isCalling = false

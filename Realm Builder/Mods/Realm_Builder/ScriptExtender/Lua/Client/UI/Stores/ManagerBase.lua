@@ -29,10 +29,6 @@ function ManagerBase:__init()
 
     self.customizationData = {}
 
-    if self.HardCodeHierachy then
-        self:HardCodeHierachy()
-    end
-
     self.populated = false
 end
 

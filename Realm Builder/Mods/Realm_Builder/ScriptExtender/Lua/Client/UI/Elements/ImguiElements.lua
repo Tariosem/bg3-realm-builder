@@ -165,10 +165,6 @@ function ImguiElements.AddSliderWithStep(parent, IDContext, defaultValue, min, m
 
     --- @param s ExtuiSliderScalar|ExtuiSliderInt
     slider.OnRightClick = function(s)
-        if s.UserData.DisableRightClickSet then
-            return
-        end
-
         local sliderPopup = parent:AddPopup("SliderPopup##" .. IDContext)
         local alignedTable = ImguiElements.AddAlignedTable(sliderPopup)
         sliderPopup.IDContext = IDContext .. "_SliderPopup"
@@ -178,6 +174,16 @@ function ImguiElements.AddSliderWithStep(parent, IDContext, defaultValue, min, m
         stepInput.OnChange = function(input)
             local val = isInteger and math.floor(input.Value[1]) or input.Value[1]
             s.UserData.Step = val
+        end
+
+        if s.UserData.DisableRightClickSet then
+            sliderPopup:Open()
+            s.OnRightClick = function ()
+                local toFunc = isInteger and RBUtils.ToVec4Int or RBUtils.ToVec4
+                stepInput.Value = toFunc(isInteger and math.floor(s.UserData.Step) or s.UserData.Step)
+                sliderPopup:Open()
+            end
+            return
         end
 
         max = s.Max[1] or max

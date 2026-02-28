@@ -254,16 +254,27 @@ function CustomEffectTab:RenderControlPanel(parent)
     local stopLabel = "Stop Looping"
 
     local loopPlayBtn = rightGroup:AddButton(beginLabel)
+
+    local function stopLooping()
+        Timer:Cancel(loopTimer)
+        loopTimer = nil
+        loopPlayBtn.Label = beginLabel
+        clearHandles()
+    end
+
     loopPlayBtn.OnClick = function()
         if loopTimer then
-            Timer:Cancel(loopTimer)
-            loopTimer = nil
-            loopPlayBtn.Label = beginLabel
+            stopLooping()
             return
         end
 
         loopTimer = Timer:Every(loopIntervalInput.Value[1], function ()
             clearHandles()
+
+            if IsInCharacterCreationMirror() or IsIsPhotoMode() then
+                return stopLooping()
+            end
+
             self:PlayEffect()
         end)
         loopPlayBtn.Label = stopLabel

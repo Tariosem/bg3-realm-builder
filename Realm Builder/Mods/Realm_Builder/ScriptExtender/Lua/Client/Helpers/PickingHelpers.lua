@@ -47,6 +47,15 @@ function PickingUtils.GetCursorPos(picker)
     return pos[1], pos[2]
 end
 
+--- @param picker EclPlayerPickingHelper?
+--- @return number
+--- @return number
+function PickingUtils.GetNormalizedCursorPos(picker)
+    local mouseX, mouseY = PickingUtils.GetCursorPos(picker)
+    local screenW, screenH = UIHelpers.GetScreenSize()
+    return mouseX / screenW, mouseY / screenH
+end
+
 --- Returns the hit position and rotation from the picking helper
 --- rotation is Y axis aligned to the hit normal
 --- @param picker EclPlayerPickingHelper?
@@ -67,6 +76,14 @@ function PickingUtils.GetPickingHitPosAndRot(picker)
     end
 
     return pos, rot
+end
+
+function PickingUtils.GetNDC(picker)
+    local mouseX, mouseY = PickingUtils.GetCursorPos(picker)
+    local screenW, screenH = UIHelpers.GetScreenSize()
+    local ndcX = (2.0 * mouseX) / screenW - 1.0
+    local ndcY = 1.0 - (2.0 * mouseY) / screenH
+    return ndcX, ndcY
 end
 
 -- Converts a 2D screen-space coordinate into a world-space ray.
