@@ -131,6 +131,7 @@ RegisterDebugWindow("Misc", function(panel)
     --#endregion
 
     --#region Photo Mode Camera Saver
+
     local cameraPosSaverWin = panel:AddTree("Photo Mode Camera Position Saver")
     local saveBtn = cameraPosSaverWin:AddButton("Save Position")
     local savedList = cameraPosSaverWin:AddGroup("Saved Positions")
@@ -143,6 +144,29 @@ RegisterDebugWindow("Misc", function(panel)
     local saveLabelPattern = "[%d] - %s"
 
     local refreshSavedList
+
+    local saveCurrent
+
+    function saveCurrent()
+        local cam = RBGetCamera()
+        if not cam or not cam.PhotoModeCameraSavedTransform then return end
+        local camTransform = cam.Transform.Transform
+    
+        local copy = {
+            Translate = Vec3.new(camTransform.Translate),
+            RotationQuat = Quat.new(camTransform.RotationQuat),
+            Scale = Vec3.new(1, 1, 1)
+        }
+        table.insert(savedQueue, {
+            Transform = copy,
+            Time = RBUtils.GetFormatHMS(),
+        })
+        if #savedQueue > 20 then
+            table.remove(savedQueue, 1)
+        end
+        refreshSavedList()
+    end
+
     function refreshSavedList()
         ImguiHelpers.DestroyAllChildren(savedList)
         for i, save in pairs(savedQueue) do
@@ -165,23 +189,7 @@ RegisterDebugWindow("Misc", function(panel)
     end
 
     saveBtn.OnClick = function()
-        local cam = RBGetCamera()
-        if not cam or not cam.PhotoModeCameraSavedTransform then return end
-        local camTransform = cam.Transform.Transform
-    
-        local copy = {
-            Translate = Vec3.new(camTransform.Translate),
-            RotationQuat = Quat.new(camTransform.RotationQuat),
-            Scale = Vec3.new(1, 1, 1)
-        }
-        table.insert(savedQueue, {
-            Transform = copy,
-            Time = RBUtils.GetFormatHMS(),
-        })
-        if #savedQueue > 20 then
-            table.remove(savedQueue, 1)
-        end
-        refreshSavedList()
+        saveCurrent()
     end
     refreshSavedList()
     --#endregion Photo Mode Camera Saver

@@ -5,18 +5,19 @@ local eml = Ext.Math
 --- @field SetTransform fun(self: CameraProxy, transform: Transform)
 local CameraProxy = {}
 
+local function calcNDC(x, y)
+    local screenWH = Ext.IMGUI.GetViewportSize()
+    return (2.0 * x) / screenWH[1] - 1.0,
+           1.0 - (2.0 * y) / screenWH[2]
+end
+
 local function getNDC()
     local picker = Ext.ClientUI.GetPickingHelper(1)
     if not picker then return 0,0 end
 
-    local screenWH = Ext.IMGUI.GetViewportSize()
-
     local mX, mY = picker.WindowCursorPos[1], picker.WindowCursorPos[2]
 
-    local ndcX = (2.0 * mX) / screenWH[1] - 1.0
-    local ndcY = 1.0 - (2.0 * mY) / screenWH[2]
-
-    return ndcX, ndcY
+    return calcNDC(mX, mY)
 end
 
 local deepCopy = RBUtils.DeepCopy
@@ -41,6 +42,7 @@ function CameraProxy:SetTransform(transform)
     self.Transform = transform
     local cam = RBGetCamera()
     if not cam or not cam.PhotoModeCameraSavedTransform then return end
+
     cam.PhotoModeCameraSavedTransform.Transform = transform
     Ext.OnNextTick(function()
         --- @diagnostic disable-next-line
@@ -52,8 +54,7 @@ end
 --- @field camera CameraProxy
 --- @field target Vec3
 --- @field distance number
---- @field xSpeed number 
---- @field ySpeed number 
+--- @field rotateSpeed number
 --- @field zoomSpeed number
 --- @field moveSpeed number
 --- @field subs RBSubscription[]
@@ -183,55 +184,52 @@ function OrbitalCamera:Subscribe()
         end, true)
     end
 
-    local sub = InputEvents.SubscribeMouseInput({}, function (e)
-        if e.Button ~= 3 then return end
-        if InputEvents.GetGlobalInputStatesRef().Shift then return end
+    local subs = {
 
-        if e.Pressed then
-            mouseLastPos = {PickingUtils.GetNDC()}
-            launchInputTimer("rotate")
-        elseif currentAction == "rotate" then
-            mouseLastPos = nil
-        end
-    end)
+        InputEvents.SubscribeMouseInput({}, function (e)
+            if e.Button ~= 3 then return end
+            if InputEvents.GetGlobalInputStatesRef().Shift then return end
 
-    local scrollSub = InputEvents.SubscribeMouseWheel({}, function(e)
-        self:Zoom(e.ScrollY)
-    end)
+            if e.Pressed then
+                mouseLastPos = {PickingUtils.GetNDC()}
+                launchInputTimer("rotate")
+            elseif currentAction == "rotate" then
+                mouseLastPos = nil
+            end
+        end),
 
-    local pageDownPageUpSub = InputEvents.SubscribeKeyInput({}, function(e)
-        local factor = e.Key == "PAGEUP" and 1 or (e.Key == "PAGEDOWN" and -1 or 0)
-        if factor == 0 then return end
-        self:Zoom(factor)
-    end)
+        InputEvents.SubscribeMouseWheel({}, function(e)
+            self:Zoom(e.ScrollY)
+        end),
 
-    local shiftRMB = InputEvents.SubscribeMouseInput({}, function (e)
-        if e.Button ~= 3 then return end
-        if not InputEvents.GetGlobalInputStatesRef().Shift then return end
+        InputEvents.SubscribeKeyInput({}, function(e)
+            local factor = e.Key == "PAGEUP" and 1 or (e.Key == "PAGEDOWN" and -1 or 0)
+            if factor == 0 then return end
+            self:Zoom(factor)
+        end),
 
-        if e.Pressed then
-            mouseLastPos = {PickingUtils.GetNDC()}
-            launchInputTimer("move")
-        elseif currentAction == "move" then
-            mouseLastPos = nil
-        end
-    end)
+        InputEvents.SubscribeMouseInput({}, function (e)
+            if e.Button ~= 3 then return end
+            if not InputEvents.GetGlobalInputStatesRef().Shift then return end
 
-    local resetSub = InputEvents.SubscribeKeyInput({}, function (e)
-        if e.Key ~= "KP_PERIOD" then return end
+            if e.Pressed then
+                mouseLastPos = {PickingUtils.GetNDC()}
+                launchInputTimer("move")
+            elseif currentAction == "move" then
+                mouseLastPos = nil
+            end
+        end),
 
-        if e.Pressed then
-            self:Reset()
-        end
-    end)
+        InputEvents.SubscribeKeyInput({}, function (e)
+            if e.Key ~= "KP_PERIOD" then return end
 
-    self.subs = self.subs or {}
+            if e.Pressed then
+                self:Reset()
+            end
+        end)
+    }
 
-    self.subs["RMB"] = sub
-    self.subs["Scroll"] = scrollSub
-    self.subs["PageUpDown"] = pageDownPageUpSub
-    self.subs["Shift+RMB"] = shiftRMB
-    self.subs["Reset"] = resetSub
+    self.subs = subs
 end
 
 function OrbitalCamera:Reset()
@@ -317,15 +315,18 @@ function OrbitalCameraUI:RenderConfigTable(parent)
 
     local fields = {
         {name = "Rotate Speed", var = "rotateSpeed", type = "number", minValue = 0.1, maxValue = 10, step = 0.1},
-        {name = "Zoom Ratio", var = "zoomSpeed", type = "number", minValue = 0.1, maxValue = 10, step = 0.1},
+        {name = "Zoom Ratio", var = "zoomSpeed", type = "number", minValue = 0.1, maxValue = 1, step = 0.01},
         {name = "Move Speed", var = "moveSpeed", type = "number", minValue = 0.1, maxValue = 20, step = 0.1},
         {name = "Min Distance", var = "minDistance", type = "number", minValue = 0.1, maxValue = 50, step = 0.1},
         {name = "Max Distance", var = "maxDistance", type = "number", minValue = 1, maxValue = 200, step = 1},
     }
 
     for _, field in pairs(fields) do
-        aT:AddSliderWithStep(field.name, self.controller[field.var], field.minValue, field.maxValue, field.step, false)
+        aT:AddSliderWithStep(field.name, self.controller[field.var], field.minValue, field.maxValue, field.step, false).OnChange = function (s)
+            local setValue = s.Value[1]
+            if setValue < field.minValue then setValue = field.minValue end
+            if setValue > field.maxValue then setValue = field.maxValue end
+            self.controller[field.var] = setValue
+        end
     end
 end
-
-return OrbitalCameraUI

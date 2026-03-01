@@ -874,10 +874,10 @@ function TransformToolbar:RenderOrbitalCamera(parent)
     self.OrbitalCameraUI = oba
     local configWin = nil
 
-    local runningLable = "Orbital Camera is Running"
-    local stoppedLable = "Start Orbital Camera"
+    local runningLabel = "Orbital Camera is Running"
+    local stoppedLabel = "Start Orbital Camera"
 
-    local runningBtn = parent:AddButton(stoppedLable)
+    local runningBtn = parent:AddButton(stoppedLabel)
     runningBtn.OnClick = function()
         local isRunning = oba:IsRunning()
         if isRunning then
@@ -886,7 +886,7 @@ function TransformToolbar:RenderOrbitalCamera(parent)
             oba:Run()
         end
         isRunning = oba:IsRunning()
-        runningBtn.Label = isRunning and runningLable or stoppedLable
+        runningBtn.Label = isRunning and runningLabel or stoppedLabel
         configWin.Visible = isRunning
     end
 
@@ -896,6 +896,7 @@ function TransformToolbar:RenderOrbitalCamera(parent)
     oba:RenderConfigTable(configWin)
 
     oba.ToggleConfigWindow = function()
+        runningBtn.Label = runningLabel
         configWin.Visible = true
     end
 

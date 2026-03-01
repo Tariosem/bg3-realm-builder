@@ -104,6 +104,10 @@ local localizedNames = {
     Unbind = "Unbind Selection",
 }
 
+for key, text in pairs(localizedNames) do
+    localizedNames[key] = GetLoca(text)
+end
+
 function KeybindMenu:Render(parent)
     self.parent = parent or self.parent
 
@@ -204,16 +208,12 @@ function KeybindMenu:RenderModule(module)
     local header = cell:AddCollapsingHeader(localName)
     header.DefaultOpen = true
 
-    header:Tooltip():AddText("Module is "):SetColor("Text", {1, 1, 1, 1})
-    local activeText = header:Tooltip():AddText("Active")
     header.OnHoverEnter = function ()
         if module:IsModuleActive() then
-            activeText:SetColor("Text", {0, 1, 0, 1})
-            activeText.Label = "Active"
+            header:SetColor("Text", {0.5, 1, 0.5, 1})
         else
-            activeText:SetColor("Text", {1, 0, 0, 1})
-            activeText.Label = "Inactive"
-        end       
+            header:SetColor("Text", {1, 0.5, 0.5, 0.6})
+        end
     end
 
     local tTable = header:AddTable("", 4)
