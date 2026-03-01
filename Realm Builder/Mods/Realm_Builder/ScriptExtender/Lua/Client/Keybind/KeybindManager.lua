@@ -338,7 +338,7 @@ function KeybindManager:Save()
 
         data[module] = data[module] or {}
 
-        local parts = string.split(identifier, "|")
+        local parts = RBStringUtils.SplitByString(identifier, "|", true)
         local key = parts[1]
         local modifiers = {}
         for i = 2, #parts do

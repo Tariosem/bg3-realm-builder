@@ -1,17 +1,17 @@
 local eml = Ext.Math
 
---- @class CameraInterface
---- @field GetTransform fun(self: CameraInterface): Transform
---- @field SetTransform fun(self: CameraInterface, transform: Transform)
-local CameraInterface = {}
+--- @class CameraProxy
+--- @field GetTransform fun(self: CameraProxy): Transform
+--- @field SetTransform fun(self: CameraProxy, transform: Transform)
+local CameraProxy = {}
 
 local function getNDC()
-    local pH = Ext.ClientUI.GetPickingHelper(1)
-    if not pH then return 0,0 end
+    local picker = Ext.ClientUI.GetPickingHelper(1)
+    if not picker then return 0,0 end
 
     local screenWH = Ext.IMGUI.GetViewportSize()
 
-    local mX, mY = pH.WindowCursorPos[1], pH.WindowCursorPos[2]
+    local mX, mY = picker.WindowCursorPos[1], picker.WindowCursorPos[2]
 
     local ndcX = (2.0 * mX) / screenWH[1] - 1.0
     local ndcY = 1.0 - (2.0 * mY) / screenWH[2]
@@ -21,7 +21,7 @@ end
 
 local deepCopy = RBUtils.DeepCopy
 
-function CameraInterface.new()
+function CameraProxy.new()
     local o = {
         Transform = {
             Translate = {0,0,0},
@@ -29,15 +29,15 @@ function CameraInterface.new()
             Scale = {1,1,1}
         }
     }
-    setmetatable(o, {__index = CameraInterface})
+    setmetatable(o, {__index = CameraProxy})
     return o
 end
 
-function CameraInterface:GetTransform()
+function CameraProxy:GetTransform()
     return self.Transform
 end
 
-function CameraInterface:SetTransform(transform)
+function CameraProxy:SetTransform(transform)
     self.Transform = transform
     local cam = RBGetCamera()
     if not cam or not cam.PhotoModeCameraSavedTransform then return end
@@ -48,8 +48,8 @@ function CameraInterface:SetTransform(transform)
     end)
 end
 
---- @class OrbitalCameraController
---- @field camera CameraInterface
+--- @class OrbitalCamera
+--- @field camera CameraProxy
 --- @field target Vec3
 --- @field distance number
 --- @field xSpeed number 
@@ -57,13 +57,12 @@ end
 --- @field zoomSpeed number
 --- @field moveSpeed number
 --- @field subs RBSubscription[]
-local OrbitalCameraController = {}
+local OrbitalCamera = {}
 
-function OrbitalCameraController.new(camInt)
+function OrbitalCamera.new(cam)
+    local o = setmetatable({}, {__index = OrbitalCamera})
 
-    local o = setmetatable({}, {__index = OrbitalCameraController})
-
-    o.camera = camInt or CameraInterface.new()
+    o.camera = cam or CameraProxy.new()
     o.target = {0,0,0}
     o.distance = 10
 
@@ -77,7 +76,7 @@ function OrbitalCameraController.new(camInt)
     return o
 end
 
-function OrbitalCameraController:Rotate(deltaX, deltaY)
+function OrbitalCamera:Rotate(deltaX, deltaY)
     local currentTransform = self.camera:GetTransform()
     local currentRot = currentTransform.RotationQuat
 
@@ -98,7 +97,7 @@ function OrbitalCameraController:Rotate(deltaX, deltaY)
     self.camera:SetTransform(newTransform)
 end
 
-function OrbitalCameraController:Move(deltaX, deltaY)
+function OrbitalCamera:Move(deltaX, deltaY)
     local currentTransform = self.camera:GetTransform()
     local cameraQuat = currentTransform.RotationQuat
 
@@ -127,7 +126,7 @@ function OrbitalCameraController:Move(deltaX, deltaY)
     self.camera:SetTransform(newTransform)
 end
 
-function OrbitalCameraController:Zoom(deltaZoom)
+function OrbitalCamera:Zoom(deltaZoom)
     local ratio = deltaZoom >= 0 and 1 * self.zoomSpeed or 1 / self.zoomSpeed
     self.distance = eml.Clamp(self.distance * ratio, self.minDistance, self.maxDistance)
 
@@ -144,15 +143,15 @@ function OrbitalCameraController:Zoom(deltaZoom)
     self.camera:SetTransform(newTransform)
 end
 
-function OrbitalCameraController:SetTarget(target)
+function OrbitalCamera:SetTarget(target)
     self.target = target
 end
 
-function OrbitalCameraController:SetCamera(camera)
+function OrbitalCamera:SetCamera(camera)
     self.camera = camera
 end
 
-function OrbitalCameraController:Subscribe()
+function OrbitalCamera:Subscribe()
     local mouseLastPos = nil
     local currentAction = nil
     
@@ -235,7 +234,7 @@ function OrbitalCameraController:Subscribe()
     self.subs["Reset"] = resetSub
 end
 
-function OrbitalCameraController:Reset()
+function OrbitalCamera:Reset()
     self.distance = 10
     local currentTransform = self.camera:GetTransform()
     local newPos = Ext.Math.Add(self.target, Vec3.new(0, 0, -self.distance))
@@ -247,11 +246,11 @@ function OrbitalCameraController:Reset()
     self.camera:SetTransform(newTransform)
 end
 
-function OrbitalCameraController:IsActive()
+function OrbitalCamera:IsActive()
     return next(self.subs or {}) ~= nil
 end
 
-function OrbitalCameraController:EnableControls()
+function OrbitalCamera:EnableControls()
     self.subs = self.subs or {}
 
     for _, sub in pairs(self.subs) do
@@ -262,7 +261,7 @@ function OrbitalCameraController:EnableControls()
     self:Subscribe()
 end
 
-function OrbitalCameraController:DisableControls()
+function OrbitalCamera:DisableControls()
     self.subs = self.subs or {}
 
     for _, sub in pairs(self.subs) do
@@ -271,47 +270,49 @@ function OrbitalCameraController:DisableControls()
     self.subs = {}
 end
 
---- @class OrbitalCameraApp
---- @field controller OrbitalCameraController
---- @field Run fun(self: OrbitalCameraApp)
---- @field Stop fun(self: OrbitalCameraApp)
-OrbitalCameraApp = {}
+--- @class OrbitalCameraUI
+--- @field controller OrbitalCamera
+--- @field Run fun(self: OrbitalCameraUI)
+--- @field Stop fun(self: OrbitalCameraUI)
+--- @field IsRunning fun(self: OrbitalCameraUI): boolean
+--- @field RenderConfigTable fun(self: OrbitalCameraUI, parent: ExtuiTreeParent)
+OrbitalCameraUI = {}
 
-function OrbitalCameraApp.new()
-    local o = setmetatable({}, {__index = OrbitalCameraApp})
+function OrbitalCameraUI.new()
+    local o = setmetatable({}, {__index = OrbitalCameraUI})
 
-    local camInterface = CameraInterface.new()
-    local camController = OrbitalCameraController.new(camInterface)
+    local cam = CameraProxy.new()
+    local orbCam = OrbitalCamera.new(cam)
 
-    o.controller = camController
+    o.controller = orbCam
 
     return o
 end
 
 --- @param target Vec3
-function OrbitalCameraApp:SetTarget(target)
+function OrbitalCameraUI:SetTarget(target)
     self.controller:SetTarget(target)
 end
 
-function OrbitalCameraApp:Run()
+function OrbitalCameraUI:Run()
     local ct = self.controller
     ct:SetTarget(deepCopy(_C().Transform.Transform.Translate))
     ct.camera:SetTransform(deepCopy(RBGetCamera().Transform.Transform))
     ct:EnableControls()
 end
 
-function OrbitalCameraApp:IsRunning()
+function OrbitalCameraUI:IsRunning()
     return self.controller:IsActive()
 end
 
-function OrbitalCameraApp:Stop()
+function OrbitalCameraUI:Stop()
     if self.controller then
         self.controller:DisableControls()
     end
 end
 
 --- @param parent ExtuiTreeParent
-function OrbitalCameraApp:RenderConfigTable(parent)
+function OrbitalCameraUI:RenderConfigTable(parent)
     local aT = ImguiElements.AddAlignedTable(parent)
 
     local fields = {
@@ -327,4 +328,4 @@ function OrbitalCameraApp:RenderConfigTable(parent)
     end
 end
 
-return OrbitalCameraApp
+return OrbitalCameraUI

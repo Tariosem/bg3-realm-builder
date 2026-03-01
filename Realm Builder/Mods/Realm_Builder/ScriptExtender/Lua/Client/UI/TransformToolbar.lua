@@ -550,7 +550,7 @@ function TransformToolbar:RegisterTransformEditorEvents()
         avgPos = avgPos / #globalEditor.Target
         CameraHelpers.CameraMoveToPosition(avgPos)
 
-        local oba = self.OrbitalCameraApp
+        local oba = self.OrbitalCameraUI
         if not oba then return end
         if not oba:IsRunning() then
             oba:Run()
@@ -560,7 +560,7 @@ function TransformToolbar:RegisterTransformEditorEvents()
             end
         end
 
-        self.OrbitalCameraApp:SetTarget(avgPos)
+        self.OrbitalCameraUI:SetTarget(avgPos)
     end)
 
     self.Subscriptions["ResetTransform"] = InputEvents.SubscribeKeyInput({}, function(e)
@@ -870,8 +870,8 @@ end
 --- @param parent ExtuiTreeParent
 function TransformToolbar:RenderOrbitalCamera(parent)
 
-    local oba = OrbitalCameraApp.new()
-    self.OrbitalCameraApp = oba
+    local oba = OrbitalCameraUI.new()
+    self.OrbitalCameraUI = oba
     local configWin = nil
 
     local runningLable = "Orbital Camera is Running"
