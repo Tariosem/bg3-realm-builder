@@ -6,7 +6,7 @@
 --- @field AddEntity fun(self: EntityManager, guid: string): string|nil
 --- @field SetEntity fun(self: EntityManager, guid: string, entInfo: EntityData)
 --- @field LoadFromModVar fun(self: EntityManager):any
---- @field DeleteEntities fun(self: EntityManager, guid: string, doBroadcast: boolean?): boolean
+--- @field DeleteEntities fun(self: EntityManager, guid: string|string[], doBroadcast: boolean?): boolean
 --- @field DeleteEntityByTemplateId fun(self: EntityManager, TemplateId: string): string[]
 --- @field DeleteAll fun(self: EntityManager)
 --- @field FreeEntity fun(self: EntityManager, guids: string|string[])
@@ -542,4 +542,16 @@ function EntityManager:BF_DeleteAll()
     setModVar(modVar)
 
     NetChannel.Entities.Deleted:Broadcast(broadcastData)
+end
+
+function EntityManager:DeleteEntitiesByTemplateId(templateId)
+    local toDelete = {}
+
+    for _, entityData in pairs(self.CachedEntityData) do
+        if entityData.TemplateId == templateId then
+            table.insert(toDelete, entityData.Guid)
+        end
+    end
+
+    self:DeleteEntities(toDelete)
 end

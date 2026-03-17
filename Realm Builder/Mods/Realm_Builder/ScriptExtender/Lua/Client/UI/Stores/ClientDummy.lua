@@ -15,6 +15,7 @@ local function postUpdateDummies()
             Timer:Cancel(dummyUpdateTimer)
             dummyUpdateTimer = nil
             post.Deactive = true
+            isInPhotoMode = false
             break
         end
         local x, y, z = VisualHelpers.GetVisualPosition(dummy)

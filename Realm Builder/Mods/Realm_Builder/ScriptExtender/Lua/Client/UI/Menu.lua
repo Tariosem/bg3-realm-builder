@@ -114,6 +114,7 @@ function RealmBuilderMainMenu:RenderBrowserMenu()
         --{Key = "construction", Label = "Tile Construction"},
         {Key = "CCAV", Label = "Character Creation Appearance Visuals"},
     }
+    
     table.sort(allAvailableBrowsers, function(a,b) return a.Label < b.Label end)
 
     self.browserBtns = {}

@@ -233,7 +233,6 @@ function OrbitalCamera:Subscribe()
 end
 
 function OrbitalCamera:Reset()
-    self.distance = 10
     local currentTransform = self.camera:GetTransform()
     local newPos = Ext.Math.Add(self.target, Vec3.new(0, 0, -self.distance))
     local newTransform = {

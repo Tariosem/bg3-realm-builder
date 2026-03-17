@@ -280,17 +280,31 @@ end
 --- @param handleDrop fun(droppedData: RB_EffectDragDropData?, insertIndex: integer)
 --- @return fun(), RB_UI_Tree
 function effectTabComponents:AddEffectList(parent, label, effectList, contextRenderFunc, handleDrop)
-    local tree = ImguiElements.AddTree(parent, label)
+    local rootTree = ImguiElements.AddTree(parent, label)
     
     local effectManager = RB_GLOBALS.MultiEffectManager
 
     local expanded = {}
     local function refreshList()
-        tree:DestroyChildren()
+        rootTree:DestroyChildren()
+        rootTree:ClearContent()
 
         for i, effectEntry in ipairs(effectList) do
             local wasExpanded = expanded[effectEntry] ~= nil
-            local childTree = self:AddEffectEntry(tree, effectEntry, wasExpanded)
+            local function updateUI(disabled) end
+            local disabledBtn = ImguiElements.AddVisibleButton(rootTree, not effectEntry.Disabled, function(v)
+                updateUI(not v)
+            end, label .. "##DisabledToggle##" .. i)
+            local childTree = self:AddEffectEntry(rootTree, effectEntry, wasExpanded)
+            childTree.SameLine = true
+
+            function updateUI(disabled)
+                if disabled then
+                    childTree:SetOpen(false)
+                end
+                childTree.Disabled = disabled
+                effectEntry.Disabled = disabled
+            end
 
             contextRenderFunc(childTree, effectEntry, i)
             local expandFn = childTree.OnExpand
@@ -317,13 +331,15 @@ function effectTabComponents:AddEffectList(parent, label, effectList, contextRen
             childTree.OnDragDrop = function (sel, drop)
                 handleDrop(drop.UserData and drop.UserData.Effect, i)
             end
+
+            updateUI(effectEntry.Disabled and true or false)
         end
 
     end
 
     refreshList()
 
-    return refreshList, tree
+    return refreshList, rootTree
 end
 
 --- @param parent ExtuiTreeParent

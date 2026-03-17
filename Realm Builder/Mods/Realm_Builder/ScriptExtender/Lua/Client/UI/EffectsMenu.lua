@@ -126,13 +126,36 @@ end
 function EffectsMenu:RenderCustomEffects(parent)
     if not parent then return end
     ImguiHelpers.DestroyAllChildren(parent)
-    local customEffectsTable = parent:AddTable("CustomEffectsTable", self.customEffectsCols or 4)
+    local customEffectsTable = parent:AddTable("CustomEffectsTable", 2)
+
+    customEffectsTable.ColumnDefs[1] = { WidthFixed = true }
+    customEffectsTable.ColumnDefs[2] = { WidthStretch = true }
     local imageSize = IMAGESIZE.MEDIUM
 
+    local managePopup = parent:AddPopup("ManageEffectPopup")
+    local selectedEntry = nil --[[@type RB_CustomEffectData]]
+    local selectedRow = nil --[[@type ExtuiTableRow]]
+    local function refreshCustomEffects() end
+
+    --- @type RB_ContextItem[]
+    local contextItems = {
+        {
+            Label = GetLoca("Hide from List"),
+            OnClick = function()
+                if not selectedEntry then return end
+                selectedEntry.Hidden = true
+                selectedRow.Visible = false
+            end,
+        }
+    }
+
+    local contextMenu = ImguiElements.AddContextMenu(managePopup, GetLoca("Manage Effect"))
+    contextMenu:AddItems(contextItems)
+
     local function renderPlusSquare() end
-    local customEffectsRow = customEffectsTable:AddRow()
-    local function refreshCustomEffects()
-        ImguiHelpers.DestroyAllChildren(customEffectsRow)
+
+    function refreshCustomEffects()
+        ImguiHelpers.DestroyAllChildren(customEffectsTable)
 
         local sortedUuid = {}
         local sortCache = {}
@@ -146,9 +169,11 @@ function EffectsMenu:RenderCustomEffects(parent)
 
         for _, uuid in ipairs(sortedUuid) do
             local entry = self.customEffects[uuid]
-            if not entry then goto continue end
+            if not entry or entry.Hidden then goto continue end
 
-            local effectCell = customEffectsRow:AddCell()
+            local row = customEffectsTable:AddRow()
+            local iconCell = row:AddCell()
+            local effectCell = row:AddCell()
             local existingTab = self.customEffectsTabs[uuid]
 
             local function tabOnChange()
@@ -159,12 +184,15 @@ function EffectsMenu:RenderCustomEffects(parent)
                 existingTab.OnChange = tabOnChange
             end
 
-            local effectButton = effectCell:AddImageButton("##CustomEffectButton_" .. entry.Uuid, entry.Icon, imageSize)
+            local validIcon = RBCheckIcon(entry.Icon)
+            local effectButton = iconCell:AddImageButton("##CustomEffectButton_" .. entry.Uuid, validIcon, imageSize)
+            local effectSelectable = effectCell:AddSelectable(entry.DisplayName)
             effectButton:Tooltip():AddText(entry.DisplayName or "Unknown Effect")
 
             StyleHelpers.ApplyImageButtonHoverStyle(effectButton)
 
-            effectButton.OnClick = function()
+            local function onClick()
+                effectSelectable.Selected = false
                 local tab = existingTab
                 if tab then
                     tab:Focus()
@@ -184,6 +212,17 @@ function EffectsMenu:RenderCustomEffects(parent)
                 self.customEffectsTabs[uuid] = tab
             end
 
+            local function onRightClick()
+                selectedEntry = entry
+                selectedRow = row
+                managePopup:Open()
+            end
+
+            effectButton.OnClick = onClick
+            effectSelectable.OnClick = onRightClick
+            effectButton.OnRightClick = onRightClick
+            effectSelectable.OnRightClick = onRightClick
+
             ::continue::
         end
 
@@ -192,10 +231,13 @@ function EffectsMenu:RenderCustomEffects(parent)
 
     --- Create
     function renderPlusSquare()
-        local createEffectCell = customEffectsRow:AddCell()
+        local row = customEffectsTable:AddRow()
+        local createEffectCell = row:AddCell()
+        local emptyCell = row:AddCell()
         local createEffectButton = createEffectCell:AddImageButton("##CreateCustomEffect", RB_ICONS.Plus_Square, imageSize)
+        local createSelectable = emptyCell:AddSelectable(GetLoca("Create New Effect"))
 
-        createEffectButton.OnClick = function()
+        local onClick = function()
             local createPopup = createEffectCell:AddPopup("createPopup")
             local ctxMenu = ImguiElements.AddContextMenu(createPopup, "Create A Blank Effect")
             ctxMenu:AddItem("New Effect", function()
@@ -238,8 +280,16 @@ function EffectsMenu:RenderCustomEffects(parent)
             createEffectButton.OnClick = function ()
                 createPopup:Open()
             end
+            createSelectable.OnClick = function ()
+                createSelectable.Selected = false
+                createPopup:Open()
+            end
+            createSelectable.Selected = false
             createPopup:Open()
         end
+
+        createEffectButton.OnClick = onClick
+        createSelectable.OnClick = onClick
     end
 
     refreshCustomEffects()

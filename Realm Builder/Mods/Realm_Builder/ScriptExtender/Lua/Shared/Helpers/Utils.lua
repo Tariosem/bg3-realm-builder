@@ -284,8 +284,8 @@ end
 --- return false to filter out
 --- @generic K, V
 --- @param tbl table<K, V>
---- @param filterFunc fun(a:K, b:V):boolean
---- @param sortFunc? fun(a:K, b:K):boolean
+--- @param filterFunc fun(key:K, value:V):boolean
+--- @param sortFunc? fun(key:K, value:K):boolean
 --- @return fun(): (K, V)
 function RBUtils.FilteredPairs(tbl, filterFunc, sortFunc)
     local keys = {}

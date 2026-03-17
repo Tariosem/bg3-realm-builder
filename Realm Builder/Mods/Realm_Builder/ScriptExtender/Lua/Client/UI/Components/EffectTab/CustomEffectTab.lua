@@ -315,8 +315,7 @@ function CustomEffectTab:RenderEffectList(parent)
         managePopup:Open()
     end
 
-    local refreshListFn
-    refreshListFn = EffectTabComponents:AddEffectList(childWindow:AddGroup("Effects"), "Effects", effectListTable,
+    local refreshListFn, rootTree = EffectTabComponents:AddEffectList(childWindow:AddGroup("Effects"), "Effects", effectListTable,
     function(tree, effectEntry, idx)
         local renderEditorFunc = function ()
             renderCustomEffectEditor(tree, effectEntry)
@@ -346,7 +345,7 @@ function CustomEffectTab:RenderEffectList(parent)
         refreshListFn()
     end
 
-    EffectTabComponents:AddEffectListPlusCircle(childWindow:AddGroup("NewEffects"), function (droppedData)
+    local function newEffectDropped(droppedData)
         droppedData = RBUtils.DeepCopy(droppedData)
         local managerEntry = effectManager.Data[droppedData.Uuid]
         if managerEntry.isMultiEffect then
@@ -363,7 +362,16 @@ function CustomEffectTab:RenderEffectList(parent)
             table.insert(effectListTable, droppedData)
         end
         refreshFn()
-    end)
+    end
+
+    rootTree.DragDropType = EffectDragDropFlag
+    rootTree.OnDragDrop = function (sel, drop)
+        local droppedEffect = drop.UserData and drop.UserData.Effect
+        if not droppedEffect then return end
+        newEffectDropped(droppedEffect)
+    end
+    
+    EffectTabComponents:AddEffectListPlusCircle(childWindow:AddGroup("NewEffects"), newEffectDropped)
 end
 
 function CustomEffectTab:Add(entry)
@@ -380,7 +388,10 @@ end
 
 function CustomEffectTab:PlayEffect()
     local entry = self.entry
+    self.loopHandles = self.loopHandles or {}
     for _, effectEntry in ipairs(entry.Effects) do
+        if effectEntry.Disabled then goto continue end
+
         local playData = RBEffectUtils.PlayEffectDragDropData(effectEntry)
 
         local casters = self.Casters or {}
@@ -388,7 +399,6 @@ function CustomEffectTab:PlayEffect()
             playData.Object = { caster }
             playData.Target = targets
 
-            self.loopHandles = self.loopHandles or {}
             if effectEntry.TimeOffset == nil or effectEntry.TimeOffset <= 0 then
                 NetChannel.PlayEffect:RequestToServer({ playData }, function(handles)
                     for _, handle in ipairs(handles) do
@@ -406,5 +416,7 @@ function CustomEffectTab:PlayEffect()
             end
 
         end
+
+        ::continue::
     end
 end

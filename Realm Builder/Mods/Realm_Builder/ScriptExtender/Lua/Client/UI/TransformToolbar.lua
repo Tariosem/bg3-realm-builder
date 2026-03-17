@@ -185,7 +185,7 @@ function TransformToolbar:RegisterKeyInputEvents()
     ttMod:RegisterEvent("OpenNearbyPopup", function(e)
         if e.Event ~= "KeyDown" then return end
         self:CreateNearbyPopup()
-    end, GetLoca("Open a popup to select nearby entities."))
+    end, GetLoca("Select entities that are behind others."))
 
     ttMod:RegisterEvent("Move3DCursor", function(e)
         if e.Event ~= "KeyDown" then return end
@@ -887,20 +887,16 @@ function TransformToolbar:RenderOrbitalCamera(parent)
         end
         isRunning = oba:IsRunning()
         runningBtn.Label = isRunning and runningLabel or stoppedLabel
-        configWin.Visible = isRunning
     end
 
-    configWin = parent:AddChildWindow("OrbitalCameraConfig")
+    configWin = parent
     configWin:AddSeparatorText("Orbital Camera Configurations")
 
     oba:RenderConfigTable(configWin)
 
     oba.ToggleConfigWindow = function()
         runningBtn.Label = runningLabel
-        configWin.Visible = true
     end
-
-    configWin.Visible = false
 end
 
 function TransformToolbar:RenderConfigMenu()
@@ -1191,8 +1187,14 @@ function TransformToolbar:CreateBindPopup(guid)
     notif:Show(notif.name, render)
 end
 
+local function safeGetSceneryName(entity)
+    local vres = entity.Visual and entity.Visual.Visual and entity.Visual.Visual.VisualResource
+    local displayName = vres and RBStringUtils.GetLastPath(vres.SourceFile) or "Unknown_Scenery"
+    return displayName
+end
+
 function TransformToolbar:CreateNearbyPopup()
-    local nearbyNotif = self.NearbyNotif or Notification.new("Nearby Entities")
+    local nearbyNotif = self.NearbyNotif or Notification.new("Depth Selection")
     self.NearbyNotif = nearbyNotif
 
     nearbyNotif.InstantDismiss = true
@@ -1203,16 +1205,79 @@ function TransformToolbar:CreateNearbyPopup()
 
     NearbyMap.UpdateNearbyMap()
 
+    local hits = ScreenToWorldRay():IntersectAll(cursorMaxDistance) or {}
+    local selected = nil
+    local simpleUnique = {}
+
     local tempSubs = {}
     ---@param panel ExtuiWindow
     local function render(panel)
         local contextPopup = panel:AddPopup("NearbyEntitiesContextMenu")
         local contextMenu = ImguiElements.AddContextMenu(contextPopup)
-        local localNearbyCombo = NearbyCombo.new(panel, true)
-        localNearbyCombo.EnableScenery = true
-        localNearbyCombo:RenderSelectionTable(panel)
-        local selected = nil
-        localNearbyCombo.ExcludeCamera = true
+        
+        --- @param parent ExtuiTreeParent
+        --- @param hit Hit
+        local function renderHit(parent, hit)
+            local ent = hit.Target
+            if not ent then return end
+
+            local guid = ent.Uuid and ent.Uuid.EntityUuid or nil
+            local sceneryComp = ent.Scenery
+
+            if not guid then
+                if not sceneryComp then return end
+
+                NearbyMap.RegisterScenery(ent)
+
+                guid = sceneryComp.Uuid
+            end
+
+            if simpleUnique[guid] then return end
+            simpleUnique[guid] = true
+
+            local icon = RBGetIcon(guid)
+            local name = "Unknown"
+            if sceneryComp then
+                name = safeGetSceneryName(ent)
+            else
+                name = RBGetName(guid)
+            end
+
+
+            local group = parent:AddGroup(name .. "##" .. guid)
+            local iconBtn = group:AddImageButton("Icon##" .. guid, icon, IMAGESIZE.SMALL)
+            local nameBtn = group:AddSelectable(name .. "##" .. guid)
+
+            nameBtn.SpanAllColumns = false
+
+            local distanceText = GetLoca("Distance") .. ": %.2f"
+            local distanceLabel = group:AddText(distanceText:format(hit.Distance))
+            distanceLabel:SetColor("Text", ColorUtils.HexToRGBA("C4B5B5B5"))
+            distanceLabel.Font = "Tiny"
+
+            iconBtn.OnClick = function()
+                local proxy = MovableProxy.CreateByGuid(guid)
+                if not proxy then return end
+                RB_GLOBALS.TransformEditor:Select({ proxy })
+            end
+
+            nameBtn.OnClick = function ()
+                selected = guid
+                nameBtn.Selected = false
+                contextPopup:Open()
+                selected = guid
+            end
+
+            local onHoverEnter = function ()
+                selected = guid
+            end
+
+            iconBtn.OnHoverEnter = onHoverEnter
+            nameBtn.OnHoverEnter = onHoverEnter
+
+            nameBtn.SameLine = true
+            distanceLabel.SameLine = true
+        end
 
         --- @type RB_ContextItem[]
         local contextItems = {
@@ -1244,6 +1309,7 @@ function TransformToolbar:CreateNearbyPopup()
             {
                 Label = "Set Target",
                 OnClick = function(selectable)
+                    _P("Selected:", selected)
                     if not selected or selected == "" then return end
                     local proxy = nil
                     proxy = MovableProxy.CreateByGuid(selected)
@@ -1277,17 +1343,14 @@ function TransformToolbar:CreateNearbyPopup()
                 tempSubs[item.Label] = InputEvents.SubscribeKeyAndMouse(function(e)
                     if e.Event ~= "KeyDown" then return end
                     if not selected or selected == "" then return end
-                    if localNearbyCombo.HoveringKey then
-                        selected = localNearbyCombo.HoveringKey
-                    end
+
                     item.OnClick(sle)
                 end, item.HotKey)
             end
         end
 
-        localNearbyCombo.OnChange = function(sel, selectedGuid, displayName)
-            selected = selectedGuid
-            contextPopup:Open()
+        for _, hit in pairs(hits) do
+            renderHit(panel, hit)
         end
     end
 

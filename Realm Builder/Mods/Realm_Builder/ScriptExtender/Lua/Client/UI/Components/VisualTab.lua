@@ -1000,7 +1000,7 @@ end
 function VisualTab:Save(name, overwrite)
     local templateName = self.templateName or RBGetTemplateNameForGuid(self.guid)
 
-    if not templateName then
+    if not templateName or templateName == "" or templateName == "Unknown" then
         Error("VisualTab:Save - No template name found for GUID: " .. self.guid)
         return false
     end

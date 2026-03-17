@@ -53,6 +53,12 @@ local activeEffectTypes = {
     StatusData = statusActiveEffectTypes,
 }
 
+local function disabledPairs(t)
+    return RBUtils.FilteredPairs(t, function (key, value)
+        return not value.Disabled
+    end)
+end
+
 function StatsTab:RenderEffectList(parent)
     local entry = self.entry
     local childWindow = parent:AddChildWindow("EffectListWindow")
@@ -201,11 +207,11 @@ local function parseCustomStatsData(obj)
             end
         end
         if isMultiEffect then
-            for _,data in pairs(multiData) do
+            for _,data in disabledPairs(multiData) do
                 effectTypeValue = data.Uuid 
             end
         else
-            for _,data in pairs(multiData) do
+            for _,data in disabledPairs(multiData) do
                 local bone = data.Bone
                 local bones = BoneHelpers.ParseBoneList(bone, true)
                 local newString = nil

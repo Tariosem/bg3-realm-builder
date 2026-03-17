@@ -946,3 +946,36 @@ function ImguiElements.AddStyleDebugWindow(extui, symbol)
         end
     end
 end
+
+
+local eyeIcon = RB_ICONS.Eye
+local eyeSlashIcon = RB_ICONS.Eye_Slash
+
+local eyeUV = RB_ICON_UV01[eyeIcon]
+local eyeSlashUV = RB_ICON_UV01[eyeSlashIcon]
+
+--- @param parent ExtuiTreeParent
+--- @param visible boolean
+--- @param onToggle fun(v:boolean)
+--- @param id string
+function ImguiElements.AddVisibleButton(parent, visible, onToggle, id)
+    id = id or parent.IDContext or RBUtils.Uuid_v4()
+
+    local icon = visible and eyeIcon or eyeSlashIcon
+    local imageButton = parent:AddImageButton("##" .. id .. "EyeIconButton", icon, IMAGESIZE.FRAME) --[[@as ExtuiImageButton]]
+
+    imageButton:SetColor("Button", {0,0,0,0})
+    imageButton.OnClick = function()
+        visible = not visible
+        local uv = visible and eyeUV or eyeSlashUV  
+        imageButton.Image = uv
+        local alpha = visible and 1 or 0.5
+        imageButton:SetStyle("Alpha", alpha)
+        
+        if onToggle then
+            onToggle(visible)
+        end
+    end
+
+    return imageButton
+end

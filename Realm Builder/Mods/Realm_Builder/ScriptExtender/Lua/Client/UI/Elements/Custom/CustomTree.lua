@@ -224,6 +224,10 @@ function ImguiElements.AddTree(parent, label, open)
             elseif k == "HideHeader" then
                 headerGroup.Visible = not v
                 return
+            elseif k == "Disabled" then
+                panelGroup.Disabled = v
+                panelGroup:SetStyle("Alpha", v and 0.8 or 1)
+                return
             end
             selectable[k] = v
             if treeIcon and not selectableProps[k] then

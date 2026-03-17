@@ -418,8 +418,6 @@ NetChannel.StopEffect:SetHandler(function(data, userID)
     end
 end)
 
-
-
 NetChannel.CreateStat:SetHandler(function(data, userID)
     local eM = RB_GLOBALS.EffectManager
 

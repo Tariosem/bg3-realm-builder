@@ -80,7 +80,7 @@ local localizedNames = {
     ApplyGravity = "Apply Gravity",
     FreezeGravity = "Freeze Gravity",
     SnapToGround = "Snap To Ground",
-    OpenNearbyPopup = "Open Nearby Popup",
+    OpenNearbyPopup = "Depth Selection Popup",
     MoveToCursor = "Move To Cursor",
     LookAtCursor = "Look At Cursor",
     Move3DCursor = "Move 3D Cursor",
@@ -210,9 +210,9 @@ function KeybindMenu:RenderModule(module)
 
     header.OnHoverEnter = function ()
         if module:IsModuleActive() then
-            header:SetColor("Text", {0.5, 1, 0.5, 1})
+            header.Label = localName .. " (Active)"
         else
-            header:SetColor("Text", {1, 0.5, 0.5, 0.6})
+            header.Label = localName .. " (Inactive)"
         end
     end
 
