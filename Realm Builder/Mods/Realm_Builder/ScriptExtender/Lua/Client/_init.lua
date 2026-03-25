@@ -22,8 +22,8 @@ RBUtils.RequireFiles("Client/", {
     "Blacklist",
     "Helpers/__init",
     "Keybind/__init",
-    "UI/_init",
     "Editor/__init",
+    "UI/_init",
     "MCM",
     "CameraUpdater",
 })

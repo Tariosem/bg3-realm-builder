@@ -71,7 +71,7 @@ function InputEvents.SubscribeMouseInput(key, callback)
         end
 
         if key.Button and e.Button ~= key.Button then return end
-        if key.Pressed and e.Pressed ~= key.Pressed then return end
+        if (key.Pressed ~= nil) and e.Pressed ~= key.Pressed then return end
 
         local elapsed = Ext.Timer.MonotonicTime() - SubscribeStartTime
 

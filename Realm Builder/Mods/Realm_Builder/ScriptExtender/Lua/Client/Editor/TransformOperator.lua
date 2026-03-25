@@ -10,277 +10,95 @@ local keyToUnit = {
     Scale = "",
 }
 
-local keyToMode = {
-    G = "Translate",
-    R = "Rotate",
-    S = "Scale",
-}
-
-local keyToSpace = {
-    F1 = "World",
-    F2 = "Local",
-    F3 = "View",
-    F4 = "Parent",
-}
-
 --- @class TransformOperator
---- @field Targets RB_MovableProxy[]
---- @field Mode TransformEditorMode
---- @field Space TransformEditorSpace
 --- @field Num string
---- @field Axis table<'X'|'Y'|'Z', boolean>
---- @field new fun(targets: RB_MovableProxy, space:TransformEditorSpace?, mode:TransformEditorMode?, axis:table<'X'|'Y'|'Z', boolean>?): TransformOperator
+--- @field Negative boolean
+--- @field Gizmo TransformGizmo
+--- @field Listener RBSubscription
+--- @field new fun(gizmo: TransformGizmo): TransformOperator
 TransformOperator = _Class("TransformOperator")
 
---- @param proxy RB_MovableProxy
---- @param space TransformEditorSpace
---- @return table<'X'|'Y'|'Z', Vec3>
-function TransformOperator:GetAxesBySpace(proxy, space)
-    if not self.AxesCache[proxy] then self.AxesCache[proxy] = {} end
-    if self.AxesCache[proxy][space] then
-        return self.AxesCache[proxy][space]
-    end
-
-    local rot = proxy:GetSavedTransform().RotationQuat
-    if space == "World" then
-        return {
-            X = GLOBAL_COORDINATE.X,
-            Y = GLOBAL_COORDINATE.Y,
-            Z = GLOBAL_COORDINATE.Z,
-        }
-    elseif space == "Local" then
-        local x = Ext.Math.QuatRotate(rot, GLOBAL_COORDINATE.X)
-        local y = Ext.Math.QuatRotate(rot, GLOBAL_COORDINATE.Y)
-        local z = Ext.Math.QuatRotate(rot, GLOBAL_COORDINATE.Z)
-        self.AxesCache[proxy][space] = { X = x, Y = y, Z = z }
-    elseif space == "View" then
-        local camRot = self.StartCameraTransform and self.StartCameraTransform.RotationQuat or {CameraHelpers.GetCameraRotation()}
-        local x = Ext.Math.QuatRotate(camRot, GLOBAL_COORDINATE.X)
-        local y = Ext.Math.QuatRotate(camRot, GLOBAL_COORDINATE.Y)
-        local z = Ext.Math.QuatRotate(camRot, GLOBAL_COORDINATE.Z)
-        self.AxesCache[proxy][space] = { X = x, Y = y, Z = z }
-    elseif space == "Parent" then
-        local parent = proxy:GetParent()
-        if parent and EntityHelpers.EntityExists(parent) then
-            local parentRot = parent:GetSavedTransform().RotationQuat
-            local x = Ext.Math.QuatRotate(parentRot, GLOBAL_COORDINATE.X)
-            local y = Ext.Math.QuatRotate(parentRot, GLOBAL_COORDINATE.Y)
-            local z = Ext.Math.QuatRotate(parentRot, GLOBAL_COORDINATE.Z)
-            self.AxesCache[proxy][space] = { X = x, Y = y, Z = z }
-        else
-            Warning("Entity does not have a valid parent: "..tostring(proxy))
-            self.AxesCache[proxy][space] = {
-                X = GLOBAL_COORDINATE.X,
-                Y = GLOBAL_COORDINATE.Y,
-                Z = GLOBAL_COORDINATE.Z,
-            }
-        end
-    elseif space == "Cursor" then
-        local cursor = self.Cursor or RBGetHostCharacter()
-        local cursorRot = {RBGetRotation(cursor)}
-        local x = Ext.Math.QuatRotate(cursorRot, GLOBAL_COORDINATE.X)
-        local y = Ext.Math.QuatRotate(cursorRot, GLOBAL_COORDINATE.Y)
-        local z = Ext.Math.QuatRotate(cursorRot, GLOBAL_COORDINATE.Z)
-        self.AxesCache[proxy][space] = { X = x, Y = y, Z = z }
-    else
-        Warning("Invalid mode: "..tostring(space))
-        return {
-            X = GLOBAL_COORDINATE.X,
-            Y = GLOBAL_COORDINATE.Y,
-            Z = GLOBAL_COORDINATE.Z,
-        }
-    end
-
-    return self.AxesCache[proxy][space]
-end
-
-function TransformOperator:__init(targets, space, mode, axis, ifInitStartTransforms)
-    self.Targets = targets
-    self.Visualizer = GizmoVisualizer.new()
-    self.Visualizer:UpdateScale(self.Targets[1]:GetWorldTranslate())
-    self.AxesCache = {}
-    self:InitStartTransforms(ifInitStartTransforms)
-
-    self.Mode = mode or "Translate"
-    self.Space = space or "Local"
-    self.Num = "0"
+function TransformOperator:__init(gizmo)
+    self.Num = ""
     self.Negative = false
-
-    self.Axis = axis or { X = true }
-
-    if self.Mode ~= "Scale" and RBTableUtils.CountMap(self.Axis) > 1 then
-        self.Axis = { [next(self.Axis)] = true }
-    end
-
-    self.Visualizations = {}
-    self:Visualize()
+    self.Gizmo = gizmo
+    self.Listener = nil
 end
 
-function TransformOperator:InitStartTransforms(ifInit)
-    if ifInit then return end
-    
-    for _,proxy in pairs(self.Targets) do
-        proxy:SaveTransform()
-    end
+function TransformOperator:StartListening()
+    if self.Listener then return end
 
-    self.StartCameraTransform = {
-        RotationQuat = {CameraHelpers.GetCameraRotation()},
-    }
-    for _,proxy in pairs(self.Targets) do
-        local parent = proxy:GetParent()
-        if parent then
-            parent:SaveTransform()
+    self.Listener = InputEvents.SubscribeKeyAndMouse(function(e)
+        local gizmo = self.Gizmo
+        if not gizmo or not gizmo.IsDragging then
+            self.IsInputting = false
+            return
         end
-    end
-end
 
-function TransformOperator:Visualize()
-    -- disable for now 
-    --[[if next(self.Visualizations) then
-        self:ChangeVisualization()
-        return
-    end
-
-    local color = self.Visualizer.AxisLineColor[next(self.Axis)] or {1,1,0,1}
-
-    for _,proxy in pairs(self.Targets) do
-        local axis = self:GetAxesBySpace(proxy, self.Space)[next(self.Axis)]
-        local ray = Ray.new(proxy:GetSavedTransform().Translate, axis)
-
-        NetChannel.Visualize:RequestToServer({
-            Type = "Line",
-            Position = ray:At(-30),
-            EndPosition = ray:At(100),
-            Width = self.Visualizer.Scale[1] * 0.3,
-            Duration = -1,
-        }, function (response)
-            local viz = response[1]
-            local tryCnt = 0
-            Timer:EveryFrame(function()
-                if tryCnt > 300 then
-                    Warning("GizmoVisualizer: Failed to get visual for line gizmo")
-                    return UNSUBSCRIBE_SYMBOL
-                end
-                if not VisualHelpers.GetEntityVisual(viz) then tryCnt = tryCnt + 1 return end
-                self.Visualizer:SetLineFxColor(viz, color)
-                self.Visualizer:SetLineLength(viz, 200)
-                return UNSUBSCRIBE_SYMBOL
-            end)
-            table.insert(self.Visualizations, viz)
-        end)
-    end]]
-end
-
-function TransformOperator:ChangeVisualization()
-    local transforms = {}
-    local visualizations = {}
-    local cnt = #self.Targets
-    for _, viz in pairs(self.Visualizations) do
-        local proxy = self.Targets[cnt]
-        cnt = cnt - 1
-        table.insert(visualizations, viz)
-        self.Visualizer:SetLineFxColor(viz, self.Visualizer.AxisLineColor[next(self.Axis)] or {1,1,0,1})
-        self.Visualizer:SetLineLength(viz, 200)
-        local axis = self:GetAxesBySpace(proxy, self.Space)[next(self.Axis)]
-        local ray = Ray.new(proxy:GetSavedTransform().Translate, axis)
-        local pos = ray:At(-30)
-        local dir = MathUtils.DirectionToQuat( axis * -1 )
-        local newTransform = {
-            Translate = pos,
-            RotationQuat = dir,
-        }
-        transforms[viz] = newTransform
-    end
-
-    for _,viz in pairs(visualizations) do
-        local proxy = MovableProxy.CreateByGuid(viz)
-        if proxy then
-            proxy:SetTransform(transforms[viz])
+        if self.IsInputting then
+            self:ParseInput(e)
+            return
         end
-    end
-end
 
-function TransformOperator:SetAxis(axis, shiftDown)
-    if self.Mode ~= "Scale" then
-        if self.Axis and RBTableUtils.CountMap(self.Axis) == 1 and self.Axis[axis] then
-            return -- same axis, do nothing
-        else
-            self.Axis = { [axis] = true }
+        local c = KeybindHelpers.ParseInputToCharInput(e)
+        if tonumber(c) then
+            self:StartInputting()
+            self:ParseInput(e)
         end
-        self:Visualize()
-        return
-    end
-
-    if self.Axis and RBTableUtils.CountMap(self.Axis) == 1 and self.Axis[axis] then
-        self.Axis = { X = true, Y = true, Z = true }
-    elseif shiftDown then
-        self.Axis = { X = true, Y = true, Z = true }
-        self.Axis[axis] = nil
-    else
-        self.Axis = { [axis] = true }
-    end
-    self:Visualize()
+    end)
 end
 
-function TransformOperator:SetSpace(space)
-    self.Space = space
-    self:Visualize()
+function TransformOperator:StopListening()
+    if self.Listener then
+        self.Listener:Unsubscribe()
+        self.Listener = nil
+    end
 end
+
+function TransformOperator:StartInputting()
+    self.Num = ""
+    self.Negative = false
+    self.IsInputting = true
+end
+
+function TransformOperator:StopInputting()
+    self.IsInputting = false
+end
+
+local allowedChars = {
+    ["+"] = true,
+    ["-"] = true,
+    ["*"] = true,
+    ["/"] = true,
+    ["%"] = true,
+    ["^"] = true,
+    ["."] = true,
+    ["p"] = true,
+    ["i"] = true,
+}
 
 --- @param e SimplifiedInputEvent|string
 function TransformOperator:ParseInput(e)
     if e.Event ~= "KeyDown" then return end
 
-    local shiftDown = table.find(e.Modifiers or {}, "SHIFT") ~= nil
+    local inputState = InputEvents.GetGlobalInputStatesRef()
+    local shiftDown = inputState.Shift
 
-    if GLOBAL_COORDINATE[e.Key] then
-        self:SetAxis(e.Key, shiftDown)
-    elseif keyToMode[e.Key] then
-        self.Mode = keyToMode[e.Key]
-        if self.Mode == 'Scale' then
-            self.Axis = { X = true, Y = true, Z = true }
-            self:SetSpace("Local")
-        elseif RBTableUtils.CountMap(self.Axis) > 1 then
-            self.Axis = { [next(self.Axis)] = true }
-        end
-    elseif keyToSpace[e.Key] then
-        -- only supports scale in local space
-        if self.Mode == "Scale" then return end
-        self:SetSpace(keyToSpace[e.Key])
-    elseif (e.Key == "MINUS" or e.Key == "KP_MINUS") and shiftDown then
+    local numStr = self.Num or ""
+
+    if shiftDown and e.Key == "Minus" then
         self.Negative = not self.Negative
-    elseif e.Key == "BACKSPACE" then
-        if #self.Num > 1 then
-            self.Num = self.Num:sub(1, #self.Num - 1)
-        else
-            self.Num = "0"
-        end
-    elseif KeybindHelpers.ParseInputToCharInput(e) then
-        local char = KeybindHelpers.ParseInputToCharInput(e) --[[@as string ]]
-        if char and self.Num == "0" then
-            self.Num = char
-        else
-            self.Num = self.Num .. char
-        end
+    elseif e.Key == "BACKSPACE" or e.Key == "Delete" then
+        numStr = numStr:sub(1, -2)
+    else
+        local c = KeybindHelpers.ParseInputToCharInput(e) or ""
+        --if not tonumber(c) and not allowedChars[c] then return end
+        numStr = numStr .. c
     end
+
+    self.Num = numStr
 
     self:Apply()
-end
-
-function TransformOperator:__tostring()
-    local verb = keyToVerb[self.Mode] or "Transforming"
-
-    local axes = {}
-    for k,v in pairs(self.Axis) do
-        if v then table.insert(axes, k) end
-    end
-    table.sort(axes)
-    local axisStr = table.concat(axes, "/")
-    local unit = keyToUnit[self.Mode] or "unit"
-    local numberStr = self.Negative and ("- (" .. self.Num .. ")") or self.Num
-    local spaceStr = GetLoca(self.Space)
-
-    return string.format("%s [%s] %s along %s axis in %s space for %d target(s)", verb, numberStr, unit, axisStr, spaceStr, #self.Targets)
 end
 
 local loadstringexpr = [[
@@ -289,119 +107,133 @@ local loadstringexpr = [[
     return %s
 ]]
 
+--- @param gizmo TransformGizmo
+--- @param selectedAxis Vec3
+--- @return Vec3
+local function calcAvgAxis(gizmo, selectedAxis)
+    local gizmoAxes = gizmo.Picker:GetAxes()
+    local avgNormal = Vec3.new(0,0,0)
+    for axis, selected in pairs(selectedAxis) do
+        if selected then
+            avgNormal = avgNormal + gizmoAxes[axis]:Normalize()
+        end
+    end
+    return avgNormal
+end
+
+--- @param gizmo TransformGizmo
+--- @param selectedAxis Vec3
+--- @return Vec3
+local function selectAxis(gizmo, selectedAxis)
+    local gizmoAxes = gizmo.Picker:GetAxes()
+    for axis, selected in pairs(selectedAxis) do
+        if selected then
+            return gizmoAxes[axis]
+        end
+    end
+    return Vec3.new(0,0,0)
+end
+
 function TransformOperator:Apply()
-    if #self.Targets == 0 then return end
-    local transforms = {}
+    local gizmo = self.Gizmo
+    if not gizmo or not gizmo.IsDragging then return end
+    gizmo:OnAction(self:ToStirng())
+
     local num = tonumber(self.Num)
     if not num then
-        local expr = string.format(loadstringexpr, self.Num)
-        local func = Ext.Utils.LoadString(expr)
-        if func then
-            local ok, res = pcall(func)
-            if ok then num = tonumber(res) end
-
-            if not ok or not num then
-                --Warning("Failed to parse expression: "..tostring(self.Num))
-                return
-            end
+        local func, err = Ext.Utils.LoadString(string.format(loadstringexpr, self.Num))
+        if not func then
+            --Debug("Invalid expression: " .. err)
+            return
         end
+
+        local success, result = pcall(func)
+        if not success then
+            --Debug("Error evaluating expression: " .. result)
+            return
+        end
+
+        num = result
     end
+
     if not num then return end
-    if self.Negative then num = -num end
-    for _,proxy in pairs(self.Targets) do
-        local transform = {
-            Translate = self:ApplyTranslate(proxy, num),
-            RotationQuat = self:ApplyRotate(proxy, num),
-            Scale = self:ApplyScale(proxy, num),
-        }
-        proxy:SetTransform(transform)
+
+    if self.Negative then
+        num = -num
     end
-end
 
+    local activeMode = gizmo.ActiveMode
 
----@param proxy RB_MovableProxy
----@param num number
----@return Vec3
-function TransformOperator:ApplyTranslate(proxy, num)
-    if self.Mode ~= "Translate" then return proxy:GetSavedTransform().Translate end
-    local axes = self:GetAxesBySpace(proxy, self.Space)
-    local dir = Vec3.new(0,0,0)
-    for k,v in pairs(self.Axis) do
-        if v and axes[k] then
-            dir = dir + axes[k]
-        end
+    if self.lastMode and self.lastMode ~= activeMode then
+        num = 0
+        self.Num = ""
     end
-    dir = Ext.Math.Normalize(dir)
-    local moveVec = Ext.Math.Mul(dir, num)
-    local startPos = proxy:GetSavedTransform().Translate
-    return Ext.Math.Add(startPos, moveVec) --[[@as Vec3]]
-end
 
----@param proxy RB_MovableProxy
----@param num number
----@return Quat
-function TransformOperator:ApplyRotate(proxy, num)
-    if self.Mode ~= "Rotate" then return proxy:GetSavedTransform().RotationQuat end
-    local axes = self:GetAxesBySpace(proxy, self.Space)
-    local axis = axes[next(self.Axis)]
-    if not axis then
-        Warning("No valid axis selected for rotation")
-        return proxy:GetSavedTransform().RotationQuat
-    end
-    local angle = math.rad(num)
-    local rotQuat = Ext.Math.QuatRotateAxisAngle(Quat.Identity(), axis, angle)
-    local startRot = proxy:GetSavedTransform().RotationQuat
-    local newRot = Ext.Math.QuatMul(rotQuat, startRot)
-    return Ext.Math.QuatNormalize(newRot)
-end
+    self.lastMode = activeMode
+    local selectedAxis = gizmo.SelectedAxis or {}
+    local axisCnt = RBTableUtils.CountMap(selectedAxis)
+    local cameraForward = gizmo.cachedCameraForward or Vec3.new(0,0,1)
 
---- @param proxy RB_MovableProxy
---- @param num any
---- @return Vec3
-function TransformOperator:ApplyScale(proxy, num)
-    if self.Mode ~= "Scale" then return proxy:GetSavedTransform().Scale end
-    local scaleFactor = num
-    local startScale = proxy:GetSavedTransform().Scale
-    local newScale = {}
-    for i=1,3 do
-        if self.Axis[({"X","Y","Z"})[i]] then
-            newScale[i] = startScale[i] * scaleFactor
+    local delta = {0,0,0,0}
+    if activeMode == "Translate" then
+        local avgNormal = calcAvgAxis(gizmo, selectedAxis)
+        delta = avgNormal * num
+    elseif activeMode == "Rotate" then
+        local axis = nil
+        if axisCnt == 3 then 
+            axis = cameraForward
         else
-            newScale[i] = startScale[i]
+            axis = selectAxis(gizmo, selectedAxis)
         end
+
+        if not axis then return end
+
+        delta = { axis[1], axis[2], axis[3], math.rad(num) }
+    else -- Scale
+        local scaleVec = Vec3.new(1,1,1)
+        for i, _ in ipairs(scaleVec) do
+            if selectedAxis[IndexAxisMap[i]] then
+                scaleVec[i] = num
+            end
+        end
+        delta = scaleVec 
     end
-    return newScale
+
+    gizmo:ApplyDelta(delta)
 end
 
-function TransformOperator:Confirm()
-    local currentTransforms = {}
-    for _,proxy in pairs(self.Targets) do
-        currentTransforms[proxy] = proxy:GetTransform()
-    end
-    local startTransforms = {}
-    for _,proxy in pairs(self.Targets) do
-        startTransforms[proxy] = proxy:GetSavedTransform()
-    end
-    
-    HistoryManager:PushCommand({
-        Undo = function()
-            for proxy, transform in pairs(startTransforms) do
-                proxy:SetTransform(transform)
-            end
-        end,
-        Redo = function()
-            for proxy, transform in pairs(currentTransforms) do
-                proxy:SetTransform(transform)
-            end
-        end,
-        Description = tostring(self),
-    })
-    NetChannel.Delete:SendToServer({ Guid = self.Visualizations }, function(response) end)
+local function round2(num)
+    local mult = 100
+    local del = num < 0 and -0.5 or 0.5
+    return math.floor(num * mult + del) / mult
 end
 
-function TransformOperator:Cancel()
-    for _,proxy in pairs(self.Targets) do
-        proxy:RestoreTransform()
+function TransformOperator:ToStirng(delta)
+    local gizmo = self.Gizmo
+    if not gizmo or not gizmo.IsDragging then return "" end
+
+    local decimatedDelta = {}
+    for i,v in ipairs(delta or {}) do
+        decimatedDelta[i] = round2(v)
     end
-    NetChannel.Delete:SendToServer({ Guid = self.Visualizations }, function(response) end)
+
+    local mode = gizmo.ActiveMode
+    local verb = keyToVerb[mode] or "Operating"
+
+    local axes = {}
+    for k,v in pairs(gizmo.SelectedAxis or {}) do
+        if v then table.insert(axes, k) end
+    end
+    table.sort(axes)
+    local axisStr = table.concat(axes, "/")
+    local unit = keyToUnit[mode] or ""
+    local numberStr = ""
+
+    if self.IsInputting then
+        numberStr = self.Num
+    else
+        numberStr = mode == "Rotate" and string.format("%.2f", math.deg(delta[4])) or table.concat(decimatedDelta, ", ")
+    end
+
+    return string.format("%s [%s] %s along %s axis", verb, numberStr, unit, axisStr)
 end

@@ -1389,3 +1389,24 @@ function VisualTab:OnDetach() end
 function VisualTab:OnAttach() end
 
 function VisualTab:OnChange() end
+
+VisualTabUtils = {}
+
+function VisualTabUtils.GetCurrentVisualEdit(guid)
+    local visualTab = visualTabCache[guid] --[[@as VisualTab]]
+    if not visualTab then
+        Error("VisualTabUtils.GetCurrentVisualEdit - No VisualTab found for GUID: " .. guid)
+        return nil
+    end
+
+    local ok, result = xpcall(function()
+        return visualTab:SaveCurrentState()
+    end, debug.traceback)
+
+    if not ok then
+        Error("VisualTabUtils.GetCurrentVisualEdit - Error while getting current visual edit: " .. result)
+        return nil
+    end
+
+    return result
+end

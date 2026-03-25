@@ -17,12 +17,14 @@
 --- @field Visualizer GizmoVisualizer
 --- @field Subscriptions table<string, RBSubscription>
 --- @field Timers table<string, TimerID>
+--- @field cachedCameraForward Vec3|nil -- cached camera forward for rotation with 3-axis selected
 --- @field new fun(): TransformGizmo
 --- @field OnDragStart fun(self: TransformGizmo)
 --- @field OnDragTranslate fun(self: TransformGizmo, delta: Vec3)
 --- @field OnDragRotate fun(self: TransformGizmo, delta: QuatInfo)
 --- @field OnDragScale fun(self: TransformGizmo, delta: Vec3)
 --- @field OnDragEnd fun(self: TransformGizmo)
+--- @field OnAction fun(self: TransformGizmo, action: string)
 TransformGizmo = _Class("Gizmo")
 
 local modeEnum = Enums.TransformEditorMode
@@ -44,6 +46,7 @@ function TransformGizmo:__init()
     self.SavedGizmos = {}
     self.Picker = GizmoPicker.new(self)
     self.Visualizer = GizmoVisualizer.new()
+    self.Operator = TransformOperator.new(self)
     self.Subscriptions = {}
     self.Timers = {}
     self.SlowDown = false
@@ -80,6 +83,7 @@ function TransformGizmo:EmptyDrag()
     else
         self:OnDragScale(Vec3.new { 1, 1, 1 })
     end
+    self:OnAction("")
 end
 
 function TransformGizmo:SetScale(scale)
@@ -244,16 +248,29 @@ function TransformGizmo:SetupActionSubscriptions()
         end
     end)
 
-    self.Subscriptions["DragCancel"] = InputEvents.SubscribeMouseInput({}, function(e)
+    local keyEnums = Enums.SimplifiedInputCode
+
+    local cancelKeys = {
+        [keyEnums.ESCAPE] = true,
+        [keyEnums.RMB] = true,
+    } 
+
+    self.Subscriptions["DragCancel"] = InputEvents.SubscribeKeyAndMouse(function(e)
         if not self.IsDragging then return end
-        if e.Pressed and tonumber(e.Button) == 3 then
+        if e.Pressed and cancelKeys[e.Key] then
             self:CancelDragging()
         end
     end)
 
-    self.Subscriptions["DragEnd"] = InputEvents.SubscribeMouseInput({}, function(e)
+
+    --- @as table<SimplifiedInputCode, boolean>
+    local confirmKeys = {
+        [keyEnums.RETURN] = true,
+    }
+
+    self.Subscriptions["DragEnd"] = InputEvents.SubscribeKeyAndMouse(function (e)
         if not self.IsDragging then return end
-        if e.Button == 1 and not e.Pressed then
+        if (not e.Pressed and e.Key == "LMB") or (e.Pressed and confirmKeys[e.Key]) then
             self:StopDragging()
         end
     end)
@@ -738,6 +755,11 @@ function TransformGizmo:SetupDragging()
             return UNSUBSCRIBE_SYMBOL
         end
 
+        if self.Operator and self.Operator.IsInputting then
+            self:Visualize()
+            return
+        end
+
         local mouseRay = ScreenToWorldRay()
         if not mouseRay then
             Warning("Gizmo:SetupDragging: Failed to get mouse ray")
@@ -752,34 +774,41 @@ function TransformGizmo:SetupDragging()
         delta = self:LerpDelta(delta) --[[@as Vec3|QuatInfo ]]
         if not delta then return end -- may return nil to skip this frame
 
-        if self.ActiveMode == "Rotate" then
-            delta = delta --[[@as QuatInfo ]]
-            self:VisualizeRotatePointer(delta[4], Vec3.new(delta[1], delta[2], delta[3]))
-            self:OnDragRotate(delta)
-        elseif self.ActiveMode == "Translate" then
-            delta = delta --[[@as Vec3 ]]
-            self:OnDragTranslate(delta)
-            if self.SavedGizmos.Translate == nil then
-                Warning("Gizmo:SetupDragging: No saved gizmo for Translate")
-            else
-                NetChannel.SetTransform:SendToServer({
-                    Guid = self.SavedGizmos.Translate,
-                    Transforms = {
-                        [self.SavedGizmos.Translate] = {
-                            Translate = pickerPos + delta,
-                            RotationQuat = pickerRot,
-                        }
-                    }
-                })
-            end
-        elseif self.ActiveMode == "Scale" then
-            delta = delta --[[@as Vec3 ]]
-            self.Visualizer.ScaleMultiplier = delta
-            self:OnDragScale(delta)
-        end
+        self:ApplyDelta(delta)
 
         self:Visualize()
     end)
+end
+
+function TransformGizmo:ApplyDelta(delta)
+    local pickerPos = self.Picker.Position
+    local pickerRot = self.Picker.Rotation
+    if self.ActiveMode == "Rotate" then
+        delta = delta --[[@as QuatInfo ]]
+        self:VisualizeRotatePointer(delta[4], Vec3.new(delta[1], delta[2], delta[3]))
+        self:OnDragRotate(delta)
+    elseif self.ActiveMode == "Translate" then
+        delta = delta --[[@as Vec3 ]]
+        self:OnDragTranslate(delta)
+        if self.SavedGizmos.Translate == nil then
+            Warning("Gizmo:SetupDragging: No saved gizmo for Translate")
+        else
+            NetChannel.SetTransform:SendToServer({
+                Guid = self.SavedGizmos.Translate,
+                Transforms = {
+                    [self.SavedGizmos.Translate] = {
+                        Translate = pickerPos + delta,
+                        RotationQuat = pickerRot,
+                    }
+                }
+            })
+        end
+    elseif self.ActiveMode == "Scale" then
+        delta = delta --[[@as Vec3 ]]
+        self.Visualizer.ScaleMultiplier = delta
+        self:OnDragScale(delta)
+    end
+    self:OnAction(self.Operator:ToStirng(delta))
 end
 
 --- @param delta Vec3|number|QuatInfo
@@ -1050,10 +1079,12 @@ function TransformGizmo:Disable()
     end
 
     self:StopListeners()
+    self.Operator:StopListening()
     self:Hide()
 end
 
 function TransformGizmo:Enable()
     self:CreateItem()
     self:SetupListeners()
+    self.Operator:StartListening()
 end

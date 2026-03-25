@@ -1,8 +1,5 @@
 local isPreviewing = false
 local previewObject = nil
-local notif = Notification.new("Is Previewing Item...")
-notif.Pivot = { 0.5, 0 }
-notif.AutoFadeOut = false
 
 PlacementPreview = {}
 
@@ -21,7 +18,9 @@ function PlacementPreview:BeginPlacementPreview(entry, entryDisplayName)
     end
     IsPreviewing = true
 
-
+    local notif = Notification.new("Is Previewing Item...")
+    notif.Pivot = { 0.5, 0 }
+    notif.AutoFadeOut = false
     notif:Show("Placement Preview", function(panel)
         local midAlighTab = panel:AddTable("Midddd", 3)
         midAlighTab.ColumnDefs[1] = { WidthStretch = true }

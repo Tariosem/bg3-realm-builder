@@ -24,6 +24,7 @@
 --- @field SetActiveMode fun(self: TransformEditor, mode: TransformEditorMode)
 --- @field InitGizmo fun(self: TransformEditor)
 --- @field UpdateGizmo fun(self: TransformEditor)
+--- @field OnAction fun(self: TransformEditor, action: string)
 --- @field new fun(): TransformEditor
 TransformEditor = _Class("TransformEditor")
 
@@ -751,9 +752,11 @@ function TransformEditor:SetupGizmo()
             proxy:SetWorldRotation(newRot)
             ::continue::
         end
+        
     end
 
     self.Gizmo.OnDragEnd = function(gizmo, isCancelled)
+        self:OnAction("")
         for _, v in pairs(self.LineVisualizations or {}) do
             gizmo.Visualizer:SetLineLength(v[1], 0)
             gizmo.Visualizer:SetLineLength(v[2], 0)
@@ -813,6 +816,10 @@ function TransformEditor:SetupGizmo()
 
         self.IsDragging = false
     end
+
+    self.Gizmo.OnAction = function(gizmo, action)
+        self:OnAction(action or "")
+    end
 end
 
 function TransformEditor:HideAndDisableGizmo()
@@ -828,5 +835,6 @@ function TransformEditor:ShowAndEnableGizmo()
     end
     self.Disabled = false
 end
+
 
 RB_GLOBALS.TransformEditor = TransformEditor.new()

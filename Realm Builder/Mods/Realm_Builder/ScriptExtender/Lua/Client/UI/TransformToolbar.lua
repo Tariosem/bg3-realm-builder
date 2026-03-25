@@ -14,7 +14,6 @@ function TransformToolbar:__init()
         Character = false,
         Scenery = false,
     }
-    self.isInputing = false
 
     local inputStateLookup = {
         MultiSelecting = "Ctrl",
@@ -79,9 +78,6 @@ function TransformToolbar:RegisterKeyInputEvents()
         end
     end
 
-    local restrainInputing = function(e)
-        return not self.Operator and not self.isInputing
-    end
     local restrainOpening = function(e)
         return self.TopToolBar and self.TopToolBar.Open
     end
@@ -90,7 +86,6 @@ function TransformToolbar:RegisterKeyInputEvents()
     end
 
     local restrains = {
-        restrainInputing,
         restrainOpening,
         restrainInCharacterCreation,
     }
@@ -106,23 +101,6 @@ function TransformToolbar:RegisterKeyInputEvents()
         ttMod:AddModuleCondition(restrain)
         buMod:AddModuleCondition(restrain)
     end
-
-    self.Subscriptions["NumericInput"] = InputEvents.SubscribeKeyInput({}, function(e)
-        if not restrainInputing(e) then return end
-        if not restrainOpening(e) then return end
-        if e.Repeat then return end
-        if e.Event ~= "KeyDown" then return end
-        if not RB_GLOBALS.TransformEditor.Gizmo then return end
-        if not RB_GLOBALS.TransformEditor.Gizmo.IsDragging then return end
-        if not RB_GLOBALS.TransformEditor.Target or #RB_GLOBALS.TransformEditor.Target == 0 then return end
-
-        if tonumber(KeybindHelpers.ParseInputToCharInput(e)) then
-            local selectedAxis = RB_GLOBALS.TransformEditor.Gizmo and RB_GLOBALS.TransformEditor.Gizmo.SelectedAxis
-            RB_GLOBALS.TransformEditor.Gizmo:CancelDragging()
-
-            self:SetupOperator(RB_GLOBALS.TransformEditor.Gizmo.ActiveMode, self:GetCurrentSpace(), selectedAxis)
-        end
-    end)
 
     local realSelectSub = InputEvents.SubscribeKeyAndMouse(function (e)
         if e.Event ~= "KeyDown" or e.Repeat then return end
@@ -509,6 +487,12 @@ end
 function TransformToolbar:RegisterTransformEditorEvents()
     local globalEditor = RB_GLOBALS.TransformEditor
     local teMod = KeybindManager:CreateModule("TransformEditor")
+
+    globalEditor.OnAction = function(sel, action)
+        if not self.OperatorInput then return end
+        self.OperatorInput.Text = action or ""
+    end
+
     teMod:AddModuleCondition(function(e)
         return globalEditor.Disabled ~= true
     end)
@@ -791,25 +775,20 @@ function TransformToolbar:RenderTopBar()
     operatorInput.Disabled = true
     operatorInput.SameLine = true
     operatorInput.IDContext = "TransformOperatorInput"
-    operatorInput.Hint = GetLoca("Input any number key when dragging gizmo to start")
+    local hintText = GetLoca("Input any number key when dragging gizmo to start")
+    operatorInput.Hint = hintText
     local inputTooltip = operatorInput:Tooltip()
     inputTooltip:AddSeparatorText("Numeric Input"):SetStyle("SeparatorTextAlign", 0.5, 0)
-    inputTooltip:AddBulletText("G/R/S: ")
+    inputTooltip:AddBulletText("G/R/L: ")
     inputTooltip:AddText("Switch to Move/Rotate/Scale mode")
     inputTooltip:AddBulletText("X/Y/Z: ")
     inputTooltip:AddText("Constrain to X/Y/Z axis")
     inputTooltip:AddBulletText("Shift + '-' :")
     inputTooltip:AddText("Toggle negative number input")
-    inputTooltip:AddBulletText("F1/F2/F3/F4 :")
-    inputTooltip:AddText("Switch to Global/Local/View/Parent space")
     inputTooltip:AddBulletText("Enter | LMB :")
     inputTooltip:AddText("Confirm the operation")
     inputTooltip:AddBulletText("Esc | RMB :")
     inputTooltip:AddText("Cancel the operation")
-
-    local notice = inputTooltip:AddText("Note: Scale only supports Local space.")
-    notice.Font = "Tiny"
-    notice:SetColor("Text", ColorUtils.HexToRGBA("C4B5B5B5"))
 
     self.OperatorInput = operatorInput
 
@@ -979,46 +958,6 @@ function TransformToolbar:RenderOtherConfigOptions(panel)
             editor.Gizmo:Visualize()
         end
     end
-end
-
-function TransformToolbar:SetupOperator(mode, space, axis)
-    if not RB_GLOBALS.TransformEditor.Target or #RB_GLOBALS.TransformEditor.Target == 0 or self.isInputing then return end
-    RB_GLOBALS.TransformEditor.Disabled = true
-    RB_GLOBALS.TransformEditor:HideAndDisableGizmo()
-    local targets = RB_GLOBALS.TransformEditor.Target --[[@as RB_MovableProxy[] ]]
-    self.isInputing = true
-    if not self.Operator then
-        if mode == "Scale" then axis = { X = true, Y = true, Z = true } end
-        self.Operator = TransformOperator.new(targets, space, mode, axis)
-        self.Operator.Cursor = self.Cursor
-    end
-
-    local inputSub = InputEvents.SubscribeKeyAndMouse(function(e)
-        local isDone = false
-        if e.Key == "ESCAPE" or e.Key == "RMB" then
-            self.Operator:Cancel()
-            isDone = true
-        elseif e.Key == "RETURN" or e.Key == "LMB" or e.Key == "KP_ENTER" then
-            self.Operator:Confirm()
-            isDone = true
-        else
-            self.Operator:ParseInput(e)
-        end
-
-        if isDone then
-            self.isInputing = false
-            self.Operator = nil
-            self.OperatorInput.Text = ""
-            self.OperatorInput.Hint = GetLoca("Input any number key when dragging gizmo to start")
-            RB_GLOBALS.TransformEditor:ShowAndEnableGizmo()
-            RB_GLOBALS.TransformEditor.Disabled = false
-            return UNSUBSCRIBE_SYMBOL
-        end
-
-        if self.OperatorInput then
-            self.OperatorInput.Text = tostring(self.Operator)
-        end
-    end)
 end
 
 function TransformToolbar:CreateBindPopup(guid)
