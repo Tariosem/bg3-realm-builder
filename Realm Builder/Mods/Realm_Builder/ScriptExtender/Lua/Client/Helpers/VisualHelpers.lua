@@ -324,8 +324,7 @@ function VisualHelpers.GetLightComponentValue(comp, propName)
         if frameField == "KeyFrames" then
             local frames = property.KeyFrames[1].Frames
             if not frames then return nil end
-            local isCubic = VisualHelpers.AreFloakKeyFramesCubic(frames)
-            if isCubic then
+            if VisualHelpers.AreFloakKeyFramesCubic(frames) then
                 return frames[1].D
             else
                 return frames[1].Value
@@ -532,6 +531,8 @@ function VisualHelpers.GetRenderable(entity, descIndex, attachIndex)
     return nil
 end
 
+--- @param entity EntityHandle|GUIDSTRING
+--- @param attachIndex integer
 function VisualHelpers.GetAttachment(entity, attachIndex)
     local visual = VisualHelpers.GetEntityVisual(entity)
     if not visual then return nil end
@@ -543,15 +544,44 @@ function VisualHelpers.GetAttachment(entity, attachIndex)
     return nil
 end
 
+
 function VisualHelpers.GetMaterial(entity, descIndex, attachIndex)
     local renderable = VisualHelpers.GetRenderable(entity, descIndex, attachIndex)
     return renderable and renderable.ActiveMaterial and renderable.ActiveMaterial.Material
 end
 
+--- @param entity EntityHandle|GUIDSTRING
+--- @param descIndex integer
+--- @param attachIndex integer?
+--- @return AppliedMaterial|nil
 function VisualHelpers.GetActiveMaterial(entity, descIndex, attachIndex)
     local renderable = VisualHelpers.GetRenderable(entity, descIndex, attachIndex)
     return renderable and renderable.ActiveMaterial
 end
+
+--- @param visual Visual
+--- @param descIndex integer
+--- @param attachIndex integer?
+function VisualHelpers.GetActiveMaterialFromVisual(visual, descIndex, attachIndex)
+    if not visual then return nil end
+    local renderable = nil
+    if attachIndex then
+        if visual.Attachments and visual.Attachments[attachIndex] and visual.Attachments[attachIndex].Visual.ObjectDescs then
+            local attach = visual.Attachments[attachIndex].Visual
+            if attach.ObjectDescs and attach.ObjectDescs[descIndex] then
+                local desc = attach.ObjectDescs[descIndex]
+                renderable = desc and desc.Renderable
+            end
+        end
+    else
+        if visual.ObjectDescs and visual.ObjectDescs[descIndex] then
+            local desc = visual.ObjectDescs[descIndex]
+            renderable = desc and desc.Renderable
+        end
+    end
+
+    return renderable and renderable.ActiveMaterial
+end 
 
 --- @param entity EntityHandle|GUIDSTRING
 --- @param compIndex number

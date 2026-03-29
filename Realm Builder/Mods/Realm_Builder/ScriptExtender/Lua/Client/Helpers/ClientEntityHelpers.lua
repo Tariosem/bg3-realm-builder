@@ -172,6 +172,11 @@ function RBGetDisplayNameForTemplateId(uuid)
 end
 
 function RBGetTemplateNameForGuid(guid)
+    local stored = EntityStore:GetStoredData(guid)
+    if stored and stored.TemplateId then
+        return RBStringUtils.TrimTail(stored.TemplateId, 37)
+    end
+
     local templateId = EntityHelpers.GetTemplateId(guid)
     if not templateId or templateId == "" then return nil end
     local template = Ext.Template.GetTemplate(RBUtils.TakeTailTemplate(templateId))

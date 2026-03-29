@@ -10,6 +10,7 @@ RBUtils.RequireFiles("Client/Editor/", {
     "TransformEditor",
     "MaterialProxy",
     "MaterialEditor",
+    "EntityEffectEditor",
     "PlacementPreview",
     "OrbitalCamera"
 })

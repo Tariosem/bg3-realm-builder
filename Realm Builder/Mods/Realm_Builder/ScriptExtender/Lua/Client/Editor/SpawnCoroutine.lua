@@ -254,7 +254,6 @@ end
 --- @param data RB_SceneData
 function Commands.SpawnPreset(data)
     local spawnedGuids = {}
-    local tree = TreeTable.FromTableStatic(data.Tree)
     local toSpawnCnt = RBTableUtils.CountMap(data.Spawned)
     local pivotTransform = {
         Translate = Vec3.new(data.Position),
@@ -276,6 +275,7 @@ function Commands.SpawnPreset(data)
     local reqId = getSpawnId()
     setSpawnIdCallback(reqId, function(data)
         table.insert(spawnedGuids, data.Guid)
+
         --_P("Spawned: " .. #spawnedGuids .. " / " .. toSpawnCnt)
         if #spawnedGuids == toSpawnCnt then
             pushCommand()
@@ -299,10 +299,6 @@ function Commands.SpawnPreset(data)
         if not pos or not rot then
             Warning("[SpawnPreset] Entity data missing position or rotation.")
             return
-        end
-
-        if tree then
-            entData.Path = tree:GetPath(savedGuid, true, true)
         end
 
         if not entData.Group then

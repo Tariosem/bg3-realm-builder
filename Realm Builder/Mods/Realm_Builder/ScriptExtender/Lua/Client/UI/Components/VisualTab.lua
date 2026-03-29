@@ -2,7 +2,7 @@ local EntityEffectTabClass = Ext.Require("Client/UI/Components/EntityEffectTab.l
 local VISUALTAB_WIDTH = 800 * SCALE_FACTOR
 local VISUALTAB_HEIGHT = 1000 * SCALE_FACTOR
 
-local visualTabCache = {} --[[@as table<GUIDSTRING|EntityHandle, VisualTab> ]]
+local visualTabCache = {} --[[@type table<GUIDSTRING|EntityHandle, VisualTab> ]]
 
 local ClientVisualPresetData = {}
 local ClientOriginalVisualData = {}
@@ -58,6 +58,27 @@ function GetVisualPresetData(templateName, presetName)
     return templateData[presetName]
 end
 
+local function makeMaterialKey(guid, attachIndex, descIndex)
+    if not attachIndex or attachIndex < 0 then
+        return guid .. "::" .. descIndex
+    end
+
+    return guid .. "::" .. attachIndex .. "::" .. descIndex
+end
+
+--- @param str string
+--- @return string guid, number? attachIndex, number? descIndex
+local function parseMateiralKey(str)
+    local parts = RBStringUtils.SplitByString(str, "::")
+    local guid = parts[1]
+    local cnt = #parts
+    local attachIndex = cnt == 3 and tonumber(parts[2]) or nil
+    local descIndex = tonumber(parts[cnt]) or nil
+
+    return guid, attachIndex, descIndex
+end
+
+
 EventsSubscriber.RegisterOnSessionLoaded(function()
     --local now = Ext.Utils.MonotonicTime()
     LoadVisualPresetData()
@@ -69,12 +90,18 @@ end)
 --- @alias RB_EffectsTable table<string, table<string, any>> -- componentType::componentIndex -> { PropertyName = Value, ... }
 
 --- @class VisualTab
---- @field Materials RB_MaterialsTable
+--- @field MaterialTabs RB_MaterialsTable
+--- @field MaterialEditors table<string, MaterialEditor>
 --- @field EntityEffectTab RB_EntityEffectTab
+--- @field EntityEffectEditor EntityEffectEditor
 --- @field guid GUIDSTRING
 --- @field templateName string
+--- @field currentPreset RB_VisualPreset
 --- @field new fun(guid: GUIDSTRING?, displayName: string?, parent: ExtuiTreeParent?, templateName: string?): VisualTab
+--- @field GetEntity fun(): EntityHandle?
+--- @field GetVisual fun(): Visual?
 --- @field FetchByGuid fun(guid: GUIDSTRING): VisualTab|nil
+--- @field Refresh fun()
 VisualTab = {}
 VisualTab.__index = VisualTab
 
@@ -96,7 +123,6 @@ function VisualTab.new(guid, displayName, parent, templateName, entity)
     end
 
     if guid and visualTabCache[guid] then
-        visualTabCache[guid]:Refresh()
         return visualTabCache[guid]
     end
 
@@ -155,12 +181,16 @@ function VisualTab:__init(guid, displayName, parent, templateName)
     self.isVisible = false
     self.displayName = displayName or "Unknown"
 
-    self.Materials = {}
+    self.MaterialEditors = {}
+    self.MaterialTabs = {}
     self.Effects = {}
     self.resetParams = {}
-    self.EntityEffectTab = EntityEffectTabClass.new(nil, self.GetEntity, self.guid)
+    self.EntityEffectTab = nil
 
-    self.currentPreset = EntityStore[guid] and EntityStore[guid].VisualPreset or nil
+    self:InitMaterialEditors()
+    self:InitEntityEffectEditor()
+
+    self.currentPreset = EntityStore[guid] and EntityStore[guid].VisualPreset or {}
 
     if not templateName and self.guid ~= "" and not EntityStore[self.guid] then
         NetChannel.GetTemplate:RequestToServer({ Guid = self.guid }, function(response)
@@ -180,6 +210,63 @@ function VisualTab:__init(guid, displayName, parent, templateName)
     end
 end
 
+function VisualTab:InitMaterialEditors()
+    local visual = self:GetVisual()
+    if not visual then
+        Warning("VisualTab: Cannot initialize material editors because visual is nil for guid " .. self.guid)
+        return
+    end
+
+    --- init material editors for attachments
+
+    local attachments = visual.Attachments or {}
+    for attachIndex, attach in pairs(attachments) do
+        local descs = attach.Visual.ObjectDescs or {}
+        for descIndex, desc in pairs(descs) do
+            local matName = desc.Renderable.ActiveMaterial.MaterialName
+            local function getLivaMaterial()
+                local visual = self:GetVisual()
+                if not visual then return nil end
+                return VisualHelpers.GetActiveMaterialFromVisual(visual, descIndex, attachIndex)
+            end
+            local function getParams()
+                local mat = getLivaMaterial()
+                if not mat then return nil end
+                return mat.Material.Parameters
+            end 
+            local matEditor = MaterialEditor.new(matName, getLivaMaterial, getParams)
+            local key = makeMaterialKey(self.guid, attachIndex, descIndex)
+            self.MaterialEditors[key] = matEditor
+        end
+    end
+
+
+    local descs = visual.ObjectDescs or {}
+    for descIndex, desc in pairs(descs) do
+        local matName = desc.Renderable.ActiveMaterial.MaterialName
+        local function getLivaMaterial()
+            local visual = self:GetVisual()
+            if not visual then return nil end
+            return VisualHelpers.GetActiveMaterialFromVisual(visual, descIndex)
+        end
+        local function getParams()
+            local mat = getLivaMaterial()
+            if not mat then return nil end
+            return mat.Material.Parameters
+        end 
+        local matEditor = MaterialEditor.new(matName, getLivaMaterial, getParams)
+        local key = makeMaterialKey(self.guid, nil, descIndex)
+        self.MaterialEditors[key] = matEditor
+    end
+
+end
+
+function VisualTab:InitEntityEffectEditor()
+    self.EntityEffectEditor = EntityEffectEditor.new(function ()
+        return self:GetEntity()
+    end)
+end
+
 function VisualTab:SetupTemplate()
     local stored = EntityStore:GetStoredData(self.guid)
     self.templateId = self.templateId or (stored and stored.TemplateId) or nil
@@ -197,20 +284,15 @@ function VisualTab:SetupTemplate()
     self.savedPresets = ClientVisualPresetData[templateName]
 
     self:Load()
-
-    if self.currentPreset then
-        self:LoadPreset(self.currentPreset)
-    end
 end
 
 function VisualTab:ReapplyCurrentChanges()
-    for _, mat in pairs(self.Materials) do
-        mat.Editor:Reapply()
+    for _, mat in pairs(self.MaterialEditors) do
+        mat:Reapply()
     end
-end
-
-function VisualTab:GetCurrentPreset()
-    return self.currentPreset
+    if self.EntityEffectEditor then
+        self.EntityEffectEditor:Reapply()
+    end
 end
 
 function VisualTab:Render(retryCnt)
@@ -313,6 +395,7 @@ function VisualTab:Render(retryCnt)
 end
 
 function VisualTab:RenderEffectSection()
+    self.EntityEffectTab = self.EntityEffectTab or EntityEffectTabClass.new(self.editorWindow, self.EntityEffectEditor)
     self.EntityEffectTab:SetUIParent(self.editorWindow)
     self.EntityEffectTab:Render()
 end
@@ -328,7 +411,7 @@ function VisualTab:RenderMaterialContextPopup()
 
     contextMenu:AddItem("Copy To Other Materials", function(sel)
         local keyName = self.SelectedMaterial
-        local matTab = self.Materials[keyName]
+        local matTab = self.MaterialTabs[keyName]
         if not matTab or not matTab.Editor then return end
         -- only copy number/vector parameters
         local paramSet = {
@@ -337,14 +420,14 @@ function VisualTab:RenderMaterialContextPopup()
             [3] = matTab.Editor.Parameters[3],
             [4] = matTab.Editor.Parameters[4],
         }
-        for _, otherMatTab in pairs(self.Materials) do
+        for _, otherMatTab in pairs(self.MaterialTabs) do
             otherMatTab.Editor:ApplyParameters(paramSet)
             otherMatTab:UpdateUIState()
         end
     end)
 
     contextMenu:AddItem("Open Material Mixer", function(sel)
-        local matTab = self.Materials[self.SelectedMaterial]
+        local matTab = self.MaterialTabs[self.SelectedMaterial]
         if not matTab then return end
         local allParams = matTab.Editor.ParamSet.Parameters
         local mixerParams = {}
@@ -381,20 +464,20 @@ function VisualTab:RenderMaterialContextPopup()
     end)
 
     contextMenu:AddItem("Reset All", function(sel)
-        local matTab = self.Materials[self.SelectedMaterial]
+        local matTab = self.MaterialTabs[self.SelectedMaterial]
         if not matTab then return end
         matTab:ResetAll()
     end).DontClosePopups = true
 
     contextMenu:AddItem("Save Current as Default", function(sel)
-        local matTab = self.Materials[self.SelectedMaterial]
+        local matTab = self.MaterialTabs[self.SelectedMaterial]
         if not matTab then return end
         matTab.Editor:SaveCurrentParameters()
     end).DontClosePopups = true
 
     contextMenu:AddItem("Export As Material", function(sel)
         local keyName = self.SelectedMaterial
-        local matTab = self.Materials[keyName]
+        local matTab = self.MaterialTabs[keyName]
         if not matTab then return end
         local uuid = RBUtils.Uuid_v4()
         local finalPath = "Realm_Builder/Materials/" .. uuid .. ".lsx"
@@ -417,7 +500,7 @@ function VisualTab:RenderMaterialContextPopup()
     end)
 
     contextMenu:AddItem("Export As Preset", function(sel)
-        local matTab = self.Materials[self.SelectedMaterial]
+        local matTab = self.MaterialTabs[self.SelectedMaterial]
         if not matTab then return end
 
         local save = LSXHelpers.BuildMaterialPresetBank()
@@ -574,10 +657,11 @@ function VisualTab:RenderPresetsCell(parent)
     resetAllButton.OnClick = function(_)
         local isChara = EntityHelpers.IsCharacter(self.guid)
 
-        for key, matTab in pairs(self.Materials) do
-            matTab.Editor:ClearParameters()
-            matTab.Editor:ResetAll()
-            matTab:UpdateUIState()
+        for key, matEditor in pairs(self.MaterialEditors) do
+            matEditor:ResetAll()
+            if self.MaterialTabs[key] then
+                self.MaterialTabs[key]:UpdateUIState()
+            end
         end
 
         if isChara then
@@ -588,7 +672,10 @@ function VisualTab:RenderPresetsCell(parent)
         end
 
         if not isChara then
-            self.EntityEffectTab:ResetAllEffects()
+            self.EntityEffectEditor:ResetAll()
+            if self.EntityEffectTab then
+                self.EntityEffectTab:UpdateUIState()
+            end
         end
     end
 
@@ -756,27 +843,7 @@ function VisualTab:RenderAttachmentEditors()
             local function getliveMat()
                 local visual = self:GetVisual(self.guid)
                 if not visual then return nil end
-
-                local attach = visual.Attachments[attIndex]
-
-                if not attach then return nil end
-
-                local attachVisual = attach.Visual
-                if not attachVisual then return nil end
-
-                local vres = attachVisual.VisualResource
-                if not vres then return nil end
-
-                local vresId = vres.Guid
-
-                if vresId ~= initVresId then
-                    return nil
-                end
-
-                local desc = attachVisual.ObjectDescs[descIndex]
-                if not desc or not desc.Renderable then return nil end
-
-                return desc.Renderable.ActiveMaterial
+                return VisualHelpers.GetActiveMaterialFromVisual(visual, descIndex, attIndex)
             end
 
             --- @return MaterialParameters|nil
@@ -788,8 +855,10 @@ function VisualTab:RenderAttachmentEditors()
 
             local keyName = initVresId .. "::" .. tostring(attIndex) .. "::" .. tostring(descIndex)
 
-            local materialTab = self.Materials[keyName] or
-                MaterialTab.new(objNode, matName, getliveMat, getliveParams) --[[@as MaterialTab]]
+            local materialEditor = self.MaterialEditors[keyName] or
+                MaterialEditor.new(matName, getliveMat, getliveParams) --[[@as MaterialEditor]]
+            local materialTab = self.MaterialTabs[keyName] or
+                MaterialTab.new(objNode, materialEditor) --[[@as MaterialTab]]
             materialTab.Parent = objNode
             materialTab.Editor.Instance = getliveMat
             materialTab.Editor.ParamsSrc = getliveParams
@@ -815,7 +884,7 @@ function VisualTab:RenderAttachmentEditors()
                 end
             end
 
-            self.Materials[keyName] = materialTab
+            self.MaterialTabs[keyName] = materialTab
         end
 
         ::continue::
@@ -899,13 +968,17 @@ function VisualTab:RenderObjectEditor()
         --- @return MaterialParameters|nil
 
         local keyName = linkId .. "::" .. tostring(descIndex)
-        local materialEditor = self.Materials[keyName] or
-            MaterialTab.new(materialNode, material.MaterialName, getliveMat, getliveParams) --[[@as MaterialTab]]
-        materialEditor.LinkId = linkId
-        materialEditor.Parent = materialNode
-        materialEditor.Editor.Instance = getliveMat
-        materialEditor.Editor.ParamsSrc = getliveParams
-        materialEditor.Editor.ParamSet:Update(getliveParams())
+
+        local materialEditor = self.MaterialEditors[keyName] or
+            MaterialEditor.new(material.MaterialName, getliveMat, getliveParams) --[[@as MaterialEditor]]
+        materialEditor.Instance = getliveMat
+        materialEditor.ParamsSrc = getliveParams
+        materialEditor.ParamSet:Update(getliveParams())
+
+        local materialTab = self.MaterialTabs[keyName] or
+            MaterialTab.new(materialNode, materialEditor) --[[@as MaterialTab]]
+        materialTab.LinkId = linkId
+        materialTab.Parent = materialNode
 
         materialNode.OnRightClick = function()
             materialNode:OnExpand()
@@ -914,9 +987,9 @@ function VisualTab:RenderObjectEditor()
         end
 
         materialNode.OnExpand = function()
-            materialEditor:Render()
-            materialEditor:UpdateUIState()
-            materialEditor.ParentNode.OnRightClick = function()
+            materialTab:Render()
+            materialTab:UpdateUIState()
+            materialTab.ParentNode.OnRightClick = function()
                 self.SelectedMaterial = keyName
                 self.materialContextPopup:Open()
             end
@@ -925,7 +998,7 @@ function VisualTab:RenderObjectEditor()
             materialNode.OnExpand = function() end
         end
 
-        self.Materials[keyName] = materialEditor
+        self.MaterialTabs[keyName] = materialTab
 
         ::continue::
     end
@@ -951,7 +1024,7 @@ end
 
 --- @return RB_VisualPreset
 function VisualTab:SaveCurrentState()
-    local effects = self.EntityEffectTab.Effects or {}
+    local effects = self.EntityEffectEditor and self.EntityEffectEditor:ExportChanges() or {}
     local resetParams = self.resetParams or {}
     local presetData = {
         Materials = {},
@@ -960,7 +1033,7 @@ function VisualTab:SaveCurrentState()
 
     local localTransforms = {}
     local Mats = {}
-    for key, mat in pairs(self.Materials) do
+    for key, mat in pairs(self.MaterialTabs) do
         local params = mat:ExportChanges()
         local hasChanges = false
         for typeRef, changed in pairs(params) do
@@ -1049,7 +1122,6 @@ function VisualTab:Save(name, overwrite)
     end
 
     --Info("Saved VisualTab preset as '" .. saveName .. "' for template: " .. templateId)
-    self.currentPreset = saveName
     self.savedPresets[saveName] = RBUtils.DeepCopy(oriFile[saveName])
     if EntityHelpers.IsPartyMember(self.guid) then
 
@@ -1070,7 +1142,7 @@ function VisualTab:ExportPreset()
         Transforms = {},
     }
 
-    for key, mat in pairs(self.Materials) do
+    for key, mat in pairs(self.MaterialTabs) do
         local params = mat:ExportChanges()
         local hasChanges = false
         for typeRef, changed in pairs(params) do
@@ -1196,32 +1268,28 @@ function VisualTab:Remove(name)
 end
 
 function VisualTab:LoadPreset(name)
+    if type(name) ~= "string" or name == "" then
+        Error("Invalid preset name: " .. tostring(name))
+        return false
+    end
+
     if not self.savedPresets then
         Error("No saved preset found with name: " .. name)
         return false
     end
 
-    local preset = self.savedPresets[name]
+    local preset = self.savedPresets[name] --[[@as RB_VisualPreset ]]
 
     if not preset then
         Error("No saved preset found with name: " .. name)
         return false
     end
 
-    self.EntityEffectTab:ResetAllEffects()
+    self.EntityEffectEditor:ResetAll()
 
-    VisualHelpers.ApplyVisualParams(self.guid, preset)
-    self.currentPreset = name
-    self.Effects = RBUtils.DeepCopy(preset.Effects) or {}
-    self.EntityEffectTab:UpdateEffectsTableReference(self.Effects)
+    self:ApplyPreset(preset)
+    
     self.LocalTransforms = RBUtils.DeepCopy(preset.Transforms) or {}
-
-    for key, matParams in pairs(preset.Materials or {}) do
-        if self.Materials[key] then
-            self.Materials[key].Editor:ApplyParameters(matParams)
-            self.Materials[key]:UpdateUIState()
-        end
-    end
 
     if self.loadCombo then
         ImguiHelpers.SetCombo(self.loadCombo, name)
@@ -1233,7 +1301,54 @@ function VisualTab:LoadPreset(name)
         EntityStore[self.guid].VisualPreset = name
     end
 
-    self.EntityEffectTab:UpdateAllEffects()
+    self.EntityEffectTab:UpdateUIState()
+end
+
+--- @param presetData RB_VisualPreset
+function VisualTab:ApplyPreset(presetData)
+    if not presetData or type(presetData) ~= "table" then
+        Error("Invalid preset data provided for application.")
+        return false
+    end
+
+    --VisualHelpers.ApplyVisualParams(self.guid, presetData)
+    local entity = self:GetEntity()
+    if not entity then
+        Error("Entity not found for GUID: " .. self.guid)
+        return false
+    end
+
+    for key, matParams in pairs(presetData.Materials or {}) do
+        if self.MaterialEditors[key] then
+            self.MaterialEditors[key]:ApplyParameters(matParams)
+            if self.MaterialTabs[key] then
+                self.MaterialTabs[key]:UpdateUIState()
+            end
+        end
+    end
+
+    for key, transform in pairs(presetData.Transforms or {}) do
+        local _, attachIndex, descIndex = parseMateiralKey(key)
+        if not attachIndex or not descIndex then
+            Error("Invalid material key format in preset transforms: " .. key)
+            goto continue
+        end
+        local renderable = VisualHelpers.GetRenderable(entity, descIndex, attachIndex)
+        if transform.Scale and renderable then
+            renderable:SetWorldScale(transform.Scale)
+        end
+        ::continue::
+    end
+
+    if next(presetData.Effects) then
+        self.EntityEffectEditor:ImportChanges(presetData.Effects)
+        if self.EntityEffectTab then
+            self.EntityEffectTab:UpdateUIState()
+        end
+    end
+
+
+    return true
 end
 
 --- @return string[]
@@ -1259,7 +1374,7 @@ function VisualTab:Collapsed()
 
     self.EntityEffectTab:Collapsed()
 
-    for key, matTab in pairs(self.Materials) do
+    for key, matTab in pairs(self.MaterialTabs) do
         matTab:ClearRefs()
     end
 
@@ -1294,6 +1409,7 @@ function VisualTab:Collapsed()
     end
 
     self.isVisible = false
+    self.isWindow = false
 end
 
 function VisualTab:Refresh(retryCnt)
@@ -1342,7 +1458,7 @@ end
 function VisualTab:ExportModifiedMaterialParams()
     local exportedParams = {} --[[@as RB_ParameterSet ]]
     local hasChanges = false
-    for key, mat in pairs(self.Materials) do
+    for key, mat in pairs(self.MaterialTabs) do
         local params = mat:ExportChanges()
 
         for typeRef, paramSet in pairs(params) do
@@ -1371,7 +1487,7 @@ end
 function VisualTab:ExportObjectEdit()
     local objEdit = {}
 
-    for key, mat in RBUtils.FilteredPairs(self.Materials, function(k, v)
+    for key, mat in RBUtils.FilteredPairs(self.MaterialTabs, function(k, v)
         return v.LinkId and v:HasChanges()
     end) do
         objEdit[mat.LinkId] = mat:ExportChanges()
@@ -1390,9 +1506,11 @@ function VisualTab:OnAttach() end
 
 function VisualTab:OnChange() end
 
-VisualTabUtils = {}
+VisualTabHelpers = {}
 
-function VisualTabUtils.GetCurrentVisualEdit(guid)
+---@param guid GUIDSTRING
+---@return RB_VisualPreset?
+function VisualTabHelpers.GetCurrentVisualEdit(guid)
     local visualTab = visualTabCache[guid] --[[@as VisualTab]]
     if not visualTab then
         Error("VisualTabUtils.GetCurrentVisualEdit - No VisualTab found for GUID: " .. guid)
@@ -1409,4 +1527,39 @@ function VisualTabUtils.GetCurrentVisualEdit(guid)
     end
 
     return result
+end
+
+--- @param guid GUIDSTRING
+--- @param presetData RB_VisualPreset
+--- @return boolean
+function VisualTabHelpers.SetVisualEdit(guid, presetData)
+    local visualTab = visualTabCache[guid] --[[@as VisualTab]]
+    if not visualTab then
+        visualTab = VisualTab.new(guid, RBGetName(guid), nil, RBGetTemplateNameForGuid(guid))
+    end
+
+    local ok, err = xpcall(function()
+        visualTab:ApplyPreset(presetData)
+    end, debug.traceback)
+
+    if not ok then
+        Error("VisualTabHelper.SetVisualEdit - Error while applying visual edit: " .. err)
+        return false
+    end
+
+    return true
+end
+
+function VisualTabHelpers.ReapplyAll()
+    for guid, visualTab in pairs(visualTabCache) do
+        if visualTab and visualTab.isValid then
+            local ok, err = xpcall(function()
+                visualTab:ReapplyCurrentChanges()
+            end, debug.traceback)
+
+            if not ok then
+                Error("VisualTabHelpers.ReapplyAll - Error while reapplying changes for GUID " .. guid .. ": " .. err)
+            end
+        end
+    end
 end

@@ -88,6 +88,8 @@ function RBStringUtils.SplitByString(input, separator, trimWhitespace)
     return tokens
 end
 
+RBStringUtils.Split = RBStringUtils.SplitByString -- alias 
+
 --- @param input string
 --- @return string[]
 function RBStringUtils.SplitBySpace(input)

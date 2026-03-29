@@ -98,18 +98,20 @@ function OutlinerMenu:ToggleDetach()
 end
 
 function OutlinerMenu:RenderMenu()
+    local utilsLoca = GetLoca("Utils")
+    local detachLoca = GetLoca("Detach")
     if self.isWindow then
         self.mainMenu = self.panel:AddMainMenu()
-        self.debugMenu = self.mainMenu:AddMenu(GetLoca("Debug"))
-        self.detachButton = self.mainMenu:AddMenu(GetLoca("Detach"))
+        self.debugMenu = self.mainMenu:AddMenu(utilsLoca)
+        self.detachButton = self.mainMenu:AddMenu(detachLoca)
     else
         local menuTable = self.panel:AddTable("PropsMenuMainMenuTable", 6)
         local menuRow = menuTable:AddRow()
         local debugCell = menuRow:AddCell()
         local detachCell = menuRow:AddCell()
 
-        local debugOpenButton = debugCell:AddSelectable(GetLoca("Debug"))
-        local detachButton = detachCell:AddSelectable(GetLoca("Detach"))
+        local debugOpenButton = debugCell:AddSelectable(utilsLoca)
+        local detachButton = detachCell:AddSelectable(detachLoca)
 
         self.debugMenu = debugCell:AddPopup("DebugMenu") --[[@as ExtuiPopup]]
         self.detachButton = detachButton
@@ -138,7 +140,10 @@ function OutlinerMenu:RenderMenu()
 
     --- @diagnostic disable-next-line
     self.bruteForceDeleteAllButton = ImguiElements.AddMenuButton(self.debugMenu, GetLoca("Deletes all props, can't undo"), bfDeleteAllOpe, self.isWindow)
+
     StyleHelpers.ApplyDangerSelectableStyle(self.bruteForceDeleteAllButton)
+
+    ImguiElements.AddMenuButton(self.debugMenu, GetLoca("Reapply All Visual Changes"), VisualTabHelpers.ReapplyAll, self.isWindow)
 end
 
 local eyeSlashUV = RB_ICON_UV01[RB_ICONS.Eye_Slash]
@@ -743,7 +748,6 @@ function OutlinerMenu:CommonContext()
                 Modifiers = {"CTRL"}
             }
         },
-
     }
 
     return self.commonContextItems
@@ -1091,22 +1095,6 @@ function OutlinerMenu:FocusTab(guid, doDetach)
         end
         self.focus = guid
     end
-end
-
-function OutlinerMenu:FocusEntityVisualTab(guid)
-    local entityTab = self.entityTabs[guid]
-    if not (entityTab and entityTab.isValid and entityTab.visualTab) then
-        return false
-    end
-
-    if entityTab.visualTab.isWindow and entityTab.visualTab.isVisible then
-        ImguiHelpers.FocusWindow(entityTab.visualTab.panel)
-    else
-        entityTab.visualTab.isAttach = false
-        entityTab.visualTab:Refresh()
-        ImguiHelpers.FocusWindow(entityTab.visualTab.panel)
-    end
-    return true
 end
 
 function OutlinerMenu:UpdateList(onComplete)

@@ -33,17 +33,24 @@ end)
 NetChannel.ApplyVisualPreset:SetHandler(function(data, userID)
     local guid = data.Guid
     local templateName = data.TemplateName
-    local presetName = data.VisualPreset
-    if presetName == "" or presetName == nil then
+    local preset = data.VisualPreset
+    if preset == "" or preset == nil then
         --Warning("ApplyVisualPreset: Preset name is empty or nil.")
         return
     end
-    local preset = GetVisualPresetData(templateName, presetName)
-    if preset == nil then
-        Warning("ApplyVisualPreset: Preset not found for template " .. templateName .. " and preset name " .. presetName)
-        return
+    local presetData = {}
+
+    if type(preset) == "string" then
+        presetData = GetVisualPresetData(templateName, preset)
+        if presetData == nil then
+            Warning("ApplyVisualPreset: Preset not found for template " .. templateName .. " and preset name " .. preset)
+            return
+        end
+    else
+        presetData = preset
     end
-    VisualHelpers.ApplyVisualParams(guid, preset)
+
+    VisualTabHelpers.SetVisualEdit(guid, presetData)
 end)
 
 NetChannel.ClientTimer:SetHandler(function (data, userID)

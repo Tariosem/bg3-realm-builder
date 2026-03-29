@@ -1,6 +1,7 @@
 --- @class RB_EntityEffectTab
 --- @field Effects RB_EffectsTable -- EffectType::index -> EffectProperty -> Value
 --- @field resetFuncs table<string, table<string, fun()>> -- EffectType::index -> EffectProperty -> reset function
+--- @field reapplyFuncs table<string, table<string, fun()>> -- EffectType::index -> EffectProperty -> reapply function
 --- @field updateFuncs table<string, table<string, fun()>> -- EffectType::index -> EffectProperty -> update function
 --- @field resetParams table<string, table<string, any>> -- EffectType::index -> EffectProperty -> reset value
 --- @field parent ExtuiTreeParent
@@ -9,134 +10,27 @@
 --- @field effectHeader ExtuiCollapsingHeader
 --- @field effectContextPopup ExtuiPopup
 --- @field SelectedEffectComponent string
---- @field new fun(parent?: ExtuiTreeParent, entityGetter: fun():EntityHandle, guid:GUIDSTRING):RB_EntityEffectTab
+--- @field Editor EntityEffectEditor
+--- @field new fun(parent?: ExtuiTreeParent, editor:EntityEffectEditor  ):RB_EntityEffectTab
 local EntityEffectTab = _Class("EntityEffectTab")
 
 --#region effects
 
-local currenSupportEffects = {
-    ["Light"] = true,
-    ["ParticleSystem"] = true,
-}
-
-local lightCompProperties = {
-    "IntensityProperty",
-    "RadiusProperty",
-    "FlickerSpeedProperty",
-    "FlickerAmountProperty",
-    "ColorProperty",
-}
-
-local lightEntityProperties = {
-    "LightChannelFlag",
-    "Flags",
-    "LightType",
-    "SpotLightInnerAngle",
-    "SpotLightOuterAngle",
-    "Gain",
-    "EdgeSharpening",
-    "ScatteringIntensityScale",
-    "IntensityOffset",
-    --"Kelvin",
-    "DirectionLightAttenuationFunction",
-    "DirectionLightAttenuationEnd",
-    "DirectionLightAttenuationSide",
-    "DirectionLightAttenuationSide2",
-    "DirectionLightDimensions",
-    "Color",
-}
-
-local particleSystemCompProperties = {
-    "Brightness_",
-    "UniformScale",
-    "Color"
-}
-
-local function copyLightComponentToTable(component, table)
-    for _, propName in ipairs(lightCompProperties) do
-        local value = VisualHelpers.GetEffectComponentValue(component, propName)
-        table[propName] = value
-    end
-    local lightEntity = component.LightEntity
-    if lightEntity and lightEntity.Light then
-        local light = lightEntity.Light --[[@as LightComponent]]
-        for _, propName in ipairs(lightEntityProperties) do
-            local value = light[propName]
-            table[propName] = value
-        end
-    end
-end
-
-local function copyParticleSystemComponentToTable(component, table)
-    for _, propName in ipairs(particleSystemCompProperties) do
-        local value = component[propName]
-        table[propName] = value
-    end
-end
-
-local effectComponentCopyHandlers = {
-    Light = copyLightComponentToTable,
-    ParticleSystem = copyParticleSystemComponentToTable,
-}
-
-function EntityEffectTab:__init(parent, entityGetter, guid)
-    self.Effects = {}
-    self.resetFuncs = {}
+function EntityEffectTab:__init(parent, editor)
     self.updateFuncs = {}
-    self.resetParams = {}
     self.parent = parent
-    self.GetEntity = entityGetter
-    self.guid = guid
-    self:SaveCurrentState()
+    self.Editor = editor
 end
 
 local function isEntityHasEffect(entity)
     return entity and entity.Effect and entity.Effect.Timeline and entity.Effect.Timeline.Components and #entity.Effect.Timeline.Components > 0
 end
 
-local function getEntityEffectComponent(entity, compIndex)
-    if not isEntityHasEffect(entity) then
-        return nil
-    end
-
-    return entity.Effect.Timeline.Components[compIndex]
-end
-
-function EntityEffectTab:SaveCurrentState()
-    local entity = self:GetEntity() --[[@as EntityHandle]]
-    if not isEntityHasEffect(entity) then
-        return
-    end
-    local effectComp = entity.Effect
-    local timeline = effectComp and effectComp.Timeline
-    local comps = timeline and timeline.Components
-
-    if not comps then
-        return
-    end
-
-    for compIndex, component in RBUtils.FilteredPairs(comps, function(idx, comp)
-        return currenSupportEffects[comp.TypeName] == true
-    end) do
-        local compKey = component.TypeName .. "::" .. tostring(compIndex)
-        local copyHandler = effectComponentCopyHandlers[component.TypeName]
-        local resetTable = {}
-        self.resetParams[compKey] = resetTable
-        if copyHandler then
-            copyHandler(component, resetTable)
-        end
-    end
-end
-
-function EntityEffectTab:UpdateEffectsTableReference(effectsTable)
-    self.Effects = effectsTable
-end
-
 function EntityEffectTab:SetUIParent(parent)
     self.parent = parent
 end
 
-function EntityEffectTab:UpdateAllEffects()
+function EntityEffectTab:UpdateUIState()
     for compKey, paramFuncs in pairs(self.updateFuncs) do
         for paramName, updateFunc in pairs(paramFuncs) do
             updateFunc()
@@ -146,18 +40,9 @@ end
 
 function EntityEffectTab:Collapsed()
     self.updateFuncs = {}
-    self.resetFuncs = {}
     if self.effectHeader then
         self.effectHeader:Destroy()
         self.effectHeader = nil
-    end
-end
-
-function EntityEffectTab:ResetAllEffects()
-    for compKey, paramFuncs in pairs(self.resetFuncs) do
-        for paramName, resetFunc in pairs(paramFuncs) do
-            resetFunc()
-        end
     end
 end
 
@@ -167,14 +52,8 @@ function EntityEffectTab:Render()
         return
     end
 
-    local entity = self:GetEntity() --[[@as EntityHandle]]
-    if not isEntityHasEffect(entity) then
-        if self.effectHeader then
-            pcall(self.effectHeader.Destroy, self.effectHeader)
-            self.effectHeader = nil
-        end
-        return
-    end
+    local effect = self.Editor:GetEntityEffect()
+    if not effect then return end
 
     if self.effectHeader then
         self.effectHeader:Destroy()
@@ -190,18 +69,12 @@ function EntityEffectTab:Render()
 end
 
 function EntityEffectTab:RenderEffectEditor()
-    local entity = self:GetEntity() --[[@as EntityHandle]]
-    --self.effectRoot = self.effectHeader:AddTree(GetLoca("Effects"))
-    if not isEntityHasEffect(entity) then
-        return
-    end
-
     self:SetupEffectContextMenu()
 
     self:RenderEffectTimelineEditor()
 
     -- WHY is effect so disorderly
-    for compIndex, component in ipairs(entity.Effect.Timeline.Components) do
+    for compIndex, component in ipairs(self.Editor:GetAllComponents()) do
         --_P(component.TypeName)
         local newTree = nil
         local indexSuffix = tostring(compIndex)
@@ -230,12 +103,7 @@ function EntityEffectTab:RenderEffectEditor()
 end
 
 function EntityEffectTab:RenderEffectTimelineEditor()
-    local entity = self:GetEntity() --[[@as EntityHandle]]
-    if not isEntityHasEffect(entity) then
-        return
-    end
-
-    local effectObj = entity.Effect
+    local effectObj = self.Editor:GetEntityEffect()
     if not effectObj or not effectObj.Timeline then
         return
     end
@@ -246,12 +114,12 @@ function EntityEffectTab:RenderEffectTimelineEditor()
 
     local playPauseButton = timelineTree:AddButton(timeline.IsPaused and GetLoca("Paused") or GetLoca("Playing"))
     playPauseButton.OnClick = function()
-        local entity = self:GetEntity(self.guid) --[[@as EntityHandle]]
-        if not isEntityHasEffect(entity) then
+        local effect = self.Editor:GetEntityEffect()
+        if not effect or not effect.Timeline then
             return
         end
-        entity.Effect.Timeline.IsPaused = not entity.Effect.Timeline.IsPaused
-        playPauseButton.Label = entity.Effect.Timeline.IsPaused and GetLoca("Paused") or GetLoca("Playing")
+        effect.Timeline.IsPaused = not effect.Timeline.IsPaused
+        playPauseButton.Label = effect.Timeline.IsPaused and GetLoca("Paused") or GetLoca("Playing")
     end
 
     local tab = timelineTree:AddTable("TimelineInfoTable", 2)
@@ -265,11 +133,11 @@ function EntityEffectTab:RenderEffectTimelineEditor()
     local playSpeedSlider = ImguiElements.AddSliderWithStep(row:AddCell(), GetLoca("Set Play Speed"),
         timeline.PlayingSpeed, 0.1, 5.0, 0.1, false)
     playSpeedSlider.OnChange = function()
-        local entity = self:GetEntity(self.guid) --[[@as EntityHandle]]
-        if not isEntityHasEffect(entity) then
+        local effect = self.Editor:GetEntityEffect()
+        if not effect or not effect.Timeline then
             return
         end
-        entity.Effect.Timeline.PlayingSpeed = playSpeedSlider.Value[1]
+        effect.Timeline.PlayingSpeed = playSpeedSlider.Value[1]
     end
 end
 
@@ -296,15 +164,12 @@ end
 --- @field Vector3 table<string, EffectComponentParameterInfo>
 --- @field Vector4 table<string, EffectComponentParameterInfo>
 
-function EntityEffectTab:RenderEffectComponentEditor(parent, key, getComp, renderInfo)
-    local component = getComp()
-    if not component then return end
-
+function EntityEffectTab:RenderEffectComponentEditor(parent, key, renderInfo)
     local propMap = renderInfo.PropertyMap
     local renderOrder = renderInfo.RenderOrder
 
     local function renderNumberSliders(tree, propName, propInfo)
-        self:RenderEffectComponentSliders(tree, getComp, key, propName, propInfo)
+        self:RenderEffectComponentSliders(tree, key, propName, propInfo)
     end
 
     local renderHandlers = {
@@ -313,28 +178,26 @@ function EntityEffectTab:RenderEffectComponentEditor(parent, key, getComp, rende
         Vector3 = renderNumberSliders,
         Vector4 = renderNumberSliders,
         Boolean = function(tree, propName, propInfo)
-            self:RenderEffectComponentBooleanCheckbox(tree, getComp, key, propName, propInfo)
+            self:RenderEffectComponentBooleanCheckbox(tree, key, propName, propInfo)
         end,
         BitMask = function(tree, propName, propInfo)
             if propInfo.EnumName then
                 propInfo.Options = ImguiHelpers.CreateRadioButtonOptionFromBitmask(propInfo.EnumName)
             end
-            self:RenderEffectComponentBitmaskRadioButtons(tree, getComp, key, propName, propInfo)
+            self:RenderEffectComponentBitmaskRadioButtons(tree, key, propName, propInfo)
         end,
         Enum = function(tree, propName, propInfo)
             if propInfo.EnumName then
                 propInfo.Options = ImguiHelpers.CreateRadioButtonOptionFromEnum(propInfo.EnumName)
             end
-            self:RenderEffectComponentEnumRadioButtons(tree, getComp, key, propName, propInfo)
+            self:RenderEffectComponentEnumRadioButtons(tree, key, propName, propInfo)
         end,
     }
 
     local groupTrees = {
         Default = parent,
     }
-    self.resetFuncs[key] = self.resetFuncs[key] or {}
     self.updateFuncs[key] = self.updateFuncs[key] or {}
-    self.resetParams[key] = self.resetParams[key] or {}
     local seen = {}
     for _, propName in ipairs(renderOrder) do
         local propType = nil
@@ -376,110 +239,81 @@ function EntityEffectTab:RenderEffectComponentEditor(parent, key, getComp, rende
 end
 
 --- @param panel ExtuiTreeParent
-function EntityEffectTab:RenderEffectComponentSliders(panel, getComp, key, componentName, valueInfo)
-    local setter = valueInfo.Setter or function(value)
-        local comp = getComp()
-        if not comp then return end
-
-        comp[componentName] = value
+function EntityEffectTab:RenderEffectComponentSliders(panel, key, propName, valueInfo)
+    local _, compIndex = self.Editor:ParseKey(key)
+    if not compIndex then return end
+    local setter = function(value)
+        value = #value == 1 and value[1] or value
+        self.Editor:SetProperty(compIndex, propName, value)
     end
-    local getter = valueInfo.Getter or function()
-        local comp = getComp()
-        if not comp then return nil end
-
-        return comp[componentName]
+    local getter = function()
+        return self.Editor:GetProperty(compIndex, propName)
     end
 
-    local initValue = self.resetParams[key] and self.resetParams[key][componentName] or getter()
-    self.resetParams[key] = self.resetParams[key] or {}
-    self.resetParams[key][componentName] = initValue
+    local onReset = function()
+        self.Editor:ResetProperty(compIndex, propName)
+    end
+
+    local initValue = getter() --[[@as number[] ]]
     if type(initValue) == "number" then
         initValue = { initValue }
     end
     local isInt = valueInfo.IsInt or false
     local range = valueInfo.Range or { Min = -10, Max = 10, Step = 0.1 }
-    local compDisplayName = valueInfo.DisplayName or componentName
+    local compDisplayName = valueInfo.DisplayName or propName
 
-    local function saveChanged(value)
-        local comp = getComp()
-        if not comp then return end
-
-        if #value == 1 then
-            value = value[1]
-        end
-        setter(value)
-        self.Effects[key] = self.Effects[key] or {}
-        self.Effects[key][componentName] = value
-    end
-
-    local onReset = function()
-        self.Effects[key] = self.Effects[key] or {}
-        self.Effects[key][componentName] = nil
-        if not next(self.Effects[key]) then
-            self.Effects[key] = nil
-        end
-    end
-
-    local updateMethod = ImguiElements.AddNumberSliders(panel, compDisplayName, getter, saveChanged,
+    local updateMethod = ImguiElements.AddNumberSliders(panel, compDisplayName, getter, setter,
         { IsInt = isInt, Range = range, OnReset = onReset, ResetValue = initValue, IsColor = valueInfo.IsColor })
 
-    self.resetFuncs[key][componentName] = function()
-        setter(self.resetParams[key][componentName])
-        updateMethod()
-        onReset()
-    end
-    self.updateFuncs[key][componentName] = function()
-        updateMethod()
-    end
+    self.updateFuncs[key][propName] = updateMethod
 end
 
-function EntityEffectTab:RenderEffectComponentBooleanCheckbox(panel, getComp, key, componentName, boolInfo)
-    local comp = getComp()
-    local initValue = self.resetParams[key] and self.resetParams[key][componentName] or comp[componentName]
-    self.resetParams[key] = self.resetParams[key] or {}
-    self.resetParams[key][componentName] = initValue
-    local displayName = boolInfo.DisplayName or componentName
+function EntityEffectTab:RenderEffectComponentBooleanCheckbox(panel, key, propName, boolInfo)
+    local _, compIndex = self.Editor:ParseKey(key)
+    if not compIndex then return end
+
+    local setter = function(value)
+        self.Editor:SetProperty(compIndex, propName, value)
+    end
+
+    local getter = function()
+        return self.Editor:GetProperty(compIndex, propName)
+    end
+
+    local initValue = getter() --[[@as boolean ]]
+    local displayName = boolInfo.DisplayName or propName
     local checkbox = panel:AddCheckbox("##EffectComponentCheckbox_" .. key, initValue)
-    checkbox.Label = displayName or componentName
+    checkbox.Label = displayName or propName
 
     checkbox.OnChange = function()
-        local comp = getComp()
-        if not comp then return end
-
-        comp[componentName] = checkbox.Checked
-        self.Effects[key] = self.Effects[key] or {}
-        self.Effects[key][componentName] = checkbox.Checked
+        setter(checkbox.Checked)
     end
 
-    self.resetFuncs[key][componentName] = function()
-        checkbox.Checked = initValue
-
-        local comp = getComp()
-        if not comp then return end
-        comp[componentName] = initValue
-
-        self.Effects[key] = self.Effects[key] or {}
-        self.Effects[key][componentName] = nil
-        if not next(self.Effects[key]) then
-            self.Effects[key] = nil
-        end
+    self.updateFuncs[key][propName] = function()
+        checkbox.Checked = getter()
     end
 
-    self.updateFuncs[key][componentName] = function()
-        local comp = getComp()
-        if not comp then return end
-        checkbox.Checked = comp[componentName]
+    checkbox.OnRightClick = function()
+        self.Editor:ResetProperty(compIndex, propName)
+        checkbox.Checked = getter()
     end
 end
 
-function EntityEffectTab:RenderEffectComponentBitmaskRadioButtons(panel, getComp, key, componentName, bitMaskInfo)
-    local comp = getComp()
-    local initValue = self.resetParams[key] and self.resetParams[key][componentName] or comp[componentName]
-    self.resetParams[key] = self.resetParams[key] or {}
-    self.resetParams[key][componentName] = initValue
-    local displayName = bitMaskInfo.DisplayName or componentName
-    local options = bitMaskInfo.Options or {}
+function EntityEffectTab:_renderRadioButtons(panel, key, componentName, info, fn)
+    local _, compIndex = self.Editor:ParseKey(key)
+    if not compIndex then return end
 
+    local setter = function(value)
+        self.Editor:SetProperty(compIndex, componentName, value)
+    end
+
+    local getter = function()
+        return self.Editor:GetProperty(compIndex, componentName)
+    end
+
+    local initValue = getter() --[[@as number ]]
+    local displayName = info.DisplayName or componentName
+    local options = info.Options or {}
     local tab = panel:AddTable("SameTable" .. panel.Label, 2)
     tab.ColumnDefs[1] = { WidthFixed = true }
     tab.ColumnDefs[2] = { WidthStretch = true }
@@ -487,103 +321,29 @@ function EntityEffectTab:RenderEffectComponentBitmaskRadioButtons(panel, getComp
     local titleCell = row:AddCell()
     local radioCell = row:AddCell()
     local title = titleCell:AddBulletText(displayName)
-    local radioGroup = ImguiElements.AddBitmaskRadioButtons(radioCell, options, initValue)
+    local radioGroup = ImguiElements[fn](radioCell, options, initValue)
 
-    local saveChanged = function(value)
-        local comp = getComp()
-        if not comp then return end
-
-        comp[componentName] = value
-        self.Effects[key] = self.Effects[key] or {}
-        self.Effects[key][componentName] = value
-    end
-
-    local resetChange = function()
-        local comp = getComp()
-        if not comp then return end
-
-        comp[componentName] = initValue
-        radioGroup.Value = initValue
-        self.Effects[key] = self.Effects[key] or {}
-        self.Effects[key][componentName] = nil
-        if not next(self.Effects[key]) then
-            self.Effects[key] = nil
-        end
-    end
 
     radioGroup.OnChange = function()
-        local comp = getComp()
-        if not comp then return end
-        saveChanged(radioGroup.Value)
+        setter(radioGroup.Value)
     end
 
     title.OnRightClick = function()
-        resetChange()
+        self.Editor:ResetProperty(compIndex, componentName)
+        radioGroup.Value = getter()
     end
 
-    self.resetFuncs[key][componentName] = resetChange
     self.updateFuncs[key][componentName] = function()
-        local comp = getComp()
-        if not comp then return end
-        radioGroup.Value = comp[componentName]
+        radioGroup.Value = getter()
     end
 end
 
-function EntityEffectTab:RenderEffectComponentEnumRadioButtons(panel, getComp, key, componentName, enumInfo)
-    local comp = getComp()
-    local initValue = self.resetParams[key] and self.resetParams[key][componentName] or comp[componentName]
-    self.resetParams[key] = self.resetParams[key] or {}
-    self.resetParams[key][componentName] = initValue
-    local displayName = enumInfo.DisplayName or componentName
-    local options = enumInfo.Options or {}
+function EntityEffectTab:RenderEffectComponentBitmaskRadioButtons(panel, key, componentName, bitMaskInfo)
+    return self:_renderRadioButtons(panel, key, componentName, bitMaskInfo, "AddBitmaskRadioButtons")
+end
 
-    local tab = panel:AddTable("SameTable" .. panel.Label, 2)
-    tab.ColumnDefs[1] = { WidthFixed = true }
-    tab.ColumnDefs[2] = { WidthStretch = true }
-    local row = tab:AddRow()
-    local titleCell = row:AddCell()
-    local radioCell = row:AddCell()
-    local title = titleCell:AddBulletText(displayName)
-    local radioGroup = ImguiElements.AddEnumRadioButtons(radioCell, options, initValue)
-
-    local saveChanged = function(value)
-        local comp = getComp()
-        if not comp then return end
-
-        comp[componentName] = value
-        self.Effects[key] = self.Effects[key] or {}
-        self.Effects[key][componentName] = value
-    end
-
-    local resetChange = function()
-        local comp = getComp()
-        if not comp then return end
-
-        comp[componentName] = initValue
-        radioGroup.Value = initValue
-        self.Effects[key] = self.Effects[key] or {}
-        self.Effects[key][componentName] = nil
-        if not next(self.Effects[key]) then
-            self.Effects[key] = nil
-        end
-    end
-
-    radioGroup.OnChange = function()
-        local comp = getComp()
-        if not comp then return end
-        saveChanged(radioGroup.Value)
-    end
-
-    title.OnRightClick = function()
-        resetChange()
-    end
-
-    self.resetFuncs[key][componentName] = resetChange
-    self.updateFuncs[key][componentName] = function()
-        local comp = getComp()
-        if not comp then return end
-        radioGroup.Value = comp[componentName]
-    end
+function EntityEffectTab:RenderEffectComponentEnumRadioButtons(panel, key, componentName, enumInfo)
+    return self:_renderRadioButtons(panel, key, componentName, enumInfo, "AddEnumRadioButtons")
 end
 
 function EntityEffectTab:SetupEffectContextMenu()
@@ -596,9 +356,6 @@ function EntityEffectTab:SetupEffectContextMenu()
         local compKey = self.SelectedEffectComponent
         if not compKey then return end
 
-        local modfiedParams = self.Effects[compKey]
-        if not modfiedParams then return end
-
         local parsedKey = RBStringUtils.SplitByString(compKey, "::")
         local compIndex = tonumber(parsedKey[2])
         if not compIndex then return end
@@ -606,26 +363,7 @@ function EntityEffectTab:SetupEffectContextMenu()
         if not selectedComp then return end
         local compType = selectedComp.TypeName
 
-        local entity = self:GetEntity(self.guid) --[[@as EntityHandle]]
-        if not isEntityHasEffect(entity) then
-            return
-        end
-
-        for otIdx, comp in RBUtils.FilteredPairs(entity.Effect.Timeline.Components, function(idx, comp)
-            return comp.TypeName == compType and (idx ~= compIndex)
-        end) do
-            local otherKey = compType .. "::" .. tostring(otIdx)
-            for paramName, paramValue in pairs(modfiedParams) do
-                if comp.TypeName == "Light" then
-                    VisualHelpers.ApplyValueToLightComponent(self.guid, otIdx, paramValue, paramName)
-                else
-                    comp[paramName] = paramValue
-                end
-                if self.updateFuncs[otherKey] and self.updateFuncs[otherKey][paramName] then
-                    self.updateFuncs[otherKey][paramName]()
-                end
-            end
-        end
+        self.Editor:ApplyToAllSameType(compType, compIndex)
     end)
 end
 
@@ -679,7 +417,6 @@ function EntityEffectTab:RenderLightEntity(node, component, compIndex)
             Group = "Directional Light Settings",
         },
     }
-
 
     local scalarParamMap = {
         SpotLightInnerAngle = {
@@ -766,15 +503,8 @@ function EntityEffectTab:RenderLightEntity(node, component, compIndex)
     }
 
     local key = "Light::" .. compIndex
-    local function GetLiveLightEntity()
-        local entity = self:GetEntity(self.guid)
-        if not entity or not entity.Effect or not entity.Effect.Timeline or not entity.Effect.Timeline.Components[compIndex] or not entity.Effect.Timeline.Components[compIndex].LightEntity then
-            return nil
-        end
-        return entity.Effect.Timeline.Components[compIndex].LightEntity.Light
-    end
 
-    self:RenderEffectComponentEditor(entityNode, key, GetLiveLightEntity, {
+    self:RenderEffectComponentEditor(entityNode, key, {
         PropertyMap = {
             Scalar = scalarParamMap,
             BitMask = bitMaskParamMap,
@@ -790,27 +520,6 @@ end
 ---@param compIndex integer
 function EntityEffectTab:RenderLightComponent(node, component, compIndex)
     local compNode = node
-
-    local lcomp = component --[[@as AspkLightComponent]]
-
-    local function applyToFrames(value, propName, frameField)
-        local entity = self:GetEntity() --[[@as EntityHandle]]
-        local effectComp = entity and entity.Effect
-        local timeline = effectComp and effectComp.Timeline
-        local compInTimeline = timeline and timeline.Components and timeline.Components[compIndex]
-
-        if not compInTimeline then return end
-
-        local property = compInTimeline[propName]
-        if not property or not property[frameField] then return end
-
-        if frameField == "KeyFrames" then
-            VisualHelpers.ChangeKeyFrames(property.KeyFrames, value)
-        else
-            VisualHelpers.ChangeFrames(property.Frames, value, true)
-        end
-    end
-
 
     local scalarNameMap = {
         ["IntensityProperty"] = {
@@ -835,51 +544,6 @@ function EntityEffectTab:RenderLightComponent(node, component, compIndex)
         },
     }
 
-    for propName, prop in pairs(scalarNameMap) do
-        if propName == "IntensityProperty" then
-            local isCubic = false
-            local frames = lcomp.IntensityProperty and lcomp.IntensityProperty.KeyFrames and lcomp.IntensityProperty.KeyFrames[1] and lcomp.IntensityProperty.KeyFrames[1].Frames
-            if frames then
-                isCubic = VisualHelpers.AreFloakKeyFramesCubic(frames)
-            end
-            if isCubic then
-                RainbowDumpTable(lcomp.IntensityProperty.KeyFrames)
-                prop.Setter = function(value)
-                    lcomp = getEntityEffectComponent(self:GetEntity(self.guid), compIndex) --[[@as AspkLightComponent]]
-                    if not lcomp then return end
-                    for _, keyFrame in pairs(lcomp.IntensityProperty.KeyFrames or {}) do
-                        for _, frame in pairs(keyFrame.Frames or {}) do
-                            frame.D = value
-                        end
-                    end
-                end
-                prop.Getter = function()
-                    lcomp = getEntityEffectComponent(self:GetEntity(self.guid), compIndex) --[[@as AspkLightComponent]]
-                    if not lcomp then return nil end
-                    local property = lcomp.IntensityProperty
-                    if not property or not property.KeyFrames then return nil end
-                    return property.KeyFrames[1] and property.KeyFrames[1].Frames[1].D or nil
-                end
-                prop.PreferSliders = true
-                goto continue 
-            end
-        end
-
-        prop.Setter = function(value)
-            applyToFrames(value, propName, "KeyFrames")
-        end
-        prop.Getter = function()
-            local comp = getEntityEffectComponent(self:GetEntity(self.guid), compIndex) --[[@as AspkLightComponent]]
-            if not comp then return nil end
-
-            local property = comp[propName]
-            if not property or not property.KeyFrames then return nil end
-
-            return property.KeyFrames[1] and property.KeyFrames[1].Frames[1].Value or nil
-        end
-        ::continue::
-    end
-
     local vec4NameMap = {
         ["ColorProperty"] = {
             Range = { Min = -1, Max = 1, Step = 0.01 },
@@ -888,22 +552,6 @@ function EntityEffectTab:RenderLightComponent(node, component, compIndex)
             IsColor = true,
         },
     }
-
-    for propName, prop in pairs(vec4NameMap) do
-        prop.Setter = function(value)
-            applyToFrames(value, propName, "Frames")
-        end
-        prop.Getter = function()
-            local comp = getEntityEffectComponent(self:GetEntity(self.guid), compIndex) --[[@as AspkLightComponent]]
-            if not comp then return nil end
-
-            local property = comp[propName]
-            if not property or not property.Frames then return nil end
-
-            local lc = property.Frames[1] and property.Frames[1].Color or {}
-            return RBUtils.LightCToArray(lc)
-        end
-    end
 
     local boolNameMap = {
         ["ModulateLightTemplateRadius"] = {
@@ -922,9 +570,7 @@ function EntityEffectTab:RenderLightComponent(node, component, compIndex)
 
 
     local key = "Light::" .. compIndex
-    self:RenderEffectComponentEditor(compNode, key, function()
-        return getEntityEffectComponent(self:GetEntity(self.guid), compIndex) --[[@as AspkLightComponent]]
-    end, {
+    self:RenderEffectComponentEditor(compNode, key, {
         PropertyMap = {
             Scalar = scalarNameMap,
             Vector4 = vec4NameMap,
@@ -970,15 +616,7 @@ function EntityEffectTab:RenderParticleSystemComponent(node, component, compInde
 
     local key = "ParticleSystem::" .. compIndex
 
-    local function GetLiveParticleSystem()
-        local entity = self:GetEntity(self.guid)
-        if not entity or not entity.Effect or not entity.Effect.Timeline or not entity.Effect.Timeline.Components[compIndex] then
-            return nil
-        end
-        return entity.Effect.Timeline.Components[compIndex]
-    end
-
-    self:RenderEffectComponentEditor(compNode, key, GetLiveParticleSystem, {
+    self:RenderEffectComponentEditor(compNode, key, {
         PropertyMap = {
             Scalar = scalarParamMap,
             Vector4 = vec4PropNameMap,

@@ -13,13 +13,13 @@ local entityNameBlacklist = {
 --- @class EntityData
 --- @field Guid string
 --- @field DisplayName string
---- @field TemplateId string
+--- @field TemplateId string -- name_uuid
 --- @field TemplateType 'item'|'character'|'scenery'
 --- @field Tags string[]
 --- @field Group string
 --- @field Note string
 --- @field IconTintColor vec4
---- @field VisualPreset string
+--- @field VisualPreset RB_VisualPreset
 --- @field Visible boolean
 --- @field Gravity boolean
 --- @field DisableGravityUntilMoved boolean
@@ -255,6 +255,10 @@ function EntityStore:GetStoredData(guid)
     end
 
     return data
+end
+
+function EntityStore:GetEntityPath(guid)
+    return self.Tree:GetPath(guid, true, true)
 end
 
 --- @param guid any

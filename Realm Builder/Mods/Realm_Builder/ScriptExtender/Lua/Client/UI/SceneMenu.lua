@@ -256,10 +256,15 @@ function SceneMenu:SavePreset(name, overwrite, candiates)
             pos = {RBGetPosition(entInfo.Guid)}
             rot = {EntityHelpers.GetQuatRotation(entInfo.Guid)}
         end
+        local scale = {RBGetScale(entInfo.Guid)}
 
         entInfo.Position = pos
         entInfo.Rotation = rot
+        entInfo.Scale = scale
         entInfo.Level = levelName
+        --- @diagnostic disable-next-line
+        entInfo.VisualPreset = VisualTabHelpers.GetCurrentVisualEdit(entInfo.Guid)
+        entInfo.Path = EntityStore:GetEntityPath(entInfo.Guid)
 
         local template = RBUtils.TakeTailTemplate(entInfo.TemplateId)
         local templateObj = Ext.Template.GetTemplate(template)
@@ -296,13 +301,6 @@ function SceneMenu:SavePreset(name, overwrite, candiates)
         ::continue::
     end
 
-    local lca = EntityStore.Tree:FindLCA(candiates)
-
-    if not lca then
-        lca = TreeTable.GetRootKey()
-    end
-
-    local tree = { [lca] = RBUtils.DeepCopy(EntityStore.Tree:Find(lca)) }
 
     self.sceneDatas[name] = {
         PresetType = self.isRelative and "Relative" or "Absolute",
@@ -310,7 +308,6 @@ function SceneMenu:SavePreset(name, overwrite, candiates)
         Level = _C().Level.LevelName,
         ModList = modList,
         Spawned = spawned,
-        Tree = tree,
     }
 
     self:SaveToFile(name)
@@ -387,10 +384,6 @@ function SceneMenu:LoadPreset(name, isPreview, force)
     end
 
     local data = RBUtils.DeepCopy(self.sceneDatas[name])
-    if data == self.sceneDatas[name] then
-        Debug("SceneMenu:LoadPreset: DeepCopy failed, using original data.")
-        data = RBUtils.DeepCopy(self.sceneDatas[name])
-    end
     if isPreview then
         data.SpawnType = "Preview"
     end
@@ -802,12 +795,13 @@ function SceneMenu:RenderPresetObjectInfo(parent, entInfo, presetName, presetTyp
     local guid = entInfo.Guid or "Unknown"
     local pos = entInfo.Position or {0, 0, 0}
     local rot = entInfo.Rotation or {0, 0, 0, 1}
+    local scale = entInfo.Scale or {1, 1, 1}
     local visible = entInfo.Visible and GetLoca("Visible") or GetLoca("Hidden")
     local gravity = entInfo.Gravity and GetLoca("On") or GetLoca("Off")
     local persistent = entInfo.Persistent and GetLoca("Yes") or GetLoca("No")
     local canInteract = entInfo.CanInteract and GetLoca("Yes") or GetLoca("No")
     local movable = entInfo.Movable and GetLoca("Yes") or GetLoca("No")
-    local visualPreset = entInfo.VisualPreset or ""
+    local visualPreset = entInfo.VisualPreset
     local presetData = self.sceneDatas[presetName] or {}
 
     local tagsText = ""
@@ -840,8 +834,6 @@ function SceneMenu:RenderPresetObjectInfo(parent, entInfo, presetName, presetTyp
         modText.TextWrapPos = 950 * SCALE_FACTOR
     end
 
-    local visualPresetText = iconTooltip:AddText(GetLoca("Visual Preset: ") .. (visualPreset ~= "" and visualPreset or GetLoca("None")))
-
     local groupText = iconTooltip:AddText(GetLoca("Group: ") .. group)
 
 
@@ -870,6 +862,12 @@ function SceneMenu:RenderPresetObjectInfo(parent, entInfo, presetName, presetTyp
     rotInput.SameLine = true
     rotInput.Components = 4
     rotInput.Value = {RBStringUtils.FormatDecimal(rot[1], 2), RBStringUtils.FormatDecimal(rot[2], 2), RBStringUtils.FormatDecimal(rot[3], 2), RBStringUtils.FormatDecimal(rot[4], 2)}
+
+    local scaleInput = iconTooltip:AddInputScalar("")
+    scaleInput.IDContext = "ScaleInput"
+    scaleInput.SameLine = true
+    scaleInput.Components = 3
+    scaleInput.Value = {RBStringUtils.FormatDecimal(scale[1], 2), RBStringUtils.FormatDecimal(scale[2], 2), RBStringUtils.FormatDecimal(scale[3], 2), 0}
 
     addSe()
 

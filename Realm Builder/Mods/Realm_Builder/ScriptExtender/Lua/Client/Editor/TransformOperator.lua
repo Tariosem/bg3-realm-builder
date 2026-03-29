@@ -169,6 +169,8 @@ function TransformOperator:Apply()
         self.Num = ""
     end
 
+    num = tonumber(num) or 0 -- validate final number
+
     self.lastMode = activeMode
     local selectedAxis = gizmo.SelectedAxis or {}
     local axisCnt = RBTableUtils.CountMap(selectedAxis)

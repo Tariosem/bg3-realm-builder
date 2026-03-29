@@ -167,31 +167,17 @@ end
 --- @param quat quat
 --- @return Vec3 euler in degrees
 function MathUtils.QuatToEuler(quat)
-    local globalAxes = {
-        X = GLOBAL_COORDINATE.X,
-        Y = GLOBAL_COORDINATE.Y,
-        Z = GLOBAL_COORDINATE.Z,
-    }
-    local euler = {0, 0, 0}
-    for i, axis in pairs({"X", "Y", "Z"}) do
-        local rotatedAxis = Ext.Math.QuatRotate(quat, globalAxes[axis])
+    local x, y, z, w = quat[1], quat[2], quat[3], quat[4]
+    
+    local deg = math.deg
+    local atan2 = Ext.Math.Atan2
+    local asin = Ext.Math.Asin
 
-        local referenceAxis
-        if axis == "X" then
-            referenceAxis = GLOBAL_COORDINATE.Z
-        elseif axis == "Y" then
-            referenceAxis = GLOBAL_COORDINATE.X
-        else -- Z
-            referenceAxis = GLOBAL_COORDINATE.Y
-        end
-        
-        referenceAxis = {referenceAxis[1], referenceAxis[2], referenceAxis[3]}
-        rotatedAxis = {rotatedAxis[1], rotatedAxis[2], rotatedAxis[3]}
+    local pitch = atan2(2 * (y * z + w * x), w * w - x * x - y * y + z * z)
+    local yaw = asin(-2 * (x * z - w * y))
+    local roll = atan2(2 * (x * y + w * z), w * w + x * x - y * y - z * z)
 
-        euler[i] = Ext.Math.Angle(referenceAxis, rotatedAxis)
-    end
-
-    return euler
+    return {pitch, yaw, roll}
 end
 
 --- @param point Vec2

@@ -8,7 +8,7 @@
 --- @field ParamSelectables table<string, ExtuiSelectable>
 --- @field ParamTables table<string, ExtuiTable>
 --- @field MaterialName string
---- @field new fun(parent: ExtuiTreeParent, materialName: string, materialFunc:fun():Material , paramsSrc: fun():MaterialParameters):MaterialTab
+--- @field new fun(parent: ExtuiTreeParent, editor: MaterialEditor): MaterialTab
 MaterialTab = _Class("MaterialEditor")
 
 
@@ -18,13 +18,10 @@ MaterialTab = _Class("MaterialEditor")
 --- @field SuccessApply boolean
 
 ---@param parent ExtuiTreeParent
----@param materialName string
----@param materialFunc fun():Material
----@param paramsSrc fun():MaterialParameters
-function MaterialTab:__init(parent, materialName, materialFunc, paramsSrc)
+---@param editor MaterialEditor
+function MaterialTab:__init(parent, editor) 
     self.Parent = parent
-    self.Editor = MaterialEditor.new(materialName, materialFunc, paramsSrc)
-    self.MaterialName = materialName
+    self.Editor = editor
     self.SourceFile = self.Editor.SourceFile
     self.ParentNodeName = RBStringUtils.GetLastPath(self.SourceFile) or "N/A"
 

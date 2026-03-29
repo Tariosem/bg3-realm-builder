@@ -160,12 +160,64 @@ function EntityTab:RenderMonitorTab()
         end
     end)
 
+    local savedTransform = nil --[[@as Transform?]]
+    local positionDrag = nil --[[@as ExtuiDragScalar]]
+    local rotationDrag = nil --[[@as ExtuiDragScalar]]
+    
+    local function saveCurrentTransform()
+        if savedTransform then return end
+        savedTransform = {}
+        local proxy = MovableProxy.CreateByGuid(self.guid)
+        if not proxy then return end
+        savedTransform = proxy:GetTransform()
+    end
 
+    local pushTransformHistory = RBUtils.Debounce(1000, function ()
+        local toTransform = {
+            Translate = {RBGetPosition(self.guid)},
+            RotationQuat = {RBGetRotation(self.guid)},
+            Scale = {RBGetScale(self.guid)},
+        }
+
+        if savedTransform then
+            HistoryManager:PushCommand({
+                Redo = function()
+                    local proxy = MovableProxy.CreateByGuid(self.guid)
+                    if not proxy then return end
+                    proxy:SetTransform(toTransform)
+                end,
+                Undo = function()
+                    local proxy = MovableProxy.CreateByGuid(self.guid)
+                    if not proxy then return end
+                    proxy:SetTransform(savedTransform)
+                end,
+                Description = GetLoca("Transform Change") .. " - " .. self.displayName,
+            })
+            savedTransform = nil
+        end
+        if not self.isVisible then return end
+        if positionDrag then
+            positionDrag.Value = {0,0,0,0}
+        end
+        if rotationDrag then
+            rotationDrag.Value = {0,0,0,0}
+        end
+    end)
+
+    --#region Position
     local posLine = attrTable:AddNewLine("Position :")
     local positionMonitor = posLine:AddInputScalar("")
+    positionDrag = posLine:AddDrag("##PositionDrag") --[[@as ExtuiDragScalar]]
     positionMonitor.IDContext = self.guid .. "_PositionMonitor"
     positionMonitor.Components = 3
     positionMonitor.Value = self.LastTranslation or {0,0,0,0}
+
+    positionDrag.IDContext = self.guid .. "_PositionDrag"
+    positionDrag.Components = 3
+    positionDrag.Value = {0,0,0,0}
+    local maxDrag = 100
+    positionDrag.Min = RBUtils.ToVec4(-maxDrag)
+    positionDrag.Max = RBUtils.ToVec4(maxDrag)
 
     local copyPosBtn = posLine:AddImageButton("##CopyPosBtn", RB_ICONS.Copy, IMAGESIZE.ROW)
     local pastePosBtn = posLine:AddImageButton("##PastePosBtn", RB_ICONS.Clipboard, IMAGESIZE.ROW)
@@ -187,11 +239,39 @@ function EntityTab:RenderMonitorTab()
         end
     end
 
+    local function setPos(newPos)
+        if savedTransform then
+            pushTransformHistory()
+        end
+
+        saveCurrentTransform()
+        if not savedTransform then return end
+        local proxy = MovableProxy.CreateByGuid(self.guid)
+        if not proxy then return end
+        proxy:SetWorldTranslate(newPos)
+
+    end
+
     positionMonitor.OnChange = function(sel)
         local newPos = {sel.Value[1], sel.Value[2], sel.Value[3]}
-        Commands.SetTransform({MovableProxy.CreateByGuid(self.guid)}, { Translate = newPos })
+        setPos(newPos)
     end
-    local positionTimer = Timer:Every(1000, function(timerId)
+
+    positionDrag.OnChange = function(sel)
+        if savedTransform then
+            pushTransformHistory()
+        end
+
+        saveCurrentTransform()
+        if not savedTransform then return end
+        local delta = Vec3.new({sel.Value[1], sel.Value[2], sel.Value[3]})
+        local currentPos = savedTransform.Translate
+        if not currentPos then return end
+        local newPos = currentPos + delta
+        setPos(newPos)
+    end
+
+    local positionTimer = Timer:Every(10, function(timerId)
         if not self.isValid then
             Timer:Cancel(timerId)
             return
@@ -218,9 +298,17 @@ function EntityTab:RenderMonitorTab()
 
     local quatLine = attrTable:AddNewLine("Rotation :")
     local rotationMonitor = quatLine:AddInputScalar("")
+    rotationDrag = quatLine:AddDrag("##RotationDrag") --[[@as ExtuiDragScalar]]
     rotationMonitor.IDContext = self.guid .. "_RotationMonitor"
     rotationMonitor.Components = 3
     rotationMonitor.Value = self.LastRotation or {0,0,0,0}
+    local maxDragRotation = 180
+    rotationDrag.Min = RBUtils.ToVec4(-maxDragRotation)
+    rotationDrag.Max = RBUtils.ToVec4(maxDragRotation)
+
+    rotationDrag.IDContext = self.guid .. "_RotationDrag"
+    rotationDrag.Components = 3
+    rotationDrag.Value = {0,0,0,0}
 
     local copyRotBtn = quatLine:AddImageButton("##CopyRotationBtn", RB_ICONS.Copy, IMAGESIZE.ROW)
     local pasteRotBtn = quatLine:AddImageButton("##PasteRotationBtn", RB_ICONS.Clipboard, IMAGESIZE.ROW)
@@ -242,19 +330,42 @@ function EntityTab:RenderMonitorTab()
         end
     end
 
-    rotationMonitor.OnChange = function(sel)
-        local delta = {sel.Value[1], sel.Value[2], sel.Value[3]}
+    local function radFromDeg(e)
+        local out = {e.Value[1], e.Value[2], e.Value[3]}
         for i=1,3 do
-            if self.LastRotation then
-                delta[i] = math.rad(delta[i] - self.LastRotation[i])
-            end
+            out[i] = math.rad(out[i])
         end
-        local deltaQuat = Ext.Math.QuatFromEuler(delta)
-        local finalQuat = Ext.Math.QuatMul(self.LastQuatRotation, deltaQuat)
-        Commands.SetTransform({MovableProxy.CreateByGuid(self.guid)}, { RotationQuat = finalQuat })
+        return out
     end
 
-    local rotationTimer = Timer:Every(1000, function(timerId)
+    local function setRot(finalQuat)
+        if savedTransform then
+            pushTransformHistory()
+        end
+
+        saveCurrentTransform()
+        if not savedTransform then return end
+        local proxy = MovableProxy.CreateByGuid(self.guid)
+        if not proxy then return end
+        proxy:SetWorldRotation(finalQuat)
+    end
+
+    rotationMonitor.OnChange = function(sel)
+        local quat = Ext.Math.QuatFromEuler(radFromDeg(sel))
+        setRot(quat)
+    end
+
+    rotationDrag.OnChange = function(sel)
+        local delta = radFromDeg(sel)
+        saveCurrentTransform()
+        local actualDelta = delta
+        if not savedTransform then return end
+        local deltaQuat = Ext.Math.QuatFromEuler(actualDelta)
+        local finalQuat = Ext.Math.QuatMul(deltaQuat, savedTransform.RotationQuat)
+        setRot(finalQuat)
+    end
+
+    local rotationTimer = Timer:Every(10, function(timerId)
         if not self.isValid then
             return UNSUBSCRIBE_SYMBOL
         end
@@ -306,7 +417,7 @@ function EntityTab:RenderMonitorTab()
         Commands.SetTransform({MovableProxy.CreateByGuid(self.guid)}, { Scale = newScale })
     end
 
-    local scaleTimer = Timer:Every(2000, function (timerID)
+    local scaleTimer = Timer:Every(10, function (timerID)
         if not self.isValid then
             return UNSUBSCRIBE_SYMBOL
         end
@@ -468,10 +579,10 @@ function EntityTab:UpdateFilterTab()
 end
 
 function EntityTab:RenderVisualTab()
-
     local vT = self.visualTab
     if not vT then
         self.visualTab = VisualTab:Add(self.guid, self.displayName, self.tabBar, self.templateName) --[[@as VisualTab]]
+        vT = self.visualTab
     elseif vT and vT.isWindow then
         vT.parent = self.tabBar
         if vT.panel then
