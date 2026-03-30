@@ -16,7 +16,7 @@ NetChannel.AttributeChanged = Ext.Net.CreateChannel(ModuleUUID, "AttributeChange
 NetChannel.BindProps = Ext.Net.CreateChannel(ModuleUUID, "BindProps")
 
 --- @class ApplyVisualPresetChannel
---- @field Broadcast fun(self, data: {Guid: GUIDSTRING, TemplateName: string, VisualPreset: string})
+--- @field Broadcast fun(self, data: {Guid: GUIDSTRING, TemplateName: string, VisualPreset: string|RB_VisualPreset})
 NetChannel.ApplyVisualPreset = Ext.Net.CreateChannel(ModuleUUID, "ApplyVisualPreset")
 
 --- @class CameraBindChannel : NetChannel

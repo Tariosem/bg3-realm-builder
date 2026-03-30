@@ -353,13 +353,15 @@ function EntityEffectTab:SetupEffectContextMenu()
     local contextMenu = ImguiElements.AddContextMenu(effectContextPopup, "Effect Component")
 
     contextMenu:AddItem("Apply To Same Type", function(sel)
+        local entity = self.Editor:GetEntity()
+        if not entity then return end
         local compKey = self.SelectedEffectComponent
         if not compKey then return end
 
         local parsedKey = RBStringUtils.SplitByString(compKey, "::")
         local compIndex = tonumber(parsedKey[2])
         if not compIndex then return end
-        local selectedComp = VisualHelpers.GetEffectComponent(self.guid, compIndex)
+        local selectedComp = VisualHelpers.GetEffectComponent(entity, compIndex)
         if not selectedComp then return end
         local compType = selectedComp.TypeName
 

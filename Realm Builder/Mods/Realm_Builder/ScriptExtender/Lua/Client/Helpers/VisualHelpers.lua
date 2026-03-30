@@ -587,6 +587,7 @@ end
 --- @param compIndex number
 --- @return AspkComponent|nil
 function VisualHelpers.GetEffectComponent(entity, compIndex)
+    if not entity then return nil end
     if type(entity) == "string" then
         entity = UuidToHandle(entity)
     end

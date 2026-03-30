@@ -249,7 +249,6 @@ function EntityTab:RenderMonitorTab()
         local proxy = MovableProxy.CreateByGuid(self.guid)
         if not proxy then return end
         proxy:SetWorldTranslate(newPos)
-
     end
 
     positionMonitor.OnChange = function(sel)
@@ -258,10 +257,6 @@ function EntityTab:RenderMonitorTab()
     end
 
     positionDrag.OnChange = function(sel)
-        if savedTransform then
-            pushTransformHistory()
-        end
-
         saveCurrentTransform()
         if not savedTransform then return end
         local delta = Vec3.new({sel.Value[1], sel.Value[2], sel.Value[3]})

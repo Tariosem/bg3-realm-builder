@@ -100,7 +100,6 @@ function SceneMenu:Render()
     visibleOnlyCheckbox:Tooltip():AddText(GetLoca("Only save props that are currently visible in the game."))
     relativeCheckbox:Tooltip():AddText(GetLoca("Save props with relative position and rotation to the selected anchor."))
 
-    attentionImage:Tooltip():AddBulletText("Presets only save the visual preset's name, which means you need to save the visual preset first if you want to keep the visual changes.").TextWrapPos = 900 * SCALE_FACTOR
     attentionImage:Tooltip():AddBulletText("If a preset's type is 'Absolute', it will only spawn in the corresponding level.").TextWrapPos = 900 * SCALE_FACTOR
     attentionImage.SameLine = true
 
@@ -300,7 +299,6 @@ function SceneMenu:SavePreset(name, overwrite, candiates)
 
         ::continue::
     end
-
 
     self.sceneDatas[name] = {
         PresetType = self.isRelative and "Relative" or "Absolute",
@@ -863,6 +861,7 @@ function SceneMenu:RenderPresetObjectInfo(parent, entInfo, presetName, presetTyp
     rotInput.Components = 4
     rotInput.Value = {RBStringUtils.FormatDecimal(rot[1], 2), RBStringUtils.FormatDecimal(rot[2], 2), RBStringUtils.FormatDecimal(rot[3], 2), RBStringUtils.FormatDecimal(rot[4], 2)}
 
+    iconTooltip:AddText(GetLoca("Scale") .. " :")
     local scaleInput = iconTooltip:AddInputScalar("")
     scaleInput.IDContext = "ScaleInput"
     scaleInput.SameLine = true
