@@ -24,6 +24,7 @@ function MaterialTab:__init(parent, editor)
     self.Editor = editor
     self.SourceFile = self.Editor.SourceFile
     self.ParentNodeName = RBStringUtils.GetLastPath(self.SourceFile) or "N/A"
+    self.MaterialName = editor.Material
 
     self.ResetFuncs = {}
     self.UpdateFuncs = {}

@@ -330,12 +330,15 @@ function EntityTab:RenderMonitorTab()
         end
     end
 
+    local function extractValue(sel)
+        return {sel.Value[1], sel.Value[2], sel.Value[3]}
+    end
+
     local function radFromDeg(e)
-        local out = {e.Value[1], e.Value[2], e.Value[3]}
         for i=1,3 do
-            out[i] = math.rad(out[i])
+            e[i] = math.rad(e[i])
         end
-        return out
+        return e
     end
 
     local function setRot(finalQuat)
@@ -351,12 +354,14 @@ function EntityTab:RenderMonitorTab()
     end
 
     rotationMonitor.OnChange = function(sel)
-        local quat = Ext.Math.QuatFromEuler(radFromDeg(sel))
+        local newEuler = extractValue(sel)
+        local quat = Ext.Math.QuatFromEuler(radFromDeg(newEuler))
         setRot(quat)
     end
 
     rotationDrag.OnChange = function(sel)
-        local delta = radFromDeg(sel)
+        local eulerDelta = extractValue(sel)
+        local delta = radFromDeg(eulerDelta)
         saveCurrentTransform()
         local actualDelta = delta
         if not savedTransform then return end

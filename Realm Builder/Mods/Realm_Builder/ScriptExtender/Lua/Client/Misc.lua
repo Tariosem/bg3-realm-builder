@@ -140,12 +140,23 @@ RegisterDebugWindow("Misc", function(panel)
 
     --- @type ({Transform:Transform, Time:string})[]
     local savedQueue = {}
+    local transformList = {}
 
     local saveLabelPattern = "[%d] - %s"
 
     local refreshSavedList
 
     local saveCurrent
+
+    local function setCameraTransform(transform)
+        local cam = RBGetCamera()
+        if not cam or not cam.PhotoModeCameraSavedTransform then return end
+        cam.PhotoModeCameraSavedTransform.Transform = transform
+        Ext.OnNextTick(function()
+            --- @diagnostic disable-next-line
+            Ext.UI.GetRoot():Find("ContentRoot"):Child(21).DataContext.RecallCameraTransform:Execute()
+        end)
+    end
 
     function saveCurrent()
         local cam = RBGetCamera()
@@ -169,21 +180,23 @@ RegisterDebugWindow("Misc", function(panel)
 
     function refreshSavedList()
         ImguiHelpers.DestroyAllChildren(savedList)
+        local allSetAsStartBtn = {}
+        local allSetAsEndBtn = {}
         for i, save in pairs(savedQueue) do
             local label = string.format(saveLabelPattern, i, save.Time)
             local btn = savedList:AddButton(label)
             btn.OnClick = function()
-                local cam = RBGetCamera()
-                if not cam or not cam.PhotoModeCameraSavedTransform then return end
-                cam.PhotoModeCameraSavedTransform.Transform = save.Transform
-                Ext.OnNextTick(function()
-                    --- @diagnostic disable-next-line
-                    Ext.UI.GetRoot():Find("ContentRoot"):Child(21).DataContext.RecallCameraTransform:Execute()
-                end)
+                setCameraTransform(save.Transform)
             end
             btn.OnRightClick = function()
                 table.remove(savedQueue, i)
                 refreshSavedList()
+            end
+            local setAsStartBtn = savedList:AddButton("Push Into Anim List")
+            setAsStartBtn.SameLine = true
+            setAsStartBtn.IDContext = "PushPushPush" .. i
+            setAsStartBtn.OnClick = function()
+                table.insert(transformList, RBUtils.DeepCopy(save.Transform))
             end
         end
     end
@@ -193,6 +206,153 @@ RegisterDebugWindow("Misc", function(panel)
     end
     refreshSavedList()
     --#endregion Photo Mode Camera Saver
+
+    --#region Camera Animator
+do 
+    local cameraAnimatorWin = panel:AddTree("Photo Mode Camera Animator")
+    local runnningAnim = nil --[[@as RunningAnimation]]
+    local playBtn = cameraAnimatorWin:AddButton("Play Animation")
+    local previewAnimBtn = cameraAnimatorWin:AddButton("Preview Animation")
+    local visualizeAnimBtn = cameraAnimatorWin:AddButton("Visualize Transforms")
+    local popTransformBtn = cameraAnimatorWin:AddButton("Pop Last Transform")
+    
+    previewAnimBtn.SameLine = true
+
+    local savedAnims = {}
+    local animConfig = {
+        Duration = 5000, --[[@as integer ms]]
+        Easing = "Linear", --[[@as AnimationEasing]]
+        Loop = false, --[[@as boolean]]
+    }
+    local alignedConfig = ImguiElements.AddAlignedTable(cameraAnimatorWin)
+    local durationSlider = alignedConfig:AddSliderWithStep("Duration (ms)", animConfig.Duration, 1000, 60000, 1000, false)
+    durationSlider.OnChange = function(slider)
+        animConfig.Duration = slider.Value[1]
+    end
+    local easingCombo = alignedConfig:AddCombo("Easing")
+    easingCombo.Options = GetAllEasings()
+    easingCombo.SelectedIndex = 0
+    easingCombo.OnChange = function(ev)
+        animConfig.Easing = ImguiHelpers.GetCombo(ev)
+    end
+    local loopCheckbox = alignedConfig:AddCheckbox("Loop", animConfig.Loop)
+    loopCheckbox.OnChange = function(ev)
+        animConfig.Loop = ev.Checked
+    end
+
+    --- @param onComplete fun()
+    --- @param onSet fun(transform: Transform, eased: number)
+    local function animateTransform(idx, onComplete, onSet)
+        idx = idx or 1
+        local from = transformList[idx]
+        local to = transformList[idx + 1]
+        if not from or not to then
+            onComplete()
+            return
+        end
+
+        return AnimateValue(180, 0, 1, animConfig.Duration, animConfig.Easing,
+            function ()
+                if transformList[idx + 2] then
+                    runnningAnim = animateTransform(idx + 1, onComplete, onSet)
+                else
+                    onComplete()
+                end
+            end,
+
+            function (t, eased)
+                local newTransform = {
+                    Translate = Vector.Lerp(from.Translate, to.Translate, t),
+                    RotationQuat = Quat.Slerp(from.RotationQuat, to.RotationQuat, t),
+                    Scale = Vec3.new(1, 1, 1)
+                }
+                onSet(newTransform, eased)
+            end)
+    end
+
+    local function playCameraAnimation()
+        runnningAnim = animateTransform(1, function()
+            if animConfig.Loop then
+                playCameraAnimation()
+            else
+                runnningAnim = nil
+                playBtn.Label = "Play Animation"
+            end
+        end, function(transform, eased)
+            setCameraTransform(transform)
+        end)
+    end
+
+    local function previewAnim()
+        local previewItem = nil
+        NetChannel.CallOsiris:RequestToServer({
+            Function = "CreateAt",
+            Args = {
+                MARKER_ITEM.SpotLight,
+                0, 0, 0,
+                0, 0, ""
+            }
+        }, function(response)
+            previewItem = response[1]
+            
+            animateTransform(1, function()
+                NetChannel.Delete:SendToServer({ Guid = previewItem })
+            end, function(transform, eased)
+                NetChannel.SetTransform:SendToServer({
+                    Guid = previewItem,
+                    Transforms = {
+                        [previewItem] = transform
+                    }
+                })
+            end)
+        end)
+
+    end
+
+    local function visualizeAllTransforms()
+        local cnt = #transformList
+        for i = 1, cnt do
+            local transform = transformList[i]
+            NetChannel.Visualize:RequestToServer({
+                Type = "Point",
+                Position = transform.Translate,
+                Rotation = transform.RotationQuat,
+                Duration = 5000,
+            }, function(response)
+            end)
+        end
+    end
+
+    playBtn.OnClick = function()
+        if runnningAnim then
+            runnningAnim:Stop()
+            runnningAnim = nil
+            playBtn.Label = "Play Animation"
+            return
+        end
+        playCameraAnimation()
+        playBtn.Label = "Stop Animation"
+    end
+
+    previewAnimBtn.OnClick = function()
+        previewAnim()
+    end
+
+    visualizeAnimBtn.OnClick = function()
+        visualizeAllTransforms()
+    end
+
+    popTransformBtn.OnClick = function()
+        table.remove(transformList)
+        popTransformBtn.Label = "Pop Last Transform (" .. #transformList .. ")"
+    end
+
+    popTransformBtn.OnHoverEnter = function()
+        popTransformBtn.Label = "Pop Last Transform (" .. #transformList .. ")"
+    end
+end
+
+    --#endregion Camera Animator
 end)
 
 

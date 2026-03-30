@@ -165,19 +165,9 @@ function MathUtils.LookAt(source, target, up)
 end
 
 --- @param quat quat
---- @return Vec3 euler in degrees
+--- @return Vec3 euler in radians
 function MathUtils.QuatToEuler(quat)
-    local x, y, z, w = quat[1], quat[2], quat[3], quat[4]
-    
-    local deg = math.deg
-    local atan2 = Ext.Math.Atan2
-    local asin = Ext.Math.Asin
-
-    local pitch = atan2(2 * (y * z + w * x), w * w - x * x - y * y + z * z)
-    local yaw = asin(-2 * (x * z - w * y))
-    local roll = atan2(2 * (x * y + w * z), w * w + x * x - y * y - z * z)
-
-    return {pitch, yaw, roll}
+    return Ext.Math.ExtractEulerAngles(Ext.Math.QuatToMat3(quat))
 end
 
 --- @param point Vec2

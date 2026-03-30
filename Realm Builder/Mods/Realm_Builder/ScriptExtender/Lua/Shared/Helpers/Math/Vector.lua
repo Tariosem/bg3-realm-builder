@@ -88,6 +88,17 @@ function Vector:Sanitize(defaultVec, limit)
     return self
 end
 
+function Vector:Lerp(b, t)
+    local arity = math.max(#self, #b)
+    local newVec = {}
+    for i = 1, arity do
+        local aVal = self[i] or 0
+        local bVal = b[i] or 0
+        newVec[i] = aVal + (bVal - aVal) * t
+    end
+    return Vector.new(newVec)
+end
+
 function Vector.Add(a, b)
     local newVec = {}
     if type(a) == "table" and type(b) == "table" then

@@ -78,6 +78,27 @@ local function parseMateiralKey(str)
     return guid, attachIndex, descIndex
 end
 
+local function applyRenderableTransform(entity, transformsTable)
+    if not entity or not entity.Visual or not entity.Visual.Visual then return end
+    local visual = entity.Visual.Visual
+    for key, transformData in pairs(transformsTable) do
+        local guid, attachIndex, descIndex = parseMateiralKey(key)
+        if not descIndex then
+            Warning("applyRenderableTransform: Invalid key format: " .. tostring(key))
+            goto continue
+        end
+        local scale = transformData.Scale
+
+        local renderable = VisualHelpers.GetRenderable(guid, descIndex, attachIndex)
+        if not renderable then
+            Warning("applyRenderableTransform: Renderable not found for key: " .. tostring(key))
+            goto continue
+        end
+        renderable:SetWorldScale(scale)
+        ::continue::
+    end
+end
+
 
 EventsSubscriber.RegisterOnSessionLoaded(function()
     --local now = Ext.Utils.MonotonicTime()
@@ -885,6 +906,7 @@ function VisualTab:RenderAttachmentEditors()
             end
 
             self.MaterialTabs[keyName] = materialTab
+            self.MaterialEditors[keyName] = materialEditor
         end
 
         ::continue::
@@ -999,7 +1021,7 @@ function VisualTab:RenderObjectEditor()
         end
 
         self.MaterialTabs[keyName] = materialTab
-
+        self.MaterialEditors[keyName] = materialEditor
         ::continue::
     end
 end
@@ -1021,6 +1043,7 @@ end
 --- @field Effects RB_EffectsTable
 --- @field Materials table<string, RB_ParameterSet> -- key <name :: attachIndex(if any) :: descIndex> -> RB_ParameterSet
 --- @field Transforms table<string, Transform> -- key <name :: attachIndex(if any) :: descIndex> -> Transform
+--- @field WorldScale Vec3
 
 --- @return RB_VisualPreset
 function VisualTab:SaveCurrentState()
@@ -1029,6 +1052,7 @@ function VisualTab:SaveCurrentState()
     local presetData = {
         Materials = {},
         Effects = RBUtils.DeepCopy(effects),
+        
     }
 
     local localTransforms = {}
@@ -1132,39 +1156,6 @@ function VisualTab:Save(name, overwrite)
 
     --Info("VisualTab:Save - Preset '" .. saveName .. "' saved successfully for template: " .. templateName)
     return true
-end
-
-function VisualTab:ExportPreset()
-    local effects = self.EntityEffectTab.Effects
-    local presetData = {
-        Materials = {},
-        Effects = RBUtils.DeepCopy(effects),
-        Transforms = {},
-    }
-
-    for key, mat in pairs(self.MaterialTabs) do
-        local params = mat:ExportChanges()
-        local hasChanges = false
-        for typeRef, changed in pairs(params) do
-            if next(changed) then
-                hasChanges = true
-                break
-            end
-        end
-
-        if hasChanges then
-            presetData.Materials[key] = params
-        end
-        local objStart = self.resetParams[key]
-        local currentScale = { VisualHelpers.GetRenderableScale(self.guid, objStart.DescIndex, objStart.AttachIndex) }
-        if RBTableUtils.EqualArrays(currentScale, objStart.Scale) == false then
-            presetData.Transforms[key] = {
-                Scale = currentScale
-            }
-        end
-    end
-
-    return presetData
 end
 
 function VisualTab:Load(notoverwrite)
