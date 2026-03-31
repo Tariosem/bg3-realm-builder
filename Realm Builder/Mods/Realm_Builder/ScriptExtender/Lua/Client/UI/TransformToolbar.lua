@@ -7,6 +7,18 @@ TransformToolbar = _Class("TransformToolbar")
 local INIT_WINDOW_POS = 0.1
 local cursorMaxDistance = 100
 
+--- @param entity EntityHandle
+local function registerScenery(entity)
+    if not entity or not entity.Scenery then
+        return
+    end
+
+    local guid = entity.Scenery.Uuid
+    
+    if NearbyMap.GetRegisteredScenery(guid) then return end
+    NearbyMap.RegisterScenery(entity)
+end
+
 function TransformToolbar:__init()
     self.Subscriptions = {}
     self.Selecting = {}
@@ -42,10 +54,7 @@ function TransformToolbar:RegisterKeyInputEvents()
         local entity = PickingUtils.GetPickingEntity()
 
         if entity and entity.Scenery and not self.Ignore["Scenery"] then
-            guid = entity.Scenery.Uuid
-            if not NearbyMap.GetRegisteredScenery(guid) then
-                NearbyMap.RegisterScenery(entity)
-            end
+            registerScenery(entity)
         end
 
         if not guid then 
@@ -528,11 +537,11 @@ function TransformToolbar:RegisterTransformEditorEvents()
         if globalEditor.IsDragging then return end
 
         local avgPos = Vec3.new(0, 0, 0)
+        local targets = globalEditor.Target or {}
         for _, proxy in pairs(globalEditor.Target or {}) do
             avgPos = avgPos + proxy:GetWorldTranslate()
         end
         avgPos = avgPos / #globalEditor.Target
-        CameraHelpers.CameraMoveToPosition(avgPos)
 
         local oba = self.OrbitalCameraUI
         if not oba then return end
@@ -545,6 +554,12 @@ function TransformToolbar:RegisterTransformEditorEvents()
         end
 
         self.OrbitalCameraUI:SetTarget(avgPos)
+
+        if #targets == 1 and targets[1].Guid then
+            self.OrbitalCameraUI.IgnoreEntity = targets[1].Guid
+        else
+            self.OrbitalCameraUI.IgnoreEntity = nil
+        end
     end)
 
     self.Subscriptions["ResetTransform"] = InputEvents.SubscribeKeyInput({}, function(e)
@@ -566,158 +581,71 @@ function TransformToolbar:RegisterTransformEditorEvents()
     end)
 end
 
+local boxSelector = Ext.Require("Client/Editor/BoxSelector.lua") --[[@as BoxSelector]]
 function TransformToolbar:SetupBoxSelect()
-    local boxSelectStart = nil
-    local boxSelectEnd = nil
-    local boxSelectTimer = nil
-    local boxSelectWindow = Ext.IMGUI.NewWindow("BoxSelect##" .. tostring(self))
-    boxSelectWindow.Visible = false
+    boxSelector:Init({})
+    local function onSelectEnd()
+        if not boxSelector then return end
+        local returnEntities = boxSelector:End() or {}
+        local proxies = {}
 
-    local function collectAABBCorners(aabb)
-        local min = aabb.Min
-        local max = aabb.Max
-        return {
-            Vec3.new(min[1], min[2], min[3]),
-            Vec3.new(max[1], min[2], min[3]),
-            Vec3.new(min[1], max[2], min[3]),
-            Vec3.new(max[1], max[2], min[3]),
-            Vec3.new(min[1], min[2], max[3]),
-            Vec3.new(max[1], min[2], max[3]),
-            Vec3.new(min[1], max[2], max[3]),
-            Vec3.new(max[1], max[2], max[3]),
-        }
-    end
-
-    local function boxSelect()
-        if not boxSelectStart or not boxSelectEnd then return end
-        local toCheck = {}
-
-        for _, guid in pairs(EntityHelpers.GetAllPartyMembers()) do
-            table.insert(toCheck, guid)
-        end
-        for guid, _ in pairs(EntityStore:GetAllStored()) do
-            table.insert(toCheck, guid)
-        end
-
-        local camera = RBGetCamera()
-        if not camera then
-            Warning("No camera found for box select")
-            return
-        end
-        local screenWidth, screenHeight = UIHelpers.GetScreenSize()
-        if not screenWidth or not screenHeight then
-            Warning("No screen size found for box select")
-            return
-        end
-
-        local selected = {}
-        for _, guid in ipairs(toCheck) do
-            local visual = VisualHelpers.GetEntityVisual(guid)
-            local aabb = nil
-            local function makeAabb(pos)
-                local min = pos - Vec3.new(0.5, 0.5, 0.5)
-                local max = pos + Vec3.new(0.5, 0.5, 0.5)
-                return { Min = min, Max = max }
-            end
-            if not visual then
-                local pos = Vec3.new { RBGetPosition(guid) }
-                aabb = makeAabb(pos)
-            else
-                aabb = visual.WorldBound
-            end
-
-            if not aabb then
-                local pos = Vec3.new { RBGetPosition(guid) }
-                aabb = makeAabb(pos)
-            end
-
-
-            local vertices = collectAABBCorners(aabb)
-            local inside = false
-            for _, v in ipairs(vertices) do
-                local screenPos = WorldToScreenPoint(v, camera, screenWidth, screenHeight)
-                if screenPos and MathUtils.IsInRect(screenPos, boxSelectStart, boxSelectEnd) then
-                    inside = true
-                    break
+        local guids = {}
+        
+        for _, entity in pairs(returnEntities) do
+            local guid = entity.Uuid and entity.Uuid.EntityUuid
+            if guid then
+                table.insert(guids, guid)
+            elseif entity.Scenery then
+                local sceneryGuid = entity.Scenery.Uuid
+                if sceneryGuid then
+                    registerScenery(entity)
+                    table.insert(guids, sceneryGuid)
                 end
             end
+        end
 
-            if inside then
-                selected[guid] = {}
+        if not self.InputStates.MultiSelecting then self.Selecting = {} end
+        for _, guid in pairs(guids) do
+            self.Selecting[guid] = {}
+        end
+
+        for selGuid, _ in pairs(self.Selecting) do
+            if self.Ignore["Character"] and EntityHelpers.IsCharacter(selGuid) then
+                goto continue
+            end
+            if self.Ignore["Scenery"] and NearbyMap.GetRegisteredScenery(selGuid)  then
+                goto continue
+            end
+            if self.Ignore["NonSpawned"] and not EntityStore.IsSpawned(selGuid) then
+                goto continue
+            end
+
+            local proxy = MovableProxy.CreateByGuid(selGuid)
+            if proxy then
+                table.insert(proxies, proxy)
             end
             ::continue::
         end
 
-        if next(selected) then
-            if self.InputStates.MultiSelecting then
-                for guid, _ in pairs(selected) do
-                    self.Selecting[guid] = {}
-                end
-            else
-                self.Selecting = selected
-            end
-        else
-        end
-    end
-
-    local function initBoxSelectWindow()
-        boxSelectWindow.Visible = true
-        boxSelectWindow:SetSize({ 0, 0 })
-        boxSelectWindow:SetPos({ 0, 0 })
-        boxSelectWindow.NoTitleBar = true
-        boxSelectWindow.NoResize = true
-        boxSelectWindow.NoMove = true
-        boxSelectWindow:SetStyle("WindowBorderSize", 3 * SCALE_FACTOR)
-        boxSelectWindow:SetStyle("WindowRounding", 0)
-        boxSelectWindow:SetColor("Border", ColorUtils.HexToRGBA("FF007712"))
-        boxSelectWindow:SetColor("WindowBg", ColorUtils.HexToRGBA("12121212"))
+        RB_GLOBALS.TransformEditor:Select(proxies)
     end
 
     self.KeybindModule:RegisterEvent("BoxSelect", function(e)
         if e.Repeat then return end
 
         if e.Event == "KeyDown" then
-            if boxSelectTimer then return end
-            boxSelectStart = Vec2.new(PickingUtils.GetCursorPos())
-            boxSelectEnd = nil
-            initBoxSelectWindow()
-            boxSelectTimer = Timer:EveryFrame(function()
-                boxSelectEnd = Vec2.new(PickingUtils.GetCursorPos())
-                if not boxSelectStart or not boxSelectEnd then return end
-                local left = math.min(boxSelectStart[1], boxSelectEnd[1])
-                local top = math.min(boxSelectStart[2], boxSelectEnd[2])
-                local width = math.abs(boxSelectEnd[1] - boxSelectStart[1])
-                local height = math.abs(boxSelectEnd[2] - boxSelectStart[2])
-                boxSelectWindow:SetPos({ left, top })
-                -- imgui window will block mouse so we need to shrink it a bit
-                boxSelectWindow:SetSize({ width - 10, height - 10 })
-                --boxSelect()
-            end)
+            boxSelector:Start()
         else
-            boxSelect()
-            if boxSelectTimer then
-                Timer:Cancel(boxSelectTimer)
-                boxSelectTimer = nil
-            end
-            if boxSelectWindow then
-                boxSelectWindow.Visible = false
-                boxSelectWindow:SetSize({ 0, 0 })
-                boxSelectWindow:SetPos({ -1, -1 })
-            end
-            boxSelectStart = nil
-            boxSelectEnd = nil
+            onSelectEnd()
+        end
+    end)
 
-            local proxies = {}
-            for selGuid, _ in pairs(self.Selecting) do
-                if EntityHelpers.IsCharacter(selGuid) and self.Ignore["Character"] then
-                    goto continue
-                end
-
-                table.insert(proxies, MovableProxy.CreateByGuid(selGuid))
-                ::continue::
-            end
-
-            RB_GLOBALS.TransformEditor:Select(proxies)
+    local antiModifier = InputEvents.SubscribeKeyAndMouse(function(e)
+        local boxSelectKeybinding = self.KeybindModule:GetKeyByEvent("BoxSelect")
+        if not boxSelectKeybinding then return end
+        if not boxSelector:IsSelecting() then return end
+        if e.Key == boxSelectKeybinding.Key and e.Event == "KeyUp" then
+            onSelectEnd()
         end
     end)
 end
@@ -912,6 +840,12 @@ function TransformToolbar:RenderConfigMenu()
         if self.TopToolBar then
             self.TopToolBar:SetPos(windowPos)
         end
+    end
+
+    local onlySpawnedCheck = panel:AddCheckbox("Only Select Spawned When Box Selecting")
+    onlySpawnedCheck.Checked = self.OnlySelectSpawned or false
+    onlySpawnedCheck.OnChange = function(e)
+        self.Ignore["NonSpawned"] = e.Checked
     end
 
     local ignoreScenerySel = panel:AddCheckbox("Ignore Scenery When Selecting")

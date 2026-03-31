@@ -260,6 +260,7 @@ function EntityTab:RenderMonitorTab()
         saveCurrentTransform()
         if not savedTransform then return end
         local delta = Vec3.new({sel.Value[1], sel.Value[2], sel.Value[3]})
+        delta = Ext.Math.Div(delta, 10)
         local currentPos = savedTransform.Translate
         if not currentPos then return end
         local newPos = currentPos + delta

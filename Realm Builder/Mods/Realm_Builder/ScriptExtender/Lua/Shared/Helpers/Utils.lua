@@ -533,3 +533,17 @@ function RBUtils.WrapTextTokens(tokens, wrapPos)
 
     return wrapped
 end
+
+--- @param entities EntityHandle[]
+function RBUtils.EntitiesToUUIDs(entities)
+    local uuids = {}
+    for i, entity in ipairs(entities) do
+        if type(entity) == "string" then
+            table.insert(uuids, entity)
+        elseif type(entity) == "table" and entity.Uuid and entity.Uuid.EntityUuid then
+            local uuid = entity.Uuid.EntityUuid
+            table.insert(uuids, uuid)
+        end
+    end
+    return uuids
+end

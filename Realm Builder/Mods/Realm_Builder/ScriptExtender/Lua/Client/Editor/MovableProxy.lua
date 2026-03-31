@@ -336,7 +336,7 @@ function MovableProxy.CreateByGuid(guid)
         elseif NearbyMap.GetRegisteredScenery(guid) then
             proxy = SceneryMovableProxy.new(NearbyMap.GetRegisteredScenery(guid).Scenery)
         else
-            proxy = CharacterMovableProxy.new(guid)
+            --proxy = CharacterMovableProxy.new(guid)
         end
     end
     movabelCache[guid] = proxy

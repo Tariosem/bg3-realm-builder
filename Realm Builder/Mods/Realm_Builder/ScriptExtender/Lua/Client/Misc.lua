@@ -224,6 +224,7 @@ do
         Easing = "Linear", --[[@as AnimationEasing]]
         Loop = false, --[[@as boolean]]
     }
+    
     local alignedConfig = ImguiElements.AddAlignedTable(cameraAnimatorWin)
     local durationSlider = alignedConfig:AddSliderWithStep("Duration (ms)", animConfig.Duration, 1000, 60000, 1000, false)
     durationSlider.OnChange = function(slider)

@@ -181,6 +181,10 @@ function EntityStore:SubscribeToBindChanges(guid, callback)
     return { Unsubscribe = unsub, ID = sub }
 end
 
+function EntityStore:IsSpawned(guid)
+    return EntityDatas[guid] ~= nil
+end
+
 ---@param guid string
 ---@param data EntityData
 function EntityStore:AddEntity(guid, data)

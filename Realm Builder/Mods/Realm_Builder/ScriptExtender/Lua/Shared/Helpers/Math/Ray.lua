@@ -329,6 +329,156 @@ function Ray:IntersectSphere(center, radius)
     end
 end
 
+local function solve_cubic(a, b, c)
+    
+end
+
+--- https://www.shadertoy.com/view/4sBGDy 
+--- @param center Vec3
+--- @param majorRadius number
+--- @param minorRadius number
+--- @param axis "X" | "Y" | "Z" | Vec3
+function Ray:IntersectTorus(center, majorRadius, minorRadius, axis)
+    
+    local torusQuat = Quat.FromTo(GLOBAL_COORDINATE.Y, axis)
+    local localRay = self:ToLocal({
+        Translate = center,
+        RotationQuat = torusQuat
+    })
+
+    local eml = Ext.Math
+    local dot = eml.Dot
+    local abs = math.abs
+    local sqrt = math.sqrt
+    local pow = function(x, y) return x^y end
+    local cos = math.cos
+    local acos = math.acos
+    local sign = eml.Sign
+    local min = math.min
+
+    local ro = localRay.Origin
+    local rd = localRay.Direction
+
+    local po = 1.0
+    local tx = 0.0
+    local Ra2 = majorRadius * majorRadius
+    local ra2 = minorRadius * minorRadius
+    local tra = majorRadius + minorRadius
+	
+    local m = dot(ro,ro)
+    local n = dot(ro,rd)
+
+    -- bounding sphere
+    
+	local h = n*n - m + tra*tra
+	if h<0.0 then return nil end
+    
+	tx = -n-sqrt(h); -- start ray from bounding sphere surface 
+    if tx>0.0 then      -- if outside of sphere
+
+        tx = tx - tra*0.01; -- backtrack another 1% to prevent precision issues
+
+        m = m + tx*(2.0*n + tx)
+        n = n + tx
+
+        ro = ro + tx*rd
+
+        m = dot(ro,ro)
+        n = dot(ro,rd)
+    else
+        tx = 0.0;
+    end
+    
+    
+	-- find quartic equation
+    local k = (m - ra2 - Ra2)/2.0;
+    local k3 = n;
+    local k2 = n*n + Ra2*rd.z*rd.z + k;
+    local k1 = k*n + Ra2*ro.z*rd.z;
+    local k0 = k*k + Ra2*ro.z*ro.z - Ra2*ra2;
+	
+    -- prevent |c1| from being too close to zero
+    if( abs(k3*(k3*k3 - k2) + k1) < 0.01 ) then
+        po = -1.0
+        local tmp=k1
+        k1=k3
+        k3=tmp
+        k0 = 1.0/k0
+        k1 = k1*k0
+        k2 = k2*k0
+        k3 = k3*k0
+    
+	end
+
+    local c2 = 2.0*k2 - 3.0*k3*k3;
+    local c1 = k3*(k3*k3 - k2) + k1;
+    local c0 = k3*(k3*(-3.0*k3*k3 + 4.0*k2) - 8.0*k1) + 4.0*k0;
+
+    
+    c2 = c2 / 3.0
+    c1 = c1 * 2.0
+    c0 = c0 / 3.0
+    
+    local Q = c2*c2 + c0;
+    local R = 3.0*c0*c2 - c2*c2*c2 - c1*c1;
+    
+	
+    local h = R*R - Q*Q*Q;
+    local z = 0.0;
+    if h < 0.0 then
+    	-- 4 intersections
+        local sQ = sqrt(Q);
+        z = 2.0*sQ*cos( acos(R/(sQ*Q)) / 3.0 );
+    else
+        -- 2 intersections
+        local sQ = pow( sqrt(h) + abs(R), 1.0/3.0 );
+        z = sign(R)*abs( sQ + Q/sQ );
+    end
+    z = c2 - z;
+	
+    local d1 = z   - 3.0*c2;
+    local d2 = z*z - 3.0*c0;
+    if abs(d1) < 1.0e-4 then
+    
+        if d2 < 0.0 then return nil end
+        d2 = sqrt(d2);
+    
+    else
+        if d1 < 0.0 then return nil end
+        d1 = sqrt( d1/2.0 );
+        d2 = c1/d1;
+    end
+    
+    ------------------------------------
+	
+    local result = -1.0;
+
+    h = d1*d1 - z + d2;
+    if h > 0.0 then
+        h = sqrt(h);
+        local t1 = -d1 - h - k3; t1 = (po<0.0) and 2.0/t1 or t1;
+        local t2 = -d1 + h - k3; t2 = (po<0.0) and 2.0/t2 or t2;
+        if t1 > 0.0 then result=t1 end 
+        if t2 > 0.0 then result=result<0.0 and t2 or min(result,t2); end
+    end
+
+    h = d1*d1 - z - d2;
+    if h > 0.0 then
+        h = sqrt(h);
+        local t1 = d1 - h - k3;  t1 = (po<0.0) and 2.0/t1 or t1;
+        local t2 = d1 + h - k3;  t2 = (po<0.0) and 2.0/t2 or t2;
+        if t1 > 0.0 then result=result<0.0 and t1 or min(result,t1) end
+        if t2 > 0.0 then result=result<0.0 and t2 or min(result,t2) end
+    end
+
+    return result > 0.0 and Hit.new(
+        self:At(result+tx),
+        nil,
+        result,
+        nil
+    ) or nil
+end
+
 ---@param entity EntityHandle|GUIDSTRING
 ---@return Hit|nil, Hit[]|nil
 function Ray:IntersectEntity(entity)
@@ -343,6 +493,8 @@ end
 
 
 local allInclude = 0
+local PhysicsGroupFlags = Ext.Enums.PhysicsGroupFlags
+local PhysicsType = Ext.Enums.PhysicsType
 
 for _, flag in pairs(PhysicsGroupFlags) do
     allInclude = allInclude | flag

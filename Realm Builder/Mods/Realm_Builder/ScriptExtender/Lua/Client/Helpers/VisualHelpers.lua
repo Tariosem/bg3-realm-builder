@@ -602,3 +602,27 @@ function VisualHelpers.GetLightEntity(entity, compIndex)
     if not entity.Effect then return nil end
     return entity.Effect.Timeline.Components[compIndex].LightEntity.Light
 end
+
+--- @param guid string
+--- @param color vec4
+function RBUtils.SetGizmoColor(guid, color)
+    RBUtils.WaitUntil(function ()
+        local entity = Ext.Entity.Get(guid)
+        if not entity then return false end
+        return entity.Visual and entity.Visual.Visual and true or false
+    end, function ()
+        local visual = VisualHelpers.GetEntityVisual(guid)
+        if not visual then
+            _P("Failed to get visual for guid: " .. tostring(guid))
+            return
+        end
+
+        for _,obj in ipairs(visual.ObjectDescs or {}) do
+            if obj.Renderable and obj.Renderable.ActiveMaterial then
+                obj.Renderable.ActiveMaterial:SetVector4("Color", color)
+            end
+        end
+    end, function ()
+        _P("Failed to set gizmo color for guid: " .. tostring(guid))
+    end, 60 * 100)
+end

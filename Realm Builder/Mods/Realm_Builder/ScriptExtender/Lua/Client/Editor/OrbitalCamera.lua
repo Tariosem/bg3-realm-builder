@@ -1,10 +1,5 @@
 local eml = Ext.Math
 
---- @class CameraProxy
---- @field GetTransform fun(self: CameraProxy): Transform
---- @field SetTransform fun(self: CameraProxy, transform: Transform)
-local CameraProxy = {}
-
 local function calcNDC(x, y)
     local screenWH = Ext.IMGUI.GetViewportSize()
     return (2.0 * x) / screenWH[1] - 1.0,
@@ -22,34 +17,6 @@ end
 
 local deepCopy = RBUtils.DeepCopy
 
-function CameraProxy.new()
-    local o = {
-        Transform = {
-            Translate = {0,0,0},
-            RotationQuat = {0,0,0,1},
-            Scale = {1,1,1}
-        }
-    }
-    setmetatable(o, {__index = CameraProxy})
-    return o
-end
-
-function CameraProxy:GetTransform()
-    return self.Transform
-end
-
-function CameraProxy:SetTransform(transform)
-    self.Transform = transform
-    local cam = RBGetCamera()
-    if not cam or not cam.PhotoModeCameraSavedTransform then return end
-
-    cam.PhotoModeCameraSavedTransform.Transform = transform
-    Ext.OnNextTick(function()
-        --- @diagnostic disable-next-line
-        Ext.UI.GetRoot():Find("ContentRoot"):Child(21).DataContext.RecallCameraTransform:Execute()
-    end)
-end
-
 --- @class OrbitalCamera
 --- @field camera CameraProxy
 --- @field target Vec3
@@ -57,6 +24,10 @@ end
 --- @field rotateSpeed number
 --- @field zoomSpeed number
 --- @field moveSpeed number
+--- @field minDistance number
+--- @field maxDistance number
+--- @field enableCollide boolean
+--- @field collideCullingRadius number -- target radius for collision culling, default 0.5
 --- @field subs RBSubscription[]
 local OrbitalCamera = {}
 
@@ -67,14 +38,75 @@ function OrbitalCamera.new(cam)
     o.target = {0,0,0}
     o.distance = 10
 
-    o.rotateSpeed = 1.0
+    o.rotateSpeed = 2.0
     o.zoomSpeed = 0.9
     o.moveSpeed = 10.0
 
     o.minDistance = 1.0
     o.maxDistance = 100.0
 
+    o.enableCollide = false
+    o.cullingRadius = 1
+    o.collideRaidus = 1
+
+    o.IgnoreEntity = nil -- Guid of entity to ignore for collision, usually the player character
+
     return o
+end
+
+local allInclude = 0
+local PhysicsGroupFlags = Ext.Enums.PhysicsGroupFlags
+local PhysicsType = Ext.Enums.PhysicsType
+
+for _, flag in pairs(PhysicsGroupFlags) do
+    allInclude = allInclude | flag
+end
+
+local allPhyType = PhysicsType.Dynamic | PhysicsType.Static
+
+--- @param transform Transform
+function OrbitalCamera:SetCameraTransform(transform)
+    if self.enableCollide then
+        local sub = eml.Sub
+        local mul = eml.Mul
+        local add = eml.Add
+        local length = eml.Length
+        local targetPos = self.target
+        local rayOrigin = targetPos
+        local dirVec = sub(transform.Translate, targetPos)
+        local rayDir = eml.Normalize(dirVec)
+        local rayLength = self.distance or eml.Length(dirVec)
+        local cullingRadius = self.cullingRadius or 0.5
+        local colliderRadius = self.collideRadius or 1
+
+        local startPoint = rayOrigin
+        local endPoint = eml.Add(rayOrigin, mul(rayDir, rayLength))
+
+        local hits = Ext.Level.RaycastAll(
+            startPoint,
+            endPoint,
+            allPhyType,
+            allInclude, -- includeFlags
+            --- @diagnostic disable-next-line
+            0, -- excludeFlags
+            -1  -- context
+        )
+        for i, pos in pairs(hits.Positions or {}) do
+            local entity = hits.Shapes[i].PhysicsObject.Entity
+            if entity and entity.Uuid and entity.Uuid.EntityUuid == self.IgnoreEntity then
+                goto continue
+            end
+
+            local dis = length(sub(hits.Positions[i], targetPos))
+            if dis < rayLength and dis > cullingRadius then
+                transform.Translate = add(pos, mul(rayDir, -colliderRadius)) -- Pull back a bit to prevent clipping
+            end
+
+            ::continue::
+        end
+    end
+
+    self.camera:SetTransform(transform)
 end
 
 function OrbitalCamera:Rotate(deltaX, deltaY)
@@ -95,7 +127,7 @@ function OrbitalCamera:Rotate(deltaX, deltaY)
         Scale = {1, 1, 1}
     }
 
-    self.camera:SetTransform(newTransform)
+    self:SetCameraTransform(newTransform)
 end
 
 function OrbitalCamera:Move(deltaX, deltaY)
@@ -124,7 +156,7 @@ function OrbitalCamera:Move(deltaX, deltaY)
         Scale = currentTransform.Scale
     }
 
-    self.camera:SetTransform(newTransform)
+    self:SetCameraTransform(newTransform)
 end
 
 function OrbitalCamera:Zoom(deltaZoom)
@@ -141,7 +173,7 @@ function OrbitalCamera:Zoom(deltaZoom)
         Scale = currentTransform.Scale
     }
 
-    self.camera:SetTransform(newTransform)
+    self:SetCameraTransform(newTransform)
 end
 
 function OrbitalCamera:SetTarget(target)
@@ -312,12 +344,18 @@ end
 function OrbitalCameraUI:RenderConfigTable(parent)
     local aT = ImguiElements.AddAlignedTable(parent)
 
+    aT:AddCheckbox("Enable Collision", self.controller.enableCollide or false).OnChange = function (s)
+        self.controller.enableCollide = s.Checked
+    end
+
     local fields = {
         {name = "Rotate Speed", var = "rotateSpeed", type = "number", minValue = 0.1, maxValue = 10, step = 0.1},
         {name = "Zoom Ratio", var = "zoomSpeed", type = "number", minValue = 0.1, maxValue = 1, step = 0.01},
         {name = "Move Speed", var = "moveSpeed", type = "number", minValue = 0.1, maxValue = 20, step = 0.1},
         {name = "Min Distance", var = "minDistance", type = "number", minValue = 0.1, maxValue = 50, step = 0.1},
         {name = "Max Distance", var = "maxDistance", type = "number", minValue = 1, maxValue = 200, step = 1},
+        {name = "Collision Culling Radius", var = "cullingRadius", type = "number", minValue = 0.1, maxValue = 5, step = 0.1},
+        {name = "Collision Pullback Radius", var = "collideRaidus", type = "number", minValue = 0.1, maxValue = 5, step = 0.1},
     }
 
     for _, field in pairs(fields) do

@@ -34,19 +34,19 @@ function OsirisHelpers.DrawLine(startPos, endPos, width, user)
     local toScale = length / 10
 
     local fxHandle = Osi.CreateAt(RB_BEAM_ITEM_FX, 0, 0, 0, 1, 0, "") --[[@as string]]
-    OsirisHelpers.TeleportTo(fxHandle, startPos[1], startPos[2], startPos[3])
     OsirisHelpers.RotateTo(fxHandle, table.unpack(MathUtils.DirectionToQuat(dir)))
+    OsirisHelpers.TeleportTo(fxHandle, startPos[1], startPos[2], startPos[3])
     Timer:Ticks(10, function(timerID)
         if not EntityHelpers.EntityExists(fxHandle) then return end
 
-        NetChannel.SetVisualTransform:Broadcast({
+        --[[NetChannel.SetVisualTransform:Broadcast({
             Guid = fxHandle,
             Transforms = {
                 [fxHandle] = {
                     Scale = { 0, 0, 0 },
                 }
             }
-        })
+        })]]
 
         NetChannel.SetVisualTransform:SendToClient({
             Guid = fxHandle,
