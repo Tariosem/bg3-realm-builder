@@ -533,35 +533,6 @@ function TransformToolbar:RegisterTransformEditorEvents()
         end
     end)
 
-    teMod:RegisterEvent("FollowTarget", function(e)
-        if globalEditor.IsDragging then return end
-
-        local avgPos = Vec3.new(0, 0, 0)
-        local targets = globalEditor.Target or {}
-        for _, proxy in pairs(globalEditor.Target or {}) do
-            avgPos = avgPos + proxy:GetWorldTranslate()
-        end
-        avgPos = avgPos / #globalEditor.Target
-
-        local oba = self.OrbitalCameraUI
-        if not oba then return end
-        if not oba:IsRunning() then
-            oba:Run()
-
-            if oba.ToggleConfigWindow then
-                oba.ToggleConfigWindow()
-            end
-        end
-
-        self.OrbitalCameraUI:SetTarget(avgPos)
-
-        if #targets == 1 and targets[1].Guid then
-            self.OrbitalCameraUI.IgnoreEntity = targets[1].Guid
-        else
-            self.OrbitalCameraUI.IgnoreEntity = nil
-        end
-    end)
-
     self.Subscriptions["ResetTransform"] = InputEvents.SubscribeKeyInput({}, function(e)
         if not globalEditor.Target or #globalEditor.Target == 0 then return end
         if globalEditor.IsDragging then return end
@@ -581,10 +552,30 @@ function TransformToolbar:RegisterTransformEditorEvents()
     end)
 end
 
+local bruteForceBlacklist = {
+    [RB_BEAM_ITEM_FX] = true,
+}
+for _, id in pairs(GIZMO_ITEM_IDS) do
+    bruteForceBlacklist[id] = true
+end
+
 local boxSelector = Ext.Require("Client/Editor/BoxSelector.lua") --[[@as BoxSelector]]
 function TransformToolbar:SetupBoxSelect()
-    boxSelector:Init({})
-    local function onSelectEnd()
+    boxSelector:Init()
+    local function onSelectEnd() end
+    
+
+    self.KeybindModule:RegisterEvent("BoxSelect", function(e)
+        if e.Repeat then return end
+
+        if e.Event == "KeyDown" then
+            boxSelector:Start()
+        else
+            onSelectEnd()
+        end
+    end)
+
+    function onSelectEnd()
         if not boxSelector then return end
         local returnEntities = boxSelector:End() or {}
         local proxies = {}
@@ -593,7 +584,14 @@ function TransformToolbar:SetupBoxSelect()
         
         for _, entity in pairs(returnEntities) do
             local guid = entity.Uuid and entity.Uuid.EntityUuid
-            if guid then
+            if guid and not RB_FlagHelpers.HasFlag(guid, "IsGizmo") then
+
+                if entity.GameObjectVisual then
+                    local rootTemplate = entity.GameObjectVisual.RootTemplateId
+                    if bruteForceBlacklist[rootTemplate] then
+                        goto continue
+                    end
+                end
                 table.insert(guids, guid)
             elseif entity.Scenery then
                 local sceneryGuid = entity.Scenery.Uuid
@@ -602,6 +600,8 @@ function TransformToolbar:SetupBoxSelect()
                     table.insert(guids, sceneryGuid)
                 end
             end
+
+            ::continue::
         end
 
         if not self.InputStates.MultiSelecting then self.Selecting = {} end
@@ -629,16 +629,6 @@ function TransformToolbar:SetupBoxSelect()
 
         RB_GLOBALS.TransformEditor:Select(proxies)
     end
-
-    self.KeybindModule:RegisterEvent("BoxSelect", function(e)
-        if e.Repeat then return end
-
-        if e.Event == "KeyDown" then
-            boxSelector:Start()
-        else
-            onSelectEnd()
-        end
-    end)
 
     local antiModifier = InputEvents.SubscribeKeyAndMouse(function(e)
         local boxSelectKeybinding = self.KeybindModule:GetKeyByEvent("BoxSelect")
@@ -774,38 +764,6 @@ function TransformToolbar:RenderTopBar()
 
 end
 
---- @param parent ExtuiTreeParent
-function TransformToolbar:RenderOrbitalCamera(parent)
-
-    local oba = OrbitalCameraUI.new()
-    self.OrbitalCameraUI = oba
-    local configWin = nil
-
-    local runningLabel = "Orbital Camera is Running"
-    local stoppedLabel = "Start Orbital Camera"
-
-    local runningBtn = parent:AddButton(stoppedLabel)
-    runningBtn.OnClick = function()
-        local isRunning = oba:IsRunning()
-        if isRunning then
-            oba:Stop()
-        else
-            oba:Run()
-        end
-        isRunning = oba:IsRunning()
-        runningBtn.Label = isRunning and runningLabel or stoppedLabel
-    end
-
-    configWin = parent
-    configWin:AddSeparatorText("Orbital Camera Configurations")
-
-    oba:RenderConfigTable(configWin)
-
-    oba.ToggleConfigWindow = function()
-        runningBtn.Label = runningLabel
-    end
-end
-
 function TransformToolbar:RenderConfigMenu()
     local panel = WindowManager.RegisterWindow("generic", "Key Bind", { 0, 0 }, { 0, 0 })
     self.KeybindConfigWindow = panel
@@ -842,27 +800,36 @@ function TransformToolbar:RenderConfigMenu()
         end
     end
 
-    local onlySpawnedCheck = panel:AddCheckbox("Only Select Spawned When Box Selecting")
+    local boxSelectFarSlider = aligned:AddSliderWithStep("Box Select Far Plane",  20, 10, 100, 1, false)
+    boxSelectFarSlider.OnChange = function ()
+        boxSelector.Far = boxSelectFarSlider.Value[1]
+    end
+
+    local boxSelectDebug = aligned:AddCheckbox("Box Select Debug")
+    boxSelectDebug.OnChange = function ()
+        boxSelectDebug.Checked = boxSelector:ToggleDebug()
+    end
+    boxSelectDebug.Visible = false
+
+    local onlySpawnedCheck = aligned:AddCheckbox("Only Select Spawned When Box Selecting")
     onlySpawnedCheck.Checked = self.OnlySelectSpawned or false
     onlySpawnedCheck.OnChange = function(e)
         self.Ignore["NonSpawned"] = e.Checked
     end
 
-    local ignoreScenerySel = panel:AddCheckbox("Ignore Scenery When Selecting")
+    local ignoreScenerySel = aligned:AddCheckbox("Ignore Scenery When Selecting")
     ignoreScenerySel.Checked = self.Ignore["Scenery"] or false
     ignoreScenerySel.OnChange = function(e)
         self.Ignore["Scenery"] = e.Checked
     end
 
-    local ignoreCharacterSel = panel:AddCheckbox("Ignore Characters When Selecting")
+    local ignoreCharacterSel = aligned:AddCheckbox("Ignore Characters When Selecting")
     ignoreCharacterSel.Checked = self.Ignore["Character"] or false
     ignoreCharacterSel.OnChange = function(e)
         self.Ignore["Character"] = e.Checked
     end
 
     self:RenderOtherConfigOptions(panel)
-
-    self:RenderOrbitalCamera(panel)
 end
 
 --- @param panel ExtuiWindow

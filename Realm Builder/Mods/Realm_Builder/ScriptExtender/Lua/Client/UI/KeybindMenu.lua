@@ -95,13 +95,17 @@ local localizedNames = {
     Grab = "Grab",
     Rotate = "Rotate",
     Scale = "Scale",
-    FollowTarget = "Follow target",
 
     BindUtility = "Bind Utility",
 
     BindPopup = "Open Bind Popup",
     BindTo = "Bind To Hover",
     Unbind = "Unbind Selection",
+
+    CameraTool = "Camera Tool",
+
+    ToggleOrbitalCamera = "Toggle Orbital Camera",
+    ToggleCameraToolWindow = "Toggle Camera Tool Window",
 }
 
 for key, text in pairs(localizedNames) do

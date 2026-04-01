@@ -271,7 +271,7 @@ function CustomEffectTab:RenderControlPanel(parent)
         loopTimer = Timer:Every(loopIntervalInput.Value[1], function ()
             clearHandles()
 
-            if IsInCharacterCreationMirror() or IsIsPhotoMode() then
+            if IsInCharacterCreationMirror() or IsInPhotoMode() then
                 return stopLooping()
             end
 

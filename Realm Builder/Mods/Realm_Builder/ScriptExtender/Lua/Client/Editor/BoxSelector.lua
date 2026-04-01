@@ -54,7 +54,7 @@ end
 --- @field point Vec3
 
 --- @class Frustrum
---- @field planes Plane[]
+--- @field planes Plane[] -- normal facing outwards
 --- @field rayOrigins Vec3[]
 --- @field nearPoints Vec3[]
 --- @field farPoints Vec3[]
@@ -68,13 +68,13 @@ local function isPointBehindPlane(point, planeNormal, planePoint)
     return dot(toPoint, planeNormal) < 0
 end
 
---- cross(1->3, 1->2)
+--- cross(1->2, 1->3)
 --- @param points3 vec3[]
 --- @return Plane
 local function makePlane(points3)
     local edge1 = sub(points3[2], points3[1])
     local edge2 = sub(points3[3], points3[1])
-    local normal = normalize(cross(edge2, edge1))
+    local normal = normalize(cross(edge1, edge2))
 
     return {
         normal = normal,
@@ -82,10 +82,7 @@ local function makePlane(points3)
     }
 end
 
---- 1 --> 2
----       V
---- 4 <-- 3
---- @param screenPoints Vec2[] -- clockwise order starting from top left
+--- @param screenPoints Vec2[] -- counter-clockwise order
 --- @param near number
 --- @param far number
 --- @return Frustrum?
@@ -105,7 +102,6 @@ local function makeFrustrum(screenPoints, near, far)
     --- @type vec3[]
     local farPoints = {}
     
-    local rays = {}
     local aabb = {
         Min = {0,0,0},
         Max = {0,0,0}
@@ -126,7 +122,6 @@ local function makeFrustrum(screenPoints, near, far)
         local ray = toRay(sp[1], sp[2])
         local ro = ray.Origin
         local rd = ray.Direction
-        rays[i] = ray
         nearPoints[i] = add(ro, mul(rd, near))
         farPoints[i] = add(ro, mul(rd, far))
         rayOrigins[i] = ray.Origin
@@ -180,12 +175,13 @@ local function makeFrustrum(screenPoints, near, far)
         -- use two farpoints and one near point to ensure correct normal direction even if the frustrum is very thin
         planes[i] = makePlane({ nearPoints[i], farPoints[i], farPoints[nextIndex] })
     end
-    planes[5] = makePlane(nearPoints) -- Near plane
-    planes[6] = {
-        point = farPoints[1],
-        -- Use the same normal as the near plane since the far plane is parallel to the near plane
-        normal = mul(planes[5].normal, -1) 
-    }
+    planes[5] = makePlane({ farPoints[3], farPoints[2], farPoints[1] }) -- far plane
+    if near > 0 then -- near plane is a point when near == 0
+        planes[6] = {
+            point = nearPoints[1],
+            normal = mul(planes[5].normal, -1) 
+        }
+    end
 
     local function visualizePlaneNormals()
         local colors = {
@@ -230,7 +226,7 @@ local function frustrumIntersectsAABB(frustrum, aabb)
         local allOutside = true
         
         for _, corner in ipairs(corners) do
-            if not isPointBehindPlane(corner, plane.normal, plane.point) then
+            if isPointBehindPlane(corner, plane.normal, plane.point) then
                 allOutside = false
                 break
             end
@@ -254,34 +250,39 @@ local function initBoxSelectWindow(windowHandle)
     windowHandle:SetStyle("WindowBorderSize", 3 * SCALE_FACTOR)
     windowHandle:SetStyle("WindowRounding", 0)
     windowHandle:SetColor("Border", { 0.8, 0.8, 0.3, 0.8 })
-    windowHandle:SetColor("WindowBg", { 0.1, 0.1, 0.1, 0.3 })
+    windowHandle:SetColor("WindowBg", { 0.1, 0.1, 0.1, 0.1 })
 end
 
 --- @class BoxSelectorConfig
 --- @field Near number > 0
 --- @field Far number
---- @field OnSelect function
---- @field OnUpdate function
---- @field OnEnd function
+--- @field OnSelect fun(bs:BoxSelector)
+--- @field OnUpdate fun(bs:BoxSelector)
+--- @field OnEnd fun(bs:BoxSelector)
 --- @field GetCandidates fun(frustrumAABB:AABB):EntityHandle[]
 
 local PhysicsGroupFlags = Ext.Enums.PhysicsGroupFlags
 local PhysicsType = Ext.Enums.PhysicsType
 
-local some = PhysicsGroupFlags.Character | PhysicsGroupFlags.Scenery | PhysicsGroupFlags.Item
+local include = 0
+for k,v in pairs(PhysicsGroupFlags) do
+    include = include | v
+end
+
 local allPhyType = PhysicsType.Dynamic | PhysicsType.Static
 local contextInt = -1
 
 local function defaultGetCandidates(frustrumAABB)
     local position = mul(add(frustrumAABB.Min, frustrumAABB.Max), 0.5)
     local extents = mul(sub(frustrumAABB.Max, frustrumAABB.Min), 0.5)
-    local offset = {1,1,1}
+    local offset = {0,0,0.1}
 
     --- @diagnostic disable-next-line
-    --local allIntersects = Ext.Level.TestBox(position, extents, allPhyType, allInclude, 0)
+    --local allIntersects = Ext.Level.TestBox(position, extents, allPhyType, include, 0)
+    --RainbowDumpTable(allIntersects)
 
     --- @diagnostic disable-next-line
-    local allIntersects = Ext.Level.SweepBoxAll(position, add(position, offset), extents, allPhyType, some, 0, contextInt)
+    local allIntersects = Ext.Level.SweepBoxAll(frustrumAABB.Min, frustrumAABB.Max, extents, allPhyType, include, 0, contextInt)
 
     local returns = {}
     for _,phyObj in pairs(allIntersects and allIntersects.Shapes or {}) do
@@ -293,20 +294,48 @@ local function defaultGetCandidates(frustrumAABB)
     return returns
 end
 
+--- @param frustrumAABB AABB 
+local function bruteForceGetCandidates(frustrumAABB)
+    local position = mul(add(frustrumAABB.Min, frustrumAABB.Max), 0.5)
+    local extents = mul(sub(frustrumAABB.Max, frustrumAABB.Min), 0.5)
+    local radius = eml.Length(extents)
+    local allItemAndCharacters = Ext.Entity.GetEntitiesAroundPosition(position, radius)
+
+    local returns = {}
+    for _, ent in pairs(allItemAndCharacters) do
+        table.insert(returns, ent)
+    end
+
+    local allScenery = Ext.Entity.GetAllEntitiesWithComponent("Scenery")
+    for _, ent in pairs(allScenery) do
+        if not ent.Visual or not ent.Visual.Visual or not ent.Visual.Visual.WorldBound then goto continue end
+        if not ent.Transform or not ent.Transform.Transform then goto continue end
+        local dis = eml.Length(sub(position, ent.Transform.Transform.Translate))
+        if dis < radius then
+            table.insert(returns, ent)
+        end
+
+        ::continue::
+    end
+
+    return returns
+end
+
 local default_box_selector_config = {
     Near = 1,
     Far = 20,
     OnSelect = function() end,
     OnUpdate = function() end,
     OnEnd = function() end,
-    GetCandidates = defaultGetCandidates
+    GetCandidates = bruteForceGetCandidates
 }
 
 --- @class BoxSelector : BoxSelectorConfig
 --- @field Start fun(self:BoxSelector)
 --- @field Update fun(self:BoxSelector)
 --- @field End fun(self:BoxSelector):EntityHandle[] -- Returns the entities that were selected
---- @field Init fun(self:BoxSelector, config: BoxSelectorConfig)
+--- @field Init fun(self:BoxSelector, config: BoxSelectorConfig?)
+--- @field GetFarPoints fun(self:BoxSelector):Vec3[] -- for debug purposes
 --- @field ResetConfig fun(self:BoxSelector)
 --- @field private windowFrame ExtuiWindow
 --- @field private startScreenPos Vec2
@@ -335,12 +364,13 @@ end
 
 function BoxSelector:Init(config)
     local default = default_box_selector_config
+    config = config or default
     self.Near = config.Near or default.Near
     self.Far = config.Far or default.Far
     self.OnSelect = config.OnSelect or function() end
     self.OnUpdate = config.OnUpdate or function() end
     self.OnEnd = config.OnEnd or function() end
-    self.GetCandidates = config.GetCandidates or defaultGetCandidates
+    self.GetCandidates = config.GetCandidates or default.GetCandidates
 
     windowFrame = Ext.IMGUI.NewWindow("RB_BoxSelectFrame")
     initBoxSelectWindow(windowFrame)
@@ -379,7 +409,7 @@ function BoxSelector:Update()
     windowFrame.Visible = true
 
     if self.OnUpdate then
-        self.OnUpdate()
+        self:OnUpdate()
     end
 end
 
@@ -416,15 +446,15 @@ local function getEntityAABB(entity)
 end
 
 --- @param aabb AABB
-local function visualizeAABB(aabb)
+local function visualizeAABB(aabb, color)
     NetChannel.Visualize:RequestToServer({
         Type = "Box",
         Min = aabb.Min,
         Max = aabb.Max,
-        Duration = 5000,
+        Duration = debug_time,
     }, function (response)
         for i, handle in ipairs(response) do
-            RBUtils.SetGizmoColor(handle, {1,0,0,0.8})
+            RBUtils.SetGizmoColor(handle, color or {1,0,0,0.8})
         end
     end)    
 end
@@ -500,6 +530,8 @@ function BoxSelector:End()
             if debug then 
                 visualizeAABB(entry.AABB)
             end
+        elseif debug then
+            visualizeAABB(entry.AABB, {0,1,0,0.8})
         end
     end
 
@@ -509,6 +541,50 @@ function BoxSelector:End()
     currentScreenPos = nil
 
     return selected
+end
+
+function BoxSelector:GetFarPoints()
+    if not currentScreenPos then return {} end
+    if not startScreenPos then return {} end
+
+    local points = {
+        { currentScreenPos[1], startScreenPos[2] },
+        { currentScreenPos[1], currentScreenPos[2] },
+        { startScreenPos[1], currentScreenPos[2] },
+        { startScreenPos[1], startScreenPos[2] }
+    }
+    local near = self.Near or default_box_selector_config.Near
+    local far = self.Far or default_box_selector_config.Far
+
+    local cameraHandle = getCamera()
+    if not cameraHandle then return {} end
+
+    local screenW, screenH = getScreenSize()
+    if not screenW or not screenH then return {} end
+
+    --- @param screenX number
+    --- @param screenY number
+    --- @return Ray?
+    local function toRay(screenX, screenY)
+        return screenToWorldRay(cameraHandle, screenX, screenY, screenW, screenH)
+    end
+
+    local farPoints = {}
+    for i=1,4 do
+        local sp = points[i]
+        local ray = toRay(sp[1], sp[2])
+        if not ray then return {} end
+        local ro = ray.Origin
+        local rd = ray.Direction
+        farPoints[i] = add(ro, mul(rd, far))
+    end
+    
+    return farPoints
+end
+
+function BoxSelector:ToggleDebug()
+    debug = not debug
+    return debug
 end
 
 return BoxSelector

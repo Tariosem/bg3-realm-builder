@@ -28,6 +28,8 @@ local deepCopy = RBUtils.DeepCopy
 --- @field maxDistance number
 --- @field enableCollide boolean
 --- @field collideCullingRadius number -- target radius for collision culling, default 0.5
+--- @field collideRaidus number -- radius used for collision detection, default 1
+--- @field IgnoreEntity string -- Guid of entity to ignore for collision
 --- @field subs RBSubscription[]
 local OrbitalCamera = {}
 
@@ -46,7 +48,7 @@ function OrbitalCamera.new(cam)
     o.maxDistance = 100.0
 
     o.enableCollide = false
-    o.cullingRadius = 1
+    o.collideCullingRadius = 0.5
     o.collideRaidus = 1
 
     o.IgnoreEntity = nil -- Guid of entity to ignore for collision, usually the player character
@@ -76,11 +78,16 @@ function OrbitalCamera:SetCameraTransform(transform)
         local dirVec = sub(transform.Translate, targetPos)
         local rayDir = eml.Normalize(dirVec)
         local rayLength = self.distance or eml.Length(dirVec)
-        local cullingRadius = self.cullingRadius or 0.5
+        local cullingRadius = self.collideCullingRadius or 0.5
         local colliderRadius = self.collideRadius or 1
 
-        local startPoint = rayOrigin
-        local endPoint = eml.Add(rayOrigin, mul(rayDir, rayLength))
+        local startPoint = add(rayOrigin, mul(rayDir, cullingRadius)) -- Start a bit away from the target to prevent immediate collision
+        local endPoint = transform.Translate
+
+        local excludeFlag = 0
+        if EntityHelpers.IsCharacter(self.IgnoreEntity) then
+            excludeFlag = PhysicsGroupFlags.Group08 -- softbody
+        end
 
         local hits = Ext.Level.RaycastAll(
             startPoint,
@@ -88,7 +95,7 @@ function OrbitalCamera:SetCameraTransform(transform)
             allPhyType,
             allInclude, -- includeFlags
             --- @diagnostic disable-next-line
-            0, -- excludeFlags
+            excludeFlag,
             -1  -- context
         )
         for i, pos in pairs(hits.Positions or {}) do
@@ -98,8 +105,9 @@ function OrbitalCamera:SetCameraTransform(transform)
             end
 
             local dis = length(sub(hits.Positions[i], targetPos))
-            if dis < rayLength and dis > cullingRadius then
+            if dis < rayLength then
                 transform.Translate = add(pos, mul(rayDir, -colliderRadius)) -- Pull back a bit to prevent clipping
+                break
             end
 
             ::continue::
@@ -242,9 +250,8 @@ function OrbitalCamera:Subscribe()
 
         InputEvents.SubscribeMouseInput({}, function (e)
             if e.Button ~= 3 then return end
-            if not InputEvents.GetGlobalInputStatesRef().Shift then return end
 
-            if e.Pressed then
+            if e.Pressed and InputEvents.GetGlobalInputStatesRef().Shift then
                 mouseLastPos = {PickingUtils.GetNDC()}
                 launchInputTimer("move")
             elseif currentAction == "move" then
@@ -304,13 +311,13 @@ end
 --- @field Run fun(self: OrbitalCameraUI)
 --- @field Stop fun(self: OrbitalCameraUI)
 --- @field IsRunning fun(self: OrbitalCameraUI): boolean
---- @field RenderConfigTable fun(self: OrbitalCameraUI, parent: ExtuiTreeParent)
+--- @field RenderConfigTable fun(self: OrbitalCameraUI, parent: ExtuiTreeParent):AlignedTable
 OrbitalCameraUI = {}
 
-function OrbitalCameraUI.new()
+function OrbitalCameraUI.new(camProxy)
     local o = setmetatable({}, {__index = OrbitalCameraUI})
 
-    local cam = CameraProxy.new()
+    local cam = camProxy or CameraProxy.new()
     local orbCam = OrbitalCamera.new(cam)
 
     o.controller = orbCam
@@ -354,7 +361,7 @@ function OrbitalCameraUI:RenderConfigTable(parent)
         {name = "Move Speed", var = "moveSpeed", type = "number", minValue = 0.1, maxValue = 20, step = 0.1},
         {name = "Min Distance", var = "minDistance", type = "number", minValue = 0.1, maxValue = 50, step = 0.1},
         {name = "Max Distance", var = "maxDistance", type = "number", minValue = 1, maxValue = 200, step = 1},
-        {name = "Collision Culling Radius", var = "cullingRadius", type = "number", minValue = 0.1, maxValue = 5, step = 0.1},
+        {name = "Collision Culling Radius", var = "collideCullingRadius", type = "number", minValue = 0.1, maxValue = 5, step = 0.1},
         {name = "Collision Pullback Radius", var = "collideRaidus", type = "number", minValue = 0.1, maxValue = 5, step = 0.1},
     }
 
@@ -366,4 +373,8 @@ function OrbitalCameraUI:RenderConfigTable(parent)
             self.controller[field.var] = setValue
         end
     end
+
+    return aT
 end
+
+return OrbitalCameraUI

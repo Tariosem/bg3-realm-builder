@@ -354,13 +354,23 @@ function KeybindManager:Save()
     return data
 end
 
+local blacklist = {
+    ["TransformEditor"] = {
+        ["FollowTarget"] = true,
+    }
+}
+
 function KeybindManager:Load(data)
     for module, events in pairs(data) do
         for eventName, keyInfo in pairs(events) do
+            if blacklist[module] and blacklist[module][eventName] then
+                goto continue
+            end
             if keyInfo.Modifiers then
                 table.sort(keyInfo.Modifiers)
             end
             self:ForceBindTo(module, eventName, keyInfo.Key, keyInfo.Modifiers)
+            ::continue::
         end
     end
 end

@@ -94,11 +94,6 @@ end
 --- @param Value any
 --- @return RenderableObject[]? -
 local function SetGizmoAxisTextureColorParam(axis, guid, Value)
-    if not EntityHelpers.IsGizmo(guid) then
-        --Warning("GetGizmoAxisTextureColorParam: Invalid GUID: " .. tostring(guid))
-        return nil
-    end
-
     local liveGizmo = UuidToHandle(guid)
     local visual = liveGizmo and liveGizmo.Visual and liveGizmo.Visual.Visual or nil
 
@@ -128,18 +123,30 @@ local function SetGizmoAxisTextureColorParam(axis, guid, Value)
     return corRendrable
 end
 
+local translateItemTemplateId = RBUtils.TakeTailTemplate(GIZMO_ITEM.Translate)
+local rotateItemTemplateId = RBUtils.TakeTailTemplate(GIZMO_ITEM.Rotate)
 local translateScale = 1.1 / 0.9
-function GizmoVisualizer:ScaleGizmo(axis, renderable, isTranslate)
-    if tonumber(axis) then
-        axis = IndexAxisMap[axis]
+function GizmoVisualizer:ScaleGizmo(axis, renderable, isTranslate, guid)
+    local axisIndex = AxisIndexMap[axis]
+    if not axisIndex then
+        Warning("ScaleGizmo: Invalid axis: " .. tostring(axis))
+        return
     end
     local rend = renderable
-    local scale = self.Scale[AxisIndexMap[axis]] or 1.0
+    local scale = self.Scale[axisIndex] or 1.0
     if isTranslate then
         scale = scale * translateScale
     end
     local toScale = RBUtils.ToVec3(scale)
-    toScale[AxisIndexMap[axis]] = toScale[AxisIndexMap[axis]] * (self.ScaleMultiplier[AxisIndexMap[axis]] or 1.0)
+    toScale[axisIndex] = toScale[axisIndex] * (self.ScaleMultiplier[axisIndex] or 1.0)
+
+    if guid and Ext.Entity.Get(guid) then
+        local entity = Ext.Entity.Get(guid) --[[@as EntityHandle]]
+        if entity.GameObjectVisual and entity.GameObjectVisual.RootTemplateId == rotateItemTemplateId then
+            toScale[axisIndex] = 0
+        end
+    end
+
     for _,r in ipairs(rend or {}) do
         r:SetWorldScale(toScale)
     end
@@ -198,7 +205,7 @@ function GizmoVisualizer:HideGizmo(guid)
 end
 
 
-local translateItemTemplateId = RBUtils.TakeTailTemplate(GIZMO_ITEM.Translate)
+
 function GizmoVisualizer:HighLightGizmoAxis(axis, guid)
     if tonumber(axis) then
         axis = IndexAxisMap[axis]
@@ -206,7 +213,7 @@ function GizmoVisualizer:HighLightGizmoAxis(axis, guid)
     local entity = Ext.Entity.Get(guid) --[[@as EntityHandle]]
     local rend = SetGizmoAxisTextureColorParam(axis, guid, self:GetHighlightColor(axis))
     local isTranslate = entity and entity.GameObjectVisual and entity.GameObjectVisual.RootTemplateId == translateItemTemplateId
-    self:ScaleGizmo(axis, rend, isTranslate)
+    self:ScaleGizmo(axis, rend, isTranslate, guid)
 end
 
 function GizmoVisualizer:HoverGizmoAxis(axis, guid)
@@ -217,7 +224,7 @@ function GizmoVisualizer:HoverGizmoAxis(axis, guid)
     local rend = SetGizmoAxisTextureColorParam(axis, guid, self:GetHoveredColor(axis))
     local rootTemplateId = entity and entity.GameObjectVisual and entity.GameObjectVisual.RootTemplateId or ""
     local isTranslate = rootTemplateId ==  translateItemTemplateId
-    self:ScaleGizmo(axis, rend, isTranslate)
+    self:ScaleGizmo(axis, rend, isTranslate, guid)
 end
 
 function GizmoVisualizer:ResetGizmoAxis(axis, guid)
@@ -227,7 +234,7 @@ function GizmoVisualizer:ResetGizmoAxis(axis, guid)
     local entity = Ext.Entity.Get(guid) --[[@as EntityHandle]]
     local rend = SetGizmoAxisTextureColorParam(axis, guid, self:GetDefaultColor(axis))
     local isTranslate = entity and entity.GameObjectVisual and entity.GameObjectVisual.RootTemplateId == translateItemTemplateId
-    self:ScaleGizmo(axis, rend, isTranslate)
+    self:ScaleGizmo(axis, rend, isTranslate, guid)
 end
 
 function GizmoVisualizer:ResetGizmo(guid)
@@ -239,6 +246,12 @@ end
 function GizmoVisualizer:VisualizeRotatePointer(guid, axis)
     local rotateScale = self.Scale[AxisIndexMap[axis]] or 1.0
     local scale = RBUtils.ToVec3((0.6 * rotateScale) / 0.81)
+    if Ext.Entity.Get(guid) then
+        local entity = Ext.Entity.Get(guid) --[[@as EntityHandle]]
+        if entity.GameObjectVisual and entity.GameObjectVisual.RootTemplateId == GIZMO_ITEM.Rotate then
+            scale[2] = 0
+        end
+    end
 
     for _,ax in pairs({"X", "Y", "Z"}) do
         if ax ~= axis then

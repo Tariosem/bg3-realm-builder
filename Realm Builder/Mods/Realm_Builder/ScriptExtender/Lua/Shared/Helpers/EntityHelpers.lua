@@ -488,22 +488,9 @@ function EntityHelpers.IsGizmo(uuid)
 
     if RB_FlagHelpers.HasFlag(uuid, "IsGizmo") then
         return true
-    end
-
-    if Ext.IsClient() or true then
-        local entity = UuidToHandle(uuid)
-        if not entity then return false end
-
-        local tags = entity.Tag and entity.Tag.Tags or {}
-        for _, tag in ipairs(tags or {}) do
-            if tag == RB_GIZMO_TAG then
-                return true
-            end
-        end
-
+    else
         return false
     end
-    return Osi.IsTagged(uuid, RB_GIZMO_TAG) == 1
 end
 
 function EntityHelpers.GetAllSpawned()

@@ -192,7 +192,7 @@ function IsInCharacterCreationMirror()
     return isInMirror
 end
 
-function IsIsPhotoMode()
+function IsInPhotoMode()
     return isInPhotoMode
 end
 

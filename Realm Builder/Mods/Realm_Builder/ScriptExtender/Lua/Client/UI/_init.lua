@@ -9,5 +9,6 @@ RBUtils.RequireFiles("Client/UI/", {
     "StyleMenu",
     "KeybindMenu",
     "TransformToolbar",
+    "CameraTool",
     "Menu",
 })

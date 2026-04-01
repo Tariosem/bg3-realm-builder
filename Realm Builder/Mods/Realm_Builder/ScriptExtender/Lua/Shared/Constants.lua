@@ -15,6 +15,12 @@ GIZMO_ITEM = {
     Scale = "RB_Gizmo_Scale_723a815e-801a-4792-aa80-0fd65b599a24",
 }
 
+GIZMO_ITEM_IDS = {
+    Translate = "347586d3-e55e-4cea-8d26-168d17e233c6",
+    Rotate = "8bc16a4a-f135-485b-a226-641012b7450a",
+    Scale = "723a815e-801a-4792-aa80-0fd65b599a24",
+}
+
 GIZMO_CURSOR = "4a39a1c5-26c3-44ab-9410-4080c5dbc2aa"
 
 MARKER_ITEM = {

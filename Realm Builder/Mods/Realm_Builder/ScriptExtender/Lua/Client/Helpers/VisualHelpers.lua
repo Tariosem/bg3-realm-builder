@@ -623,6 +623,5 @@ function RBUtils.SetGizmoColor(guid, color)
             end
         end
     end, function ()
-        _P("Failed to set gizmo color for guid: " .. tostring(guid))
     end, 60 * 100)
 end

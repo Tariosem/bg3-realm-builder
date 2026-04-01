@@ -29,7 +29,6 @@ return {
         ["Grab"] = { Key = "G" },
         ["Rotate"] = { Key = "R" },
         ["Scale"] = { Key = "L" },
-        ["FollowTarget"] = { Key = "KP_PERIOD" },
         ["CycleMode"] = { Key = "T" }
     },
 
@@ -38,4 +37,8 @@ return {
         ["BindTo"] = { Key = "B", Modifiers = { "SHIFT" } },
         ["Unbind"] = { Key = "U" },
     },
+
+    CameraTool = {
+        ["ToggleOrbitalCamera"] = { Key = "KP_PERIOD" },
+     }
 }
