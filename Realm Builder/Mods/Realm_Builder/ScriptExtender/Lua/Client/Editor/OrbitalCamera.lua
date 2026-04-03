@@ -40,6 +40,10 @@ function OrbitalCamera.new(cam)
     o.target = {0,0,0}
     o.distance = 10
 
+    o.theta = 0
+    o.phi = 0
+    o.tilt = 0
+
     o.rotateSpeed = 2.0
     o.zoomSpeed = 0.9
     o.moveSpeed = 10.0
@@ -117,24 +121,37 @@ function OrbitalCamera:SetCameraTransform(transform)
     self.camera:SetTransform(transform)
 end
 
-function OrbitalCamera:Rotate(deltaX, deltaY)
-    local currentTransform = self.camera:GetTransform()
-    local currentRot = currentTransform.RotationQuat
+local function calculateCameraQuat(theta, phi, tilt)
+    local rotX = eml.QuatRotateAxisAngle({0, 0, 0, 1}, {1, 0, 0}, phi)
+    local rotY = eml.QuatRotateAxisAngle({0, 0, 0, 1}, {0, 1, 0}, theta)
 
-    local rotX = eml.QuatRotateAxisAngle(currentRot, {1, 0, 0}, -deltaY * self.rotateSpeed)
-    local rotY = eml.QuatRotateAxisAngle({0, 0, 0, 1}, {0, 1, 0}, deltaX * self.rotateSpeed)
+    if tilt and tilt ~= 0 then
+        local tiltRad = math.rad(tilt)
+        local rotZ = eml.QuatRotateAxisAngle({0, 0, 0, 1}, {0, 0, 1}, tiltRad)
+        return eml.QuatMul(eml.QuatMul(rotY, rotX), rotZ)
+    end
 
-    currentRot = eml.QuatMul(rotY, rotX)
+    return eml.QuatMul(rotY, rotX)
+end
 
-    local dir = eml.QuatRotate(currentRot, {0, 0, -self.distance})
-    local newPos = eml.Add(self.target, dir)
+local function calculateCameraTransform(target, distance, theta, phi, tilt)
+    local rot = calculateCameraQuat(theta, phi, tilt)
+    local dir = eml.QuatRotate(rot, {0, 0, -distance})
+    local pos = eml.Add(target, dir)
 
-    local newTransform = {
-        Translate = newPos,
-        RotationQuat = currentRot,
+    return {
+        Translate = pos,
+        RotationQuat = rot,
         Scale = {1, 1, 1}
     }
 
+end
+
+function OrbitalCamera:Rotate(deltaX, deltaY)
+    self.theta = (self.theta or 0) + deltaX * self.rotateSpeed
+    self.phi = (self.phi or 0) + -deltaY * self.rotateSpeed
+
+    local newTransform = calculateCameraTransform(self.target, self.distance, self.theta, self.phi, self.tilt)
     self:SetCameraTransform(newTransform)
 end
 
@@ -181,6 +198,15 @@ function OrbitalCamera:Zoom(deltaZoom)
         Scale = currentTransform.Scale
     }
 
+    self:SetCameraTransform(newTransform)
+end
+
+function OrbitalCamera:SetTilt(deg)
+    deg = -eml.Clamp(deg, -180, 180)
+
+    self.tilt = deg
+
+    local newTransform = calculateCameraTransform(self.target, self.distance, self.theta or 0, self.phi or 0, self.tilt)
     self:SetCameraTransform(newTransform)
 end
 
@@ -274,12 +300,18 @@ end
 function OrbitalCamera:Reset()
     local currentTransform = self.camera:GetTransform()
     local newPos = Ext.Math.Add(self.target, Vec3.new(0, 0, -self.distance))
+    self.theta = 0
+    self.phi = 0
+    self.tilt = 0
     local newTransform = {
         Translate = newPos,
         RotationQuat = Quat.Identity(),
         Scale = currentTransform.Scale
     }
     self.camera:SetTransform(newTransform)
+    if self.OnReset then
+        self.OnReset()
+    end
 end
 
 function OrbitalCamera:IsActive()
@@ -353,6 +385,21 @@ function OrbitalCameraUI:RenderConfigTable(parent)
 
     aT:AddCheckbox("Enable Collision", self.controller.enableCollide or false).OnChange = function (s)
         self.controller.enableCollide = s.Checked
+    end
+
+    local titlSlider = aT:AddSliderWithStep("Camera Tilt", 0, -180, 180, 15, false)
+    titlSlider.OnChange = function (s)
+        self.controller:SetTilt(s.Value[1])
+    end
+
+    self.tiltSliders = self.tiltSliders or {}
+    table.insert(self.tiltSliders, titlSlider)
+    self.controller.OnReset = function ()
+        if self.tiltSliders then
+            for _, slider in pairs(self.tiltSliders) do
+                slider.Value = {0, 0, 0, 0}
+            end
+        end
     end
 
     local fields = {
