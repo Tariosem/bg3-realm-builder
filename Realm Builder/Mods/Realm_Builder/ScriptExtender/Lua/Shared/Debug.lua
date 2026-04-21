@@ -50,6 +50,10 @@ local function RgbToANSI(rgb)
     return string.format("\x1b[38;2;%d;%d;%dm", r, g, b)
 end
 
+function CHEAP_ANSI(string, r, g, b)
+    return RgbToANSI({r * 255, g * 255, b * 255}) .. string .. "\x1b[0m"
+end
+
 --- @param gradientResult GradientResult
 --- @return string ANSI colored text
 local function GradientToANSI(gradientResult)

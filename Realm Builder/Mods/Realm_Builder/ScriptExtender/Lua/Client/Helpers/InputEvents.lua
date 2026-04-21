@@ -152,7 +152,6 @@ end
 --- @param filterKey Keybinding?
 --- @return RBSubscription
 function InputEvents.SubscribeKeyAndMouse(callback, filterKey)
-    local isCalling = false
     local subs = {}
     local lastModifiers = {}
     local filterIdentifier = nil
@@ -177,8 +176,6 @@ function InputEvents.SubscribeKeyAndMouse(callback, filterKey)
 
     --- @param e EclLuaKeyInputEvent
     subs.KeyInput = Ext.Events.KeyInput:Subscribe(function(e)
-        if isCalling then return end
-        isCalling = true
         local modifs = RBUtils.LightCToArray(e.Modifiers)
         excludeModfiers(modifs)
         local event = {
@@ -189,13 +186,11 @@ function InputEvents.SubscribeKeyAndMouse(callback, filterKey)
             Repeat = e.Repeat,
         }
         if not checkKeyBinding(event) then
-            isCalling = false
             return
         end
         lastModifiers = modifs
 
         local returnValue = callback(event)
-        isCalling = false
         if returnValue == UNSUBSCRIBE_SYMBOL then
             unsub()
         end
@@ -203,9 +198,6 @@ function InputEvents.SubscribeKeyAndMouse(callback, filterKey)
 
     --- @param e EclLuaMouseButtonEvent
     subs.MouseButtonInput = Ext.Events.MouseButtonInput:Subscribe(function(e)
-        if isCalling then return end
-        isCalling = true
-
         local event = {
             Event = e.Pressed and "KeyDown" or "KeyUp",
             Modifiers = lastModifiers,
@@ -216,11 +208,9 @@ function InputEvents.SubscribeKeyAndMouse(callback, filterKey)
             Y = e.Y,
         }
         if not checkKeyBinding(event) then
-            isCalling = false
             return
         end
         local returnValue = callback(event)
-        isCalling = false
         if returnValue == UNSUBSCRIBE_SYMBOL then
             unsub()
         end

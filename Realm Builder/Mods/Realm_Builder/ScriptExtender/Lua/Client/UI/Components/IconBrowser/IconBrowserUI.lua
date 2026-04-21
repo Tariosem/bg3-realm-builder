@@ -747,7 +747,7 @@ function IconBrowser:RenderPage()
     self.iconsContainer = self.iconsContainer or self.iconsWindow:AddTable("IconsBrowserTable", self.iconPR)
 
     local lastYield = Ext.Timer.MicrosecTime()
-    local yieldThreshold = 0.5 -- in milliseconds
+    local yieldThreshold = 1000 -- in ms
     local stopRendering = false
     local thread
     thread = coroutine.create(function()
@@ -765,7 +765,7 @@ function IconBrowser:RenderPage()
                 local iconImage = self:RenderIcon(entry, cell)
                 self:IconSetup(iconImage, entry)
                 self.iconsImage[uuid] = iconImage
-                if Ext.Timer.MicrosecTime() - lastYield > yieldThreshold then
+                if Ext.Timer.MonotonicTime() - lastYield > yieldThreshold then
                     Ext.OnNextTick(function()
                         local ok, err = coroutine.resume(thread)
                         if not ok then

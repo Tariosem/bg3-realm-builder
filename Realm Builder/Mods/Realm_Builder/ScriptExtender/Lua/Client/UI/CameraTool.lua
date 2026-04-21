@@ -48,7 +48,7 @@ function CameraTool:Init()
     self.CameraProxy = CameraProxy.new()
     self.CameraToolKeybind = KeybindManager:CreateModule("CameraTool")
     self.CameraToolKeybind:AddModuleCondition(function (e)
-        return IsInPhotoMode() and not IsInCharacterCreationMirror()
+        return IsInPhotoMode()
     end)
     self.CameraToolKeybind:RegisterEvent("ToggleCameraToolWindow", function (e)
         if e.Event ~= "KeyDown" then return end

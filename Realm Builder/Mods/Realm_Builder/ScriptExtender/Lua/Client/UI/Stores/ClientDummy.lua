@@ -29,9 +29,15 @@ local function postUpdateDummies()
     NetChannel.UpdateDummies:SendToServer(post)
 end
 
+-- LoadMenu
+
+local function checkIfRunning()
+    return Ext.Utils.GetGameState() == "Running"
+end
+
 --- @diagnostic disable-next-line
 Ext.Entity.OnCreate("Visual", function (entity)
-    if not entity then
+    if not entity or not checkIfRunning() then
         return
     end
 
@@ -69,7 +75,9 @@ end)
 --- @param entity EntityHandle
 --- @diagnostic disable-next-line
 Ext.Entity.OnCreate("ClientPaperdoll", function (entity)
-    if not entity then return end
+    if not entity or not checkIfRunning() then
+        return
+    end
 
     Timer:Ticks(60, function (timerID)
         local owner = Paperdoll.GetDollOwner(entity)
@@ -94,7 +102,9 @@ local onEnterCharacterCreation = {}
 --- @param entity any
 --- @diagnostic disable-next-line
 Ext.Entity.OnCreate("ClientCCDummyDefinition", function(entity)
-    if not entity then return end
+    if not entity or not checkIfRunning() then
+        return
+    end
 
     Timer:Ticks(5, function()
         if not entity.CCChangeAppearanceDefinition then return end
@@ -176,7 +186,7 @@ end
 --- @param entity EntityHandle
 --- @diagnostic disable-next-line
 Ext.Entity.OnCreate("TLPreviewDummy", function(entity)
-    if not entity then return end
+    if not entity or not checkIfRunning() then return end
     
     Timer:Ticks(5, function()
         if not entity.ClientTimelineActorControl then return end

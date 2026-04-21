@@ -50,23 +50,39 @@ function TransformToolbar:RegisterKeyInputEvents()
     self.Registered = true
 
     local function singleSelect()
+        local cameraRay = ScreenToWorldRay()
+        if not cameraRay then
+            Warning("Can't get camera ray.")
+            return
+        end
+
+        local hits = cameraRay:IntersectAll(cursorMaxDistance)
         local guid = nil
-        local entity = PickingUtils.GetPickingEntity()
 
-        if entity and entity.Scenery and not self.Ignore["Scenery"] then
-            registerScenery(entity)
-        end
+        local cnt = 1
+        while not guid do
+            local hit = hits[cnt]
+            if not hit then return end
+            local entity = hits[cnt].Target
+            if not entity then goto continue end
+            guid = entity and entity.Uuid and entity.Uuid.EntityUuid
 
-        if not guid then 
-            guid = PickingUtils.GetPickingGuid()
-        end
+            if not guid and entity and entity.Scenery and entity.Scenery.Uuid then
+                guid = entity.Scenery.Uuid
+                registerScenery(entity)
+            end
 
-        if not guid then
-            return
-        end
+            if EntityHelpers.IsCharacter(guid) and self.Ignore["Character"] then
+                guid = nil
+                goto continue
+            end
 
-        if EntityHelpers.IsCharacter(guid) and self.Ignore["Character"] then
-            return
+            if NearbyMap.GetRegisteredScenery(guid) and self.Ignore["Scenery"] then
+                guid = nil
+                goto continue
+            end
+
+            ::continue::
         end
 
         if guid and guid ~= "" then
@@ -367,7 +383,8 @@ function TransformToolbar:RegisterKeyInputEvents()
 
         -- if only one target, also apply rotation
         if #targets == 1 then
-            transforms[targets[1]].RotationQuat = rot
+            --- @diagnostic disable-next-line
+            transforms[targets[1]].RotationQuat = rot 
         end
 
         Commands.SetTransformSeparate(targets, transforms)

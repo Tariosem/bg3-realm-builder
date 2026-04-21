@@ -37,6 +37,8 @@ function Timer:Ticks(ticks, callback)
         if count >= ticks then
             if Timer._active[id] then
                 Timer:Cancel(id)
+                --_P("Timer:Ticks - Timer with ID " .. tostring(id) .. " reached tick count of " .. ticks)
+                --_P(debug.getinfo(callback).source .. CHEAP_ANSI(" line: " .. debug.getinfo(callback).linedefined, 1, 1, 1))
                 callback(id)
             end
         end
@@ -178,6 +180,7 @@ end
 function Timer:Cancel(id)
     if not id then return end
     if id and Timer._active[id] then
+        --_P("Timer:Cancel - Canceling timer with ID: " .. tostring(id))
         Ext.Events.Tick:Unsubscribe(id)
     end
     if Timer._active[id] then
