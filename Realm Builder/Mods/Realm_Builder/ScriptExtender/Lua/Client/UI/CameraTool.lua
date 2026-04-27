@@ -623,4 +623,6 @@ function CameraTool:RenderCameraAnimator(parent)
     return refreshEntries
 end
 
-CameraTool:Init()
+EventsSubscriber.RegisterOnSessionLoaded(function()
+    CameraTool:Init()
+end)

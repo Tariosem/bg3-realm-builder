@@ -328,6 +328,7 @@ end
 
 --- @type RB_MainMenu
 EventsSubscriber.RegisterOnSessionLoaded(function()
+    if (not Ext.Utils.GetGameState() == "Running") then return end
     if RB_GLOBALS.MainMenu == nil then
         RB_GLOBALS.MainMenu = RealmBuilderMainMenu:Add()
         RB_GLOBALS.MainMenu.panel.Open = false
