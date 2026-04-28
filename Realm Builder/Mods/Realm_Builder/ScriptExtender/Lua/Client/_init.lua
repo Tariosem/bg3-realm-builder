@@ -6,7 +6,6 @@ local debugWindowRegistery = {}
 
 EventsSubscriber.RegisterOnSessionLoaded(function()
     if Ext.Utils.GetGameState() ~= "Running" then return end
-    _P("Registering debug windows...")
     for title, renderFunc in RBUtils.SortedPairs(debugWindowRegistery) do
         renderFunc(ImguiElements.AddTree(GLOBAL_DEBUG_WINDOW, title))
     end

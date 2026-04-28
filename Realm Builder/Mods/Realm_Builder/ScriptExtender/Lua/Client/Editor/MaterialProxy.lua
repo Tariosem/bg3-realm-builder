@@ -209,6 +209,11 @@ function MaterialProxy.new(materialName)
     return nil
 end
 
+local tryOther = {
+    ID = "Value",
+    Value = "ID",
+}
+
 function MaterialProxy.__buildParameterTables(self, paramsList, name, fieldName, valueField)
     self.TypeRefs = {}
     self.IndexRefs = {}
@@ -228,7 +233,17 @@ function MaterialProxy.__buildParameterTables(self, paramsList, name, fieldName,
                 --Warning(string.format("Invalid parameter name in '%s' at index %d. Skipping.", name, i))
                 goto continue
             end
-            local value = param[valueField]
+            
+            local value = nil
+            pcall(function()
+                value = param[valueField]
+            end)
+            if not value then
+                local tryField = tryOther[valueField]
+                if tryField then
+                    value = param[tryField]
+                end
+            end
             if self.Parameters[typeRef][paramName] then
                 Warning(string.format("Duplicate parameter '%s' in '%s'. Overwriting.", paramName, name))
             end

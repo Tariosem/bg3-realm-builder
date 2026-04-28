@@ -108,6 +108,35 @@ function MovableProxy:IsValid()
     return false
 end
 
+--- @class CameraMovableProxy : RB_MovableProxy
+--- @field new fun():CameraMovableProxy
+--- @field GetTransform fun(self: CameraMovableProxy): Transform
+--- @field SetTransform fun(self: CameraMovableProxy, transform: Transform)
+local CameraMovableProxy = _Class("CameraMovableProxy", MovableProxy)
+
+function CameraMovableProxy:IsValid()
+    return RBGetCamera() ~= nil
+end
+
+function CameraMovableProxy:GetTransform()
+    local cam = RBGetCamera()
+    if cam and cam.Transform then
+        return RBUtils.DeepCopy(cam.Transform.Transform)
+    end
+    return getDefaultTransform()
+end
+
+function CameraMovableProxy:SetTransform(transform)
+    local cam = RBGetCamera()
+    if not cam or not cam.PhotoModeCameraSavedTransform then return end
+
+    cam.PhotoModeCameraSavedTransform.Transform = transform
+    Ext.OnNextTick(function()
+        --- @diagnostic disable-next-line
+        Ext.UI.GetRoot():Find("ContentRoot").Child(21).DataContext.RecallCameraTransform:Execute()
+    end)
+end
+
 --- @class ItemMovableProxy : RB_MovableProxy
 --- @field Guid GUIDSTRING
 --- @field new fun(guid: GUIDSTRING):ItemMovableProxy
@@ -314,6 +343,7 @@ end
 --- @param guid string
 --- @return RB_MovableProxy?
 function MovableProxy.CreateByGuid(guid)
+    if RBUtils.IsCamera(guid) then return CameraMovableProxy.new() end
     if not RBUtils.IsUuid(guid) then return nil end
     clearCache()
     local proxy = movabelCache[guid]

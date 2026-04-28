@@ -69,6 +69,7 @@ function Timer:_OnTick()
         activeIds[#activeIds + 1] = id
     end
 
+    local called = {};
     for _, id in ipairs(activeIds) do
         local record = self._active[id]
         if record then
@@ -90,6 +91,10 @@ function Timer:_OnTick()
             end
 
             if shouldRun then
+                called[id] = {
+                    Callback = record.Callback,
+                    Kind = record.Kind,
+                }
                 if record.Kind == "After" or record.Kind == "Ticks" or record.Kind == "AfterOrTicks" then
                     self:_RemoveRecord(id)
                     record.Callback(id)
@@ -105,7 +110,21 @@ function Timer:_OnTick()
                         self:Cancel(id)
                     end
                 end
+                called[id].Duration = (Ext.Utils.MonotonicTime() - now)
             end
+        end
+    end
+
+    local after = Ext.Utils.MonotonicTime() - now
+    if after > 10 then
+        _P("Realm Builder Performance Warning: Timer tick took " .. after .. " ms to process " .. tostring(#activeIds) .. " timers (" .. tostring(RBTableUtils.CountMap(called)) .. " ran)")
+
+        for id, details in pairs(called) do
+            local detailed = ""
+            local record = details
+            local fnInfo = debug.getinfo(record.Callback)
+            detailed = " (Function at " .. tostring(fnInfo.short_src) .. ":" .. tostring(fnInfo.linedefined) .. ")"
+            _P(" - Timer ID " .. tostring(id) .. " took " .. details.Duration .. " ms to execute" .. detailed)
         end
     end
 end

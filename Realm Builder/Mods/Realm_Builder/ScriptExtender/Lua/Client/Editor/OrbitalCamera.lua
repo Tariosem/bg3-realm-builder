@@ -96,6 +96,7 @@ function OrbitalCamera:SetCameraTransform(transform)
         local hits = Ext.Level.RaycastAll(
             startPoint,
             endPoint,
+            --- @diagnostic disable-next-line
             allPhyType,
             allInclude, -- includeFlags
             --- @diagnostic disable-next-line
