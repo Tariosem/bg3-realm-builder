@@ -38,6 +38,7 @@ DEBUG_COLOR = {
     Trace = "#00FFC3",
 }
 
+--- @param rgb number[] -- Array of 3 numbers representing RGB values (0-1)
 local function RgbToANSI(rgb)
     local r = math.floor(rgb[1] * 255 + 0.5)
     local g = math.floor(rgb[2] * 255 + 0.5)
@@ -50,8 +51,14 @@ local function RgbToANSI(rgb)
     return string.format("\x1b[38;2;%d;%d;%dm", r, g, b)
 end
 
+
+--- @param string string
+--- @param r number 0-255
+--- @param g number
+--- @param b number
+--- @return string
 function CHEAP_ANSI(string, r, g, b)
-    return RgbToANSI({r * 255, g * 255, b * 255}) .. string .. "\x1b[0m"
+    return RgbToANSI({r / 255, g / 255, b / 255}) .. string .. "\x1b[0m"
 end
 
 --- @param gradientResult GradientResult

@@ -176,8 +176,9 @@ function InputEvents.SubscribeKeyAndMouse(callback, filterKey)
 
     --- @param e EclLuaKeyInputEvent
     subs.KeyInput = Ext.Events.KeyInput:Subscribe(function(e)
-        local modifs = RBUtils.LightCToArray(e.Modifiers)
+        local modifs = RBUtils.LightCToArray(e.Modifiers) --[[@as SimplifiedModfier[] ]]
         excludeModfiers(modifs)
+        table.sort(modifs)
         local event = {
             Event = e.Event,
             Key = tostring(e.Key):upper(),

@@ -62,14 +62,16 @@ function Timer:_EnsureScheduler()
 end
 
 function Timer:_OnTick()
-    local now = Ext.Utils.MonotonicTime()
+    local before = Ext.Utils.MonotonicTime()
     local activeIds = {}
 
     for id in pairs(self._active) do
         activeIds[#activeIds + 1] = id
     end
 
+    --- @type table<integer, {Callback:fun(timerID:integer), Kind:string, Duration?:number}>
     local called = {};
+    local latest = before
     for _, id in ipairs(activeIds) do
         local record = self._active[id]
         if record then
@@ -77,24 +79,26 @@ function Timer:_OnTick()
 
             local shouldRun = false
             if record.Kind == "After" then
-                shouldRun = now - record.StartTime >= record.DelayMS
+                shouldRun = before - record.StartTime >= record.DelayMS
             elseif record.Kind == "Ticks" then
                 shouldRun = record.TickCount >= record.TargetTicks
             elseif record.Kind == "AfterOrTicks" then
-                shouldRun = now - record.StartTime >= record.DelayMS or record.TickCount >= record.TargetTicks
+                shouldRun = before - record.StartTime >= record.DelayMS or record.TickCount >= record.TargetTicks
             elseif record.Kind == "EveryFrame" then
                 shouldRun = true
             elseif record.Kind == "EveryTicks" then
                 shouldRun = record.TickCount >= record.IntervalTicks
             elseif record.Kind == "Every" then
-                shouldRun = now - record.LastRunTime >= record.IntervalMS
+                shouldRun = before - record.LastRunTime >= record.IntervalMS
             end
 
             if shouldRun then
-                called[id] = {
-                    Callback = record.Callback,
-                    Kind = record.Kind,
-                }
+                if RB_DEBUG_LEVEL == 5 then
+                    called[id] = {
+                        Callback = record.Callback,
+                        Kind = record.Kind,
+                    }
+                end
                 if record.Kind == "After" or record.Kind == "Ticks" or record.Kind == "AfterOrTicks" then
                     self:_RemoveRecord(id)
                     record.Callback(id)
@@ -102,7 +106,7 @@ function Timer:_OnTick()
                     if record.Kind == "EveryTicks" then
                         record.TickCount = 0
                     elseif record.Kind == "Every" then
-                        record.LastRunTime = now
+                        record.LastRunTime = before
                     end
 
                     local result = record.Callback(id)
@@ -110,22 +114,35 @@ function Timer:_OnTick()
                         self:Cancel(id)
                     end
                 end
-                called[id].Duration = (Ext.Utils.MonotonicTime() - now)
+                if RB_DEBUG_LEVEL == 5 then
+                    local now = Ext.Utils.MonotonicTime()
+                    called[id].Duration = (now - latest)
+                    latest = now
+                end
             end
         end
     end
 
-    local after = Ext.Utils.MonotonicTime() - now
-    if after > 10 then
-        _P("Realm Builder Performance Warning: Timer tick took " .. after .. " ms to process " .. tostring(#activeIds) .. " timers (" .. tostring(RBTableUtils.CountMap(called)) .. " ran)")
+    local after = Ext.Utils.MonotonicTime() - before
+    local warningColor = {255, 50, 50}
+    local leastFactor = 0.1
+    if RB_DEBUG_LEVEL == 5 and after > 10 then
+        local out = {}
+        out[1] = CHEAP_ANSI("Realm Builder Performance Warning: Timer tick took " .. after .. " ms to process " .. tostring(#activeIds) .. " timers (" .. tostring(RBTableUtils.CountMap(called)) .. " ran)", warningColor[1], warningColor[2], warningColor[3])
 
         for id, details in pairs(called) do
             local detailed = ""
             local record = details
             local fnInfo = debug.getinfo(record.Callback)
+            local servere = math.max(record.Duration / after, leastFactor)
+            local color = { warningColor[1] * servere, warningColor[2] * servere, warningColor[3] * servere }
             detailed = " (Function at " .. tostring(fnInfo.short_src) .. ":" .. tostring(fnInfo.linedefined) .. ")"
-            _P(" - Timer ID " .. tostring(id) .. " took " .. details.Duration .. " ms to execute" .. detailed)
+        
+            out[#out + 1] = CHEAP_ANSI(" - Timer ID " .. tostring(id) .. " took " .. details.Duration .. " ms to execute" .. detailed, color[1], color[2], color[3])
         end
+        --- @diagnostic disable-next-line
+        out = table.concat(out, "\n")
+        _P(out)
     end
 end
 
