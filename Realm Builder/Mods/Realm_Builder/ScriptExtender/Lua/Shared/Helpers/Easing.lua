@@ -191,22 +191,23 @@ genratePowerEasing(5, "Quint")
 --- @field GetEnd fun():number|number[], number -- returns end value and eased progress (1.0)
 --- @field ChangeOnComplete fun(callback:fun())
 
+--- @generic T:number|Vec
 --- @param fps number
---- @param fromValue number|Vec
---- @param toValue number|Vec
+--- @param fromValue T
+--- @param toValue T
 --- @param duration number ms
 --- @param easing AnimationEasing|string
 --- @param onComplete fun()|nil
---- @param onUpdate fun(value: number|number[], eased: number)|nil
---- @return RunningAnimation?
+--- @param onUpdate fun(value: T, eased: number)|nil
+--- @return RunningAnimation
 function AnimateValue(fps, fromValue, toValue, duration, easing, onComplete, onUpdate)
     if type(fromValue) == "table" or type(toValue) == "table" then
         if type(fromValue) ~= "table" or type(toValue) ~= "table" then
             Warning("Invalid input format")
-            return nil
+            return {}
         elseif #fromValue ~= #toValue then
             Warning("Non matching vector")
-            return nil
+            return {}
         end
         fromValue = Vector.new(fromValue)
         toValue = Vector.new(toValue)

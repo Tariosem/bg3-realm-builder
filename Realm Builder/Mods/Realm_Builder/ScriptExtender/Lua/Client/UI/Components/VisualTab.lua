@@ -727,6 +727,8 @@ function VisualTab:RenderUtilsCell(parent)
         StyleHelpers.ApplyInfoButtonStyle(detachButton)
         detachButton.Label = GetLoca("Refresh")
         detachButton.OnClick = detachButton.OnRightClick
+    else
+        detachButton:Tooltip():AddText(GetLoca("Right click to refresh."))
     end
 
     local tryLoadButton = loadCell:AddButton(GetLoca("Load File"))
@@ -848,6 +850,7 @@ function VisualTab:RenderAttachmentEditors()
         gr2Text.Font = "Tiny"
         local lodNode = nil
 
+        local vResId = attach.Visual.VisualResource and attach.Visual.VisualResource.Guid or "UnknownVres"
         for descIndex, obj in ipairs(attach.Visual.ObjectDescs) do
             local modelName = obj.Renderable and obj.Renderable.Model and obj.Renderable.Model.Name or "Unknown Model"
             local parentNode = attachNode
@@ -864,6 +867,12 @@ function VisualTab:RenderAttachmentEditors()
             local function getliveMat()
                 local visual = self:GetVisual(self.guid)
                 if not visual then return nil end
+
+                -- if have visual resource guid and not match the initial one, returns
+                if visual.VisualResource and visual.VisualResource.Guid and (not visual.VisualResource.Guid == vResId) then
+                    return nil
+                end
+
                 return VisualHelpers.GetActiveMaterialFromVisual(visual, descIndex, attIndex)
             end
 
@@ -947,6 +956,7 @@ function VisualTab:RenderObjectEditor()
     local lodTree = nil
     --self.materialRoot = self.materialHeader:AddTree(GetLoca("Materials"))
 
+    local vResId = visual.VisualResource and visual.VisualResource.Guid or "UnknownVisual"
     for descIndex, desc in ipairs(visual.ObjectDescs) do
         if not desc.Renderable or not desc.Renderable.ActiveMaterial then
             goto continue
@@ -974,6 +984,11 @@ function VisualTab:RenderObjectEditor()
         local function getliveMat()
             local visual = self:GetVisual(self.guid)
             if not visual then return nil end
+
+            -- if have visual resource guid and not match the initial one, returns
+            if visual.VisualResource and visual.VisualResource.Guid and (not visual.VisualResource.Guid == vResId) then
+                return nil
+            end
 
             local rend = visual.ObjectDescs[descIndex] and visual.ObjectDescs[descIndex].Renderable
             if not rend then return nil end
@@ -1363,7 +1378,9 @@ function VisualTab:Collapsed()
     
     self.__updatePresetOptions = nil
 
-    self.EntityEffectTab:Collapsed()
+    if self.EntityEffectTab then
+        self.EntityEffectTab:Collapsed()
+    end
 
     for key, matTab in pairs(self.MaterialTabs) do
         matTab:ClearRefs()
@@ -1408,6 +1425,14 @@ function VisualTab:Refresh(retryCnt)
         self.lastPosition = self.panel.LastPosition
         self.lastSize = self.panel.LastSize
     end
+
+    self.MaterialTabs = {}
+    self.MaterialEditors = {}
+    self.EntityEffectEditor = nil
+    self.EntityEffectTab = nil
+
+    self:InitMaterialEditors()
+    self:InitEntityEffectEditor()
 
     self:Collapsed()
     self:Render(retryCnt)

@@ -130,6 +130,7 @@ local function createPresetParamAttrNodes(parameterName, value)
     local valueField = "Value"
 
     attrs = {
+        lsAttrNode("Color", LSValueType.bool, false),
         lsAttrNode("Custom", LSValueType.bool, false),
         lsAttrNode("Enabled", LSValueType.bool, true),
         lsAttrNode(valueField, valueType, value),

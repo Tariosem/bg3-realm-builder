@@ -4,6 +4,7 @@ RBUtils.RequireFiles("Server/", {
     "EntityManager",
     "EffectsManager",
     "BindManager",
+    "DyeManager"
 })
 
 RB_GLOBALS.EffectManager = EffectsManager:init("EffectsManager") --[[@as RB_EffectsManager]]

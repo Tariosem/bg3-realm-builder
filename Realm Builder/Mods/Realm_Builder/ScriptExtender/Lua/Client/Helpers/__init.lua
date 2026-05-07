@@ -5,5 +5,4 @@ RBUtils.RequireFiles("Client/Helpers/", {
     "VisualHelpers",
     "PickingHelpers",
     "LSXHelpers/__init",
-    "PaperDoll"
 })

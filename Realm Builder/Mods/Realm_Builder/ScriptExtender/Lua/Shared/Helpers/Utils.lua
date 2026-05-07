@@ -357,7 +357,7 @@ function RBUtils.Debounce(delay, func)
 end
 
 --- @param callback fun()
---- @param check fun():boolean
+--- @param check fun(frameCnt:integer):boolean
 --- @param timeOutFrame integer?
 --- @param fallback fun()?
 function RBUtils.WaitUntil(check, callback, fallback, timeOutFrame)
@@ -367,7 +367,7 @@ function RBUtils.WaitUntil(check, callback, fallback, timeOutFrame)
     local timerId
     timerId = Ext.Events.Tick:Subscribe(function()
         frameCount = frameCount + 1
-        local ok, okToDo = pcall(check)
+        local ok, okToDo = pcall(check, frameCount)
         if not ok then
             Debug("WaitUntil: check function error: " .. tostring(okToDo))
             Ext.Events.Tick:Unsubscribe(timerId)
@@ -546,4 +546,78 @@ function RBUtils.EntitiesToUUIDs(entities)
         end
     end
     return uuids
+end
+
+--- @class AsyncForEachResult
+--- @field results table
+--- @field isComplete boolean
+--- @field errors {key:any, error:any}[]
+--- @field OnComplete fun(results:table, errors:any[])
+--- @field WaitFor number
+--- @field YieldAfter number
+
+--- @generic K, V
+--- @param t table<K, V>
+--- @param func fun(value:V, key:K, processedCount:number):any
+--- @return AsyncForEachResult
+function RBUtils.AsyncForEach(t, func)
+    local returnObj = {
+        results = {},
+        isComplete = false,
+        errors = {},
+        OnComplete = function() end,
+        WaitFor = 100, -- ms, default 100ms
+        YieldAfter = 1, -- ms threshold to yield, default 1ms.
+    }
+
+    local processed = 0
+    local last = Ext.Timer.MonotonicTime()
+
+    local thread
+    thread = coroutine.create(function()
+        for k, v in pairs(t) do
+            local ok, result = pcall(func, v, k, processed)
+            if ok then
+                returnObj.results[k] = result
+            else
+                table.insert(returnObj.errors, { key = k, error = result })
+            end
+
+            processed = processed + 1
+            if Ext.Timer.MonotonicTime() - last >= returnObj.WaitFor then
+                Ext.Timer.WaitForRealtime(returnObj.WaitFor, function()
+                    if coroutine.status(thread) ~= "dead" then
+                        local ok, err = coroutine.resume(thread)
+                        if not ok then
+                            _P("AsyncForEach error: " .. tostring(err))
+                        end
+                    end
+                end)
+                coroutine.yield()
+                last = Ext.Timer.MonotonicTime()
+            end
+        end
+
+        returnObj.isComplete = true
+        returnObj.OnComplete(returnObj.results, returnObj.errors)
+    end)
+
+    local ok, err = coroutine.resume(thread)
+    if not ok then
+        _P("AsyncForEach error: " .. tostring(err))
+    end
+    return setmetatable({}, {
+        __index = function(t, k)
+            return returnObj[k]
+        end,
+        __newindex = function(t, k, v)
+            if k == "OnComplete" and type(v) == "function" then
+                returnObj.OnComplete = v
+            elseif (k == "WaitFor" or k == "YieldAfter") and type(v) == "number" then
+                returnObj[k] = v
+            else 
+                _P("Attempt to set invalid property on AsyncForEach result: " .. tostring(k))
+            end
+        end
+    })
 end

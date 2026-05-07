@@ -11,4 +11,5 @@ RBUtils.RequireFiles("Client/UI/", {
     "TransformToolbar",
     "CameraTool",
     "Menu",
+    "Dyer"
 })

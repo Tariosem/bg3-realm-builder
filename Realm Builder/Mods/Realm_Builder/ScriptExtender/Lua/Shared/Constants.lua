@@ -175,7 +175,7 @@ RARITY_COLORS = {
     Uncommon = ColorUtils.HexToRGBA("FF194A1F"),
     Rare = ColorUtils.HexToRGBA("FF182A51"),
     VeryRare = ColorUtils.HexToRGBA("A48400FF"),
-    Legendary = ColorUtils.HexToRGBA("FFCA911D"),
+    Legendary = ColorUtils.HexToRGBA("FF9A6F19"),
     StoryItem = ColorUtils.HexToRGBA("AA944300"),
 }
 

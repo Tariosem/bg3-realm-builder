@@ -1,4 +1,5 @@
 Ext.Vars.RegisterModVariable(ModuleUUID, "EntityManager", {})
+Ext.Vars.RegisterModVariable(ModuleUUID, "DyeManager", {})
 
 --- @enum RB_UserVars_Flags
 local RB_UserVars_Flags = {

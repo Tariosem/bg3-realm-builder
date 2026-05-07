@@ -1,4 +1,4 @@
---- mostly server -> client channels
+--- mostly server <- client channels
 NetChannel = NetChannel or {}
 
 --- @class NetChannel
@@ -143,3 +143,19 @@ NetChannel.SetLighting = Ext.Net.CreateChannel(ModuleUUID, "SetLighting")
 --- @class SetResourceChannel : NetChannel
 --- @field SendToServer fun(channel:self , data: {ResourceType:ResourceBankType, ResourceUUID:string, Data:any})
 NetChannel.SetResource = Ext.Net.CreateChannel(ModuleUUID, "SetResource")
+
+--- @class ComponentSubscriptionChannel : NetChannel
+--- @field SetHandler fun(channel:self, handler: fun(data:{Guid: GUIDSTRING, Component: string}, userID:number))
+NetChannel.ComponentSubscription = Ext.Net.CreateChannel(ModuleUUID, "ComponentSubscription")
+
+--- @class OsirisSubscriptionChannel : NetChannel
+--- @field SetHandler fun(channel:self, handler: fun(data:{Event: string, Args: any[]}, userID:number))
+NetChannel.OsirisSubscription = Ext.Net.CreateChannel(ModuleUUID, "OsirisSubscription")
+
+--- @class DyeChannel : NetChannel
+--- @field SendToServer fun(channel:self , data: {Guid: GUIDSTRING|"Upload", DyePreset: DyePreset?})
+--- @field RequestToServer fun(channel:self , data: {Guid: GUIDSTRING|"Upload", DyePreset: DyePreset}, callback: fun(response: boolean))
+--- @field SetHandler fun(channel:self, handler: fun(data:{Guid: GUIDSTRING|"Upload", DyePreset: DyePreset}, userID:number))
+--- @field SetRequestHandler fun(channel:self, handler: fun(data:{Guid: GUIDSTRING|"Upload", DyePreset: DyePreset}, userID:number):boolean)
+--- @field Broadcast fun(channel:self , data: table<GUIDSTRING, DyePresetName>)
+NetChannel.Dye = Ext.Net.CreateChannel(ModuleUUID, "Dye")

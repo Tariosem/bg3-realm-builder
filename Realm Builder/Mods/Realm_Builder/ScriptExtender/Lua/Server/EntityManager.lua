@@ -20,17 +20,6 @@ EntityManager = {
 --- @field SavedEntities table<string, boolean>
 --- @field DeleteOnNextSession table<string, boolean>
 
-local initModVar = Ext.Vars.GetModVariables(ModuleUUID)
-if not initModVar then
-    initModVar = {}
-end
-if not initModVar.EntityManager then
-    initModVar.EntityManager = {
-        SavedEntities = {},
-        DeleteOnNextSession = {},
-    }
-end
-
 --- @return EntitySave
 local function getModVar()
     local modVar = Ext.Vars.GetModVariables(ModuleUUID)

@@ -126,7 +126,7 @@ function Timer:_OnTick()
     local after = Ext.Utils.MonotonicTime() - before
     local warningColor = {255, 50, 50}
     local leastFactor = 0.1
-    if RB_DEBUG_LEVEL == 5 and after > 10 then
+    if RB_DEBUG_LEVEL == 5 and after > 1 then
         local out = {}
         out[1] = CHEAP_ANSI("Realm Builder Performance Warning: Timer tick took " .. after .. " ms to process " .. tostring(#activeIds) .. " timers (" .. tostring(RBTableUtils.CountMap(called)) .. " ran)", warningColor[1], warningColor[2], warningColor[3])
 

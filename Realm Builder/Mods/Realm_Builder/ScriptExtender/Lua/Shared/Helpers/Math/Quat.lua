@@ -1,5 +1,3 @@
---- @alias quat Quat
-
 --- @class Quat
 --- @field Inverse fun(self: Quat): Quat
 --- @field Normalize fun(self: Quat): Quat
