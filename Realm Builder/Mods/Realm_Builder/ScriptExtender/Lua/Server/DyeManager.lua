@@ -7,9 +7,9 @@ local DyeManager = {
     EntityDyes = {
     },
 
-    --- @type table<GUIDSTRING, GUIDSTRING[]>
-    -- maps material preset guid to appiled entities
-    MatPresetToEnts = {
+    --- @type table<GUIDSTRING, GUIDSTRING>
+    -- maps material preset guid to appiled entitiy
+    MatPresetToEnt = {
     
     },
 
@@ -41,7 +41,7 @@ end
 function DyeManager.SaveModVar()
     local modVar = getModVar()
     modVar.EntityDyes = this.EntityDyes
-    setModVar(modVar)    
+    setModVar(modVar)
 end
 
 function DyeManager.LoadModVar()
@@ -57,6 +57,7 @@ function DyeManager.LoadModVar()
 end
 
 function DyeManager.RemoveItemDye(guid)
+    this.FreeItemDye(guid)
     this.EntityDyes[guid] = nil
 
     local itemEnt = Ext.Entity.Get(guid)
@@ -65,7 +66,6 @@ function DyeManager.RemoveItemDye(guid)
         itemEnt:Replicate("ItemDye")
     end
 
-    this.FreeItemDye(guid)
     this.SaveModVar()
 end
 
@@ -76,12 +76,9 @@ function DyeManager.FreeItemDye(guid)
     if not itemEnt or not itemEnt.ItemDye then return end
 
     local matPreset = itemEnt.ItemDye.Color
-    if matPreset and this.MatPresetToEnts[matPreset] then
-        table.remove(this.MatPresetToEnts[matPreset], 1)
+    if matPreset and this.MatPresetToEnt[matPreset] then
+        this.MatPresetToEnt[matPreset] = nil
         _P("Freed material preset "..matPreset.." from item "..guid)
-        if #this.MatPresetToEnts[matPreset] == 0 then
-            this.MatPresetToEnts[matPreset] = nil
-        end
     end
 end
 
@@ -89,21 +86,16 @@ end
 --- @param matPreset GUIDSTRING
 --- @return boolean
 function DyeManager.IsMatPresetInUse(matPreset)
-    local using = this.MatPresetToEnts[matPreset] or {}
+    local using = this.MatPresetToEnt[matPreset]
 
-    for i=#using, 1, -1 do
-        local item = using[i]
-        local itemEnt = Ext.Entity.Get(item) or {}
+    if using then
+        local itemEnt = Ext.Entity.Get(using) or {}
         if not itemEnt.Wielding then -- item no longer equipped
-            table.remove(using, i)
+            this.FreeItemDye(using)
         end
     end
 
-    if using and #using == 0 then
-        this.MatPresetToEnts[matPreset] = nil
-    end
-
-    return this.MatPresetToEnts[matPreset] ~= nil
+    return this.MatPresetToEnt[matPreset] ~= nil
 end
 
 --- @return string?
@@ -135,6 +127,18 @@ function DyeManager.ApplyDye(item, dyePreset, retryCnt)
         return
     end
 
+    if not itemEnt.ItemDye then
+        itemEnt:CreateComponent("ItemDye")
+    end
+
+    if not itemEnt.ItemDye then
+        --Error("Failed to create ItemDye component on item ".. item .. "Retrying... ("..(retryCnt + 1).."/"..maxRetries..")")
+        Ext.OnNextTick(function()
+            this.ApplyDye(item, dyePreset, retryCnt + 1)
+        end)
+        return
+    end
+
     local matPreset = this.FindAvailableMatPreset()
     if not matPreset then return end
 
@@ -146,29 +150,18 @@ function DyeManager.ApplyDye(item, dyePreset, retryCnt)
         end
     end
 
-    if not itemEnt.ItemDye then
-        itemEnt:CreateComponent("ItemDye")
-    end
-
-    if not itemEnt.ItemDye then
-        Error("Failed to create ItemDye component on item ".. item .. "Retrying... ("..(retryCnt + 1).."/"..maxRetries..")")
-        Ext.OnNextTick(function()
-            this.ApplyDye(item, dyePreset, retryCnt + 1)
-        end)
-        return
-    end
 
     itemEnt.ItemDye.Color = matPreset
     itemEnt:Replicate("ItemDye")
 
+    local itemName = itemEnt.DisplayName and itemEnt.DisplayName.Name:Get() or item
     Debug(
-        "Applied dye to item "..item..". MatPreset: "..matPreset..
-        ". Retry count: "..retryCnt
+        "Applied dye to item ["..itemName.."].\n"..
+        "Retry count: "..retryCnt
     )
 
     this.EntityDyes[item] = dyePreset
-    this.MatPresetToEnts[matPreset] = this.MatPresetToEnts[matPreset] or {}
-    table.insert(this.MatPresetToEnts[matPreset], item)
+    this.MatPresetToEnt[matPreset] = item
 
     this.SaveModVar()
 end
@@ -204,7 +197,7 @@ Ext.Osiris.RegisterListener("Equipped", 2, "after", function(item, character)
     local matPreset = itemDyeComp.Color
     if matPreset == "" then return end
 
-    if DyeManager.MatPresetToEnts[matPreset] then
+    if DyeManager.MatPresetToEnt[matPreset] then
         local dyePreset = DyeManager.EntityDyes[item]
         if dyePreset then
             DyeManager.ApplyDye(item, dyePreset)
@@ -234,10 +227,8 @@ end)
 
 RegisterConsoleCommand("rb_dump_dye_data", function()
     for guid, _ in pairs(DyeManager.AllMatPresets) do
-        local using = DyeManager.MatPresetToEnts[guid] or {}
-        _P("MatPreset: "..guid.." In Use By: "..#using.." items")
-        for _, item in pairs(using) do
-            _P(" - "..item)
-        end
+        if not DyeManager.IsMatPresetInUse(guid) then return end
+        local using = DyeManager.MatPresetToEnt[guid] or GUID_NULL
+        print("MatPreset "..guid.." is in use by item: "..using)
     end
 end)

@@ -43,6 +43,7 @@ local params = {
 
 --- @type string[]
 local paramOrder = {
+    "Accent_Color",
     "Cloth_Primary",
     "Cloth_Secondary",
     "Cloth_Tertiary",
@@ -52,7 +53,6 @@ local paramOrder = {
     "Metal_Primary",
     "Metal_Secondary",
     "Metal_Tertiary",
-    "Accent_Color",
     "Custom_1",
     "Custom_2",
     "Color_01",
@@ -108,7 +108,7 @@ end
 
 function Dyer.SaveToLocalFile(data)
     local path = dyerFolder .. "Local.json"
-    local content = Ext.JsonStringify(data)
+    local content = Ext.Json.Stringify(data)
     local ok, err = Ext.IO.SaveFile(path, content)
     if not ok then
         Error("Failed to save Dyer data: " .. tostring(err))
@@ -165,39 +165,22 @@ end
 
 --- @param ent EntityHandle
 --- @param slot ItemSlot
---- @return string|nil
-local function getVisualGuidForEquipmentSlot(ent, slot)
-    local equip = getEquipment(ent, slot)
-    if not equip then return nil end
-    local rootTemplate = Ext.Template.GetTemplate(equip.GameObjectVisual.RootTemplateId) --[[@as ItemTemplate]]
-    return rootTemplate and rootTemplate.VisualTemplate
-end
-
---- @param ent EntityHandle
---- @param slot ItemSlot
 --- @return Visual[]
 local function getEquipmentVisuals(ent, slot) 
     local results = {}
-    local cV = getEntVisual(ent)
-    local attachments = cV and cV.Attachments
+    local dummy = DummyHelpers.GetClientVisualDummy(ent.Uuid.EntityUuid)
+
+    if dummy then
+        ent = dummy
+    end
 
     local visualSlot = getEquipmentVisualSlot(ent, slot)
-    local matchedVRes = {}
     for _, subVisualEnt in pairs(visualSlot and visualSlot.SubVisuals or {}) do
         local subVisual = subVisualEnt.Visual.Visual
-        local subVisualRes = subVisual and subVisual.VisualResource.Guid
-        matchedVRes[subVisualRes] = true
-    end
-
-
-    for _, attachment in pairs(attachments or {}) do
-        local aV = attachment.Visual
-        local aVRes = aV and aV.VisualResource and aV.VisualResource.Guid
-        if matchedVRes[aVRes] then
-            table.insert(results, aV)
+        if subVisual then
+            table.insert(results, subVisual)
         end
     end
-
     return results
 end
 
@@ -234,6 +217,8 @@ local selectionRows = 6
 local selectionImageSize = 64 * SCALE_FACTOR
 local expandedImageSize = 96 * SCALE_FACTOR
 
+makeEmptyMaterialPreset.SameLine = true
+
 mainTable.ColumnDefs[1] = { WidthFixed = true, Width = expandedImageSize * selectionCols }
 mainTable.ColumnDefs[2] = { WidthStretch = true }
 
@@ -262,34 +247,70 @@ end
 --- @param parent ExtuiTable
 --- @param name string
 --- @param dyePreset DyePreset
+--- @return ExtuiSelectable
 local function renderDyeEntry(parent, name, dyePreset)
     local row = parent:AddRow()
-    local cells = {row:AddCell(), row:AddCell()}
+    local cells = {row:AddCell(), row:AddCell(), row:AddCell()}
     local nameCell = cells[2]
     local inputCell = cells[1]
+    local deleteCell = cells[3]
+    deleteCell.Visible = parent.Label == "DyeList"
 
-    nameCell:AddSelectable(name)
+    local colorBlock = inputCell:AddColorEdit("##" .. name, dyePreset.Accent_Color)
+    colorBlock.NoInputs = true
 
+    local nameSel = nameCell:AddSelectable(name)
 
+    local deleteBtn = deleteCell:AddImageButton("##Delete" .. name, RB_ICONS.X_Square, IMAGESIZE.ROW)
+
+    local function dragStart(self)
+        local data = {
+            DyePreset = dyePreset,
+        }
+        self.UserData = data
+        renderDyeEntry(self.DragPreview:AddTable("", 3), name, dyePreset)
+    end
+
+    for _, element in pairs({
+        nameSel,
+        colorBlock
+    }) do
+        element.CanDrag = true
+        element.DragDropType = dragFlag
+        element.OnDragStart = dragStart
+    end
+
+    deleteBtn.OnClick = function ()
+        Dyer.DyePresets[name] = nil
+        Dyer.SaveToLocalFile(Dyer.DyePresets)
+        row:Destroy()
+    end
+
+    return nameSel
 end
 
 --- @param parent ExtuiTreeParent
-local function renderDyesList(parent)
-    local listTab = parent:AddTable("DyeList", 2)
+--- @param onClick fun(dyePreset: DyePreset)
+local function renderDyesList(parent, onClick)
+    parent:AddSeparatorText("Dye Presets"):SetStyle("SeparatorTextAlign", 0.5)
+    local listTab = parent:AddTable("DyeList", 3)
     listTab.ColumnDefs[1] = { WidthFixed = true }
     listTab.ColumnDefs[2] = { WidthStretch = true }
 
     listTab.RowBg = true
 
     RBUtils.AsyncForEach(Dyer.DyePresets, function(preset, name)
-        renderDyeEntry(listTab, name, preset)
+        renderDyeEntry(listTab, name, preset).OnClick = function ()
+            onClick(preset)
+        end
     end)
 end
 
 local curDyerTable = nil
+local function refreshDyer() end --[[@as fun(ent: EntityHandle, slot: ItemSlot) ]]
 --- @param ent EntityHandle
 --- @param slot ItemSlot
-local function refreshDyer(ent, slot)
+function refreshDyer(ent, slot)
     local colorPreset = RBUtils.DeepCopy(params)
     colorPreset.DyePresetName = "Test"
     local parent = materialEditor
@@ -323,6 +344,10 @@ local function refreshDyer(ent, slot)
 
     local removeDyeBtn = leftCell:AddButton("Undye")
     local dyeBtn = leftCell:AddButton("Dye")
+
+    local dyeCtxPop = leftCell:AddPopup("DyeContext")
+    local dyeCtxMenu = ImguiElements.AddContextMenu(dyeCtxPop, "Dye Options")
+
     dyeBtn.SameLine = true
 
     removeDyeBtn.OnClick = function ()
@@ -336,7 +361,8 @@ local function refreshDyer(ent, slot)
         end)
     end
 
-    dyeBtn.OnClick = function ()
+    dyeBtn.OnClick = function (_, preset)
+        colorPreset = preset or colorPreset
         colorPreset.GlowColor = colorPreset.Glow_Color
         dyeChannel:SendToServer({
             Guid = getEquipment(ent, slot).Uuid.EntityUuid,
@@ -346,6 +372,93 @@ local function refreshDyer(ent, slot)
         Ext.Timer.WaitForRealtime(100, function ()
             refreshDyer(ent, slot)
         end)
+    end
+    local function dyeThis(preset)
+        dyeBtn.OnClick(nil, preset)
+    end
+
+    dyeBtn.OnRightClick = function ()
+        dyeCtxPop:Open()
+    end
+    dyeCtxMenu:AddItem("Dye All", function (selectable)
+        local allSlots = equipmentSlots
+        parent.Disabled = true
+        for _, s in pairs(allSlots) do
+            local equip = getEquipment(ent, s)
+            if equip and equip.Uuid then
+                dyeChannel:SendToServer({
+                    Guid = equip.Uuid.EntityUuid,
+                    DyePreset = colorPreset,
+                })
+            end
+        end
+        Ext.Timer.WaitForRealtime(100, function ()
+            refreshDyer(ent, slot)
+        end)
+    end)
+    dyeCtxMenu:AddItem("Undye All", function (selectable)
+        local allSlots = equipmentSlots
+        parent.Disabled = true
+        for _, s in pairs(allSlots) do
+            local equip = getEquipment(ent, s)
+            if equip and equip.Uuid then
+                dyeChannel:SendToServer({
+                    Guid = equip.Uuid.EntityUuid,
+                    DyePreset = nil,
+                })
+            end
+        end
+        Ext.Timer.WaitForRealtime(100, function ()
+            refreshDyer(ent, slot)
+        end)
+    end)
+
+    local dyeListPop = rightCell:AddPopup("DyeList")
+    local nameInput = rightCell:AddInputText("Name##Input")
+    local saveBtn = rightCell:AddButton("Save")
+    local loadBtn = rightCell:AddButton("Load")
+
+    local charWidth = 20 * SCALE_FACTOR
+    local minWidth = charWidth * 5
+    nameInput.OnChange = function ()
+        if nameInput.EnterReturnsTrue then
+            saveBtn.OnClick(nil, false)
+            nameInput.SizeHint = { minWidth, 0 }
+            return
+        end
+
+        local chars = #nameInput.Text
+        nameInput.SizeHint = { math.max(chars * charWidth, minWidth), 0 }
+    end
+    nameInput:OnChange() -- initialize size
+    nameInput.EnterReturnsTrue = true
+
+    saveBtn.SameLine = true
+    loadBtn.SameLine = true
+    saveBtn.OnClick = function (_, overwrite)
+        local presetName = nameInput.Text ~= "" and nameInput.Text or "Dye"
+
+        if this.DyePresets[presetName] and not overwrite then
+            ConfirmPopup:QuickConfirm(
+                "Preset with '" .. presetName .. "' already exists. Do you want to overwrite it?",
+                function () saveBtn.OnClick(nil, true) end,
+                function () end
+            )
+            return
+        end
+
+        Dyer.DyePresets[presetName] = RBUtils.DeepCopy(colorPreset)
+        Dyer.SaveToLocalFile(Dyer.DyePresets)
+
+        nameInput.Text = ""
+        ImguiHelpers.DestroyAllChildren(dyeListPop)
+        renderDyesList(dyeListPop, dyeThis)
+    end
+
+    loadBtn.OnClick = function ()
+        ImguiHelpers.DestroyAllChildren(dyeListPop)
+        renderDyesList(dyeListPop, dyeThis)
+        dyeListPop:Open()
     end
 
     local dyeTable = parent:AddTable("DyeParams", 2)
@@ -384,6 +497,10 @@ local function refreshDyer(ent, slot)
         local input = inputCell:AddColorEdit("##" .. paramName, default)
         local reset = inputCell:AddImageButton("##Reset " .. paramName, RB_ICONS.Arrow_CounterClockwise, IMAGESIZE.ROW)
 
+        nameSel.OnClick = function ()
+            nameSel.Selected = false
+        end
+
         input.PickerHueWheel = true
         input.NoInputs = true
         reset.SameLine = true
@@ -392,7 +509,7 @@ local function refreshDyer(ent, slot)
             local t = nameCell:AddText("Maybe Invalid")
             t.SameLine = true
             t.Font = "Tiny"
-            t:SetColor("Text", { 1, 0.5, 0, 0.5})
+            t:SetColor("Text", { 1, 0.2, 0, 0.5})
         end
 
         input.NoAlpha = true
@@ -409,8 +526,11 @@ local function refreshDyer(ent, slot)
 
         input.OnHoverEnter = function ()
             shouldStop = false
-            local color = {0, 0, 0}
-            local delta = 0.01
+            
+            local max = 1
+            local min = 0
+            local color = { max, max, max }
+            local delta = -0.01
             Timer:Every(10, function (timer)
                 if shouldStop or isDestroyed() then
                     dyeEquipment(getEnt(), slot, paramName, colorPreset[paramName] or default)
@@ -420,12 +540,10 @@ local function refreshDyer(ent, slot)
 
                 dyeEquipment(getEnt(), slot, paramName, color)
                 for i, v in pairs(color) do
-                    color[i] = Ext.Math.Clamp(v + delta, 0, 1)
+                    color[i] = Ext.Math.Clamp(v + delta, min, max)
                 end
-                if color[1] >= 1 then
-                    delta = -0.01
-                elseif color[1] <= 0 then
-                    delta = 0.01
+                if color[1] >= max or color[1] <= min then
+                    delta = -delta
                 end
             end)
         end
@@ -549,10 +667,7 @@ local function refreshSelection()
     local currentSlotMask = slotMask[currentArmorState] or slotMask["Normal"]
     local cellControllers = {} --[[@type table<ItemSlot, {Shrink: fun(), Expand: fun()}>> ]]
 
-    RBUtils.AsyncForEach(equipmentSlots, function(slot)
-        if not currentSlotMask[slot] then
-            return -- skip slots that don't match the current armor set state
-        end
+    for slot, enabled in pairs(currentSlotMask) do
         local item = getEquipment(selectedChar, slot)
         if not item or not (item.Wielding or getEquipmentFirstVisual(selectedChar, slot) ~= nil) or not item.Uuid or not item.Uuid.EntityUuid then
             local hasCell = slotToCell[slot] ~= nil
@@ -560,7 +675,7 @@ local function refreshSelection()
                 local cell = slotToCell[slot]
                 cell:AddDummy(selectionImageSize, selectionImageSize)
             end
-            return
+            goto continue --return
         end
 
         local guid = item.Uuid.EntityUuid
@@ -571,11 +686,12 @@ local function refreshSelection()
         local rarity = pcall(function() return itemStats.Rarity end) and itemStats.Rarity or "Common"
         local btn = thisCell:AddImageButton(slot, itemIcon, { iconSize, iconSize })
         local animFps = 90
-        local shrinkMs = 300
-        local expandMs = 500
+        local shrinkMs = 200
+        local expandMs = 300
         local shrinkWidth = 2
         local expandWidth = 6 * SCALE_FACTOR
         local runningAnim = nil --[[@type RunningAnimation?]]
+        local colorAnim = nil --[[@type RunningAnimation?]]
         local rarityColor = RARITY_COLORS[rarity] or RARITY_COLORS.Common
         btn.Background = rarityColor
         local borderColor = rarity == "Common" and defaultBorderColor or ColorUtils.AdjustColor(rarityColor, 0.2)
@@ -585,6 +701,8 @@ local function refreshSelection()
         thisCell:SetColor("ButtonHovered", ColorUtils.AdjustColor(rarityColor, 0.1))
         thisCell:SetColor("ButtonActive", ColorUtils.AdjustColor(rarityColor, -0.05))
         thisCell:SetStyle(borderField, shrinkWidth)
+
+        btn:Tooltip():AddText(item.DisplayName.Name:Get() or guid)
 
         local function getCur()
             return thisCell:GetStyle(borderField) or 0
@@ -600,8 +718,12 @@ local function refreshSelection()
                 runningAnim = nil
             end, function (value, t)
                 thisCell:SetStyle(borderField, value)
+            end)
+            colorAnim = AnimateValue(animFps, 0, 1, shrinkMs, "Linear", function ()
+                colorAnim = nil
+            end, function (value)
                 if changeColor then
-                    thisCell:SetColor("Border", Vector.Lerp(curColor, borderColor, t))
+                    thisCell:SetColor("Border", Vector.Lerp(curColor, borderColor, value))
                 end
             end)
         end
@@ -628,7 +750,8 @@ local function refreshSelection()
             if lastSlot and cellControllers[lastSlot] then
                 cellControllers[lastSlot].Shrink(true)
             end
-            cellControllers[slot].Expand()
+            expand()
+            if colorAnim then colorAnim:Stop() colorAnim = nil end
             thisCell:SetColor("Border", selectedBorderColor)
             refreshDyer(selectedChar, slot)
             selectedSlot = slot
@@ -647,23 +770,34 @@ local function refreshSelection()
             shrink()
         end
 
+        --btn.CanDrag = true
         btn.DragDropType = dragFlag
 
         btn.OnDragDrop = function (self, drop)
-            local data = drop.DyePreset
-            if data then
-                dyeChannel:SendToServer({
-                    Guid = guid,
-                    DyePreset = data,
-                })
-            end
+            local data = drop.UserData and drop.UserData.DyePreset
+            if not data then return end
+            dyeChannel:SendToServer({
+                Guid = guid,
+                DyePreset = data,
+            })
+
+            if selectedSlot ~= slot then return end
+            -- refresh ui if the dye was applied to the currently selected slot
+            materialEditor.Disabled = true
+            Ext.Timer.WaitForRealtime(100, function ()
+                refreshDyer(selectedChar, slot)
+            end)
         end
-    end)
+
+        ::continue::
+    end
 end
 
 refreshSelection()
 
-refreshBtn.OnClick = refreshSelection
+refreshBtn.OnClick = function ()
+    refreshSelection()
+end
 
 makeEmptyMaterialPreset.OnClick = function ()
     local cnt = 120
@@ -770,5 +904,7 @@ Ext.Entity.OnCreate("ClientControl", function (entity)
 
     refreshSelection()
 end)
+
+Dyer.DyePresets = Dyer.LoadFromLocalFile() or {}
 
 end)

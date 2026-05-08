@@ -658,7 +658,6 @@ local ServerCameraRotation = {}
 local ServerDummyPosition = {}
 local ServerDummyRotation = {}
 local ServerCameraForward = {}
-local ClientDummyEntity = {}
 
 function CameraHelpers.IsServerCameraValid(uuid)
     if Ext.IsServer() then
@@ -712,7 +711,7 @@ end
 
 --- @param cameraHandle EntityHandle?
 --- @return Vec3
-function GetCameraForward(cameraHandle, userID)
+function CameraHelpers.GetCameraForward(cameraHandle, userID)
     if Ext.IsServer() then
         return ServerCameraForward[userID] or Vec3.new({ 0, 0, 1 })
     end
@@ -735,7 +734,6 @@ end
 function CameraHelpers.SetCameraRotation(UserID, rot)
     if Ext.IsServer() then
         ServerCameraRotation[UserID] = rot
-        return
     end
 end
 
@@ -749,8 +747,9 @@ function declare.GetPartyMemberPosition(uuid)
     end
 
     if Ext.IsClient() then
-        if ClientDummyEntity[uuid] then
-            local entity = ClientDummyEntity[uuid]
+        local dummy = DummyHelpers.GetClientVisualDummy(uuid)
+        if dummy then
+            local entity = dummy
             return VisualHelpers.GetVisualPosition(entity)
         end
         if VisualHelpers.GetEntityVisual(uuid) then
@@ -768,9 +767,9 @@ function DummyHelpers.SetDummyPosition(uuid, pos)
     end
 
     if Ext.IsClient() then
-        local entity = ClientDummyEntity[uuid]
-        if entity then
-            if not VisualHelpers.SetVisualPosition(entity, pos) then
+        local dummy = DummyHelpers.GetClientVisualDummy(uuid)
+        if dummy then
+            if not VisualHelpers.SetVisualPosition(dummy, pos) then
                 --Error("SetPartyMemberPosition: Failed to set visual position for UUID: " .. tostring(uuid))
                 return
             end
@@ -788,9 +787,9 @@ function declare.GetPartyMemberRotation(uuid)
     end
 
     if Ext.IsClient() then
-        if ClientDummyEntity[uuid] then
-            local entity = ClientDummyEntity[uuid]
-            local p, y, r, w = VisualHelpers.GetVisualRotation(entity)
+        local dummy = DummyHelpers.GetClientVisualDummy(uuid)
+        if dummy then
+            local p, y, r, w = VisualHelpers.GetVisualRotation(dummy)
             return p, y, r, w
         end
     end
@@ -806,7 +805,7 @@ function DummyHelpers.SetDummyRotation(uuid, rot)
     end
 
     if Ext.IsClient() then
-        local entity = ClientDummyEntity[uuid]
+        local entity = DummyHelpers.GetClientVisualDummy(uuid)
         if entity then
             if not VisualHelpers.SetVisualRotation(entity, rot) then
                 --Error("SetPartyMemberRotation: Failed to set visual rotation for UUID: " .. tostring(uuid))
@@ -824,22 +823,6 @@ function DummyHelpers.ClearDummyData()
     end
 
     if Ext.IsClient() then
-        ClientDummyEntity = {}
         NetChannel.UpdateDummies:SendToServer({ Deactive = true })
-    end
-end
-
-if Ext.IsClient() then
-    function DummyHelpers.SetClientDummyEntity(uuid, entity)
-        ClientDummyEntity[uuid] = entity
-    end
-
-    function DummyHelpers.GetAllDummies()
-        return ClientDummyEntity
-    end
-
-    --- @return EntityHandle|nil
-    function DummyHelpers.GetDummyByUuid(uuid)
-        return ClientDummyEntity[uuid]
     end
 end

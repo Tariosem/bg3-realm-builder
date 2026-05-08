@@ -584,8 +584,8 @@ function RBUtils.AsyncForEach(t, func)
             end
 
             processed = processed + 1
-            if Ext.Timer.MonotonicTime() - last >= returnObj.WaitFor then
-                Ext.Timer.WaitForRealtime(returnObj.WaitFor, function()
+            if Ext.Timer.MonotonicTime() - last >= returnObj.YieldAfter then
+                Timer:After(returnObj.WaitFor, function()
                     if coroutine.status(thread) ~= "dead" then
                         local ok, err = coroutine.resume(thread)
                         if not ok then

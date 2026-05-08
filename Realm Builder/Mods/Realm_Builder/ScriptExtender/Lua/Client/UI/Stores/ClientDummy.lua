@@ -1,6 +1,9 @@
 --- so the reset of the code is most about finding and tracking dummies on the client side
 --- every time we find a dummy we store it and in visual helpers we redirect visual get/set to the dummy if it exists
 
+local Debug = function ()
+    -- disabled 
+end
 
 local dummyUpdateTimer = nil 
 local clientVisualDummies = {}
@@ -10,14 +13,14 @@ local isInPhotoMode = false
 local function postUpdateDummies()
     local dummiesInfo = {}
     local post = {}
-    for uuid, dummy in pairs(DummyHelpers.GetAllDummies()) do
+    for uuid, dummy in pairs(clientVisualDummies) do
         if #dummy:GetAllComponentNames() == 0 then
             DummyHelpers.ClearDummyData()
             Timer:Cancel(dummyUpdateTimer)
             dummyUpdateTimer = nil
-            post.Deactive = true
             isInPhotoMode = false
-            break
+            isInMirror = false
+            return
         end
         local x, y, z = VisualHelpers.GetVisualPosition(dummy)
         local pitch, yaw, roll, w = VisualHelpers.GetVisualRotation(dummy)
@@ -30,46 +33,44 @@ local function postUpdateDummies()
     NetChannel.UpdateDummies:SendToServer(post)
 end
 
+local function startDummyUpdateTimer()
+    if not dummyUpdateTimer then
+        dummyUpdateTimer = Timer:EveryFrame(function()
+            postUpdateDummies()
+        end)
+    end
+end
+
 -- LoadMenu
 
 local function checkIfRunning()
     return Ext.Utils.GetGameState() == "Running"
 end
 
+local function reapplyVisualsForDummy(uuid)
+    Ext.OnNextTick(function()
+        local visualTab = VisualTab.FetchByGuid(uuid)
+        if visualTab then
+            visualTab:ReapplyCurrentChanges()
+        end
+    end)
+end
+
 --- @diagnostic disable-next-line
-Ext.Entity.OnCreate("Visual", function (entity)
+Ext.Entity.OnCreate("HasDummy", function (entity)
     if not entity or not checkIfRunning() then
         return
     end
 
-    if EntityHelpers.IsDummy(entity) then
-        --_P("Found dummy")
-        local partyMembers = EntityHelpers.GetAllPartyMembers()
-        for _, member in ipairs(partyMembers) do
-            local uuid = member --[[@as string]]
-            local memberHandle = UuidToHandle(uuid)
-            if RBTableUtils.EqualArrays(memberHandle.Transform.Transform.Translate, entity.Transform.Transform.Translate) then
-                Debug("Found dummy and coresponding party member : " .. memberHandle.DisplayName.Name:Get())
-                isInPhotoMode = true
-                DummyHelpers.SetClientDummyEntity(uuid, entity)
+    local uuid = entity.Uuid and entity.Uuid.EntityUuid
+    if not uuid then return end
 
-                Timer:Ticks(10, function (timerID)
+    Debug("Found dummy and coresponding party member : " .. entity.DisplayName.Name:Get())
+    isInPhotoMode = true
+    clientVisualDummies[uuid] = entity.HasDummy.Entity
 
-                    local visualTab = VisualTab.FetchByGuid(uuid)
-                    if visualTab then
-                        visualTab:ReapplyCurrentChanges()
-                    end
-                end)
-
-            end
-        end
-
-        if not dummyUpdateTimer then
-            dummyUpdateTimer = Timer:EveryFrame(function()
-                postUpdateDummies()
-            end)
-        end
-    end
+    reapplyVisualsForDummy(uuid)
+    startDummyUpdateTimer()
 end)
 
 --- @param entity EntityHandle
@@ -79,22 +80,15 @@ Ext.Entity.OnCreate("ClientPaperdoll", function (entity)
         return
     end
 
-    local function mapOwner(owner)
+    Ext.OnNextTick(function()
+        if not entity.ClientPaperdoll or entity.ClientPaperdoll.Combat then return end -- skip combat paperdolls
+        local owner = entity.ClientPaperdoll.Entity
+        if not owner or not owner.Uuid then return end
         local ownerGuid = owner.Uuid.EntityUuid
         clientVisualDummies[ownerGuid] = entity
         local displayNameComponent = owner.DisplayName
         Debug("Set paperdoll dummy for owner: " .. (displayNameComponent and displayNameComponent.Name:Get() or ownerGuid))
-        local visualTab = VisualTab.FetchByGuid(ownerGuid)
-        if visualTab then
-            Ext.OnNextTick(function()
-                visualTab:ReapplyCurrentChanges()
-            end)
-        end
-    end
-
-    Ext.OnNextTick(function()
-        if not entity.ClientPaperdoll or entity.ClientPaperdoll.Combat then return end -- skip combat paperdolls
-        mapOwner(entity.ClientPaperdoll.Entity)
+        reapplyVisualsForDummy(ownerGuid)
     end)
 end)
 
@@ -120,10 +114,7 @@ Ext.Entity.OnCreate("ClientCCDummyDefinition", function(entity)
                 end
 
                 clientVisualDummies[uuid] = entity.ClientCCDummyDefinition.Dummy
-                local visualTab = VisualTab.FetchByGuid(uuid)
-                if visualTab then
-                    visualTab:ReapplyCurrentChanges()
-                end
+                reapplyVisualsForDummy(uuid)
                 break
             end
         end
@@ -154,25 +145,17 @@ local function mapTLDummies()
 
             if dummy then
                 clientVisualDummies[owner.Uuid.EntityUuid] = dummy
-                DummyHelpers.SetClientDummyEntity(owner.Uuid.EntityUuid, dummy)
                 local displayNameComponent = owner.DisplayName
                 Debug("Set TLPreview dummy for owner: " .. (displayNameComponent and displayNameComponent.Name:Get() or owner.Uuid.EntityUuid))
-                local visualTab = VisualTab.FetchByGuid(owner.Uuid.EntityUuid)
-                if visualTab then
-                    visualTab:ReapplyCurrentChanges()
-                end
+                reapplyVisualsForDummy(owner.Uuid.EntityUuid)
 
-                if not dummyUpdateTimer then
-                    dummyUpdateTimer = Timer:EveryFrame(function()
-                        postUpdateDummies()
-                    end)
-                end
+                tlPreviewDummyCache[actorLink] = nil
+                startDummyUpdateTimer()
             end
         end
     end).OnComplete = function()
         tlPreviewDummyCache = {}
     end
-
 end
 
 local debounceMapping = RBUtils.Debounce(1000, mapTLDummies)
@@ -180,14 +163,16 @@ local debounceMapping = RBUtils.Debounce(1000, mapTLDummies)
 --- @param entity EntityHandle
 --- @diagnostic disable-next-line
 Ext.Entity.OnCreate("TLPreviewDummy", function(entity)
-    if not entity or not checkIfRunning() then return end
+    Ext.Timer.WaitForRealtime(100, function()
+        if not entity or not checkIfRunning() then return end
     
-    if not entity.ClientTimelineActorControl then return end
-    
-    local actorLink = entity.ClientTimelineActorControl.field_0
-    tlPreviewDummyCache[actorLink] = entity
-    
-    debounceMapping()
+        if not entity.ClientTimelineActorControl then return end
+        
+        local actorLink = entity.ClientTimelineActorControl.field_0
+        tlPreviewDummyCache[actorLink] = entity
+        
+        debounceMapping()
+    end)
 end)
 
 function IsInCharacterCreationMirror()
@@ -200,7 +185,7 @@ end
 
 ---@param ownerUuid string
 ---@return EntityHandle|nil
-function GetClientVisualDummy(ownerUuid)
+local function GetClientVisualDummy(ownerUuid)
     local dummy = clientVisualDummies[ownerUuid]
 
     if dummy and #dummy:GetAllComponentNames() == 0 then
@@ -212,3 +197,5 @@ function GetClientVisualDummy(ownerUuid)
 
     return dummy
 end
+
+DummyHelpers.GetClientVisualDummy = GetClientVisualDummy

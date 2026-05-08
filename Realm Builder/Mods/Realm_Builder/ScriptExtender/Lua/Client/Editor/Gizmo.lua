@@ -536,7 +536,7 @@ function TransformGizmo:GetHit(ray)
                 return Hit.new(self.Picker.Position, nil, 0, nil), Vec3.new { 0, 0, 0 }
             end
         elseif cnt == 3 then
-            axis = self.cachedCameraForward or GetCameraForward()
+            axis = self.cachedCameraForward or CameraHelpers.GetCameraForward()
             if not axis then
                 Warning("Gizmo:GetHit: Failed to get camera forward for 3-axis rotation")
                 return Hit.new(self.Picker.Position, nil, 0, nil), Vec3.new { 0, 0, 0 }
@@ -564,7 +564,7 @@ function TransformGizmo:GetHit(ray)
         elseif cnt == 2 then
             hit = self.Picker:HitPlaneByAxes(ray, self.SelectedAxis)
         elseif cnt == 3 then
-            local normal = GetCameraForward()
+            local normal = CameraHelpers.GetCameraForward()
             if self.StartHit then
                 hit = ray:IntersectPlane(self.StartHit.Position, normal, true)
             else
@@ -684,7 +684,7 @@ end
 
 function TransformGizmo:SetupDragging()
     self._accuDelta = nil
-    self.cachedCameraForward = GetCameraForward()
+    self.cachedCameraForward = CameraHelpers.GetCameraForward()
     self.RotatePointer = self.RotatePointer or {}
     local pickerPos = Vec3.new(self.Picker.Position)
     local pickerRot = Quat.new(self.Picker.Rotation)

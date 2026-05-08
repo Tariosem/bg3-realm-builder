@@ -9,6 +9,8 @@ function VisualHelpers.RegisterVisual(scenery)
     visualRegistry[scenery.Scenery.Uuid] = scenery
 end
 
+
+
 --- @param handle EntityHandle|GUIDSTRING
 --- @return Visual?
 function VisualHelpers.GetEntityVisual(handle)
@@ -17,18 +19,11 @@ function VisualHelpers.GetEntityVisual(handle)
             return visualRegistry[handle].Visual.Visual
         end
 
-        local entityHandle = UuidToHandle(handle)
-        if not entityHandle then
-            return nil
+        local dummy = DummyHelpers.GetClientVisualDummy(handle)
+        if dummy then
+            return dummy.Visual.Visual
         end
-        local hasPMDummy = entityHandle.HasDummy
-        if hasPMDummy then
-            handle = hasPMDummy.Entity
-        elseif GetClientVisualDummy(handle) then
-            handle = GetClientVisualDummy(handle) --[[@as EntityHandle]]
-        else
-            handle = UuidToHandle(handle)
-        end
+        handle = Ext.Entity.Get(handle) or {}
     end
 
     local entity = handle
@@ -80,11 +75,11 @@ function VisualHelpers.SetVisualPosition(handle, pos)
     return true
 end
 
----@param handle any
----@return nil
----@return nil
----@return nil
----@return nil
+---@param handle EntityHandle|GUIDSTRING
+---@return number?
+---@return number?
+---@return number?
+---@return number?
 function VisualHelpers.GetVisualRotation(handle)
     local entity = handle
     local visual = VisualHelpers.GetEntityVisual(entity)
