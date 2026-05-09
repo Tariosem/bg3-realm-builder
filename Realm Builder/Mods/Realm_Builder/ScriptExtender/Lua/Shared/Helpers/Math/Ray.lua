@@ -337,7 +337,7 @@ end
 --- @param center Vec3
 --- @param majorRadius number
 --- @param minorRadius number
---- @param axis "X" | "Y" | "Z" | Vec3
+--- @param axis Vec3
 function Ray:IntersectTorus(center, majorRadius, minorRadius, axis)
     
     local torusQuat = Quat.FromTo(GLOBAL_COORDINATE.Y, axis)
@@ -524,7 +524,7 @@ end
 
 --- @param dis number?
 --- @return Hit|nil
-function Ray:IntersectCloseat(dis)
+function Ray:IntersectClosest(dis)
     dis = dis or 1000.0
     local simp = nil --simplified hit
     --- @diagnostic disable-next-line

@@ -129,7 +129,6 @@ function ScreenToWorldRay(cameraHandle, mouseX, mouseY, screenW, screenH)
     --local viewMat = Matrix.new(controller.Camera.ViewMatrix)
 
     -- (A * B)^-1 = B^-1 * A^-1 
-    -- the reverse of MVP is PVM
     local inverse    = Ext.Math.Mul(invView, invProj)
     --local inverse = (projMat * viewMat):Inverse()
 
@@ -141,8 +140,7 @@ function ScreenToWorldRay(cameraHandle, mouseX, mouseY, screenW, screenH)
     local worldFar   = { worldFar4[1] / worldFar4[4], worldFar4[2] / worldFar4[4], worldFar4[3] / worldFar4[4] }
 
     local dir        = { worldFar[1] - worldNear[1], worldFar[2] - worldNear[2], worldFar[3] - worldNear[3] }
-
-    local origin     = Vec3.new(cameraHandle.Transform.Transform.Translate)
+    local origin     = worldNear
 
     local ray        = Ray.new(origin, dir)
 

@@ -811,8 +811,8 @@ function TransformGizmo:ApplyDelta(delta)
     self:OnAction(self.Operator:ToStirng(delta))
 end
 
---- @param delta Vec3|number|QuatInfo
---- @return Vec3|number|QuatInfo
+--- @param delta Vec3|QuatInfo
+--- @return Vec3|QuatInfo
 function TransformGizmo:StepDelta(delta)
     if self.ActiveMode == "Translate" then
         delta = delta * self.Step

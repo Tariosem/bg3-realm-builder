@@ -59,11 +59,8 @@ function TransformToolbar:RegisterKeyInputEvents()
         local hits = cameraRay:IntersectAll(cursorMaxDistance)
         local guid = nil
 
-        local cnt = 1
-        while not guid do
-            local hit = hits[cnt]
-            if not hit then return end
-            local entity = hits[cnt].Target
+        for cnt, hit in pairs(hits) do
+            local entity = hit.Target
             if not entity then goto continue end
             guid = entity and entity.Uuid and entity.Uuid.EntityUuid
 
@@ -80,6 +77,15 @@ function TransformToolbar:RegisterKeyInputEvents()
             if NearbyMap.GetRegisteredScenery(guid) and self.Ignore["Scenery"] then
                 guid = nil
                 goto continue
+            end
+
+            if guid and not MovableProxy.CreateByGuid(guid) then
+                guid = nil
+                goto continue
+            end
+
+            if guid then
+                break
             end
 
             ::continue::
@@ -270,7 +276,7 @@ function TransformToolbar:RegisterKeyInputEvents()
             local mouseRay = ScreenToWorldRay()
             if not mouseRay then return nil end
 
-            local hit = mouseRay:IntersectCloseat(cursorMaxDistance)
+            local hit = mouseRay:IntersectClosest(cursorMaxDistance)
             if not hit then
                 return nil
             end
@@ -326,7 +332,7 @@ function TransformToolbar:RegisterKeyInputEvents()
                 Debug("Can't get picking ray")
                 return
             end
-            local hit = ray:IntersectCloseat()
+            local hit = ray:IntersectClosest()
             if not hit then
                 Debug("No valid position to move to")
                 return

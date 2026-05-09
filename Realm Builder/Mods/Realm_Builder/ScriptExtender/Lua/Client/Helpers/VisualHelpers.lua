@@ -21,7 +21,7 @@ function VisualHelpers.GetEntityVisual(handle)
 
         local dummy = DummyHelpers.GetClientVisualDummy(handle)
         if dummy then
-            return dummy.Visual.Visual
+            return dummy.Visual and dummy.Visual.Visual or nil
         end
         handle = Ext.Entity.Get(handle) or {}
     end

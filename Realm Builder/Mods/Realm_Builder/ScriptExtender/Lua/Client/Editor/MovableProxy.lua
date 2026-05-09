@@ -259,7 +259,6 @@ function SceneryMovableProxy:SetTransform(transform)
     local visual = VisualHelpers.GetEntityVisual(self.Entity)
 
     if not visual then
-        Warning("SceneryMovableProxy: Entity has no visual: "..tostring(self.Entity))
         return
     end
 
@@ -277,7 +276,7 @@ function SceneryMovableProxy:SetTransform(transform)
 end
 
 function SceneryMovableProxy:IsValid()
-    return #self.Entity:GetAllComponentNames() > 0
+    return #self.Entity:GetAllComponentNames() > 0 and self.Entity.Visual ~= nil
 end
 
 function SceneryMovableProxy:Render(parent)
@@ -365,12 +364,20 @@ function MovableProxy.CreateByGuid(guid)
             proxy = ItemMovableProxy.new(guid)
         elseif NearbyMap.GetRegisteredScenery(guid) then
             proxy = SceneryMovableProxy.new(NearbyMap.GetRegisteredScenery(guid).Scenery)
+            if not proxy:IsValid() then
+                proxy = nil
+            end
         else
             --proxy = CharacterMovableProxy.new(guid)
         end
     end
     movabelCache[guid] = proxy
     return proxy
+end
+
+--- alias
+function MovableProxy.Create(guid)
+    return MovableProxy.CreateByGuid(guid)
 end
 
 function MovableProxy.CreateByGuids(guids)

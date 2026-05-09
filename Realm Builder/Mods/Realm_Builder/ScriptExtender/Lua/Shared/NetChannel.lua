@@ -14,7 +14,7 @@ NetChannel = NetChannel or {}
 
 --- @class CallOsirisChannel : NetChannel
 --- @field SendToServer fun(self, data: {Function: string, Args: any[]})
---- @field RequestToServer fun(self, data: {Function: string, Args: any[]}, callback: fun(response: any))
+--- @field RequestToServer fun(self, data: {Function: string, Args: any[]}, callback: fun(response: table))
 NetChannel.CallOsiris = Ext.Net.CreateChannel(ModuleUUID, "CallOsiris")
 
 --- @class SetServerEntityChannel : NetChannel

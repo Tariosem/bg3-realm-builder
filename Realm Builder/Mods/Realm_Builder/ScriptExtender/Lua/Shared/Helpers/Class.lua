@@ -5,6 +5,7 @@
 --- @field __init fun(self:Class, ...):nil
 --- @field new fun(self:Class, ...):Class
 --- @field isInstance fun(self:Class, obj:any):boolean
+--- @operator call(...): Class
 
 --- @param name any
 --- @param parent any
@@ -18,6 +19,7 @@ function _Class(name, parent)
     end
 
     cls.__index = cls
+    cls.__call = function(_, ...) return cls.new(...) end
 
     function cls.new(...)
         local instance = setmetatable({}, cls)

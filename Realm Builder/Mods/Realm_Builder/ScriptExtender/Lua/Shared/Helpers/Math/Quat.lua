@@ -1,8 +1,8 @@
+--- @generic V: Vec3|Vec4
 --- @class Quat
 --- @field Inverse fun(self: Quat): Quat
 --- @field Normalize fun(self: Quat): Quat
---- @field Rotate fun(self: Quat, v: Vec3): Vec3
---- @field Rotate fun(self: Quat, v: Vec4): Vec4
+--- @field Rotate fun(self: Quat, v: V): V
 --- @field ToEuler fun(self: Quat): Vec3
 --- @field Identity Quat
 --- @field FromEuler fun(euler: Vec3): Quat
