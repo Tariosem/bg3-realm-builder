@@ -132,7 +132,7 @@ function ManagerBase:AddTagToData(uuid, tag)
     end
 
     if not self.tagTree:Find(tag) then
-        self.tagTree:AddLeaf(tag)
+        self.tagTree:AddLeaf(tag, 1, self.tagTree:GetRootKey())
     end
     self.tagCount[tag] = (self.tagCount[tag] or 0) + 1
     self.tagMap[tag] = self.tagMap[tag] or {}
@@ -216,7 +216,7 @@ function ManagerBase:AddTagToDataNonCustomization(uuid, tag)
         return
     end
 
-    self.tagTree:AddLeaf(tag)
+    self.tagTree:AddLeaf(tag, 1, self.tagTree:GetRootKey())
     self.tagCount[tag] = (self.tagCount[tag] or 0) + 1
     self.tagMap[tag] = self.tagMap[tag] or {}
     self.tagMap[tag][uuid] = true

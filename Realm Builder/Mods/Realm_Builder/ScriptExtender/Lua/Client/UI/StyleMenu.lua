@@ -106,7 +106,7 @@ function StyleMenu:RenderColorPickers()
     themeAlphaSlider.OnChange = function(s)
         local pickerColor = accentColorPicker.Color
         accentColorPicker.Color = {pickerColor[1], pickerColor[2], pickerColor[3], s.Value[1]}
-        accentColorPicker.OnChange()
+        accentColorPicker:OnChange()
     end
 
     local secondaryColorPicker = self.panel:AddColorEdit(GetLoca("Secondary Accent Color"))
@@ -114,7 +114,7 @@ function StyleMenu:RenderColorPickers()
     secondaryColorPicker.OnChange = function(c)
         local color = secondaryColorPicker.Color
         RBUICONFIG.Theme.Color.Accent2 = color
-        accentColorPicker.OnChange()
+        accentColorPicker:OnChange()
     end
 
     local bgColorPicker = self.panel:AddColorEdit(GetLoca("Background Color"))
@@ -126,7 +126,7 @@ function StyleMenu:RenderColorPickers()
     bgAlphaSlider.OnChange = function(s)
         local pickerColor = bgColorPicker.Color
         bgColorPicker.Color = {pickerColor[1], pickerColor[2], pickerColor[3], s.Value[1]}
-        bgColorPicker.OnChange()
+        bgColorPicker:OnChange()
     end
 
     local colorsHeader = ImguiElements.AddTree(self.panel, GetLoca("Colors"))
@@ -214,7 +214,7 @@ function StyleMenu:RenderColorPickers()
     end
 
     bgColorPicker.OnChange = function()
-        accentColorPicker.OnChange()
+        accentColorPicker:OnChange()
         bgAlphaSlider.Value = {bgColorPicker.Color[4] or 1, 0, 0, 0}
     end
 

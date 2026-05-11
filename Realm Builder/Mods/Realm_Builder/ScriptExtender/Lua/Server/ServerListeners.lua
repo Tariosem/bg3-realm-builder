@@ -384,7 +384,6 @@ end)
 NetChannel.UpdateDummies:SetHandler(function(data, userID)
     if data.Deactive then
         DummyHelpers.ClearDummyData()
-        Debug("Clear server dummy data")
         return
     end
 

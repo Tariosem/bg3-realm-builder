@@ -553,7 +553,7 @@ function CameraTool:RenderCameraAnimator(parent)
             end, function ()
                 currentAnim = nil
                 if loop then
-                    playBtn.OnClick()
+                    playBtn:OnClick()
                 else
                     playBtn.Label = notPlayingLoca
                 end

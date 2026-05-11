@@ -87,7 +87,7 @@ CommandChannel:SetHandler(function(data, user)
 end)
 
 --- @param command string
---- @param func fun(command:string, ...:string)
+--- @param func fun(command:string, args:string)
 function RegisterConsoleCommand(command, func, description)
     if Ext.IsServer() then
         serverCommands[command] = {
@@ -99,7 +99,7 @@ function RegisterConsoleCommand(command, func, description)
         }
     end
     Ext.RegisterConsoleCommand(command, function(cmd, args)
-        func(command, args)
+        func(cmd, args)
     end)
 end
 

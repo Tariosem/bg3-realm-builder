@@ -199,7 +199,7 @@ function MaterialPresetsMenu:SetupWorkspace(parent, ccaModPack, notRenderImport,
         local exportable, reason = checkIfExportable()
 
         if not exportable then
-            exportBtn.OnHoverEnter()
+            exportBtn:OnHoverEnter()
             refreshExport()
             GuiAnim.Vibrate(exportBtn)
             exportTT.Label = "Cannot export material presets: " .. reason
@@ -236,7 +236,7 @@ function MaterialPresetsMenu:SetupWorkspace(parent, ccaModPack, notRenderImport,
         local exportable, reason = checkIfExportable()
 
         if not exportable then
-            exportBtn.OnHoverEnter()
+            exportBtn:OnHoverEnter()
             refreshExport()
             GuiAnim.Vibrate(exportBtn)
             exportTT.Label = "Cannot export material presets: " .. reason

@@ -764,7 +764,7 @@ function VisualTab:RenderUtilsCell(parent)
         self.panel.Closeable = true
         self.panel.OnClose = function()
             if self.parent then
-                detachButton.OnClick()
+                detachButton:OnClick()
             else
                 self:Collapsed()
             end

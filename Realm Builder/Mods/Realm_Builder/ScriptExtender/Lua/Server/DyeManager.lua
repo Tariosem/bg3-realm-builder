@@ -26,7 +26,6 @@ local function getModVar()
     if not modVar.DyeManager then
         modVar.DyeManager = {
             EntityDyes = {},
-            DyeToEntities = {},
         }
     end
     return modVar.DyeManager
@@ -156,7 +155,7 @@ function DyeManager.ApplyDye(item, dyePreset, retryCnt)
 
     local itemName = itemEnt.DisplayName and itemEnt.DisplayName.Name:Get() or item
     Debug(
-        "Applied dye to item ["..itemName.."].\n"..
+        "Applied dye to item ["..itemName.."] ("..item..").\n"..
         "Retry count: "..retryCnt
     )
 

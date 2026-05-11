@@ -487,7 +487,7 @@ RegisterDebugWindow("Raycast Debugger", function(panel)
             if e.Key ~= "F2" or e.Event == "KeyUp" then
                 return
             end
-            debugBtn.OnClick()
+            debugBtn:OnClick()
         end)
     end
     local function unsubf2Key()

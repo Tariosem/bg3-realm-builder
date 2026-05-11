@@ -22,13 +22,13 @@ local function renderPopupItem(parent, label, icon, onclick)
     imgBtn.OnHoverEnter = function()
         selectable.Highlight = true
         if itemHE then
-            itemHE()
+            itemHE(imgBtn)
         end
     end
     imgBtn.OnHoverLeave = function()
         selectable.Highlight = false
         if itemHL then
-            itemHL()
+            itemHL(imgBtn)
         end
     end
 

@@ -251,7 +251,7 @@ function MaterialTab:RenderParameterContent(paramNames, paramType, paramRow)
         end
 
         if paramgroup.Visible then
-            propNode.OnHoverEnter()
+            propNode:OnHoverEnter()
         end
 
         propNode.CanDrag = true
@@ -489,6 +489,7 @@ function MaterialTab:RenderTextProperty(node, propertyName, propertyValue, prope
     textBox.ItemWidth = 600 * SCALE_FACTOR
     textBox.AutoSelectAll = true
 
+    --- @type fun():ExtuiStyledRenderable?
     textBox.OnRightClick = function()
         local res = Ext.Resource.Get(propertyValue, "Texture") --[[@as ResourceTextureResource]]
         if not res then
@@ -514,7 +515,7 @@ function MaterialTab:RenderTextProperty(node, propertyName, propertyValue, prope
         local btn = node:AddButton("=##" .. self.MaterialName .. propertyName)
         btn.ItemWidth = 20 * SCALE_FACTOR
         btn.OnClick = function ()
-            local popup = textBox.OnRightClick()
+            local popup = textBox:OnRightClick()
             btn.OnClick = function ()
                 popup:Open()
             end

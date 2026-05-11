@@ -81,12 +81,6 @@ local equipmentSlots = {
     "MusicalInstrument",
 }
 
---- @param ent EntityHandle
---- @return Visual?
-local function getEntVisual(ent)
-    return VisualHelpers.GetEntityVisual(ent.Uuid.EntityUuid)
-end 
-
 --- @alias DyePresetName string
 
 local Dyer = {
@@ -99,6 +93,7 @@ local Dyer = {
 local this = Dyer
 local dyerFolder = "RB_Dyer/"
 
+--- @return table<DyePresetName, DyePreset>|nil
 function Dyer.LoadFromLocalFile()
     local path = dyerFolder .. "Local.json"
     local content = Ext.IO.LoadFile(path)
@@ -106,6 +101,7 @@ function Dyer.LoadFromLocalFile()
     return Ext.Json.Parse(content)
 end
 
+--- @param data table<DyePresetName, DyePreset>
 function Dyer.SaveToLocalFile(data)
     local path = dyerFolder .. "Local.json"
     local content = Ext.Json.Stringify(data)
@@ -121,8 +117,25 @@ local DyerWindow = WindowManager.RegisterWindow("generic", "Dyer")
 local selectedChar = nil 
 
 DyerWindow.AlwaysAutoResize = true
+DyerWindow.Visible = false
+
+InputEvents.SubscribeKeyInput({
+    Modifiers = "LCtrl",
+    Key = "D",
+}, function (e)
+    if not e.Pressed then return end
+
+    DyerWindow.Visible = not DyerWindow.Visible
+end)
 
 local matParamCache = {}
+
+--- @param c1 vec3
+--- @param c2 vec3
+--- @return boolean
+local function isSameColor(c1, c2)
+    return c1[1] == c2[1] and c1[2] == c2[2] and c1[3] == c2[3]
+end
 
 --- @param renderable RenderableObject
 --- @param paramName string
@@ -184,11 +197,18 @@ local function getEquipmentVisuals(ent, slot)
     return results
 end
 
+--- @param ent EntityHandle
+--- @param slot ItemSlot
+--- @return Visual?
 local function getEquipmentFirstVisual(ent, slot)
     local visuals = getEquipmentVisuals(ent, slot)
     return visuals and visuals[1]
 end
 
+--- @param ent EntityHandle
+--- @param slot ItemSlot
+--- @param paramName string
+--- @param color vec3
 local function dyeEquipment(ent, slot, paramName, color)
     local aliveEVs = getEquipmentVisuals(ent, slot)
     if not aliveEVs then return end
@@ -204,6 +224,27 @@ local function dyeEquipment(ent, slot, paramName, color)
                     mat:SetVector3("GlowColor", color)
                 end
             end
+        end
+    end
+end
+
+--- @param ent EntityHandle
+--- @param slot ItemSlot
+--- @param dyePreset DyePreset
+local function dyeEquipmentWithPreset(ent, slot, dyePreset)
+    for paramName, color in pairs(dyePreset) do
+        if paramName ~= "DyePresetName" then
+            dyeEquipment(ent, slot, paramName, color)
+        end
+    end
+end
+
+--- @param from DyePreset
+--- @param to DyePreset
+local function copyPreset(from, to)
+    for k, v in pairs(from) do
+        if k ~= "DyePresetName" then
+            to[k] = v
         end
     end
 end
@@ -225,7 +266,8 @@ mainTable.ColumnDefs[2] = { WidthStretch = true }
 local selection = mainRow:AddCell()
 local materialEditor = mainRow:AddCell()
 
---- @param visual Visual
+--- @param visual Visual?
+--- @return VisualObjectDesc?
 local function findFirstValidObjectInVisual(visual)
     local renderables = visual and visual.ObjectDescs
     if not renderables then return nil end
@@ -247,7 +289,7 @@ end
 --- @param parent ExtuiTable
 --- @param name string
 --- @param dyePreset DyePreset
---- @return ExtuiSelectable
+--- @return ExtuiSelectable, fun()
 local function renderDyeEntry(parent, name, dyePreset)
     local row = parent:AddRow()
     local cells = {row:AddCell(), row:AddCell(), row:AddCell()}
@@ -261,6 +303,9 @@ local function renderDyeEntry(parent, name, dyePreset)
 
     local nameSel = nameCell:AddSelectable(name)
 
+    local renameInput = nameCell:AddInputText("##Rename" .. name)
+    renameInput.Visible = false
+
     local deleteBtn = deleteCell:AddImageButton("##Delete" .. name, RB_ICONS.X_Square, IMAGESIZE.ROW)
 
     local function dragStart(self)
@@ -269,6 +314,27 @@ local function renderDyeEntry(parent, name, dyePreset)
         }
         self.UserData = data
         renderDyeEntry(self.DragPreview:AddTable("", 3), name, dyePreset)
+    end
+
+    local renameStart = function ()
+        nameSel.Visible = false
+        renameInput.Visible = true
+        renameInput.Text = name
+        renameInput.EnterReturnsTrue = true
+    end
+
+    --- @param self ExtuiInputText
+    local renameEnd = function (self)
+        local newName = self.Text
+        if newName ~= "" and newName ~= name then
+            Dyer.DyePresets[newName] = Dyer.DyePresets[name]
+            Dyer.DyePresets[name] = nil
+            Dyer.SaveToLocalFile(Dyer.DyePresets)
+            nameSel.Label = newName
+            name = newName
+        end
+        nameSel.Visible = true
+        renameInput.Visible = false
     end
 
     for _, element in pairs({
@@ -286,12 +352,21 @@ local function renderDyeEntry(parent, name, dyePreset)
         row:Destroy()
     end
 
-    return nameSel
+    renameInput.OnChange = function (self)
+        if self.EnterReturnsTrue then
+            renameEnd(self)
+        end
+    end
+
+
+    return nameSel, renameStart
 end
 
 --- @param parent ExtuiTreeParent
 --- @param onClick fun(dyePreset: DyePreset)
-local function renderDyesList(parent, onClick)
+--- @param onHoverEnter fun(dyePreset: DyePreset)
+--- @param onHoverLeave fun(dyePreset: DyePreset)
+local function renderDyesList(parent, onClick, onHoverEnter, onHoverLeave)
     parent:AddSeparatorText("Dye Presets"):SetStyle("SeparatorTextAlign", 0.5)
     local listTab = parent:AddTable("DyeList", 3)
     listTab.ColumnDefs[1] = { WidthFixed = true }
@@ -300,43 +375,29 @@ local function renderDyesList(parent, onClick)
     listTab.RowBg = true
 
     RBUtils.AsyncForEach(Dyer.DyePresets, function(preset, name)
-        renderDyeEntry(listTab, name, preset).OnClick = function ()
+        local sel, renameStart = renderDyeEntry(listTab, name, preset)
+        sel.OnClick = function ()
             onClick(preset)
+        end
+        sel.OnClick = RBUtils.DoubleClick(sel.OnClick, renameStart)
+        sel.OnHoverEnter = function ()
+            onHoverEnter(preset)
+        end
+        sel.OnHoverLeave = function ()
+            onHoverLeave(preset)
         end
     end)
 end
 
-local curDyerTable = nil
-local function refreshDyer() end --[[@as fun(ent: EntityHandle, slot: ItemSlot) ]]
---- @param ent EntityHandle
---- @param slot ItemSlot
-function refreshDyer(ent, slot)
-    local colorPreset = RBUtils.DeepCopy(params)
-    colorPreset.DyePresetName = "Test"
-    local parent = materialEditor
-    parent.Disabled = false
-    local entId = ent.Uuid.EntityUuid
-    ImguiHelpers.DestroyAllChildren(parent)
+local function refreshDyer(ent, slot) end --[[@as fun(ent: EntityHandle, slot: ItemSlot) ]]
 
-    --- @type fun():EntityHandle
-    local getEnt = function ()
-        return Ext.Entity.Get(entId) --[[@as EntityHandle]]
-    end
-    local equipmentVisual = getEquipmentFirstVisual(getEnt(), slot)
-    local noVisual = false
-    if not equipmentVisual then
-        noVisual = true
-    end
-
-    local obj = findFirstValidObjectInVisual(equipmentVisual)
-    if not obj then
-        noVisual = true
-    end
-    if noVisual then
-        local t = parent:AddText("No valid visual found on this equipment slot.")
-        t:SetColor("Text", {1, 0.5, 0, 1})
-    end
-
+---@param parent ExtuiTreeParent
+---@param colorPreset DyePreset
+---@param ent EntityHandle
+---@param slot ItemSlot
+---@param resetFns table<string, fun()>
+---@param refreshFns table<string, fun()>
+local function renderDyeManager(parent, colorPreset, ent, slot, resetFns, refreshFns)
     local topTable = parent:AddTable("Top", 2)
     local topRow = topTable:AddRow()
     local leftCell = topRow:AddCell()
@@ -362,8 +423,8 @@ function refreshDyer(ent, slot)
     end
 
     dyeBtn.OnClick = function (_, preset)
-        colorPreset = preset or colorPreset
-        colorPreset.GlowColor = colorPreset.Glow_Color
+        if preset then copyPreset(preset, colorPreset) end
+        colorPreset.GlowColor = colorPreset.Glow_Color 
         dyeChannel:SendToServer({
             Guid = getEquipment(ent, slot).Uuid.EntityUuid,
             DyePreset = colorPreset,
@@ -373,8 +434,12 @@ function refreshDyer(ent, slot)
             refreshDyer(ent, slot)
         end)
     end
-    local function dyeThis(preset)
-        dyeBtn.OnClick(nil, preset)
+
+    local function applyDyePreset(preset)
+        dyeEquipmentWithPreset(ent, slot, preset)
+        for _, fn in pairs(refreshFns) do
+            fn()
+        end
     end
 
     dyeBtn.OnRightClick = function ()
@@ -414,51 +479,107 @@ function refreshDyer(ent, slot)
     end)
 
     local dyeListPop = rightCell:AddPopup("DyeList")
-    local nameInput = rightCell:AddInputText("Name##Input")
     local saveBtn = rightCell:AddButton("Save")
     local loadBtn = rightCell:AddButton("Load")
+    local resetAllBtn = rightCell:AddButton("Reset All")
 
-    local charWidth = 20 * SCALE_FACTOR
-    local minWidth = charWidth * 5
-    nameInput.OnChange = function ()
-        if nameInput.EnterReturnsTrue then
-            saveBtn.OnClick(nil, false)
-            nameInput.SizeHint = { minWidth, 0 }
-            return
-        end
-
-        local chars = #nameInput.Text
-        nameInput.SizeHint = { math.max(chars * charWidth, minWidth), 0 }
-    end
-    nameInput:OnChange() -- initialize size
-    nameInput.EnterReturnsTrue = true
-
-    saveBtn.SameLine = true
     loadBtn.SameLine = true
-    saveBtn.OnClick = function (_, overwrite)
-        local presetName = nameInput.Text ~= "" and nameInput.Text or "Dye"
+    resetAllBtn.SameLine = true
 
-        if this.DyePresets[presetName] and not overwrite then
-            ConfirmPopup:QuickConfirm(
-                "Preset with '" .. presetName .. "' already exists. Do you want to overwrite it?",
-                function () saveBtn.OnClick(nil, true) end,
-                function () end
-            )
-            return
+    local function presetOnHoverEnter(preset)
+        dyeEquipmentWithPreset(ent, slot, preset)
+    end
+
+    local function presetOnHoverLeave()
+        dyeEquipmentWithPreset(ent, slot, colorPreset)
+    end
+
+    saveBtn.OnClick = function (_)
+        local presetName = "Dye "
+
+        local cnt = 1
+        while this.DyePresets[presetName .. cnt] do
+            cnt = cnt + 1
         end
 
-        Dyer.DyePresets[presetName] = RBUtils.DeepCopy(colorPreset)
+        Dyer.DyePresets[presetName .. cnt] = RBUtils.DeepCopy(colorPreset)
         Dyer.SaveToLocalFile(Dyer.DyePresets)
-
-        nameInput.Text = ""
-        ImguiHelpers.DestroyAllChildren(dyeListPop)
-        renderDyesList(dyeListPop, dyeThis)
     end
 
     loadBtn.OnClick = function ()
         ImguiHelpers.DestroyAllChildren(dyeListPop)
-        renderDyesList(dyeListPop, dyeThis)
+        renderDyesList(dyeListPop, applyDyePreset, presetOnHoverEnter, presetOnHoverLeave)
         dyeListPop:Open()
+    end
+
+    resetAllBtn.OnClick = function ()
+        for _, fn in pairs(resetFns) do
+            fn()
+        end
+    end
+end
+
+--- @type vec3[]
+local colorPalette = {
+    {1, 0, 0},
+    {0, 1, 0},
+    {0, 0, 1},
+    {1, 1, 0},
+    {1, 0, 1},
+    {0, 1, 1},
+    {1, 1, 1},
+    {0.5, 0.5, 0.5},
+    {0.25, 0.25, 0.25},
+}
+
+local curDyerTable = nil
+--- @param ent EntityHandle
+--- @param slot ItemSlot
+function refreshDyer(ent, slot)
+    local colorPreset = RBUtils.DeepCopy(params)
+    colorPreset.DyePresetName = "Test"
+    local parent = materialEditor
+    parent.Disabled = false
+    local entId = ent.Uuid.EntityUuid
+    ImguiHelpers.DestroyAllChildren(parent)
+
+    --- @type fun():EntityHandle
+    local getEnt = function ()
+        return Ext.Entity.Get(entId) --[[@as EntityHandle]]
+    end
+    local equipmentVisual = getEquipmentFirstVisual(getEnt(), slot)
+    local noVisual = false
+    if not equipmentVisual then
+        noVisual = true
+    end
+
+    local obj = findFirstValidObjectInVisual(equipmentVisual)
+    if not obj then
+        noVisual = true
+    end
+    if noVisual then
+        local t = parent:AddText("No valid visual found on this equipment slot.")
+        t:SetColor("Text", {1, 0.5, 0, 1})
+    end
+
+    local resetFns = {}
+    local refreshFns = {}
+    renderDyeManager(parent, colorPreset, ent, slot, resetFns, refreshFns)
+
+    local colorPalettePanel = parent:AddGroup("Palette")
+
+    local function addToPalette(color)
+        ImguiHelpers.DestroyAllChildren(colorPalettePanel)
+        table.insert(colorPalette, 1, color)
+        while (#colorPalette >= 10) do
+            table.remove(colorPalette)
+        end
+        for i, c in pairs(colorPalette) do
+            local input = colorPalettePanel:AddColorEdit("##Palette" .. i, c)
+            input.NoInputs = true
+            input.Color = { c[1], c[2], c[3], 1 }
+            input.NoPicker = true
+        end
     end
 
     local dyeTable = parent:AddTable("DyeParams", 2)
@@ -524,6 +645,11 @@ function refreshDyer(ent, slot)
             nameSel.Highlight = true
         end
 
+        input.OnRightClick = function ()
+            local toAdd = { input.Color[1], input.Color[2], input.Color[3] }
+            addToPalette(toAdd)
+        end
+
         input.OnHoverEnter = function ()
             shouldStop = false
             
@@ -558,7 +684,17 @@ function refreshDyer(ent, slot)
             colorPreset[paramName] = default
             nameSel.Highlight = false
         end
-
+        resetFns[paramName] = reset.OnClick
+        refreshFns[paramName] = function ()
+            local aliveObj = findFirstValidObjectInVisual(getEquipmentFirstVisual(getEnt(), slot))
+            if aliveObj and renderableHasParameter(aliveObj.Renderable, paramName) then
+                local current = aliveObj.Renderable.ActiveMaterial:GetVector3(paramName)
+                if not current then return end
+                input.Color = { current[1], current[2], current[3], 1 }
+                colorPreset[paramName] = { current[1], current[2], current[3] }
+                nameSel.Highlight = not isSameColor(current, default) 
+            end
+        end
         ::continue::
     end
 end
@@ -669,7 +805,11 @@ local function refreshSelection()
 
     for slot, enabled in pairs(currentSlotMask) do
         local item = getEquipment(selectedChar, slot)
-        if not item or not (item.Wielding or getEquipmentFirstVisual(selectedChar, slot) ~= nil) or not item.Uuid or not item.Uuid.EntityUuid then
+        if not item
+            or not (item.Wielding or getEquipmentFirstVisual(selectedChar, slot) ~= nil)
+            or not item.Uuid 
+            or not item.Uuid.EntityUuid
+        then
             local hasCell = slotToCell[slot] ~= nil
             if hasCell then
                 local cell = slotToCell[slot]
@@ -893,16 +1033,12 @@ NetChannel.OsirisSubscription:SetHandler(function (data, userId)
     refreshSelection()
 end)
 
+local debounceRefresh = RBUtils.Debounce(100, refreshSelection)
+--- @param entity EntityHandle
 Ext.Entity.OnCreate("ClientControl", function (entity)
-    local cEV = entity.ClientEquipmentVisuals
-    if not cEV then return end
+    if entity.UserReservedFor and entity.UserReservedFor.UserID ~= 1 then return end
 
-    local entId = entity.Uuid.EntityUuid
-    local selected = _C() --[[@as EntityHandle]]
-    if not selected then return end
-    if selected.Uuid.EntityUuid ~= entId then return end
-
-    refreshSelection()
+    debounceRefresh()
 end)
 
 Dyer.DyePresets = Dyer.LoadFromLocalFile() or {}

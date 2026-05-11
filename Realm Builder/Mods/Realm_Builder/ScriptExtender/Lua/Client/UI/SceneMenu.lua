@@ -669,7 +669,7 @@ function SceneMenu:RenderPresetDetails(name)
     end
     local descInputKeyLisener = InputEvents.SubscribeKeyInput({ Key = "RETURN" }, function()
         if self.presetInfoWindow and ImguiHelpers.IsFocused(presetDescInput) then
-            confirmInputBtn.OnClick()
+            confirmInputBtn:OnClick()
         end
     end)
 
