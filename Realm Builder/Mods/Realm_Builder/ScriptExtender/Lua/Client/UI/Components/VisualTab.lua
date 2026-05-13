@@ -234,7 +234,6 @@ end
 function VisualTab:InitMaterialEditors()
     local visual = self:GetVisual()
     if not visual then
-        Warning("VisualTab: Cannot initialize material editors because visual is nil for guid " .. self.guid)
         return
     end
 

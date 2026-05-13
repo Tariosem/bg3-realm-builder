@@ -173,7 +173,6 @@ local function setupEyeHover(image, hidden)
     StyleHelpers.ClearAllBorders(image)
 end
 
-
 function OutlinerMenu:RenderTreeList()
     local panel = self.panel
     local tree = EntityStore.Tree
@@ -181,22 +180,78 @@ function OutlinerMenu:RenderTreeList()
     local treeList = self.propTreeList or TreeList.new(panel, "Outliner", tree)
     treeList.parent = panel
     self.hiddenRoots = self.hiddenRoots or {}
-    self.replaceFuncs = self.replaceFuncs or {}
     self.imageRefs = {}
     self.eyeImageRefs = {}
 
-    treeList.OnSelect = function(sel, selected)
-        local arr = {}
-        for guid, _ in pairs(selected) do
-            if not tree:IsLeaf(guid) then goto continue end
-            table.insert(arr, guid)
-            ::continue::
-        end
-        self.selectedGuids = arr
+    treeList.OnSelect = function(sel)
     end
 
     treeList.OnDragDrop = function(sel, from, target)
         self:GroupLogic(from, target)
+    end
+
+    self.UpdateEyeIcon = function (self, key)
+        local propData = EntityStore:GetStoredData(key)
+        if not propData then return end
+        local eyeImage = self.eyeImageRefs[key]
+        if not eyeImage then return end
+
+        local eyeIcon = propData.Visible and eyeUV or eyeSlashUV
+        eyeImage.Image = eyeIcon
+        setupEyeHover(eyeImage, not propData.Visible)
+    end
+
+    self.ImageOnClick = function(e)
+        if not e.UserData or not e.UserData.Key then return end
+        RB_GLOBALS.TransformEditor:Select({MovableProxy.CreateByGuid(e.UserData.Key)})
+    end
+
+    self.LeafEyeOnClick = function (e)
+        local key = e.UserData and e.UserData.Key
+        if not key then return end
+
+        local propData = EntityStore:GetStoredData(key)
+        if not propData then return end
+
+        local orginState = propData.Visible
+
+        if not propData then return end
+        local data = {
+            Guid = propData.Guid,
+            Attributes = {
+                Visible = not propData.Visible
+            }
+        }
+        NetChannel.SetAttributes:SendToServer(data)
+        propData.Visible = data.Attributes.Visible
+        self:UpdateEyeIcon(key)
+
+        HistoryManager:PushCommand({
+            Redo = function()
+                local redoData = {
+                    Guid = propData.Guid,
+                    Attributes = {
+                        Visible = not orginState
+                    }
+                }
+                NetChannel.SetAttributes:SendToServer(redoData)
+                propData.Visible = redoData.Attributes.Visible
+                self:UpdateEyeIcon(key)
+            end,
+            Undo = function()
+                local undoData = {
+                    Guid = propData.Guid,
+                    Attributes = {
+                        Visible = orginState
+                    }
+                }
+                NetChannel.SetAttributes:SendToServer(undoData)
+                propData.Visible = undoData.Attributes.Visible
+                self:UpdateEyeIcon(key)
+            end,
+            Description = "Toggle Visibility"
+        })
+        
     end
 
     treeList.RenderLeaf = function(sel, key, node, fixedCell)
@@ -214,74 +269,78 @@ function OutlinerMenu:RenderTreeList()
     
         self.imageRefs[key] = image
         image.Tint = propData.IconTintColor or {1,1,1,1}
+        image.UserData = {
+            Key = key
+        }
         image:SetColor("Button", RBUtils.ToVec4(0))
-        image.OnClick = function()
-            RB_GLOBALS.TransformEditor:Select({MovableProxy.CreateByGuid(propData.Guid)})
-        end
+        image.OnClick = self.ImageOnClick
 
         local eyeIcon = propData.Visible and RB_ICONS.Eye or RB_ICONS.Eye_Slash
         local eyeImage = fixedCell:AddImageButton("EyeButton##" .. key, eyeIcon, IMAGESIZE.ROW) --[[@as ExtuiImageButton]]
+        eyeImage.UserData = {
+            Key = key
+        }
         self.eyeImageRefs[key] = eyeImage
         setupEyeHover(eyeImage, not propData.Visible)
-        local toggleVisible
-        local function toggleEye()
-            eyeImage = self.eyeImageRefs[key]
-            if not eyeImage then return end
-            eyeImage.Image = propData.Visible and eyeUV or eyeSlashUV
-            eyeImage.Tint = propData.Visible and {0.9,0.9,0.9,1} or {0.5,0.5,0.5,1}
-            setupEyeHover(eyeImage, not propData.Visible)
-        end
+        eyeImage.OnClick = self.LeafEyeOnClick
 
-        function toggleVisible()
-            propData = EntityStore:GetStoredData(key)
-            if not propData then return end
+        return selectable
+    end
 
-            local orginState = propData.Visible
+    self.UpdateTreeEyeIcon = function (self, key)
+        local eyeImage = self.eyeImageRefs[key]
+        if not eyeImage then return end
+        eyeImage.Image = self.hiddenRoots[key] and eyeSlashUV or eyeUV
+        eyeImage.Tint = self.hiddenRoots[key] and {0.5,0.5,0.5,1} or {0.9,0.9,0.9,1}
+        setupEyeHover(eyeImage, self.hiddenRoots[key])
+    end
+    
+    self.TreeEyeOnClick = function (e, dontPush)
+        local key = e.UserData and e.UserData.Key
+        if not key then return end
 
-            if not propData then return end
+        local orginState = self.hiddenRoots[key] or false
+        local children = tree:CollectChildren(key)
+        for _, childKey in pairs(children) do
+            if not tree:IsLeaf(childKey) then -- for collection we update it to the same state
+                self.hiddenRoots[childKey] = not self.hiddenRoots[key]
+                self:UpdateTreeEyeIcon(childKey)
+                goto continue
+            end
+            local prop = EntityStore:GetStoredData(childKey)
+            if not prop then goto continue end
+
             local data = {
-                Guid = propData.Guid,
+                Guid = prop.Guid,
                 Attributes = {
-                    Visible = not propData.Visible
+                    Visible = self.hiddenRoots[key] or false
                 }
             }
             NetChannel.SetAttributes:SendToServer(data)
-            propData.Visible = data.Attributes.Visible
-            toggleEye()
-
-            HistoryManager:PushCommand({
-                Redo = function()
-                    local redoData = {
-                        Guid = propData.Guid,
-                        Attributes = {
-                            Visible = not orginState
-                        }
-                    }
-                    NetChannel.SetAttributes:SendToServer(redoData)
-                    propData.Visible = redoData.Attributes.Visible
-                    toggleEye()
-                end,
-                Undo = function()
-                    local undoData = {
-                        Guid = propData.Guid,
-                        Attributes = {
-                            Visible = orginState
-                        }
-                    }
-                    NetChannel.SetAttributes:SendToServer(undoData)
-                    propData.Visible = undoData.Attributes.Visible
-                    toggleEye()
-                end,
-                Description = "Toggle Visibility"
-            })
+            prop.Visible = data.Attributes.Visible
+            ::continue::
         end
 
-        eyeImage.UserData = {
-            UpdateEye = toggleEye
-        }
-        eyeImage.OnClick = toggleVisible
+        if self.hiddenRoots[key] then
+            self.hiddenRoots[key] = nil
+        else
+            self.hiddenRoots[key] = true
+        end
 
-        return selectable
+        self:UpdateTreeEyeIcon(key)
+        if dontPush then return end
+
+        HistoryManager:PushCommand({
+            Redo = function()
+                self.hiddenRoots[key] = orginState
+                self.TreeEyeOnClick(e, true)
+            end,
+            Undo = function()
+                self.hiddenRoots[key] = not orginState
+                self.TreeEyeOnClick(e, true)
+            end,
+            Description = "Toggle Collection Visibility"
+        })
     end
 
     treeList.RenderTree = function (sel, key, node, fixedCell)
@@ -292,70 +351,10 @@ function OutlinerMenu:RenderTreeList()
         local eyeImage = fixedCell:AddImageButton("EyeButton##" .. key, eyeIcon, IMAGESIZE.ROW) --[[@as ExtuiImageButton]]
         self.eyeImageRefs[key] = eyeImage
         setupEyeHover(eyeImage, self.hiddenRoots[key])
-
-        local toggleHidden
-        local updateEye
-        function toggleHidden(dontPush)
-            local orginState = self.hiddenRoots[key] or false
-            local children = tree:CollectChildren(key)
-            for _, childKey in pairs(children) do
-                if not tree:IsLeaf(childKey) then -- for collection we update it to the same state
-                    self.hiddenRoots[childKey] = not self.hiddenRoots[key]
-                    self.eyeImageRefs[childKey].UserData.UpdateEye()
-                    goto continue
-                end
-                local prop = EntityStore:GetStoredData(childKey)
-                if not prop then goto continue end
-
-                local data = {
-                    Guid = prop.Guid,
-                    Attributes = {
-                        Visible = self.hiddenRoots[key] or false
-                    }
-                }
-                NetChannel.SetAttributes:SendToServer(data)
-                prop.Visible = data.Attributes.Visible
-                ::continue::
-            end
-
-            if self.hiddenRoots[key] then
-                self.hiddenRoots[key] = nil
-            else
-                self.hiddenRoots[key] = true
-            end
-
-            updateEye()
-            if dontPush then return end
-
-            HistoryManager:PushCommand({
-                Redo = function()
-                    self.hiddenRoots[key] = orginState
-                    toggleHidden(true)
-                end,
-                Undo = function()
-                    self.hiddenRoots[key] = not orginState
-                    toggleHidden(true)
-                end,
-                Description = "Toggle Collection Visibility"
-            })            
-        end
-        function updateEye()
-            eyeImage = self.eyeImageRefs[key]
-            if not eyeImage then return end
-            eyeImage.Image = self.hiddenRoots[key] and eyeSlashUV or eyeUV
-            eyeImage.Tint = self.hiddenRoots[key] and {0.5,0.5,0.5,1} or {0.9,0.9,0.9,1}
-            setupEyeHover(eyeImage, self.hiddenRoots[key])
-        end
-        eyeImage.OnClick = function ()
-            toggleHidden()
-        end
+        eyeImage.OnClick = self.TreeEyeOnClick
         eyeImage.UserData = {
-            UpdateEye = updateEye,
+            Key = key
         }
-        self.replaceFuncs[key] = function(newKey)
-            self.replaceFuncs[key] = nil
-            key = newKey
-        end
         return treeSelectable
     end
 
@@ -382,20 +381,19 @@ function OutlinerMenu:RenderTreeList()
     end
 
     treeList.UpdateSortCache = function (sel)
+        sel.SortCache = {
+            TypeOrder = {},
+            Key = {}
+        }
+        local c = sel.SortCache
         for key, ent in pairs(EntityStore:GetAllStored()) do
             local name = ent.DisplayName and ent.DisplayName or key
-            sel.SortCache[key] = {
-                TypeOrder = 1,
-                Key = name
-            }
+            c.TypeOrder[key] = 1
+            c.Key[key] = name
         end
         for _,key in pairs(treeList.tree:GetAllTreeKeys()) do
-            if not sel.SortCache[key] then
-                sel.SortCache[key] = {
-                    TypeOrder = 0,
-                    Key = key
-                }
-            end
+            c.TypeOrder[key] = 0
+            c.Key[key] = key
         end
     end
 
@@ -411,6 +409,7 @@ function OutlinerMenu:RenderTreeList()
         else
             tree:Rename(key, newName)
         end
+        self:UpdateList()
     end
 
     treeList:Render()
@@ -421,23 +420,28 @@ function OutlinerMenu:RenderTreeList()
     self:SetupCollectionSelectablePopup()
 end
 
-function OutlinerMenu:SetupLeaf(sel, key, node)
-    local selectable = sel
+function OutlinerMenu:SetupLeaf(sel)
 
-    selectable.OnRightClick = function()
-        self:SetupSelectablePopup()
-    end
-    selectable.OnClick = function()
+    self.LeafOnClick = function(sel)
+        local key = sel.UserData.Key
+        if not key then return end
         self:FocusTab(key)
     end
+
+    self.LeafOnRightClick = function(sel)
+        self:SetupSelectablePopup()
+    end
+
+    sel.OnRightClick = self.LeafOnRightClick
+    sel.OnClick = self.LeafOnClick
 end
 
-function OutlinerMenu:SetupTree(sel, key, node)
-    local selectable = sel
-
-    selectable.OnRightClick = function()
-        self:SetupCollectionSelectablePopup(key)
+function OutlinerMenu:SetupTree(sel)
+    self.TreeOnRightClick = function(sel)
+        self:SetupCollectionSelectablePopup(sel)
     end
+
+    sel.OnRightClick = self.TreeOnRightClick
 end
 
 function OutlinerMenu:GroupLogic(from, target)
@@ -449,7 +453,7 @@ function OutlinerMenu:GroupLogic(from, target)
 
     local isFromTree = not tree:IsLeaf(from)
     local isTargetTree = not tree:IsLeaf(target)
-    local selectedItems = self.propTreeList.selectedItems
+    local selectedItems = self.propTreeList:GetSelectedItems()
 
     local toReparent = {}
     local selected = {}
@@ -464,7 +468,7 @@ function OutlinerMenu:GroupLogic(from, target)
         end
     end
 
-    for key,_ in pairs(self.propTreeList.selectedItems) do
+    for key,_ in pairs(selectedItems) do
         if toReparent[key] == nil and not selectedItems[tree:GetParentKey(key)] then
             toReparent[key] = true
         end
@@ -489,7 +493,6 @@ function OutlinerMenu:GroupLogic(from, target)
         
     end
 
-
     self.propTreeList:ClearSelection()
     self.selectedGuids = {}
     self:UpdateList()
@@ -497,7 +500,7 @@ end
 
 function OutlinerMenu:DecideSelectedKeys()
     local selected = {}
-    for key, _ in pairs(self.propTreeList.selectedItems) do
+    for key, a in pairs(self.propTreeList:GetSelectedItems()) do
         table.insert(selected, key)
     end
     if #selected == 0 and self.propTreeList.hoveringKey then
@@ -781,7 +784,16 @@ function OutlinerMenu:SetupSelectablePopup()
     local function copy()
         self.clipboard = {}
 
-        for _, guid in ipairs(self.selectedGuids) do -- since group names are unqiue, we only copy guids
+        local selected = self.propTreeList:GetSelectedItems()
+        local selectedGuids = {}
+
+        for guid, _ in pairs(selected) do
+            if tree:IsLeaf(guid) then
+                table.insert(selectedGuids, guid)
+            end
+        end
+
+        for _, guid in ipairs(selectedGuids) do -- since group names are unqiue, we only copy guids
             table.insert(self.clipboard, guid)
         end
         self.isCropMode = false
@@ -790,7 +802,8 @@ function OutlinerMenu:SetupSelectablePopup()
     local function crop()
         self.clipboard = {}
 
-        for guid,_ in pairs(self.propTreeList.selectedItems) do
+        local selected = self.propTreeList:GetSelectedItems()
+        for guid,_ in pairs(selected) do
             table.insert(self.clipboard, guid)
             self.propTreeList.itemRefs[guid]:SetStyle("Alpha", 0.5)
         end
@@ -841,10 +854,11 @@ function OutlinerMenu:SetupSelectablePopup()
     contextMenu:AddItems(context, isFocus)
 end
 
-function OutlinerMenu:SetupCollectionSelectablePopup(openKey)
+function OutlinerMenu:SetupCollectionSelectablePopup(sel)
+    local openKey = sel and sel.UserData and sel.UserData.Key or self.propTreeList.hoveringKey
     self.selectedTree = {}
 
-    for key,_ in pairs(self.propTreeList.selectedItems) do
+    for key,_ in pairs(self.propTreeList:GetSelectedItems()) do
         if not EntityStore.Tree:IsLeaf(key) then
             table.insert(self.selectedTree, key)
         end

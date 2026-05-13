@@ -506,9 +506,14 @@ function EntityStore:GetExportCopy(guids)
             data.Position = { RBGetPosition(guid) }
             data.Rotation = { RBGetRotation(guid) }
             data.Scale = { RBGetScale(guid) }
+            if #data.Scale == 0 then
+                data.Scale = {1,1,1}
+            end
 
             local hasIcon = template.TemplateType == "character" or template.TemplateType == "item"
-            data.Scale = math.min(data.Scale[1], data.Scale[2], data.Scale[3])
+            if data.Scale[1] and data.Scale[2] and data.Scale[3] then
+                data.Scale = math.min(data.Scale[1], data.Scale[2], data.Scale[3])
+            end
             data.DisplayIcon = RBGetIcon(guid)
             data.Icon = hasIcon and template.Icon or nil
             data.LevelName = entity.Level and entity.Level.LevelName or hostLevel

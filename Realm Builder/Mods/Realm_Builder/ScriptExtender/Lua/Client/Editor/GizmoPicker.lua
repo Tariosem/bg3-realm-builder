@@ -173,6 +173,10 @@ end
 local function makeRotateRing(axis)
     local innerRadius = PICKER_CONSTANTS.ROTATE_RING.InnerRadius
     local outerRadius = PICKER_CONSTANTS.ROTATE_RING.OuterRadius
+
+    local torusMinorRadius = (outerRadius - innerRadius) / 2
+    local torusMajorRadius = innerRadius + torusMinorRadius
+
     local normal = GLOBAL_COORDINATE[axis]
     --- @type GizmoPickerHitPart
     return {
@@ -184,20 +188,23 @@ local function makeRotateRing(axis)
         ---@param picker GizmoPicker
         ---@param localRay Ray
         HitTest = function(picker, localRay)
-            return localRay:IntersectRing(
-                localOrigin,
-                normal,
-                innerRadius,
-                outerRadius
+            return localRay:IntersectTorus(
+                {0,0,0},
+                torusMajorRadius,
+                torusMinorRadius,
+                normal
             )
         end,
         UpdateScale = function(picker, scale)
             innerRadius = PICKER_CONSTANTS.ROTATE_RING.InnerRadius * scale
             outerRadius = PICKER_CONSTANTS.ROTATE_RING.OuterRadius * scale
+            torusMinorRadius = (outerRadius - innerRadius) / 2
+            torusMajorRadius = innerRadius + torusMinorRadius
         end,
     }
 end
 
+--- mostly used for hover detection
 --- @class GizmoPicker
 --- @field Gizmo TransformGizmo
 --- @field Position Vec3
@@ -313,9 +320,13 @@ function GizmoPicker:Hit(ray)
 
     local isUniformMode = mode == "Transform"
     local bestHit = {
+        Priority = math.huge,
         Hit = {}
     }
     for _, part in pairs(self.HitParts) do
+        if part.Priority > bestHit.Priority then
+            break
+        end
         if isUniformMode or part.Mode[mode] then
             local hit = part.HitTest(self, localRay)
             if hit and hit.Position and hit:IsCloserThan(bestHit.Hit) then
@@ -327,6 +338,7 @@ function GizmoPicker:Hit(ray)
                     Axis = part.Axis,
                     HitMode = returnMode,
                     Hit = hit,
+                    Priority = part.Priority,
                 }
             end
         end

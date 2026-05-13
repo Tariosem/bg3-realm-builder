@@ -1,3 +1,4 @@
+local eml = Ext.Math
 local PhysicsGroupFlags = Ext.Enums.PhysicsGroupFlags
 local PhysicsType = Ext.Enums.PhysicsType
 --- @class Ray
@@ -44,9 +45,9 @@ end
 ---@param pivotTransform Transform
 ---@return Ray
 function Ray:ToLocal(pivotTransform)
-    local invRot = pivotTransform.RotationQuat:Inverse()
-    local localOrigin = invRot:Rotate(self.Origin - pivotTransform.Translate)
-    local localDirection = invRot:Rotate(self.Direction)
+    local invRot = eml.QuatInverse(pivotTransform.RotationQuat)
+    local localOrigin = eml.QuatRotate(invRot, self.Origin - pivotTransform.Translate)
+    local localDirection = eml.QuatRotate(invRot, self.Direction)
     return Ray.new(localOrigin, localDirection)
 end
 
@@ -329,8 +330,21 @@ function Ray:IntersectSphere(center, radius)
     end
 end
 
-local function solve_cubic(a, b, c)
-    
+--- @param a Vec3
+--- @param b Vec3
+--- @param r number
+--- @return Hit|nil
+function Ray:IntersectCapsule(a, b, r)
+    local ab = b - a
+    local ao = self.Origin - a
+
+    local abLenSqr = Ext.Math.Dot(ab, ab)
+    local abDir = ab / math.sqrt(abLenSqr)
+    local t = Ext.Math.Dot(ao, abDir)
+    t = math.max(0, math.min(t, math.sqrt(abLenSqr)))
+
+    local closestPoint = a + abDir * t
+    return self:IntersectSphere(closestPoint, r)
 end
 
 --- https://www.shadertoy.com/view/4sBGDy 
@@ -338,9 +352,8 @@ end
 --- @param majorRadius number
 --- @param minorRadius number
 --- @param axis Vec3
-function Ray:IntersectTorus(center, majorRadius, minorRadius, axis)
-    
-    local torusQuat = Quat.FromTo(GLOBAL_COORDINATE.Y, axis)
+function Ray:IntersectTorus(center, majorRadius, minorRadius, axis) 
+    local torusQuat = Ext.Math.QuatFromToRotation({0,0,1}, axis)
     local localRay = self:ToLocal({
         Translate = center,
         RotationQuat = torusQuat

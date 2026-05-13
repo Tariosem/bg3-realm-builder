@@ -5,7 +5,8 @@ local Debug = function ()
     -- disabled 
 end
 
-local dummyUpdateTimer = nil 
+local dummyUpdateTimer = nil
+--- @type table<string, EntityHandle>
 local clientVisualDummies = {}
 local isInMirror = false
 local isInPhotoMode = false
@@ -184,18 +185,21 @@ function IsInPhotoMode()
 end
 
 ---@param ownerUuid string
+---@param entRef {entity: EntityHandle}? -- will set the entity handle to the dummy if found
 ---@return EntityHandle|nil
-local function GetClientVisualDummy(ownerUuid)
-    local dummy = clientVisualDummies[ownerUuid]
-
-    if dummy and #dummy:GetAllComponentNames() == 0 then
+local function GetClientVisualDummy(ownerUuid, entRef)
+    if clientVisualDummies[ownerUuid] and #clientVisualDummies[ownerUuid]:GetAllComponentNames() == 0 then
         clientVisualDummies[ownerUuid] = nil
         isInMirror = false
         isInPhotoMode = false
         return nil
     end
 
-    return dummy
+    if entRef then
+        entRef.entity = clientVisualDummies[ownerUuid]
+    end
+
+    return clientVisualDummies[ownerUuid]
 end
 
 DummyHelpers.GetClientVisualDummy = GetClientVisualDummy

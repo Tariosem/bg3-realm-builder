@@ -124,7 +124,6 @@ local function SetGizmoAxisTextureColorParam(axis, guid, Value)
 end
 
 local translateItemTemplateId = RBUtils.TakeTailTemplate(GIZMO_ITEM.Translate)
-local rotateItemTemplateId = RBUtils.TakeTailTemplate(GIZMO_ITEM.Rotate)
 local translateScale = 1.1 / 0.9
 function GizmoVisualizer:ScaleGizmo(axis, renderable, isTranslate, guid)
     local axisIndex = AxisIndexMap[axis]
@@ -139,13 +138,6 @@ function GizmoVisualizer:ScaleGizmo(axis, renderable, isTranslate, guid)
     end
     local toScale = RBUtils.ToVec3(scale)
     toScale[axisIndex] = toScale[axisIndex] * (self.ScaleMultiplier[axisIndex] or 1.0)
-
-    if guid and Ext.Entity.Get(guid) then
-        local entity = Ext.Entity.Get(guid) --[[@as EntityHandle]]
-        if entity.GameObjectVisual and entity.GameObjectVisual.RootTemplateId == rotateItemTemplateId then
-            toScale[axisIndex] = 0
-        end
-    end
 
     for _,r in ipairs(rend or {}) do
         r:SetWorldScale(toScale)

@@ -225,9 +225,24 @@ Ext.Events.SessionLoaded:Subscribe(function()
 end)
 
 RegisterConsoleCommand("rb_dump_dye_data", function()
+
+    local duplicateCheck = {}
+
     for guid, _ in pairs(DyeManager.AllMatPresets) do
         if not DyeManager.IsMatPresetInUse(guid) then return end
         local using = DyeManager.MatPresetToEnt[guid] or GUID_NULL
         print("MatPreset "..guid.." is in use by item: "..using)
+        if duplicateCheck[using] then
+            local ent = Ext.Entity.Get(using)
+            local displayName = ent and ent.DisplayName and ent.DisplayName:Get() or using
+            print("WARNING: Item "..displayName.." ("..using..") is using multiple presets.")
+            print("Presets in use by this item:")
+            for _, preset in pairs(duplicateCheck[using]) do
+                print("- "..preset)
+            end
+        end
+
+        duplicateCheck[using] = duplicateCheck[using] or {}
+        table.insert(duplicateCheck[using], guid)
     end
 end)

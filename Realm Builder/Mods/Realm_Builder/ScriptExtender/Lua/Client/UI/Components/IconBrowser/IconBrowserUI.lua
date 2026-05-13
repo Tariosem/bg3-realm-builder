@@ -406,10 +406,10 @@ function IconBrowser:RenderSearchOptionsMenu()
     self.noteInput.OnChange = function()
         AutoSearch()
     end
-    self.searchInput.OnChange = function()
+    self.searchInput.OnChange = RBUtils.Debounce(300, function()
         self:Search()
         --AutoSearch()
-    end
+    end)
     ---#endregion Search Options
 end
 
@@ -836,7 +836,7 @@ function IconBrowser:RenderCustomizationTab(popup, entry)
         end
     end
 
-    local noteDebounceFunc = RBUtils.Debounce(1000, function(text)
+    local noteDebounceFunc = RBUtils.Debounce(100, function(text)
         self.tempDisableSearch = true
 
         custom = self.dataManager.customizationData[entry.Uuid] or {}
