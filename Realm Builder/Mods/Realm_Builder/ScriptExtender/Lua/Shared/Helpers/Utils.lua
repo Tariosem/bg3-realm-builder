@@ -1,3 +1,36 @@
+--- @class Realm_Builder.Utils
+--- @field Uuid_v4 fun():string
+--- @field MakeTranslatedHandle fun():string
+--- @field IsUuid fun(object:string?):boolean
+--- @field IsUuidIncludingNull fun(object:string?):boolean
+--- @field IsUuidShape fun(object:string?):boolean
+--- @field ComputeVersion64 fun(major:string|number, minor:string|number, revision:string|number, build:string|number):string
+--- @field ParseVersion64 fun(version64:string|number): (number, number, number, number)
+--- @field BuildVersionString fun(major:string|number, minor:string|number, revision:string|number, build:string|number):string
+--- @field ParseVersionString fun(versionStr:string): (number, number, number, number)
+--- @field IsValidFolderName fun(name:any):boolean
+--- @field ValidateFolderName fun(name:any):string
+--- @field ToVec4 fun(...:any):number[]
+--- @field ToVec4Int fun(...:any):number[]
+--- @field ToVec2 fun(...:any):number[]
+--- @field ToVec3 fun(...:any):number[]
+--- @field LightCToArray fun<T>(arr:T[]):T[]
+--- @field DeepCopy fun<T>(o:T):T
+--- @field IsSerializable fun(v:any):boolean
+--- @field RequireFiles fun(folderPath:string, files:string[])
+--- @field SortedPairs fun<K, V>(tbl:table<K, V>, func?:fun(a:K, b:K):boolean): fun(): (K, V)
+--- @field FilteredPairs fun<K, V>(tbl:table<K, V>, filterFunc:fun(key:K, value:V):boolean, sortFunc:fun(key:K, value:K):boolean): fun(): (K, V)
+--- @field IsCamera fun(object:string?):boolean
+--- @field GetCamaraUserID fun(obj:string):number?
+--- @field IsItemOrCharacterTemplate fun(templateId:string):boolean
+--- @field Debounce fun(delay:number, func:fun(...:any)):fun(...:any)
+--- @field WaitUntil fun(check:fun(frameCnt:integer):boolean, callback:fun(), fallback:fun()?, timeOutFrame:integer?)
+--- @field DoubleClick fun(onClick:fun(...:any), onDoubleClick:fun(...:any), interval?:number):fun(...:any)
+--- @field GetFormatTime fun():string
+--- @field GetFormatHMS fun():string
+--- @field WrapTextTokens fun(tokens:RB_TextToken[], wrapPos?:number):RB_TextToken[]
+--- @field EntitiesToUUIDs fun(entities:EntityHandle[]):string[]
+--- @field AsyncForEach fun<K, V>(t:table<K, V>, func:fun(value:V, key:K, processedCount:number):any, waitFor:number?, yieldAfter:number?):AsyncForEachResult
 RBUtils = RBUtils or {}
 
 --- @return string

@@ -168,6 +168,19 @@ EQUIPMENTS_WEAPONS = {
     ["Ranged Main Weapon"] = true,
 }
 
+--- @enum RB_Rarity
+RB_RARITY = {
+    Common = "Common",
+    Uncommon = "Uncommon",
+    Rare = "Rare",
+    VeryRare = "VeryRare",
+    Legendary = "Legendary",
+    StoryItem = "StoryItem",
+    [""] = "",
+    ["None"] = "None",
+}
+
+--- @alias RarityToColor table<RB_Rarity, number[]>
 RARITY_COLORS = {
     Common = {0, 0, 0, 0},
     [""] = {0, 0, 0, 0},
@@ -179,6 +192,8 @@ RARITY_COLORS = {
     StoryItem = ColorUtils.HexToRGBA("AA944300"),
 }
 
+
+--- @alias DamageTypeToColor table<DamageType, number[]>
 DAMAGE_TYPE_COLORS = {
     Acid = ColorUtils.HexToRGBA("FFD0F954"),
     Cold = ColorUtils.HexToRGBA("FF62D0FF"),

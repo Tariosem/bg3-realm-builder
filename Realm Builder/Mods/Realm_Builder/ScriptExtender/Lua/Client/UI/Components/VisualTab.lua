@@ -442,7 +442,7 @@ function VisualTab:RenderVertexMaskSection(parent)
     local debounceRefreshVisual = RBUtils.Debounce(100, function (...)
         NetChannel.Replicate:SendToServer({
             Guid = self.guid,
-            Field = "GameObjectVisual",
+            Component = "GameObjectVisual",
         })
     end)
 
@@ -834,7 +834,7 @@ function VisualTab:RenderPresetsCell(parent)
         if isChara then
             NetChannel.Replicate:SendToServer({
                 Guid = self.guid,
-                Field = "GameObjectVisual",
+                Component = "GameObjectVisual",
             })
         end
 
