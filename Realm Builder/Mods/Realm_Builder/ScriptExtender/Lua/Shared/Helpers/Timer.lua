@@ -1,7 +1,7 @@
 ---@alias TimerID integer
 ---@class Timer
-GL_GLOBALS = GL_GLOBALS or {}
-GL_GLOBALS.TimerScheduler = GL_GLOBALS.TimerScheduler or {
+RB_GLOBALS = RB_GLOBALS or {}
+RB_GLOBALS.TimerScheduler = RB_GLOBALS.TimerScheduler or {
     Active = {},
     NextId = 0,
     ServerClientCallbacks = {},
@@ -9,7 +9,7 @@ GL_GLOBALS.TimerScheduler = GL_GLOBALS.TimerScheduler or {
     ShutdownSubscription = nil,
 }
 
-local scheduler = GL_GLOBALS.TimerScheduler
+local scheduler = RB_GLOBALS.TimerScheduler
 
 Timer = {
     _active = scheduler.Active,

@@ -420,7 +420,6 @@ function IconBrowser:RenderTagsFilter(parent)
             end
         end
         local keyArr = sortTreeKeys(tagTree:GetRootKey())
-        _D(tagTree:ToTable())
         local tab = parent:AddTable("TagsFilterMainTable", 1)
         local row = tab:AddRow()
         for _, key in ipairs(keyArr) do

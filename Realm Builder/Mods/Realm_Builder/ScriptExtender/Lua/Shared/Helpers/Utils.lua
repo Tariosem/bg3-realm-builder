@@ -560,14 +560,14 @@ end
 --- @param t table<K, V>
 --- @param func fun(value:V, key:K, processedCount:number):any
 --- @return AsyncForEachResult
-function RBUtils.AsyncForEach(t, func)
+function RBUtils.AsyncForEach(t, func, waitFor, yieldAfter)
     local returnObj = {
         results = {},
         isComplete = false,
         errors = {},
         OnComplete = function() end,
-        WaitFor = 100, -- ms, default 100ms
-        YieldAfter = 1, -- ms threshold to yield, default 1ms.
+        WaitFor = waitFor or 100, -- ms, default 100ms
+        YieldAfter = yieldAfter or 1, -- ms threshold to yield, default 1ms.
     }
 
     local processed = 0

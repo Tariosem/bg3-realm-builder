@@ -163,3 +163,25 @@ function RBTableUtils.MapToSortedArrayByKey(inputMap, order)
 
     return result
 end
+
+--- @generic K, V
+--- @param tbl table<K, V>
+--- @return K[]
+function RBTableUtils.GetKeys(tbl)
+    local keys = {}
+    for k, _ in pairs(tbl) do
+        table.insert(keys, k)
+    end
+    return keys
+end
+
+--- @generic K, V
+--- @param tbl table<K, V>
+--- @return V[]
+function RBTableUtils.GetValues(tbl)
+    local values = {}
+    for _, v in pairs(tbl) do
+        table.insert(values, v)
+    end
+    return values
+end

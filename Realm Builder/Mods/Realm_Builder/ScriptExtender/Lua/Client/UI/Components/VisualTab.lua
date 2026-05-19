@@ -409,7 +409,7 @@ function VisualTab:Render(retryCnt)
         end
     end
 
-    if Ext.Debug.IsDeveloperMode() and entity.Visua and entity.Visual.Visual and #entity.Visual.Visual.Attachments > 0 then
+    if Ext.Debug.IsDeveloperMode() and entity.Visual and entity.Visual.Visual and #entity.Visual.Visual.Attachments > 0 then
         self:RenderVertexMaskSection(self.editorWindow:AddCollapsingHeader(GetLoca("Vertex Mask")))
     end
 

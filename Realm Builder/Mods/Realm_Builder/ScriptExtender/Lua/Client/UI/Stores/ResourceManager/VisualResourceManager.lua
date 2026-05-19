@@ -71,7 +71,7 @@ function CCAVManager:PopulateAll()
                 self:AddTagToData(ccavId, displayName)
                 if not raceCache[ccav.RaceUUID] then
                     raceCache[ccav.RaceUUID] = displayName
-                    self.tagTree:AddLeaf(displayName, 0, "Races")
+                    self.tagTree:Reparent(displayName, "Races")
                 end
             end
         end
@@ -84,7 +84,7 @@ function CCAVManager:PopulateAll()
         self:AddTagToData(ccavId, bodyTypeTag[1])
         if not newSlot[ccav.SlotName] then
             newSlot[ccav.SlotName] = true
-            self.tagTree:AddLeaf(ccav.SlotName, 0, "Slots")
+            self.tagTree:Reparent(ccav.SlotName, "Slots")
         end
         ::continue::
     end
