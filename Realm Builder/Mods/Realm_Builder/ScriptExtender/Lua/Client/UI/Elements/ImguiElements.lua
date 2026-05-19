@@ -398,9 +398,9 @@ function ImguiElements.RenderExportSettingPanel(parent, settings)
         authorNameInput.Text = settings.Author or ""
         descriptionInput.Text = settings.Description or ""
         versionInput.Value = { settings.Version[1], settings.Version[2], settings.Version[3], settings.Version[4] }
-        authorNameInput.OnChange()
-        modNameInput.OnChange()
-        versionInput.OnChange()
+        authorNameInput:OnChange()
+        modNameInput:OnChange()
+        versionInput:OnChange()
     end
 
     return refresh

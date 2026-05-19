@@ -1,5 +1,17 @@
 local eml = Ext.Math
 
+local function lookAt(targetPos, originPos, up)
+    local forward = eml.Normalize(eml.Sub(targetPos, originPos))
+    local right = eml.Normalize(eml.Cross(up, forward))
+    local realUp = eml.Normalize(eml.Cross(forward, right))
+
+    return eml.Mat3ToQuat({
+        right[1], right[2], right[3], 
+        realUp[1], realUp[2], realUp[3],
+        forward[1], forward[2], forward[3]
+    })
+end
+
 --- @class IKMovableProxy
 --- @field GetWorldTranslate fun(self): vec3
 --- @field GetWorldRotation fun(self): quat
@@ -14,8 +26,11 @@ local eml = Ext.Math
 --- @field LengthA number
 --- @field LengthB number
 --- @field PoleAngle number
+--- @field Controller IKMovableProxy
+--- @field Update fun(self)
+--- @field Solve fun(originPos:vec3, targetPos:vec3, polePos:vec3, lenA:number, lenB:number, poleAngle:number): IKResult
 --- @field new fun(origin:IKMovableProxy, joint:IKMovableProxy, target:IKMovableProxy, poleTarget:IKMovableProxy, controller:IKMovableProxy?): IKController
-IKController = _Class("IKController")
+IKController = {}
 
 --- @class IKResult
 --- @field JointPos vec3
@@ -27,7 +42,8 @@ IKController = _Class("IKController")
 --- @param target IKMovableProxy
 --- @param poleTarget IKMovableProxy
 --- @param controller IKMovableProxy?
-function IKController:__init(origin, joint, target, poleTarget, controller)
+function IKController.new(origin, joint, target, poleTarget, controller)
+    local self = setmetatable({}, {__index = IKController})
     self.Target = target
     self.Controller = controller or target
     self.Joint = joint
@@ -42,6 +58,7 @@ function IKController:__init(origin, joint, target, poleTarget, controller)
     self.LengthB = eml.Length(eml.Sub(targetPos, jointPos))
 
     self.PoleAngle = 0
+    return self
 end
 
 --- @param originPos vec3
@@ -68,6 +85,7 @@ function IKController.Solve(originPos, targetPos, polePos, lenA, lenB, poleAngle
     local dot = eml.Dot(toPole, fwd)
     local poleDir = eml.Normalize(eml.Sub(toPole, eml.Mul(fwd, dot)))
 
+    --- sometimes 
     if poleAngle ~= 0 then
         local rot = eml.QuatRotateAxisAngle({0,0,0,1}, fwd, poleAngle)
         poleDir = eml.QuatRotate(rot, poleDir)
@@ -108,15 +126,7 @@ function IKController:Update()
         parentsPos[i] = parentPos
         childsPos[i] = childPos
 
-        local fwd = eml.Normalize(eml.Sub(childPos, parentPos))
-        local right = eml.Normalize(eml.Cross(up, fwd))
-        local realUp = eml.Normalize(eml.Cross(fwd, right))
-
-        local rot = eml.Mat3ToQuat({
-            right[1], right[2], right[3], 
-            realUp[1], realUp[2], realUp[3],
-            fwd[1], fwd[2], fwd[3]
-        })
+        local rot = lookAt(childPos, parentPos, up)
 
         parent:SetWorldRotation(rot)
     end
@@ -128,6 +138,10 @@ end
 --- @field Joints IKMovableProxy[]
 --- @field Goal IKMovableProxy
 --- @field Lengths number[]
+--- @field IterationLimit number
+--- @field IterationThreshold number
+--- @field Solve fun(positions:vec3[], lengths:number[], targetPos:vec3, originPos:vec3, threshold:number, iterationLimit:number): number?
+--- @field Update fun(self)
 --- @field new fun(joints:IKMovableProxy[], targetProxy:IKMovableProxy?): FABRIKController
 FABRIKController = {}
 
@@ -175,7 +189,7 @@ function FABRIKController.BackwardReaching(positions, lengths, originPos)
 end
 
 --- @param positions vec3[]
---- @param lengths number[]
+--- @param lengths number[] 
 --- @param targetPos vec3
 --- @param originPos vec3
 --- @param threshold number
@@ -186,7 +200,7 @@ function FABRIKController.Solve(positions, lengths, targetPos, originPos, thresh
     while ite < iterationLimit do
         local endEffector = positions[#positions]
         if eml.Length(eml.Sub(endEffector, targetPos)) <= threshold then
-            return ite
+            return ite -- converged
         end
         
         FABRIKController.ForwardReaching(positions, lengths, targetPos)
@@ -223,21 +237,9 @@ function FABRIKController:Update()
         self.Joints[i]:SetWorldTranslate(positions[i])
         
         local parent = self.Joints[i-1]
-        local dir = eml.Normalize(eml.Sub(positions[i], positions[i-1]))
+        local up = {0,1,0} -- y up
 
-        local up = {0,1,0}
-        if eml.Dot(up, dir) > 0.999 then
-            up = {1,0,0}
-        end
-        local right = eml.Normalize(eml.Cross(up, dir))
-        local forward = dir
-        local realUp = eml.Normalize(eml.Cross(dir, right))
-
-        local rot = eml.Mat3ToQuat({
-            right[1], right[2], right[3], 
-            realUp[1], realUp[2], realUp[3],
-            forward[1], forward[2], forward[3]
-        })
+        local rot = lookAt(positions[i], positions[i-1], up)
 
         parent:SetWorldRotation(rot)
     end

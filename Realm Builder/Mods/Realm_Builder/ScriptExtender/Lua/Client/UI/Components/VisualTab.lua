@@ -409,9 +409,156 @@ function VisualTab:Render(retryCnt)
         end
     end
 
+    if Ext.Debug.IsDeveloperMode() and entity.Visua and entity.Visual.Visual and #entity.Visual.Visual.Attachments > 0 then
+        self:RenderVertexMaskSection(self.editorWindow:AddCollapsingHeader(GetLoca("Vertex Mask")))
+    end
+
     self:RenderAttachmentSection()
     self:RenderObjectSection()
     self:RenderEffectSection()
+end
+
+--- @enum VertexColorMaskSlot
+local VertexColorMaskSlot = {
+
+}
+
+local originVisualResourceCache = {}
+function VisualTab:RenderVertexMaskSection(parent)
+    local visual = self:GetVisual(self.guid)
+    if not visual or not visual.Attachments or #visual.Attachments == 0 then return end
+
+    ImguiHelpers.DestroyAllChildren(parent)
+
+    local allMasks = {}
+    local maskToIdx = {}
+    local header = parent
+
+    local refreshBtn = header:AddButton(GetLoca("Refresh"))
+    refreshBtn.OnClick = function()
+        self:RenderVertexMaskSection(parent)
+    end
+
+    local debounceRefreshVisual = RBUtils.Debounce(100, function (...)
+        NetChannel.Replicate:SendToServer({
+            Guid = self.guid,
+            Field = "GameObjectVisual",
+        })
+    end)
+
+    local function applyToVisualResource(guid, maskRes)
+        local aliveRes = Ext.Resource.Get(guid, "Visual") --[[@as ResourceVisualResource]]
+        Ext.Types.Unserialize(aliveRes.VertexColorMaskSlots, maskRes)
+        debounceRefreshVisual()
+    end
+
+    local attachIdx = 0
+    local hasAttachment = true
+    local parent = ImguiElements.AddTree(header, "Attachments")
+    local maskCheckboxes = {} --[[@type table<VertexColorMaskSlot, ExtuiCheckbox[]> ]]
+    while visual.Attachments[attachIdx + 1] do
+        attachIdx = attachIdx + 1
+        local attachment = visual.Attachments[attachIdx]
+            
+        local visualRes = attachment.Visual and attachment.Visual.VisualResource
+        if not visualRes then goto continue end
+
+        local guid = visualRes.Guid
+        local maskRes = RBUtils.LightCToArray(visualRes.VertexColorMaskSlots or {})
+        local originMaskRes = originVisualResourceCache[visualRes.Guid] or RBUtils.DeepCopy(maskRes)
+        if #originMaskRes == 0 then goto continue end
+
+        local maskParent = parent:AddTree("Attachment " .. attachIdx .. ": " .. visualRes.Slot)
+        if not originVisualResourceCache[visualRes.Guid] then
+            originVisualResourceCache[visualRes.Guid] = originMaskRes
+        end
+        local original = RBTableUtils.EqualArrays(maskRes, originMaskRes)
+        maskParent.OnRightClick = function (e)
+            local toState = original and {} or originVisualResourceCache[visualRes.Guid]
+            
+            applyToVisualResource(guid, toState)
+            original = not original
+            maskParent.Framed = not original
+            for _, mask in pairs(originMaskRes) do
+                local relatedCheckboxes = maskCheckboxes[mask] or {}
+                for _, cb in pairs(relatedCheckboxes) do
+                    cb.Checked = original
+                end
+            end
+        end
+
+        for _, str in pairs(originMaskRes) do
+            local maskNode = maskParent:AddCheckbox(str, true)
+            --- @param sel ExtuiCheckbox
+            maskNode.OnChange = function(sel)
+                if sel.Checked then
+                    maskRes[#maskRes + 1] = str
+                
+                    applyToVisualResource(guid, maskRes)
+                else
+                    for i, v in pairs(maskRes) do
+                        if v == str then
+                            table.remove(maskRes, i)
+                            break
+                        end
+                    end
+
+                    applyToVisualResource(guid, maskRes)
+                end
+            end
+            allMasks[str] = true
+            VertexColorMaskSlot[str] = str
+            maskCheckboxes[str] = maskCheckboxes[str] or {}
+            table.insert(maskCheckboxes[str], maskNode)
+        end
+
+        ::continue::
+    end
+
+    local byMasksParent = ImguiElements.AddTree(header, "Masks")
+    byMasksParent.OnHoverEnter = function()
+        byMasksParent.OnHoverEnter = nil
+        for mask, _ in pairs(allMasks) do
+            local maskNode = byMasksParent:AddCheckbox(mask, true)
+            maskNode.OnChange = function(sel)
+                local check = sel.Checked
+                local relatedCheckboxes = maskCheckboxes[mask] or {}
+                for _, cb in pairs(relatedCheckboxes) do
+                    cb.Checked = check
+                    cb.OnChange(cb)
+                end
+            end
+        end
+    end
+    
+    local debugBtn = header:AddButton("Debug: Print This All Masks")
+    debugBtn.OnClick = function()
+        local visual = self:GetVisual(self.guid)
+        if not visual or not visual.Attachments then return end
+
+        for attachIdx, attachment in pairs(visual.Attachments) do
+            local visualRes = attachment.Visual and attachment.Visual.VisualResource
+            if not visualRes then goto continue end
+
+            local maskRes = visualRes.VertexColorMaskSlots or {}
+            maskRes = RBUtils.LightCToArray(maskRes)
+            Debug("Attachment ["..visualRes.Slot .."]" .. attachIdx .. " masks:\n " .. table.concat(maskRes, ",\n "))
+            ::continue::
+        end
+    end
+
+    local debugAllMasksBtn = header:AddButton("Debug: Print All Masks")
+    debugAllMasksBtn.OnClick = function()
+        Debug("All masks: " .. table.concat(RBTableUtils.GetKeys(allMasks), ",\n "))
+    end
+
+    local resetBtn = header:AddButton("Reset All Masks")
+    resetBtn.OnClick = function()
+        for guid, maskData in pairs(originVisualResourceCache) do
+            applyToVisualResource(guid, maskData)
+        end
+    end
+
 end
 
 function VisualTab:RenderEffectSection()
@@ -446,22 +593,6 @@ function VisualTab:RenderMaterialContextPopup()
         end
     end)
 
-    contextMenu:AddItem("Open Material Mixer", function(sel)
-        local matTab = self.MaterialTabs[self.SelectedMaterial]
-        if not matTab then return end
-        local allParams = matTab.Editor.ParamSet.Parameters
-        local mixerParams = {}
-        for paramType, typeParams in pairs(allParams) do
-            mixerParams[paramType] = {}
-            for paramName, paramValue in pairs(typeParams) do
-                mixerParams[paramType][paramName] = matTab.Editor:GetParameter(paramName)
-            end
-        end
-
-        local mixerTab = MaterialMixerTab.new(mixerParams)
-        mixerTab:Render()
-    end)
-
     contextMenu:AddItem("Edit Transform", function(selectable)
         if not self:CheckVisual() then return end
         if IsInCharacterCreationMirror() then return end
@@ -481,6 +612,22 @@ function VisualTab:RenderMaterialContextPopup()
         self.resetParams[keyName].Scale = startScale
         self.resetParams[keyName].DescIndex = descIndex
         self.resetParams[keyName].AttachIndex = attachIndex
+    end)
+
+    contextMenu:AddItem("Open Material Mixer", function(sel)
+        local matTab = self.MaterialTabs[self.SelectedMaterial]
+        if not matTab then return end
+        local allParams = matTab.Editor.ParamSet.Parameters
+        local mixerParams = {}
+        for paramType, typeParams in pairs(allParams) do
+            mixerParams[paramType] = {}
+            for paramName, paramValue in pairs(typeParams) do
+                mixerParams[paramType][paramName] = matTab.Editor:GetParameter(paramName)
+            end
+        end
+
+        local mixerTab = MaterialMixerTab.new(mixerParams)
+        mixerTab:Render()
     end)
 
     contextMenu:AddItem("Reset All", function(sel)
@@ -867,8 +1014,10 @@ function VisualTab:RenderAttachmentEditors()
                 local visual = self:GetVisual(self.guid)
                 if not visual then return nil end
 
-                -- if have visual resource guid and not match the initial one, returns
-                if visual.VisualResource and visual.VisualResource.Guid and (not visual.VisualResource.Guid == vResId) then
+                local attachment = visual.Attachments[attIndex]
+                if not attachment then return nil end
+
+                if attachment.Visual.VisualResource and attachment.Visual.VisualResource.Guid and (not attachment.Visual.VisualResource.Guid == vResId) then
                     return nil
                 end
 
