@@ -55,7 +55,8 @@ end
 --- @param noLimit boolean? -- If true, don't clamp t values to be >= 0
 --- @return Vec3 C1 -- Closest point on this ray
 --- @return Vec3 C2 -- Closest point on Other ray
---- @return number Distance -- Distance between C1 and C2
+--- @return number s -- t value on this ray for closest point
+--- @return number t -- t value on other ray for closest point
 function Ray:ClosestTTo(other, noLimit)
     local d1 = self.Direction
     local d2 = other.Direction
@@ -75,9 +76,8 @@ function Ray:ClosestTTo(other, noLimit)
 
         local c1 = base_point
         local c2 = other:At(t2)
-        local distance = (c1 - c2):Length()
-
-        return c1, c2, distance
+        
+        return c1, c2, 0, t2
     end
 
     local b = Ext.Math.Dot(d1, r)
@@ -92,9 +92,8 @@ function Ray:ClosestTTo(other, noLimit)
 
     local c1 = self:At(s)
     local c2 = other:At(t)
-    local distance = (c1 - c2):Length()
 
-    return c1, c2, distance
+    return c1, c2, s, t
 end
 
 --- @param planePoint Vec3

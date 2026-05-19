@@ -592,6 +592,8 @@ end
 --- @generic K, V
 --- @param t table<K, V>
 --- @param func fun(value:V, key:K, processedCount:number):any
+--- @param waitFor number?
+--- @param yieldAfter number?
 --- @return AsyncForEachResult
 function RBUtils.AsyncForEach(t, func, waitFor, yieldAfter)
     local returnObj = {

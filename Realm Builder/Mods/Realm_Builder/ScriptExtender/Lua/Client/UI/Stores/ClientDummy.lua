@@ -23,11 +23,14 @@ local function postUpdateDummies()
             isInMirror = false
             return
         end
-        local x, y, z = VisualHelpers.GetVisualPosition(dummy)
-        local pitch, yaw, roll, w = VisualHelpers.GetVisualRotation(dummy)
+        if not dummy.Visual or not dummy.Visual.Visual then
+            Debug("Dummy " .. uuid .. " is missing visual component, skipping update.")
+            goto continue
+        end
         dummiesInfo[uuid] = {}
-        dummiesInfo[uuid].Position = {x, y, z}
-        dummiesInfo[uuid].Rotation = {pitch, yaw, roll, w}
+        dummiesInfo[uuid].Position = dummy.Visual.Visual.WorldTransform.Translate
+        dummiesInfo[uuid].Rotation = dummy.Visual.Visual.WorldTransform.RotationQuat
+        ::continue::
     end
     post.DummyInfos = dummiesInfo
 

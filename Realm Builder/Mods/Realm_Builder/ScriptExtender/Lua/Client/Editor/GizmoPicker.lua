@@ -349,7 +349,7 @@ end
 
 ---@param ray Ray
 ---@param axis TransformAxis
----@return Vec3 -- Closest point on axis to ray
+---@return Vec3
 function GizmoPicker:ClosestPointOnAxis(ray, axis)
     local origin, rotation = self:GetTransform()
     local axisMap = self:GetAxes(origin, rotation)
