@@ -48,14 +48,14 @@ function IconBrowser:CheckIfAnySearchCriteria()
     return hasIncludeConditions or hasExcludeConditions
 end
 
-function IconBrowser:RefreshTagFilder()
+function IconBrowser:RefreshTagFilter()
     local menu = self.topMenuBar:AddMenu("Tags Filter >") --[[@as ExtuiMenu]]
     menu.OnHoverEnter = function()
         local refreshFn = self:RenderTagsFilter(menu)
         refreshFn()
         menu.OnHoverEnter = refreshFn
         menu.OnClick = refreshFn
-        self.RefreshTagFilder = refreshFn
+        self.RefreshTagFilter = refreshFn
     end
 
 end
@@ -125,7 +125,8 @@ function IconBrowser:RenderTagsFilter(parent)
     end
 
     local inputting = false
-    --- @param selectable ExtuiStyledRenderable
+    --- @generic S : ExtuiStyledRenderable
+    --- @param selectable ExtuiStyledRenderable<S>
     --- @param input ExtuiInputText
     --- @param label string
     --- @param updateFn fun(newName:string)

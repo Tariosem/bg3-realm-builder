@@ -1,4 +1,4 @@
---- @class MultiEffectManager:ManagerBase
+--- @class MultiEffectManager : ManagerBase<RB_Effect>
 --- @field new fun():MultiEffectManager
 --- @field Data table<string, RB_Effect>
 MultiEffectManager = _Class("MultiEffectManager", ManagerBase)

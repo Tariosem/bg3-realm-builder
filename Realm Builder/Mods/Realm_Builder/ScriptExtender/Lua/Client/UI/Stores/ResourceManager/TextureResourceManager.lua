@@ -72,13 +72,14 @@ function TextureResourceManager:PopulateAllTextureResources()
     local textureResources = Ext.Resource.GetAll("Texture")
     local now = Ext.Timer.MonotonicTime()
     local uuid_blacklist = RESOUCE_UUID_BLACKLIST or {}
-    RBPrintPurple("[Realm Builder] Populating Texture Resources...")
+    --RBPrintPurple("[Realm Builder] Populating Texture Resources...")
     for _, res in pairs(textureResources) do
         if uuid_blacklist[res] then goto continue end
         self:PopulateTextureResource(res)
         ::continue::
     end
-    RBPrintPurple("[Realm Builder] Populated " .. #textureResources .. " texture resources in " .. string.format("%.2f", Ext.Timer.MonotonicTime() - now) .. " ms.")
+    --RBPrintPurple("[Realm Builder] Populated " .. #textureResources .. " texture resources in " .. string.format("%.2f", Ext.Timer.MonotonicTime() - now) .. " ms.")
+    return #textureResources, Ext.Timer.MonotonicTime() - now
 end
 
 function TextureResourceManager:HasTextureResource(id)
@@ -88,7 +89,3 @@ end
 function TextureResourceManager:HasVirtualTextureResource(id)
     return self.VirtualTextureResources[id] ~= nil
 end
-
-EventsSubscriber.RegisterOnSessionLoaded(function ()
-    TextureResourceManager:PopulateAllTextureResources()
-end)

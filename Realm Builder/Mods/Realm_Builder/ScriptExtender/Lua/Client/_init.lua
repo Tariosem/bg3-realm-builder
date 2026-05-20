@@ -62,6 +62,9 @@ RB_GLOBALS.CCAVManager = CCAVManager.new()
 RB_GLOBALS.SceneryManager = SceneryManager.new()
 RB_GLOBALS.TileConstructionManager = TileConstructionManager.new()
 RB_GLOBALS.PrefabManager = PrefabManager.new()
+RB_GLOBALS.CCAVManager = CCAVManager.new()
+RB_GLOBALS.VisualManager = VisualResourceManager.new()
+RB_GLOBALS.TextureManager = TextureResourceManager
 
 --- @return table<string, integer>, integer
 local function PopulateAllTemplates()
@@ -155,42 +158,92 @@ end
 
 local function Realm_Builder_Population()
     local now = Ext.Timer:MonotonicTime()
+    local begin = now
+    RBPrintPurple("[REALM BUILDER]: Populating templates and resources...")
+    local printError = Error
 
     local cnts, sumCnt = {}, -1
     local ok, err = xpcall(function ()
         cnts, sumCnt = PopulateAllTemplates()
     end, debug.traceback)
     if not ok then
-        _P("[Realm Builder] Error populating templates: " .. err)  
+        printError("[Realm Builder] Error populating templates: " .. err)  
     end
     
-    local itemsFinished = Ext.Timer:MonotonicTime()
+    local itemsElapsed = Ext.Timer:MonotonicTime() - now
+    now = Ext.Timer:MonotonicTime()
     
     local effectCnt = nil
-    local ok2, err2 = xpcall(function ()
+    ok, err = xpcall(function ()
         effectCnt = RB_GLOBALS.MultiEffectManager:PopulateAllEffects()
     end, debug.traceback)
+    if not ok then
+        printError("[Realm Builder] Error populating effects: " .. err)  
+    end
+    local effectsElapsed = Ext.Timer:MonotonicTime() - now
+    now = Ext.Timer:MonotonicTime()
     
-    local effectsFinished = Ext.Timer:MonotonicTime()
+    local visualCnt, visualElapsed = nil, nil
+    ok, err = xpcall(function ()
+        visualCnt, visualElapsed = RB_GLOBALS.VisualManager:PopulateAllVisualResources()
+    end, debug.traceback)
+    if not ok then
+        printError("[Realm Builder] Error populating visual resources: " .. err)  
+    end
+
+    local ccavCnt, ccavElapsed = nil, nil
+    ok, err = xpcall(function ()
+        ccavCnt, ccavElapsed = RB_GLOBALS.CCAVManager:PopulateAll()
+    end, debug.traceback)
+    if not ok then
+        printError("[Realm Builder] Error populating CCAVs: " .. err)  
+    end
+    
+    local textureCnt, textureElapsed = nil, nil
+    ok, err = xpcall(function ()
+        textureCnt, textureElapsed = RB_GLOBALS.TextureManager:PopulateAllTextureResources()
+    end, debug.traceback)
+    if not ok then
+        printError("[Realm Builder] Error populating textures: " .. err)  
+    end
+
+    local populateInfoTable = {
+        Visuals = { Count = visualCnt, Time = visualElapsed },
+        CCAVs = { Count = ccavCnt, Time = ccavElapsed },
+        Textures = { Count = textureCnt, Time = textureElapsed },
+        Effects = { Count = effectCnt, Time = effectsElapsed },
+    }
+
+    local longest = -1
+    RBPrintPurple("[REALM BUILDER]: Population complete")
+    _P("")
     if sumCnt >= 0 then
-        RBPrintPurple("[Realm Builder] Populating " ..
-        sumCnt .. " root templates took " .. (itemsFinished - now) .. " ms:")
-        local longest = -1
         local toPrint = {}
         for k, v in RBUtils.SortedPairs(cnts) do
             longest = math.max(longest, #k)
             table.insert(toPrint, { k, v })
         end
-        for _, pair in pairs(toPrint) do
-            RBPrintPurple("    " .. RBStringUtils.PadSuffix(pair[1] .. ":", longest + 2) .. " " .. pair[2])
+        for k, v in RBUtils.SortedPairs(populateInfoTable) do
+            longest = math.max(longest, #k)
+            table.insert(toPrint, { k, v.Count, v.Time })
         end
-        RBPrintPurple("[Realm Builder] Populating Effects took " ..
-        (effectsFinished - itemsFinished) .. " ms for " .. effectCnt .. " effects")
+
+        RBPrintPurple(RBStringUtils.PadSuffix("RootTemplate:", longest + 2 + 4) .. " " .. sumCnt .. " time: " .. itemsElapsed .. " ms")
+        local other = false
+        for _, info in pairs(toPrint) do
+            if not other and info[3] then
+                RBPrintPurple("\nOther Resources:")
+                other = true
+            end
+            RBPrintPurple("    " .. RBStringUtils.PadSuffix(info[1] .. ":", longest + 2) .. " " .. info[2] .. (info[3] and (" time: " .. info[3] .. " ms") or ""))
+        end
     end
+
+    _P("")
+    RBPrintPurple(RBStringUtils.PadSuffix("Total population time:", longest + 2 + 4) .. " " .. (Ext.Timer:MonotonicTime() - begin) .. " ms")
 end
 
 EventsSubscriber.RegisterOnSessionLoaded(Realm_Builder_Population, 0)
-
 
 RegisterConsoleCommand("rb_open", function()
     if GLOBAL_DEBUG_WINDOW then

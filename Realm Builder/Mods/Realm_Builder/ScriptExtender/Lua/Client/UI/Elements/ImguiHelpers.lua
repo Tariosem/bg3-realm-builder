@@ -61,14 +61,16 @@ function ImguiHelpers.FocusWindow(window)
 end
 
 local focusFlag = Ext.Enums.GuiItemStatusFlags.Focused
---- @param extui ExtuiStyledRenderable
+--- @generic E : ExtuiStyledRenderable
+--- @param extui ExtuiStyledRenderable<E>
 --- @return boolean
 function ImguiHelpers.IsFocused(extui)
     if not extui then return false end
     return (extui.StatusFlags & focusFlag) ~= 0
 end
 
---- @param extui ExtuiStyledRenderable
+--- @generic E : ExtuiStyledRenderable
+--- @param extui ExtuiStyledRenderable<E>
 --- @param disabled boolean
 function ImguiHelpers.SetImguiDisabled(extui, disabled)
     if not extui then return end

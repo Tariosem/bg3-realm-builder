@@ -6,8 +6,7 @@
 --- @field Icon string
 
 
---- @class RB_CharacterManager : ManagerBase
---- @field Data table<string, RB_Character> Mapping of character UUIDs to RB_Character objects
+--- @class RB_CharacterManager : ManagerBase<RB_Character>
 --- @field new fun():RB_CharacterManager
 CharacterManager = _Class("CharacterManager", ManagerBase)
 

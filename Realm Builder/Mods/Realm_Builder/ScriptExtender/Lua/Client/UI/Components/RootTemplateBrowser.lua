@@ -1,6 +1,5 @@
---- @class RootTemplateBrowser : IconBrowser
---- @field DataManager ManagerBase
---- @field new fun(dataManager:ManagerBase, title:string):RootTemplateBrowser
+--- @class RootTemplateBrowser : IconBrowser<RB_Scenery>
+--- @field new fun(dataManager:ManagerBase<RB_Scenery>, title:string):RootTemplateBrowser
 RootTemplateBrowser = _Class("RootTemplateBrowser", IconBrowser)
 
 function RootTemplateBrowser:SubclassInit()
@@ -19,7 +18,7 @@ end
 
 --- @param entry RB_Scenery
 --- @param cell ExtuiTableCell
---- @return ExtuiImageButton|ExtuiStyledRenderable?
+--- @return ExtuiButton|ExtuiImageButton|nil
 function RootTemplateBrowser:RenderIcon(entry, cell)
     if entry.Uuid == nil then
         Warning("[Browser] Icon with UUID: " .. tostring(entry.Uuid) .. " is missing Uuid field. Browser: " .. tostring(self.displayName))

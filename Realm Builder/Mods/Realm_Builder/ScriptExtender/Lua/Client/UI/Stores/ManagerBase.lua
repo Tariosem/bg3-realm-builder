@@ -1,10 +1,14 @@
---- @class ManagerBase
---- @field Data table<string, table>
+--- @class ManagerBase<T>
+--- @field Data table<string, T>
 --- @field CountGroupsAndTags fun(self):table<string, number>, table<string, number>, table<string, string[]>, table<string, string[]>
 --- @field AddTagToData fun(self, uuid:string, tag:string)
+--- @field AddTagToDataNonCustomization fun(self, uuid:string, tag:string)
 --- @field RemoveTagFromData fun(self, uuid:string, tag:string)
+--- @field HasTagInData fun(self, uuid:string, tag:string):boolean
 --- @field ChangeDataGroup fun(self, uuid:string, group:string)
 --- @field ChangeDataNote fun(self, uuid:string, note:string)
+--- @field ClearTag fun(self, tagName:string)
+--- @field RenameTag fun(self, oldName:string, newName:string):boolean
 --- @field Clear fun(self)
 --- @field new fun(self):ManagerBase
 --- @field populated boolean
@@ -14,6 +18,7 @@
 --- @field groupMap table<string, table<string, boolean>>
 --- @field groupCount table<string, number>
 --- @field tagCount table<string, number>
+--- @field __init fun(self)
 ManagerBase = _Class("ManagerBase")
 
 function ManagerBase:__init()

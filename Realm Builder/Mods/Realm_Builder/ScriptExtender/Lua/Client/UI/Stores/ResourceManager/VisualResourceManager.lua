@@ -1,10 +1,10 @@
---- @class VisualResourceManager : ManagerBase
---- @field SetupVisualBrowser fun(self):RootTemplateBrowser
+--- @class VisualResourceManager : ManagerBase<RB_Visual>
+--- @field PopulateAllVisualResources fun(self):number, number -- returns count, time taken
+--- @field new fun():VisualResourceManager
 VisualResourceManager = _Class("VisualResourceManager", ManagerBase)
 
---- @class CCAVManager : ManagerBase
---- @field PopulateAll fun(self)
---- @field SetupCCAVBrowser fun(self):CCAVBrowser
+--- @class CCAVManager : ManagerBase<RB_CCAV>
+--- @field PopulateAll fun(self):number, number -- returns count, time taken
 --- @field new fun():CCAVManager
 CCAVManager = _Class("CCAVManager", ManagerBase)
 
@@ -14,10 +14,11 @@ CCAVManager = _Class("CCAVManager", ManagerBase)
 --- @field Uuid GUIDSTRING
 
 function CCAVManager:PopulateAll()
-    RBPrintPurple("[Realm Builder] Populating Character Creation Appearance Visuals...")
+    --RBPrintPurple("[Realm Builder] Populating Character Creation Appearance Visuals...")
     local now = Ext.Timer.MonotonicTime()
     
     local ccavIds = Ext.StaticData.GetAll("CharacterCreationAppearanceVisual")
+    local ccsvIds = Ext.StaticData.GetAll("CharacterCreationSharedVisual")
     local uuid_blacklist = RESOUCE_UUID_BLACKLIST or {}
 
     local bodyTypeToBodyShapeToTag = {
@@ -48,18 +49,23 @@ function CCAVManager:PopulateAll()
         },
         ["Races"] = {},
         ["Slots"] = {},
+        ["Bones"] = {}
     })
 
     local raceCache = {}
+    local tagCache = {}
     local isModdedCache = {}
     local newSlot = {}
     for _,ccavId in pairs(ccavIds) do
         if uuid_blacklist[ccavId] then goto continue end
         local ccav = Ext.StaticData.Get(ccavId, "CharacterCreationAppearanceVisual") --[[@as ResourceCharacterCreationAppearanceVisual]]
+        local vres = Ext.Resource.Get(ccav.VisualResource, "Visual") --[[@as ResourceVisualResource]]
+        local vresName = vres and RBStringUtils.GetLastPath(vres.SourceFile) or "Unknown Visual Resource"
         local raceRes = Ext.StaticData.Get(ccav.RaceUUID, "Race") --[[@as ResourceRace]]
 
         self.Data[ccavId] = {
-            DisplayName = ccav.DisplayName:Get(),
+            DisplayName = ccav.DisplayName:Get() or "Unknown CCAV",
+            VisualName = vresName,
             Uuid = ccavId,
         }
 
@@ -78,7 +84,7 @@ function CCAVManager:PopulateAll()
         self:AddTagToData(ccavId, ccav.SlotName)
         local bodyTypeTag = bodyTypeToBodyShapeToTag[ccav.BodyType] and bodyTypeToBodyShapeToTag[ccav.BodyType][ccav.BodyShape]
         if not bodyTypeTag then
-            Warning("[Realm Builder] Unknown BodyType/BodyShape combination for CCAV " .. ccavId .. ": BodyType=" .. tostring(ccav.BodyType) .. ", BodyShape=" .. tostring(ccav.BodyShape))
+            --Warning("[Realm Builder] Unknown BodyType/BodyShape combination for CCAV " .. ccavId .. ": BodyType=" .. tostring(ccav.BodyType) .. ", BodyShape=" .. tostring(ccav.BodyShape))
             goto continue
         end
         self:AddTagToData(ccavId, bodyTypeTag[1])
@@ -86,16 +92,70 @@ function CCAVManager:PopulateAll()
             newSlot[ccav.SlotName] = true
             self.tagTree:Reparent(ccav.SlotName, "Slots")
         end
+        for _, tag in pairs(ccav.Tags) do
+            if tagCache[tag] and tagCache[tag] ~= "" then
+                self:AddTagToData(ccavId, tagCache[tag])
+            else
+                local tagRes = Ext.StaticData.Get(tag, "Tag") --[[@as ResourceTag]]
+                if tagRes and tagRes.DisplayName:Get() and tagRes.DisplayName:Get() ~= "" then
+                    local tagName = tagRes.DisplayName:Get()
+                    --- @diagnostic disable-next-line
+                    self:AddTagToData(ccavId, tagName)
+                    tagCache[tag] = tagName
+                else
+                    tagCache[tag] = ""
+                end
+            end
+        end
         ::continue::
     end
 
-
+    local seenBones = {}
+    for _,ccsvId in pairs(ccsvIds) do
+        if uuid_blacklist[ccsvId] then goto continue end
+        local ccsv = Ext.StaticData.Get(ccsvId, "CharacterCreationSharedVisual") --[[@as ResourceCharacterCreationSharedVisual]]
+        local vres = Ext.Resource.Get(ccsv.VisualResource, "Visual") --[[@as ResourceVisualResource]]
+        local vresName = vres and RBStringUtils.GetLastPath(vres.SourceFile) or "Unknown Visual Resource"
+        self.Data[ccsvId] = {
+            DisplayName = ccsv.DisplayName:Get() or "Unknown CCSV",
+            VisualName = vresName,
+            Uuid = ccsvId,
+        }
+        self:AddTagToData(ccsvId, "Shared Visuals")
+        self:AddTagToData(ccsvId, ccsv.SlotName)
+        if ccsv.BoneName and ccsv.BoneName ~= "" then
+            self:AddTagToData(ccsvId, ccsv.BoneName)
+            if not seenBones[ccsv.BoneName] then
+                seenBones[ccsv.BoneName] = true
+                self.tagTree:Reparent(ccsv.BoneName, "Bones")
+            end
+        end
+        for _, tag in pairs(ccsv.Tags) do
+            if tagCache[tag] and tagCache[tag] ~= "" then
+                self:AddTagToData(ccsvId, tagCache[tag])
+            else
+                local tagRes = Ext.StaticData.Get(tag, "Tag") --[[@as ResourceTag]]
+                if tagRes and tagRes.DisplayName:Get() and tagRes.DisplayName:Get() ~= "" then
+                    --- @diagnostic disable-next-line
+                    self:AddTagToData(ccsvId, tagRes.DisplayName:Get())
+                    tagCache[tag] = tagRes.DisplayName:Get()
+                else
+                    tagCache[tag] = ""
+                end
+            end
+        end
+        ::continue::
+    end
 
     self.populated = true
     raceCache = nil
     isModdedCache = nil
     newSlot = nil
-    RBPrintPurple("[Realm Builder] Populated " .. #ccavIds .. " Character Creation Appearance Visuals in" .. string.format(" %.2f", Ext.Timer.MonotonicTime() - now) .. " ms.")
+    --RBPrintPurple("[Realm Builder] Populated " .. #ccavIds + #ccsvIds .. " Character Creation Appearance Visuals in" .. string.format(" %.2f", Ext.Timer.MonotonicTime() - now) .. " ms.")
+
+    tagCache = nil
+    raceCache = nil
+    return #ccavIds + #ccsvIds, Ext.Timer.MonotonicTime() - now
 end
 
 --- @class RB_Visual
@@ -106,7 +166,7 @@ end
 function VisualResourceManager:PopulateAllVisualResources()
     local visualResources = Ext.Resource.GetAll("Visual")
     local now = Ext.Timer.MonotonicTime()
-    RBPrintPurple("[Realm Builder] Populating Visual Resources...")
+    --RBPrintPurple("[Realm Builder] Populating Visual Resources...")
     local uuid_blacklist = RESOUCE_UUID_BLACKLIST or {}
     for _, resId in pairs(visualResources) do
         if uuid_blacklist[resId] then goto continue end
@@ -124,26 +184,13 @@ function VisualResourceManager:PopulateAllVisualResources()
     end
     
     local elapsed = Ext.Timer.MonotonicTime() - now
-    RBPrintPurple("[Realm Builder] Populated " .. #visualResources .. " visual resources in " .. string.format("%.2f", elapsed) .. " ms.")
+    --RBPrintPurple("[Realm Builder] Populated " .. #visualResources .. " visual resources in " .. string.format("%.2f", elapsed) .. " ms.")
 
 
     self.populated = true
+    return #visualResources, elapsed
 end
 
-function VisualResourceManager:SetupVisualBrowser()
-    local visualBrowser = RootTemplateBrowser.new(self, "Visual - Browser")
-
-    visualBrowser.selectedFields = { ["SourceFile"] = true }
-    visualBrowser.iconTooltipName = "SourceFile"
-    visualBrowser.tooltipNameOptions = { "SourceFile", "Uuid"}
-
-    return visualBrowser
-end
-
-function CCAVManager:SetupCCAVBrowser()
-    local ccavBrowser = CCAVBrowser.new(self, "Character Creation Appearance Visuals - Browser")
-    return ccavBrowser
-end
 
 function CCAVManager:CreateDynamicTags(uuid)
     self:ClearTag(self.lastDynamicTag)
@@ -168,46 +215,4 @@ function CCAVManager:CreateDynamicTags(uuid)
     return true
 end
 
-local function populateVisualResource()
-    if not RB_GLOBALS.VisualManager then
-        RB_GLOBALS.VisualManager = VisualResourceManager.new()
-    end
-    RB_GLOBALS.VisualManager:PopulateAllVisualResources()
-end
-
-local function populateCCAVResource()
-    if not RB_GLOBALS.CCAVManager then
-        RB_GLOBALS.CCAVManager = CCAVManager.new()
-    end
-    RB_GLOBALS.CCAVManager:PopulateAll()
-end
-
-if Ext.Debug.IsDeveloperMode() then
-    EventsSubscriber.RegisterOnSessionLoaded(function ()
-        populateVisualResource()
-        populateCCAVResource()
-    end)
-end
-
-RegisterConsoleCommand("rb_enable_visual_manager", function ()
-    if RB_GLOBALS.VisualManager and RB_GLOBALS.VisualManager.populated then
-        RBPrintPurple("[Realm Builder] Visual Resource Manager is already enabled and populated.")
-        return
-    end
-    populateVisualResource()
-    populateCCAVResource()
-
-    local mainMenu = RB_GLOBALS.MainMenu
-    if mainMenu and mainMenu.browsers and not mainMenu.browsers.visual then
-        mainMenu.browsers.visual = RB_GLOBALS.VisualManager:SetupVisualBrowser()
-        mainMenu.browsers.visual:CreateCachedSort("SourceFile")
-        Debug("Visual Browser initialized.")
-        mainMenu.browsers.CCAV = RB_GLOBALS.CCAVManager:SetupCCAVBrowser()
-        mainMenu.browsers.CCAV:CreateCachedSort("DisplayName")
-        Debug("CCAV Browser initialized.")
-        
-        mainMenu.browserBtns["visual"].Visible = true
-        mainMenu.browserBtns["CCAV"].Visible = true
-    end
-
-end, "Enables and populates the Visual Resource Manager.")
+--[[]]

@@ -1,10 +1,11 @@
+--- @generic T
 --- @class RB_MainMenu
 --- @field isValid boolean
 --- @field effectsMenu EffectsMenu
 --- @field entityMenu OutlinerMenu
 --- @field sceneMenu SceneMenu
 --- @field styleMenu StyleMenu
---- @field browsers table<string, IconBrowser>
+--- @field browsers table<string, IconBrowser<T>>
 --- @field panel ExtuiWindowBase
 --- @field tabBar ExtuiTabBar
 --- @field FocusOnTab fun(self:RB_MainMenu, guid:string, doDetach:boolean|nil)
@@ -180,64 +181,75 @@ function RealmBuilderMainMenu:Render()
     end)
 
     Timer:Ticks(7, function()
-        Debug("Initializing Browsers...")
-        self.browsers.item = ItemBrowser.new(RB_GLOBALS.ItemManager, "Item - Browser")
-        self.browsers.item:CreateCachedSort("DisplayName")
-        Debug("Item Browser initialized.")
-    end)
+        local begin = Ext.Timer.MonotonicTime()
+        RBPrintPurple("[REALM BUILDER]: Indexing resources for browsers...")
 
-    Timer:Ticks(8, function()
-        self.browsers.effect = EffectBrowser.new(RB_GLOBALS.MultiEffectManager, "Effect - Browser")
-        self.browsers.effect:CreateCachedSort("DisplayName")
-        Debug("Effect Browser initialized.")
-    end)
-
-    Timer:Ticks(9, function()
-        self.browsers.character = RootTemplateBrowser.new(RB_GLOBALS.CharacterManager, "Character - Browser")
-        self.browsers.character.templateType = "character"
-        self.browsers.character:CreateCachedSort("TemplateName")
-        Debug("Character Browser initialized.")
-    end)
-
-    Timer:Ticks(9, function()
-        self.browsers.scenery = RootTemplateBrowser.new(RB_GLOBALS.SceneryManager, "Scenery - Browser")
-        self.browsers.scenery:CreateCachedSort("TemplateName")
-        Debug("Scenery Browser initialized.")
-    end)
-
-    Timer:Ticks(9, function()
-        self.browsers.prefab = RootTemplateBrowser.new(RB_GLOBALS.PrefabManager, "Prefab - Browser")
-        self.browsers.prefab.templateType = "prefab"
-        self.browsers.prefab:CreateCachedSort("TemplateName")
-        Debug("Prefab Browser initialized.")
-    end)
-
-    Timer:Ticks(9, function()
-        self.browsers.construction = RootTemplateBrowser.new(RB_GLOBALS.TileConstructionManager, "Tile Construction - Browser")
-        self.browsers.construction:CreateCachedSort("TemplateName")
-        Debug("Tile Construction Browser initialized.")
-    end)
-
-    Timer:Ticks(10, function()
-        if not RB_GLOBALS.VisualManager or not RB_GLOBALS.VisualManager.populated then
-            return
+        local ok, err = xpcall(function ()
+            self.browsers.item = ItemBrowser.new(RB_GLOBALS.ItemManager, "Item - Browser")
+            self.browsers.item:CreateCachedSort("DisplayName")
+        end, debug.traceback)
+        local function printError(browserName)
+            if ok then return end
+            RBPrintPurple("REALM BUILDER: Failed to index resources for " .. browserName .. " browser: " .. err)
         end
-        local visualBrowser = RB_GLOBALS.VisualManager:SetupVisualBrowser()
-        self.browsers.visual = visualBrowser
-        self.browsers.visual:CreateCachedSort("SourceFile")
-        Debug("Visual Browser initialized.")        
-    end)
+        printError("Item")
 
-    Timer:Ticks(9, function (timerID)
-        if not RB_GLOBALS.CCAVManager or not RB_GLOBALS.CCAVManager.populated then
-            return
-        end
-        self.browsers.CCAV = RB_GLOBALS.CCAVManager:SetupCCAVBrowser()
-        self.browsers.CCAV:CreateCachedSort("DisplayName")
-        Debug("CCAV Browser initialized.")
-    end)
+        ok, err = xpcall(function ()
+            self.browsers.effect = EffectBrowser.new(RB_GLOBALS.MultiEffectManager, "Effect - Browser")
+            self.browsers.effect:CreateCachedSort("DisplayName")
+        end, debug.traceback)
+        printError("Effect")
 
-    Timer:Ticks(10, function()
+        ok, err = xpcall(function ()
+            self.browsers.character = RootTemplateBrowser.new(RB_GLOBALS.CharacterManager, "Character - Browser")
+            self.browsers.character.templateType = "character"
+            self.browsers.character:CreateCachedSort("TemplateName")
+        end, debug.traceback)
+        printError("Character")
+
+        ok, err = xpcall(function ()
+            self.browsers.scenery = RootTemplateBrowser.new(RB_GLOBALS.SceneryManager, "Scenery - Browser")
+            self.browsers.scenery:CreateCachedSort("TemplateName")
+        end, debug.traceback)
+        printError("Scenery")
+
+        ok, err = xpcall(function ()
+            self.browsers.prefab = RootTemplateBrowser.new(RB_GLOBALS.PrefabManager, "Prefab - Browser")
+            self.browsers.prefab.templateType = "prefab"
+            self.browsers.prefab:CreateCachedSort("TemplateName")
+        end, debug.traceback)
+        printError("Prefab")
+
+        ok, err = xpcall(function ()
+            self.browsers.construction = RootTemplateBrowser.new(RB_GLOBALS.TileConstructionManager, "Tile Construction - Browser")
+            self.browsers.construction:CreateCachedSort("TemplateName")
+        end, debug.traceback)
+        printError("Tile Construction")
+
+        ok, err = xpcall(function ()
+            local visualBrowser = RootTemplateBrowser.new(RB_GLOBALS.VisualManager, "Visual - Browser")
+
+        visualBrowser.selectedFields = { ["SourceFile"] = true }
+        visualBrowser.iconTooltipName = "SourceFile"
+        visualBrowser.tooltipNameOptions = { "SourceFile", "Uuid"}
+
+            self.browsers.visual = visualBrowser
+            self.browsers.visual:CreateCachedSort("SourceFile")    
+        end, debug.traceback)
+        printError("Visual")
+
+        ok, err = xpcall(function ()
+            local ccavBrowser = CCAVBrowser.new(RB_GLOBALS.CCAVManager, "Character Creation Visuals - Browser")
+
+            ccavBrowser.tooltipNameOptions = {"DisplayName", "VisualName", "Uuid"}
+
+            self.browsers.CCAV = ccavBrowser
+            self.browsers.CCAV:CreateCachedSort("DisplayName")
+
+        end, debug.traceback)
+        printError("Character Creation Visuals")
+
+        RBPrintPurple("[REALM BUILDER]: Finished indexing resources for browsers, time: " .. Ext.Timer.MonotonicTime() - begin .. " ms.")
         self:RenderBrowserMenu()
     end)
 

@@ -22,6 +22,27 @@ local function removeVisual(ccavId, target)
     })
 end
 
+--- @type table<string, table<string, boolean>> -- [targetGuid] = { [ccavId] = true }
+local originVisuals = {}
+--- @param target string
+local function recordVisuals(target)
+    local ent = Ext.Entity.Get(target)
+    if not ent or not ent.CharacterCreationAppearance then return end
+
+    originVisuals[target] = {}
+    for _, visual in pairs(ent.CharacterCreationAppearance.Visuals) do
+        originVisuals[target][visual] = true
+    end
+end
+
+--- @param target string
+--- @param visualId string
+--- @return boolean
+local function hasVisual(target, visualId)
+    if not originVisuals[target] then return false end
+    return originVisuals[target][visualId] == true
+end
+
 function CCAVBrowser:SubclassInit()
     RootTemplateBrowser.SubclassInit(self)
     self.selectedFields = { ["DisplayName"] = true }
@@ -31,7 +52,10 @@ end
 
 function CCAVBrowser:OnSelectChange(guid)
     self.dataManager:CreateDynamicTags(guid)
-    self:RefreshTagFilder()
+    if EntityHelpers.IsPartyMember(guid) then
+        recordVisuals(guid)
+    end
+    self:RefreshTagFilter()
 end
 
 function CCAVBrowser:RenderIcon(entry, cell)
@@ -57,11 +81,7 @@ function CCAVBrowser:RenderIcon(entry, cell)
             popup.IDContext = entry.Uuid .. "Popup" .. RBUtils.Uuid_v4()
             local attrs = {
                 Uuid = entry.Uuid,
-                TemplateName = entry.TemplateName,
-                Icon = entry.Icon,
-                TemplateId = entry.TemplateId,
-                SourceFile = entry.SourceFile,
-                Path = entry.Path,
+                VisualName = entry.VisualName
             }
             ImguiElements.AddReadOnlyAttrTable(popup, attrs)
         end
@@ -76,41 +96,37 @@ function CCAVBrowser:RenderIcon(entry, cell)
             local actTab = ImguiElements.AddContextMenu(rPopup, "Actions")
             actTab:AddItem("Add Custom Visual Override", function()
                 local target = self:GetSelected()
-                addVisual(entry.Uuid, target)
-                HistoryManager:PushCommand({
-                    Name = "Add Custom Visual Override",
-                    Undo = function ()
-                        removeVisual(entry.Uuid, target)
-                    end,
-                    Redo = function ()
-                        addVisual(entry.Uuid, target)
-                    end
-                })
+                addVisual(entry.Uuid, target) 
+                Ext.Timer.WaitForRealtime(100, function()
+                    recordVisuals(target) -- record so won't be removed on hover leave
+                end)
             end)
 
             actTab:AddItem("Remove Custom Visual Override", function()
                 local target = self:GetSelected()
-                NetChannel.CallOsiris:RequestToServer({
-                    Function = "RemoveCustomVisualOvirride",
-                    Args = {
-                        target,
-                        entry.Uuid
-                    }
-                }, function (response)
-                    
+                removeVisual(entry.Uuid, target)
+                Ext.Timer.WaitForRealtime(100, function()
+                    recordVisuals(target)
                 end)
-                HistoryManager:PushCommand({
-                    Name = "Remove Custom Visual Override",
-                    Undo = function ()
-                        addVisual(entry.Uuid, target)
-                    end,
-                    Redo = function ()
-                        removeVisual(entry.Uuid, target)
-                    end
-                })
             end)
         end
         rPopup:Open()
+    end
+
+    iconImage.OnHoverEnter = function()
+        local selected = self:GetSelected()
+        if not originVisuals[selected] then
+            recordVisuals(selected)
+        end
+        if hasVisual(selected, entry.Uuid) then return end
+        addVisual(entry.Uuid, selected) -- temp preview
+    end
+
+    iconImage.OnHoverLeave = function()
+        local selected = self:GetSelected()
+        if not hasVisual(selected, entry.Uuid) then
+            removeVisual(entry.Uuid, selected)
+        end
     end
 
     iconImage:Tooltip():AddText(entry[self.iconTooltipName] or "Unknown")

@@ -1,17 +1,18 @@
 --- @class ItemBrowser : IconBrowser
+--- @field dataManager RB_ItemManager
 ItemBrowser = _Class("ItemBrowser", IconBrowser)
 
 ItemBrowser.tooltipNameOptions = {"DisplayName", "TemplateName", "StatsName"}
 
 function ItemBrowser:OnSelectChange(guid)
     if self.dataManager:CheckHostValidEquipmentVisual(guid) then
-        self:RefreshTagFilder()
+        self:RefreshTagFilter()
     end
 end
 
 ---@param entry RB_Item
 ---@param cell ExtuiTableCell
----@return ExtuiImageButton|ExtuiStyledRenderable?
+---@return ExtuiImageButton|ExtuiSelectable?
 function ItemBrowser:RenderIcon(entry, cell)
     if entry.Uuid == nil then
         Warning("[ItemIconBrowser] Icon with UUID: " .. tostring(entry.Uuid) .. " is missing Uuid field.")

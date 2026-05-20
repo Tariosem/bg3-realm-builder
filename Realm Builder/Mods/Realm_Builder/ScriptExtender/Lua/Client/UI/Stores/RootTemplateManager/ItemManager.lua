@@ -44,7 +44,7 @@ function ItemManager:CheckHostValidEquipmentVisual(guid)
         self.tagTree:Remove(self.lastDynamicTag)
     end
 
-    local entity = guid and UuidToHandle(guid) or _C()
+    local entity = guid and Ext.Entity.Get(guid) or _C()
     self.lastPartyMember = guid
     if not entity then return false end
     if not EntityHelpers.IsPartyMember(entity) then return false end
@@ -62,7 +62,6 @@ function ItemManager:CheckHostValidEquipmentVisual(guid)
 
     local data = self:GetEquipmentsForRace(equipmentRace)
     if not data then
-        Info("No valid equipment visual for host")
         return false
     end
     local cnt = 0
@@ -71,11 +70,13 @@ function ItemManager:CheckHostValidEquipmentVisual(guid)
         self.tagCount[tag] = (self.tagCount[tag] or 0) + 1
         self.tagMap[tag] = self.tagMap[tag] or {}
         self.tagMap[tag][uuid] = true
+        self.tagTree:AddLeaf(tag, 0, TreeTable.GetRootKey())
         cnt = cnt + 1
     end
 
     return true
 end
+
 
 function ItemManager:HardCodeHierachy()
     local tree = self.tagTree

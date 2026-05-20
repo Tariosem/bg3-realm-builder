@@ -1,23 +1,27 @@
 ---
 
---- @class IconBrowser
+--- @class IconBrowser<K>
 --- @field panel ExtuiWindow
 --- @field browser ExtuiChildWindow
 --- @field browserOptions ExtuiTable
---- @field dataManager ManagerBase
+--- @field dataManager ManagerBase<K>
 --- @field iconsImage table<string, ExtuiImageButton|ExtuiStyledRenderable>
 --- @field tooltipNameOptions string[]
---- @field CreateCachedSort fun(self:IconBrowser, field:string)
---- @field OnSelectChange fun(self:IconBrowser, guid:GUIDSTRING)
---- @field Toggle fun(self:IconBrowser)
---- @field Close fun(self:IconBrowser)
---- @field RenderPage fun(self:IconBrowser)
---- @field SaveToFile fun(self:IconBrowser, field:string, content:any):boolean ok
---- @field new fun(dataManager:ManagerBase, displayName:string):IconBrowser
---- @field SubclassInit fun(self:IconBrowser)
+--- @field CreateCachedSort fun(self, field:string)
+--- @field OnSelectChange fun(self, guid:GUIDSTRING)
+--- @field Toggle fun(selfr)
+--- @field Close fun(self)
+--- @field RenderPage fun(self)
+--- @field RenderCustomizationTab fun(self)
+--- @field RefreshTagFilter fun(self)
+--- @field GetSelected fun(self):GUIDSTRING
+--- @field SaveToFile fun(self, field:string, content:any):boolean ok
+--- @field new fun(dataManager:ManagerBase<K>, displayName:string):IconBrowser<K>
+--- @field SubclassInit fun(self)
 IconBrowser = _Class("IconBrowser")
 
---- @param dataManager ManagerBase
+--- @generic K
+--- @param dataManager ManagerBase<K>
 --- @param DisplayName string
 function IconBrowser:__init(dataManager, DisplayName)
     local screenWidth, screenHeight = UIHelpers.GetScreenSize()
@@ -139,7 +143,7 @@ function IconBrowser:SetupInputSubs()
                 if self.updateTagsFn[entry.Uuid] then
                     self.updateTagsFn[entry.Uuid]()
                 end
-                self:RefreshTagFilder()
+                self:RefreshTagFilter()
                 if self.selectedTags[tag] or self.excludeTags[tag] then
                     debounceSearch()
                 end
@@ -376,7 +380,7 @@ function IconBrowser:RenderSearchOptionsMenu()
 
     self.tagsFilterContainer = self.optionRow:AddCell()
 
-    self:RefreshTagFilder()
+    self:RefreshTagFilter()
 
     self.groupFilterContainer = self.optionRow:AddCell()
 
@@ -827,7 +831,6 @@ function IconBrowser:RenderCustomizationTab(popup, entry)
     local custom = self.dataManager.customizationData[entry.Uuid] or {}
 
     local noteInput = filterTab:AddInputText(GetLoca("Note"))
-
     noteInput.Text = custom.Note or ""
 
     local function autoSaveChanges()
@@ -836,7 +839,9 @@ function IconBrowser:RenderCustomizationTab(popup, entry)
         end
     end
 
-    local noteDebounceFunc = RBUtils.Debounce(100, function(text)
+    --- @param text ExtuiInputText
+    local noteDebounceFunc = function(text)
+        if not text.EnterReturnsTrue then return end
         self.tempDisableSearch = true
 
         custom = self.dataManager.customizationData[entry.Uuid] or {}
@@ -858,7 +863,7 @@ function IconBrowser:RenderCustomizationTab(popup, entry)
         self.dataManager:ChangeDataNote(entry.Uuid, newNote)
         autoSaveChanges()
         self.tempDisableSearch = false
-    end)
+    end
 
     local computeSizeAndSet = function()
         local newText = noteInput.Text
@@ -876,18 +881,22 @@ function IconBrowser:RenderCustomizationTab(popup, entry)
         noteInput.SizeHint = { width, height }
     end
 
+    noteInput:Tooltip():AddText(GetLoca("[Enter] to save changes"))
     noteInput.Multiline = true
-    noteInput.OnChange = function()
+    noteInput.EnterReturnsTrue = true
+    noteInput.OnChange = function(e)
         computeSizeAndSet()
-        noteDebounceFunc(noteInput)
+        noteDebounceFunc(e)
     end
     computeSizeAndSet()
 
     local groupInput = filterTab:AddInputText(GetLoca("Group"))
-
+    groupInput:Tooltip():AddText(GetLoca("[Enter] to save changes"))
     groupInput.Text = custom.Group or ""
+    groupInput.EnterReturnsTrue = true
 
-    groupInput.OnChange = RBUtils.Debounce(1000, function(text)
+    groupInput.OnChange = function(text)
+        if not text.EnterReturnsTrue then return end
         self.tempDisableSearch = true
         local newGroup = text.Text
 
@@ -909,22 +918,16 @@ function IconBrowser:RenderCustomizationTab(popup, entry)
         autoSaveChanges()
         self:AddGroupFilter()
         self.tempDisableSearch = false
-    end)
+    end
 
     local tagsInput = filterTab:AddInputText(GetLoca("Tags"))
-
-    local tagsAddButton = filterTab:AddButton("+")
-    local tagsRemoveButton = filterTab:AddButton(" - ")
-
-    tagsAddButton:Tooltip():AddText(GetLoca("Add Tag"))
-    tagsRemoveButton:Tooltip():AddText(GetLoca("Remove Tag"))
+    tagsInput.EnterReturnsTrue = true
+    tagsInput:Tooltip():AddText(GetLoca("[Enter] to add tag or remove if it already exists"))
 
     local tagsPrefix = filterTab:AddText(GetLoca("Tags") .. ":")
-    local allTags = filterTab:AddText(">")
-
-    tagsPrefix.SameLine = true
-    tagsRemoveButton.SameLine = true
-    allTags.SameLine = true
+    local tagGroup = filterTab:AddGroup("Tags Group")
+    
+    tagGroup.SameLine = true
 
     local function updateTags()
         custom = self.dataManager.customizationData[entry.Uuid]
@@ -935,11 +938,21 @@ function IconBrowser:RenderCustomizationTab(popup, entry)
                 table.remove(tags, _)
             end
         end
+        ImguiHelpers.DestroyAllChildren(tagGroup)
         if next(tags) == nil then
-            allTags.Label = ""
+            
         else
-            local tagText = table.concat(tags, ", ")
-            allTags.Label = tagText
+            for _, tag in ipairs(tags) do
+                tagGroup:AddButton("X##" .. tag).OnClick = function()
+                    self.dataManager:RemoveTagFromData(entry.Uuid, tag)
+                    updateTags()
+                    self:RefreshTagFilter()
+                    if self.selectedTags[tag] or self.excludeTags[tag] then
+                        self:Search()
+                    end
+                end
+                tagGroup:AddText(tag).SameLine = true
+            end
         end
         autoSaveChanges()
     end
@@ -947,49 +960,23 @@ function IconBrowser:RenderCustomizationTab(popup, entry)
     self.updateTagsFn[entry.Uuid] = updateTags
 
     tagsInput.OnChange = function(text)
-        if text.Text == "" then
-            tagsAddButton.Disabled = true
-            tagsRemoveButton.Disabled = true
-        else
-            tagsAddButton.Disabled = false
-            tagsRemoveButton.Disabled = false
-        end
-    end
+        if not text.EnterReturnsTrue or text.Text == "" then return end
 
-    tagsAddButton.OnClick = function()
-        self.tempDisableSearch = true
-        local tag = tagsInput.Text
-        if tag and tag ~= "" then
-            self.dataManager:AddTagToData(entry.Uuid, tag)
-            tagsInput.Text = ""
-            updateTags()
-            self:RefreshTagFilder()
-        else
-            updateTags()
-            self:RefreshTagFilder()
-        end
-        self.tempDisableSearch = false
-    end
-
-    tagsRemoveButton.OnClick = function()
-        self.tempDisableSearch = true
-        local tag = tagsInput.Text
-        if tag and tag ~= "" then
+        local tag = text.Text
+        if self.dataManager:HasTagInData(entry.Uuid, tag) then
             self.dataManager:RemoveTagFromData(entry.Uuid, tag)
-            tagsInput.Text = ""
-            tagsAddButton.Disabled = true
-            tagsRemoveButton.Disabled = true
-            updateTags()
-            self:RefreshTagFilder()
         else
+            self.dataManager:AddTagToData(entry.Uuid, tag)
         end
-        self.tempDisableSearch = false
+        updateTags()
+        self:RefreshTagFilter()
+        text.Text = ""
+        if self.selectedTags[tag] or self.excludeTags[tag] then
+            self:Search()
+        end
     end
 
     updateTags()
-
-    tagsAddButton.Disabled = true
-    tagsRemoveButton.Disabled = true
 
     noteInput.ItemWidth = self.browserWidth * 0.4
     groupInput.ItemWidth = self.browserWidth * 0.4
