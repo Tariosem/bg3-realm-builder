@@ -642,7 +642,14 @@ Enums.TransformEditorSpace = {
     Local = "Local",
     View = "View",
     Cursor = "Cursor",
-    Parent = "Parent"
+    Parent = "Parent",
+    Active = "Active",
+    [1] = "World",
+    [2] = "Local",
+    [3] = "View",
+    [4] = "Cursor",
+    [5] = "Parent",
+    [6] = "Active"
 }
 
 --- @enum TransformEditorMode

@@ -277,12 +277,15 @@ local function defaultGetCandidates(frustrumAABB)
     local extents = mul(sub(frustrumAABB.Max, frustrumAABB.Min), 0.5)
     local offset = {0,0,0.1}
 
+    local center = position
+    local radius = eml.Length(extents)
+
     --- @diagnostic disable-next-line
     --local allIntersects = Ext.Level.TestBox(position, extents, allPhyType, include, 0)
     --RainbowDumpTable(allIntersects)
 
     --- @diagnostic disable-next-line
-    local allIntersects = Ext.Level.SweepBoxAll(frustrumAABB.Min, frustrumAABB.Max, extents, allPhyType, include, 0, contextInt)
+    local allIntersects = Ext.Level.TestSphere(center, radius, extents, allPhyType, include, 0, contextInt)
 
     local returns = {}
     for _,phyObj in pairs(allIntersects and allIntersects.Shapes or {}) do
@@ -292,6 +295,19 @@ local function defaultGetCandidates(frustrumAABB)
     end
 
     return returns
+end
+
+--- @param sphereCenter vec3
+--- @param sphereRadius number
+--- @param aabb AABB
+local function sphereIntersectsAABB(sphereCenter, sphereRadius, aabb)
+    local closestPoint = {
+        max(aabb.Min[1], min(sphereCenter[1], aabb.Max[1])),
+        max(aabb.Min[2], min(sphereCenter[2], aabb.Max[2])),
+        max(aabb.Min[3], min(sphereCenter[3], aabb.Max[3]))
+    }
+    local toSphere = sub(sphereCenter, closestPoint)
+    return dot(toSphere, toSphere) <= sphereRadius * sphereRadius
 end
 
 --- @param frustrumAABB AABB 
@@ -310,8 +326,7 @@ local function bruteForceGetCandidates(frustrumAABB)
     for _, ent in pairs(allScenery) do
         if not ent.Visual or not ent.Visual.Visual or not ent.Visual.Visual.WorldBound then goto continue end
         if not ent.Transform or not ent.Transform.Transform then goto continue end
-        local dis = eml.Length(sub(position, ent.Transform.Transform.Translate))
-        if dis < radius then
+        if sphereIntersectsAABB(position, radius, ent.Visual.Visual.WorldBound) then
             table.insert(returns, ent)
         end
 

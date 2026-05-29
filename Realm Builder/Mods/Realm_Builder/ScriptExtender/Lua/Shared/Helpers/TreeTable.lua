@@ -1,10 +1,11 @@
+--- @generic K
 --- @class TreeTable
 --- @field _table table
---- @field _nodeRefs table<any, any> -- maps key to node (table or leaf value)
---- @field _parentRefs table<any, any> -- maps child key to parent key
---- @field _leafRefs table<any, boolean> -- maps which keys are leaves, so leaf can have table value
---- @field _ancestorDepthCache table<any, number>
---- @field _ancestorUpCache table<any, table<number, any>>
+--- @field _nodeRefs table<K, any> -- maps key to node (table or leaf value)
+--- @field _parentRefs table<K, K> -- maps child key to parent key
+--- @field _leafRefs table<K, boolean> -- maps which keys are leaves, so leaf can have table value
+--- @field _ancestorDepthCache table<K, number>
+--- @field _ancestorUpCache table<K, table<number, K>> -- binary lifting table for ancestors
 --- @field _ancestorDirty boolean
 --- @field new fun():TreeTable
 --- @field GetRootKey fun():string

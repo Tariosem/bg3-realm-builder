@@ -11,6 +11,7 @@ local clientVisualDummies = {}
 local isInMirror = false
 local isInPhotoMode = false
 
+
 local function postUpdateDummies()
     local dummiesInfo = {}
     local post = {}

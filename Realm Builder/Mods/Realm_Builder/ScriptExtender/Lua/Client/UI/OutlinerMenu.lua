@@ -141,6 +141,7 @@ function OutlinerMenu:RenderMenu()
     --- @diagnostic disable-next-line
     self.bruteForceDeleteAllButton = ImguiElements.AddMenuButton(self.debugMenu, GetLoca("Deletes all props, can't undo"), bfDeleteAllOpe, self.isWindow)
 
+    
     StyleHelpers.ApplyDangerSelectableStyle(self.bruteForceDeleteAllButton)
 
     ImguiElements.AddMenuButton(self.debugMenu, GetLoca("Reapply All Visual Changes"), VisualTabHelpers.ReapplyAll, self.isWindow)
@@ -149,23 +150,30 @@ end
 local eyeSlashUV = RB_ICON_UV01[RB_ICONS.Eye_Slash]
 local eyeUV = RB_ICON_UV01[RB_ICONS.Eye]
 
+local eyeHiddenHoverTint = {0.6,0.6,0.6,1}
+local eyeHiddenTint = {0.9,0.9,0.9,1}
+
+local eyeVisibleHoverTint = {0.9,0.9,0.9,1}
+local eyeVisibleTint = {0.5,0.5,0.5,1}
+
+
 local function setupEyeHover(image, hidden)
     if not hidden then
         image.OnHoverEnter = function()
-            image.Tint = {1,1,1,1}
+            image.Tint = eyeVisibleHoverTint
         end
         image.OnHoverLeave = function()
-            image.Tint = {0.9,0.9,0.9,1}
+            image.Tint = eyeVisibleTint
         end
-        image.Tint = {0.9,0.9,0.9,1}
+        image.Tint = eyeVisibleTint
     else
         image.OnHoverEnter = function()
-            image.Tint = {0.6,0.6,0.6,1}
+            image.Tint = eyeHiddenHoverTint
         end
         image.OnHoverLeave = function()
-            image.Tint = {0.5,0.5,0.5,1}
+            image.Tint = eyeHiddenTint
         end
-        image.Tint = {0.5,0.5,0.5,1}
+        image.Tint = eyeHiddenTint
     end
     image:SetColor("Button", RBUtils.ToVec4(0))
     image:SetColor("ButtonHovered", RBUtils.ToVec4(0))
@@ -1117,12 +1125,9 @@ function OutlinerMenu:UpdateList(onComplete)
     self.propTreeList:RenderList(onComplete)
 end
 
-function OutlinerMenu:UpdateEyeIcon(guid)
+function OutlinerMenu:OuterUpdateEyeIcon(guid)
     if self.eyeImageRefs and self.eyeImageRefs[guid] then
-        local image = self.eyeImageRefs[guid]
-        if image.UserData and image.UserData.UpdateEye then
-            image.UserData.UpdateEye()
-        end
+        self:UpdateEyeIcon(guid)
     end
 end
 

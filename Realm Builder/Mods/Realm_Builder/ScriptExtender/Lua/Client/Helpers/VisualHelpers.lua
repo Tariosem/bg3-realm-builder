@@ -351,7 +351,6 @@ function VisualHelpers.SetEffectComponentValue(comp, propName, value)
     if comp.TypeName == "Light" then
         comp = comp --[[@as AspkLightComponent]]
         if RBStringUtils.EndsWith(propName, "Property") then
-            -- VisualHelpers.ApplyValueToFrames not used here to avoid redundant GetEffectComponent call
             local property = comp[propName]
             local frameField = propName == "ColorProperty" and "Frames" or "KeyFrames"
             if not property or not property[frameField] then return end

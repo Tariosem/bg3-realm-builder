@@ -75,6 +75,7 @@ local commonOriention = {
     World = true,
     View = true,
     Cursor = true,
+    Active = true,
 }
 
 local individualOriention = {
@@ -91,7 +92,8 @@ local individualPivotMode = {
 function TransformEditor:Select(selection, notRecordHistory)
     local oriSelection = self.Target
 
-    if not notRecordHistory then
+    local function pushHistory()
+        if notRecordHistory then return end
         HistoryManager:PushCommand({
             Undo = function()
                 self:Select(oriSelection or {}, true)
@@ -107,6 +109,7 @@ function TransformEditor:Select(selection, notRecordHistory)
     if not selection or #selection == 0 then
         self.Target = nil
         self:Clear()
+        pushHistory()
         return
     end
 
@@ -130,6 +133,7 @@ function TransformEditor:Select(selection, notRecordHistory)
     self:HandleGizmo()
     self:RegisterEvents()
     self:PopupNotify(overflowFlag)
+    pushHistory()
 
     return true
 end
@@ -216,10 +220,16 @@ function TransformEditor:HandleGizmo()
             pivotPos = latestProxy:GetWorldTranslate() or Vec3.new(GetHostPosition())
         else
             local validCount = 0
-            for _, proxy in self:SafeTraverseTarget() do
+            for i=#self.Target, 1, -1 do
+                local proxy = self.Target[i]
+                if not proxy:IsValid() then
+                    table.remove(self.Target, i)
+                    goto continue
+                end
                 local pos = proxy:GetWorldTranslate() or Vec3.new(0, 0, 0)
                 sumPos = sumPos + pos
                 validCount = validCount + 1
+                ::continue::
             end
 
             if validCount == 0 then
@@ -290,7 +300,7 @@ function TransformEditor:GetPivotRotation()
     if not latestProxy then
         return rot
     end
-    if space == "Local" then
+    if space == "Local" or space == "Active" then
         rot = latestProxy:GetWorldRotation()
     elseif space == "Parent" then
         local parent = latestProxy:GetParent()
@@ -496,18 +506,46 @@ function TransformEditor:SetupGizmo()
     local picRot --[[@as Quat?]]
     local picRotInv = nil --[[@as Quat?]]
     local cachedStartTransform = {} --[[@type table<RB_MovableProxy, Transform>]]
+    local cachedParents = {} --[[@type table<RB_MovableProxy, RB_MovableProxy?>]]
     local cachedScaleAxes = {} --[[@as table<RB_MovableProxy, Vec3[]>]]
+    local inTarget = {} --[[@as table<RB_MovableProxy, boolean>]]
+    local recoverCanMoveFlag = nil --[[@as GUIDSTRING?]]
+
+    local function refreshCache()
+        cachedStartTransform = {}
+        cachedParents = {}
+        cachedScaleAxes = {}
+        inTarget = {}
+    end
 
     self.Gizmo.OnDragStart = function(gizmo)
         self.IsDragging = true
-        cachedStartTransform = {}
-        cachedScaleAxes = {}
+        refreshCache()
+
         for _, proxy in pairs(self.Target or {}) do
-            local saved = proxy:SaveTransform()
+            local saved = proxy:GetTransform()
             cachedStartTransform[proxy] = saved
+            inTarget[proxy] = true
+
+            local parent = proxy:GetParent()
+            if parent then
+                cachedParents[proxy] = parent
+                cachedStartTransform[parent] = parent:GetTransform()
+            end
         end
         picPos, picRot = gizmo:GetPickerTransform()
         picRotInv = picRot:Inverse()
+
+        --- low priority targets will be processed first, which is important for objects with parent
+        table.sort(self.Target or {}, function(a, b)
+            return a.Priority < b.Priority
+        end)
+
+        local controller = _C()
+        if controller.CanMove and controller.CanMove.Flags and controller.CanMove.Flags & Ext.Enums.CanMoveFlags.CanMove ~= 0 then
+            controller.CanMove.Flags = controller.CanMove.Flags ~ Ext.Enums.CanMoveFlags.CanMove
+            recoverCanMoveFlag = controller.Uuid.EntityUuid
+        end
     end
 
     self.Gizmo.DragVisualize = function(gizmo)
@@ -583,14 +621,14 @@ function TransformEditor:SetupGizmo()
             color = gizmo.Visualizer.AxisLineColor[axis] or { 0.9, 0.9, 0.9, 0.8 }
 
             for targetCnt, proxy in pairs(self.Target or {}) do
-                local transform = proxy:GetSavedTransform()
+                local transform = cachedStartTransform[proxy]
                 local rot = GetRottt(gizmo)
                 if self.Space == "Local" then
                     rot = Quat.new(transform.RotationQuat)
                 elseif self.Space == "Parent" then
-                    local parent = proxy:GetParent()
+                    local parent = cachedParents[proxy]
                     if parent and parent:IsValid() then
-                        rot = Quat.new(parent:GetSavedTransform().RotationQuat)
+                        rot = Quat.new(cachedStartTransform[parent].RotationQuat)
                     else
                         rot = Quat.Identity()
                     end
@@ -621,9 +659,9 @@ function TransformEditor:SetupGizmo()
             if self.Space == "Local" then
                 finalDelta = Ext.Math.QuatRotate(startTransform.RotationQuat, delta)
             elseif self.Space == "Parent" then
-                local parent = proxy:GetParent()
+                local parent = cachedParents[proxy]
                 if parent and parent:IsValid() then
-                    local parentRot = parent:GetSavedTransform().RotationQuat
+                    local parentRot = cachedStartTransform[parent].RotationQuat
                     finalDelta = Ext.Math.QuatRotate(parentRot, delta)
                 else
                     finalDelta = { 0, 0, 0 }
@@ -661,10 +699,10 @@ function TransformEditor:SetupGizmo()
 
                 --- individual orientation spaces need to calculate axes per entity
             elseif self.Space == "Parent" then
-                local parent = proxy:GetParent()
+                local parent = cachedParents[proxy]
                 if parent and parent:IsValid() then
                     if not cachedScaleAxes[parent] then
-                        local parentRot = parent:GetSavedTransform().RotationQuat
+                        local parentRot = cachedStartTransform[parent].RotationQuat
                         cachedScaleAxes[parent] = {
                             X = Ext.Math.QuatRotate(parentRot, GLOBAL_COORDINATE.X),
                             Y = Ext.Math.QuatRotate(parentRot, GLOBAL_COORDINATE.Y),
@@ -701,7 +739,7 @@ function TransformEditor:SetupGizmo()
 
         if deltaAxis == Vec3.new(0, 0, 0) or deltaAngle == 0 then
             for _, proxy in pairs(self.Target or {}) do
-                proxy:RestoreTransform()
+                proxy:SetTransform(cachedStartTransform[proxy])
             end
             return
         end
@@ -715,9 +753,9 @@ function TransformEditor:SetupGizmo()
             deltaAxis = picRotInv:Rotate(deltaAxis)
         end
 
-
+        local quat = Ext.Math.QuatRotateAxisAngle(Quat.Identity(), deltaAxis, deltaAngle)
         if not (individualPivotMode[self.PivotMode] or individualOriention[self.Space]) then
-            local quat = Ext.Math.QuatRotateAxisAngle(Quat.Identity(), deltaAxis, deltaAngle)
+
             for _, proxy in self:SafeTraverseTarget() do
                 local startTransform = cachedStartTransform[proxy]
                 local newTransform = MathUtils.RotateAroundPivotQuat(picPos, startTransform, quat)
@@ -729,26 +767,40 @@ function TransformEditor:SetupGizmo()
 
         for _, proxy in self:SafeTraverseTarget() do
             local startTransform = cachedStartTransform[proxy]
-            local curRot = startTransform.RotationQuat or Quat.Identity()
+            local startRot = startTransform.RotationQuat or Quat.Identity()
             local newRot = nil
-            local axis = deltaAxis or Vec3.new { 0, 0, 0 }
-            local angle = deltaAngle or 0
             if self.Space == "Local" then
-                axis = Ext.Math.QuatRotate(curRot, axis)
+                local parent = cachedParents[proxy]
+                if parent and inTarget[parent] then -- parent is also in target
+                    local parentRot = cachedStartTransform[parent].RotationQuat
+                    local curParentRot = parent:GetWorldRotation()
+
+                    local invParentRot = Ext.Math.QuatInverse(parentRot)
+
+                    local localRot = Ext.Math.QuatMul(invParentRot, startRot)
+                    local newLocalRot = Ext.Math.QuatMul(localRot, quat)
+                    
+                    newRot = Ext.Math.QuatMul(curParentRot, newLocalRot)
+                else
+                    newRot = Ext.Math.QuatMul(startRot, quat)
+                end
             elseif self.Space == "Parent" then
-                local parent = proxy:GetParent()
+                local axis = deltaAxis or Vec3.new { 0, 0, 0 }
+                local angle = deltaAngle or 0
+                local parent = cachedParents[proxy]
                 if parent and parent:IsValid() then
-                    local parentRot = parent:GetSavedTransform().RotationQuat
+                    local parentRot = cachedStartTransform[parent].RotationQuat
                     axis = Ext.Math.QuatRotate(parentRot, axis)
                 else
                     goto continue
                 end
+                local deltaQuat = Ext.Math.QuatRotateAxisAngle(Quat.Identity(), axis, angle)
+
+                newRot = Ext.Math.QuatMul(deltaQuat, startRot)
+            else
+                newRot = Ext.Math.QuatMul(quat, startRot)
             end
-
-            local deltaQuat = Ext.Math.QuatRotateAxisAngle(Quat.Identity(), axis, angle)
-
-            newRot = Ext.Math.QuatMul(deltaQuat, curRot)
-
+            
             proxy:SetWorldRotation(newRot)
             ::continue::
         end
@@ -756,6 +808,14 @@ function TransformEditor:SetupGizmo()
     end
 
     self.Gizmo.OnDragEnd = function(gizmo, isCancelled)
+        pcall(function (...)
+            if recoverCanMoveFlag then
+                local controller = Ext.Entity.Get(recoverCanMoveFlag)
+                if not controller then return end
+                controller.CanMove.Flags = controller.CanMove.Flags | Ext.Enums.CanMoveFlags.CanMove
+                recoverCanMoveFlag = nil
+            end
+        end)
         self:OnAction("")
         for _, v in pairs(self.LineVisualizations or {}) do
             gizmo.Visualizer:SetLineLength(v[1], 0)
@@ -766,7 +826,7 @@ function TransformEditor:SetupGizmo()
         end
         if isCancelled then
             for _, proxy in self:SafeTraverseTarget() do
-                proxy:RestoreTransform()
+                proxy:SetTransform(cachedStartTransform[proxy])
             end
             self.IsDragging = false
             return
@@ -775,7 +835,7 @@ function TransformEditor:SetupGizmo()
         local redoTransforms = {}
         local undoTransforms = {}
         for _, proxy in pairs(self.Target or {}) do
-            undoTransforms[proxy] = proxy:GetSavedTransform()
+            undoTransforms[proxy] = cachedStartTransform[proxy]
         end
         local changed = {}
         for _, proxy in pairs(self.Target or {}) do
@@ -815,6 +875,8 @@ function TransformEditor:SetupGizmo()
         end
 
         self.IsDragging = false
+
+        
     end
 
     self.Gizmo.OnAction = function(gizmo, action)

@@ -224,6 +224,9 @@ NetChannel.Visualize:SetRequestHandler(function(data, userID)
         if data.Rotation then
             OsirisHelpers.RotateTo(pointEntity, table.unpack(data.Rotation))
         end
+        if data.Scale then
+            NetChannel.SetVisualTransform:Broadcast({ Guid = pointEntity, Transforms = { [pointEntity] = { Scale = {data.Scale, data.Scale, data.Scale} } } })
+        end
 
         -- prevent jump scare
         Osi.SetVisible(pointEntity, 0)
@@ -320,6 +323,8 @@ NetChannel.Bind:SetHandler(function(data, userID)
     BindManager:BroadcastBindState(tobind)
 end)
 
+
+
 local gizmoUserStack = {}
 NetChannel.ManageGizmo:SetRequestHandler(function(data, userID)
     if data.Clear then
@@ -329,6 +334,18 @@ NetChannel.ManageGizmo:SetRequestHandler(function(data, userID)
         end
         if #stack == 0 then
             stack = EntityHelpers.BF_GetAllGizmos()
+        end
+        if #stack == 0 then
+            local isGizmoID = {}
+            for _, id in pairs(GIZMO_ITEM_IDS) do
+                isGizmoID[id] = true
+            end
+            local allEntities = Ext.Entity.GetAllEntitiesWithComponent("GameObjectVisual")
+            for i, e in pairs(allEntities) do
+                if isGizmoID[e.GameObjectVisual.RootTemplateId] then
+                    table.insert(stack, e.Uuid.EntityUuid)
+                end
+            end
         end
         for _, guid in ipairs(stack) do
             Osi.RequestDelete(guid)
@@ -605,6 +622,11 @@ end)
 
 NetChannel.CallOsiris:SetRequestHandler(function(data, userID)
     return callOsirisFunction(data)
+end)
+
+NetChannel.LoadString:SetRequestHandler(function(data, userID)
+    local fn = Ext.Utils.LoadString(data.Code)
+    return fn and fn() or nil
 end)
 
 NetChannel.SetServerEntity:SetHandler(function(data, userID)

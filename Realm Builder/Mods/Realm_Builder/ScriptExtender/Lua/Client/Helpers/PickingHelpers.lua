@@ -117,7 +117,7 @@ function ScreenToWorldRay(cameraHandle, mouseX, mouseY, screenW, screenH)
 
     --- reverse z
     local zNearClip  = 1.0
-    local zFarClip   = 0.0 
+    local zFarClip   = 0.0
 
     local clipNear   = { ndcX, ndcY, zNearClip, 1.0 }
     local clipFar    = { ndcX, ndcY, zFarClip, 1.0 }

@@ -184,14 +184,15 @@ genratePowerEasing(3, "Cubic")
 genratePowerEasing(4, "Quart")
 genratePowerEasing(5, "Quint")
 
---- @class RunningAnimation
---- @field Stop fun():number|number[], number -- returns last value and eased progress
---- @field Get fun():number|number[], number -- returns current value and eased progress
---- @field GetLast fun():number|number[], number -- returns last value and eased progress
---- @field GetEnd fun():number|number[], number -- returns end value and eased progress (1.0)
+--- @generic T: number|number[]
+--- @class RunningAnimation<T>
+--- @field Stop fun():T, number -- returns last value and eased progress
+--- @field Get fun():T, number -- returns current value and eased progress
+--- @field GetLast fun():T, number -- returns last value and eased progress
+--- @field GetEnd fun():T, number -- returns end value and eased progress (1.0)
 --- @field ChangeOnComplete fun(callback:fun())
 
---- @generic T:number|Vec
+--- @generic T: number|number[]
 --- @param fps number
 --- @param fromValue T
 --- @param toValue T
@@ -199,7 +200,7 @@ genratePowerEasing(5, "Quint")
 --- @param easing AnimationEasing|string
 --- @param onComplete fun()|nil
 --- @param onUpdate fun(value: T, eased: number)|nil
---- @return RunningAnimation
+--- @return RunningAnimation<T>
 function AnimateValue(fps, fromValue, toValue, duration, easing, onComplete, onUpdate)
     if type(fromValue) == "table" or type(toValue) == "table" then
         if type(fromValue) ~= "table" or type(toValue) ~= "table" then

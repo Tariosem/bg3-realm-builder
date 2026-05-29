@@ -741,6 +741,7 @@ function TransformToolbar:RenderTopBar()
         "View",
         "Parent",
         "Cursor",
+        "Active",
     }
     local localizedMode = {
         GetLoca("Global"),
@@ -748,6 +749,7 @@ function TransformToolbar:RenderTopBar()
         GetLoca("View"),
         GetLoca("Parent"),
         GetLoca("3D Cursor"),
+        GetLoca("Active Element"),
     }
     centerCell:AddDummy(30 * SCALE_FACTOR, 1).SameLine = true
     local pivotCombo = centerCell:AddCombo("Pivot")
@@ -756,13 +758,13 @@ function TransformToolbar:RenderTopBar()
         "Individual",
         "Median",
         "Cursor",
-        --"Active",
+        "Active",
     }
     local localizedPivot = {
         GetLoca("Individual Origins"),
         GetLoca("Median Point"),
         GetLoca("3D Cursor"),
-        --GetLoca("Active Element"),
+        GetLoca("Active Element"),
     }
     pivotCombo.Options = localizedPivot
     pivotCombo.SelectedIndex = table.find(indexToPivot, RB_GLOBALS.TransformEditor.PivotMode) - 1

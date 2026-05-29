@@ -172,6 +172,7 @@ end
 function TransformGizmo:SetupActionSubscriptions()
     self.Subscriptions["LockAxis"] = InputEvents.SubscribeKeyInput({}, function(e)
         if not self.IsDragging then return end
+        if self.Operator.IsInputting then return end
         if e.Event ~= "KeyDown" or not e.Pressed or e.Repeat then return end
 
         local mouseRay = ScreenToWorldRay()

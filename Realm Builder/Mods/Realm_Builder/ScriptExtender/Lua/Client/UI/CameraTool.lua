@@ -28,7 +28,8 @@ local function getCameraTransform()
     }
 end
 
---- @param e ExtuiStyledRenderable
+--- @generic T
+--- @param e ExtuiStyledRenderable<T>
 local function setUpTransformDragDrop(e)
     e.CanDrag = true
     e.DragDropType = "CameraTool.Transform"

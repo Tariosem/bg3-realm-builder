@@ -1,24 +1,26 @@
 --- need to implement GetTransform, SetTransform and IsValid
 --- @class RB_MovableProxy
---- @field StoredTransform Transform
+--- @field Priority number
 --- @field SetWorldTranslate fun(self: RB_MovableProxy, position: Vec3)
 --- @field SetWorldRotation fun(self: RB_MovableProxy, rotation: Quat)
 --- @field SetWorldScale fun(self: RB_MovableProxy, scale: Vec3)
 --- @field SetTransform fun(self: RB_MovableProxy, transform: Transform)
 --- @field GetWorldTranslate fun(self: RB_MovableProxy): Vec3
 --- @field GetWorldRotation fun(self: RB_MovableProxy): Quat
---- @field GetWorldScale fun(self: RB_MovableProxy): Vec
+--- @field GetWorldScale fun(self: RB_MovableProxy): Vec3
 --- @field GetTransform fun(self: RB_MovableProxy): Transform
 --- @field GetWorldBoundingBox fun(self: RB_MovableProxy): AABound
---- @field SaveTransform fun(self: RB_MovableProxy): Transform
---- @field GetSavedTransform fun(self: RB_MovableProxy): Transform
---- @field RestoreTransform fun(self: RB_MovableProxy)
 --- @field GetParent fun(self: RB_MovableProxy): RB_MovableProxy|nil
---- @field CreateByGuid fun(guid: GUIDSTRING):RB_MovableProxy?
---- @field CreateByGuids fun(guids: GUIDSTRING[]):RB_MovableProxy[]
 --- @field IsValid fun(self: RB_MovableProxy):boolean
 --- @field Render fun(self: RB_MovableProxy, parent: ExtuiTreeParent)
+--- static
+--- @field private CreateByGuid fun(guid: GUIDSTRING):RB_MovableProxy?
+--- @field private Create fun(guid: GUIDSTRING):RB_MovableProxy?
+--- @field private CreateByGuids fun(guids: GUIDSTRING[]):RB_MovableProxy[]
+--- @field private RegisterSpecial fun(guid: any, proxy: RB_MovableProxy)
+--- @field private ClearCache fun()
 MovableProxy = _Class("RB_MovableProxy")
+MovableProxy.Priority = 0
 
 local function getDefaultTransform()
     local pos = Vec3.new(GetHostPosition())
@@ -45,6 +47,10 @@ function MovableProxy:SetWorldRotation(rotationQuat)
     local transform = {}
     transform.RotationQuat = rotationQuat
     self:SetTransform(transform)
+end
+
+function MovableProxy:SetLocalRotation(rotationQuat)
+    
 end
 
 function MovableProxy:SetWorldScale(scale)
@@ -82,21 +88,6 @@ function MovableProxy:GetWorldScale()
     return self:GetTransform().Scale
 end
 
-function MovableProxy:SaveTransform()
-    self.StoredTransform = self:GetTransform()
-    return RBUtils.DeepCopy(self.StoredTransform)
-end
-
-function MovableProxy:GetSavedTransform()
-    return RBUtils.DeepCopy(self.StoredTransform) or self:GetTransform()
-end
-
-function MovableProxy:RestoreTransform()
-    if self.StoredTransform then
-        self:SetTransform(self.StoredTransform)
-    end
-end
-
 function MovableProxy:GetParent()
     return nil
 end
@@ -106,6 +97,9 @@ end
 
 function MovableProxy:IsValid()
     return false
+end
+
+function MovableProxy:OnTransformChanged(newTransform)
 end
 
 --- @class CameraMovableProxy : RB_MovableProxy
@@ -170,6 +164,9 @@ function ItemMovableProxy:SetTransform(transform)
     local transforms = {}
     transforms[self.Guid] = transform
     SetItemTransform({self.Guid}, transforms)
+    if self.OnTransformChanged then
+        self:OnTransformChanged(transform)
+    end
 end
 
 function ItemMovableProxy:GetParent()
@@ -201,6 +198,9 @@ end
 
 function ItemMovableProxy:IsValid()
     return true
+end
+
+function ItemMovableProxy:OnTransformChanged(transform)
 end
 
 --- @class CharacterMovableProxy : RB_MovableProxy
@@ -283,6 +283,9 @@ function SceneryMovableProxy:Render(parent)
     local template = Ext.Resource.Get(self.Entity.Scenery.Visual, "Visual") --[[@as ResourceVisualResource|ResourceEffectResource]]
 
     parent:AddImage(RB_ICONS.Scenery, IMAGESIZE.SMALL)
+    if not template then
+        return parent:AddText("Scenery (" .. self.Entity.Scenery.Uuid .. ")")
+    end
     parent:AddText(RBStringUtils.SplitByString(RBStringUtils.GetLastPath(template.Template), ".")[1]).SameLine = true
     local uuid = parent:AddText("(" .. self.Entity.Scenery.Uuid .. ")")
     uuid.SameLine = true
@@ -329,12 +332,21 @@ function RenderableMovableProxy:IsValid()
     return ok and instance ~= nil
 end
 
+--- @type table<GUIDSTRING, RB_MovableProxy>
 local movabelCache = {}
 
+--- @type table<any, RB_MovableProxy>
+local specialCache = {}
+
 local function clearCache()
-    for guid,_ in pairs(movabelCache) do
-        if not EntityHelpers.EntityExists(guid) and not NearbyMap.GetRegisteredScenery(guid) then
+    for guid,p in pairs(movabelCache) do
+        if not p:IsValid() then
             movabelCache[guid] = nil
+        end
+    end
+    for key,p in pairs(specialCache) do
+        if not p:IsValid() then
+            specialCache[key] = nil
         end
     end
 end
@@ -345,6 +357,11 @@ function MovableProxy.CreateByGuid(guid)
     if RBUtils.IsCamera(guid) then return CameraMovableProxy.new() end
     if not RBUtils.IsUuid(guid) then return nil end
     clearCache()
+
+    if specialCache[guid] then
+        return specialCache[guid]
+    end
+
     local proxy = movabelCache[guid]
     if proxy then
         return proxy
@@ -365,7 +382,7 @@ function MovableProxy.CreateByGuid(guid)
         elseif NearbyMap.GetRegisteredScenery(guid) then
             proxy = SceneryMovableProxy.new(NearbyMap.GetRegisteredScenery(guid).Scenery)
             if not proxy:IsValid() then
-                proxy = nil
+                return nil
             end
         else
             --proxy = CharacterMovableProxy.new(guid)
@@ -389,4 +406,14 @@ function MovableProxy.CreateByGuids(guids)
         end
     end
     return proxies
+end
+
+function MovableProxy.ClearCache()
+    movabelCache = {}
+end
+
+--- @param guid string
+--- @return RB_MovableProxy?
+function MovableProxy.RegisterSpecial(guid, proxy)
+    specialCache[guid] = proxy
 end

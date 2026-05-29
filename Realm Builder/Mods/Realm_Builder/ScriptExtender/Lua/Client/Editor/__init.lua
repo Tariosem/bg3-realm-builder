@@ -14,4 +14,5 @@ RBUtils.RequireFiles("Client/Editor/", {
     "PlacementPreview",
     "OrbitalCamera",
     "IKController",
+    "BoneTest"
 })

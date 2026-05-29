@@ -49,7 +49,8 @@ function CCAVManager:PopulateAll()
         },
         ["Races"] = {},
         ["Slots"] = {},
-        ["Bones"] = {}
+        ["Bones"] = {},
+        ["Accessory Sets"] = {},
     })
 
     local raceCache = {}
@@ -145,6 +146,18 @@ function CCAVManager:PopulateAll()
             end
         end
         ::continue::
+    end
+
+    local allSets = Ext.StaticData.GetAll("CharacterCreationAccessorySet")
+    for _, setId in pairs(allSets) do
+        local set = Ext.StaticData.Get(setId, "CharacterCreationAccessorySet") --[[@as ResourceCharacterCreationAccessorySet]]
+        local setName = set.DisplayName:Get() or "Unknown Accessory Set"
+        for _, visual in pairs(set.VisualUUID) do
+            if not self.Data[visual] then goto continue end 
+            self:AddTagToData(visual, setName)
+            self.tagTree:Reparent(setName, "Accessory Sets")
+            ::continue::
+        end
     end
 
     self.populated = true

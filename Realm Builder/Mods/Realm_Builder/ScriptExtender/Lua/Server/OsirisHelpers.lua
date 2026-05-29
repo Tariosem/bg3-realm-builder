@@ -37,8 +37,6 @@ function OsirisHelpers.DrawLine(startPos, endPos, width, user)
     OsirisHelpers.RotateTo(fxHandle, table.unpack(MathUtils.DirectionToQuat(dir)))
     OsirisHelpers.TeleportTo(fxHandle, startPos[1], startPos[2], startPos[3])
     Timer:Ticks(10, function(timerID)
-        if not EntityHelpers.EntityExists(fxHandle) then return end
-
         --[[NetChannel.SetVisualTransform:Broadcast({
             Guid = fxHandle,
             Transforms = {

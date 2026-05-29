@@ -1,4 +1,5 @@
 --- @generic V: Vec3|Vec4
+--- @generic T: Quat|Vec3
 --- @class Quat
 --- @field Inverse fun(self: Quat): Quat
 --- @field Normalize fun(self: Quat): Quat
@@ -8,6 +9,8 @@
 --- @field FromEuler fun(euler: Vec3): Quat
 --- @field FromTo fun(fromVec: Vec3, toVec: Vec3): Quat
 --- @field FromAxisAngle fun(axis: Vec3, angle: number): Quat
+--- @field Slerp fun(self: Quat, target: Quat, t: number): Quat
+--- @operator mul(Quat|Vec3): Quat|Vec3
 Quat = Quat or {}
 
 Quat.__index = Quat

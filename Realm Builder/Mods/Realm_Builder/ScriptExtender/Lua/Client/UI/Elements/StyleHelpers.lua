@@ -47,7 +47,8 @@ function StyleHelpers.ApplyDangerButtonStyle(button)
     button:SetColor("Text", colorConfig.DangerButtonTextColor)
 end
 
---- @param s ExtuiSelectable|ExtuiStyledRenderable
+--- @generic T
+--- @param s ExtuiStyledRenderable<T>
 function StyleHelpers.ApplyDangerSelectableStyle(s)
     s:SetColor("HeaderHovered", colorConfig.DangerButtonColor)
     s:SetColor("Text", colorConfig.DangerButtonHoveredColor)
@@ -125,7 +126,8 @@ function StyleHelpers.ApplyOkTooltipStyle(tooltip)
     tooltip:SetColor("WindowBg", ColorUtils.HexToRGBA("FF222222"))
 end
 
---- @param extui ExtuiStyledRenderable
+--- @generic T
+--- @param extui ExtuiStyledRenderable<T>
 function StyleHelpers.ClearAllBorders(extui)
     extui:SetColor("Text", ColorUtils.HexToRGBA("FFFFFFFF"))
     extui:SetColor("Border", ColorUtils.HexToRGBA("00000000"))

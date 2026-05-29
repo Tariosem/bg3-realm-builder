@@ -12,10 +12,16 @@ NetChannel = NetChannel or {}
 --- @field OnMessage fun(channel:self, data:LuaNetMessageEvent)
 
 
---- @class CallOsirisChannel : NetChannel
---- @field SendToServer fun(self, data: {Function: string, Args: any[]})
---- @field RequestToServer fun(self, data: {Function: string, Args: any[]}, callback: fun(response: table))
+--- @class CallOsirisChannel<args, result> : NetChannel
+--- @field SendToServer fun(self, data: {Function: string, Args: args})
+--- @field RequestToServer fun(self, data: {Function: string, Args: args}, callback: fun(response: result))
 NetChannel.CallOsiris = Ext.Net.CreateChannel(ModuleUUID, "CallOsiris")
+
+--- @class CreateAtChannel : CallOsirisChannel<{[1]: string, [2]:number, [3]:number, [4]:number, [5]:number, [6]:number, [7]:string}, GUIDSTRING[]>
+
+--- @class LoadStringChannel<Result> : NetChannel
+--- @field RequestToServer fun(self, data: {Code: string}, callback: fun(response: Result))
+NetChannel.LoadString = Ext.Net.CreateChannel(ModuleUUID, "LoadString")
 
 --- @class SetServerEntityChannel : NetChannel
 --- @field SendToServer fun(self, data: {Guid: GUIDSTRING, Data:any})

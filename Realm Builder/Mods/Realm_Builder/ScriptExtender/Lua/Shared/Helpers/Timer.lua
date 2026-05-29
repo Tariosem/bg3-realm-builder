@@ -1,6 +1,8 @@
 ---@alias TimerID integer
----@class Timer
+
 RB_GLOBALS = RB_GLOBALS or {}
+
+--- @class Timer
 RB_GLOBALS.TimerScheduler = RB_GLOBALS.TimerScheduler or {
     Active = {},
     NextId = 0,

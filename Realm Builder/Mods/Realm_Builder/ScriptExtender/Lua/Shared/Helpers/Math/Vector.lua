@@ -9,6 +9,7 @@ Vector = {}
 --- @field Sanitize fun(self: T, defaultVec: T?): T
 --- @field Inverse fun(self: T): T
 --- @field Lerp fun(self: T, b: T, t: number): T
+--- @field Equal fun(self: T, b: T, tolerance?: number): boolean
 --- @field Add fun(self: T, b: T|number): T
 --- @field Sub fun(self: T, b: T|number): T
 --- @field Mul fun(self: T, b: T|number): T
@@ -180,6 +181,15 @@ function Vector.Lerp(a, b, t)
     return setmetatable(res, Vector)
 end
 
+function Vector:Equal(b, tolerance)
+    if #self ~= #b then return false end
+    tolerance = tolerance or 0
+    for i = 1, #self do
+        if math.abs(self[i] - (b[i] or 0)) > tolerance then return false end
+    end
+    return true
+end
+
 function Vector.Add(a, b)
     local res = {}
     local isNumB = type(b) == "number"
@@ -244,11 +254,17 @@ function Vec2.new(...)
     end
 end
 
-Vec3.__add = function(a, b) return setmetatable(Ext.Math.Add(a, b), Vec3) end
-Vec3.__sub = function(a, b) return setmetatable(Ext.Math.Sub(a, b), Vec3) end
-Vec3.__mul = function(a, b) return setmetatable(Ext.Math.Mul(a, b), Vec3) end
-Vec3.__div = function(a, b) return setmetatable(Ext.Math.Div(a, b), Vec3) end
-Vec3.__unm = function(a) return setmetatable(Ext.Math.Mul(a, -1), Vec3) end
+local eml = Ext.Math
+local add = eml.Add
+local sub = eml.Sub
+local mul = eml.Mul
+local div = eml.Div
+
+Vec3.__add = function(a, b) return setmetatable(add(a, b), Vec3) end
+Vec3.__sub = function(a, b) return setmetatable(sub(a, b), Vec3) end
+Vec3.__mul = function(a, b) return setmetatable(mul(a, b), Vec3) end
+Vec3.__div = function(a, b) return setmetatable(div(a, b), Vec3) end
+Vec3.__unm = function(a) return setmetatable(mul(a, -1), Vec3) end
 Vec3.__tostring = function(a) return string.format("Vec3(%s)", table.concat(a, ", ")) end
 Vec3.__call = function(_, ...) return Vec3.new(...) end
 Vec3.__index = Vector.__index
@@ -262,11 +278,11 @@ function Vec3.new(...)
     end
 end
 
-Vec4.__add = function(a, b) return setmetatable(Ext.Math.Add(a, b), Vec4) end
-Vec4.__sub = function(a, b) return setmetatable(Ext.Math.Sub(a, b), Vec4) end
-Vec4.__mul = function(a, b) return setmetatable(Ext.Math.Mul(a, b), Vec4) end
-Vec4.__div = function(a, b) return setmetatable(Ext.Math.Div(a, b), Vec4) end
-Vec4.__unm = function(a) return setmetatable(Ext.Math.Mul(a, -1), Vec4) end
+Vec4.__add = function(a, b) return setmetatable(add(a, b), Vec4) end
+Vec4.__sub = function(a, b) return setmetatable(sub(a, b), Vec4) end
+Vec4.__mul = function(a, b) return setmetatable(mul(a, b), Vec4) end
+Vec4.__div = function(a, b) return setmetatable(div(a, b), Vec4) end
+Vec4.__unm = function(a) return setmetatable(mul(a, -1), Vec4) end
 Vec4.__tostring = function(a) return string.format("Vec4(%s)", table.concat(a, ", ")) end
 Vec4.__call = function(_, ...) return Vec4.new(...) end
 Vec4.__index = Vector.__index

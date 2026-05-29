@@ -76,7 +76,8 @@ function GuiAnim.Shake(gui, dur, freq, amp, fps)
     return anim
 end
 
----@param gui ExtuiStyledRenderable
+--- @generic T
+---@param gui ExtuiStyledRenderable<T>
 ---@param originalSize number?
 ---@param dur number?
 ---@param freq number?

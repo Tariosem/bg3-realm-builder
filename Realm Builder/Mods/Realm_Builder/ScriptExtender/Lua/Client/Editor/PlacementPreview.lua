@@ -1,6 +1,25 @@
 local isPreviewing = false
 local previewObject = nil
 
+local recoverEnt = nil --[[@type GUIDSTRING?]]
+
+local function toggleMovable()
+    if recoverEnt then
+        local ent = Ext.Entity.Get(recoverEnt)
+        if ent and ent.CanMove then
+            ent.CanMove.Flags = ent.CanMove.Flags | Ext.Enums.CanMoveFlags.CanMove
+        end
+        recoverEnt = nil
+        return
+    end
+
+    local ent = _C()
+    if ent and ent.CanMove and ent.Uuid and ent.Uuid.EntityUuid then
+        recoverEnt = ent.Uuid.EntityUuid
+        ent.CanMove.Flags = ent.CanMove.Flags ~ Ext.Enums.CanMoveFlags.CanMove
+    end
+end
+
 PlacementPreview = {}
 
 --- @param entry {Uuid:string}
@@ -95,6 +114,7 @@ function PlacementPreview:BeginPlacementPreview(entry, entryDisplayName)
             end)
             return
         end
+        pcall(toggleMovable)
         previewObject = response.Guid
 
         stickTimer = Timer:EveryFrame(function(timerID)
@@ -158,6 +178,7 @@ function PlacementPreview:BeginPlacementPreview(entry, entryDisplayName)
     end)
 
     self.StopPreview = function()
+        toggleMovable()
         if previewObject then
             NetChannel.Delete:SendToServer({ Guid = previewObject })
             previewObject = nil

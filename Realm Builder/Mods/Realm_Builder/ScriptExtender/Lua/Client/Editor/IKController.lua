@@ -1,9 +1,20 @@
 local eml = Ext.Math
 
+local add = eml.Add
+local sub = eml.Sub
+local normalize = eml.Normalize
+local cross = eml.Cross
+local dot = eml.Dot
+
 local function lookAt(targetPos, originPos, up)
-    local forward = eml.Normalize(eml.Sub(targetPos, originPos))
-    local right = eml.Normalize(eml.Cross(up, forward))
-    local realUp = eml.Normalize(eml.Cross(forward, right))
+    local forward = normalize(sub(targetPos, originPos))
+
+    if dot(forward, up) > 0.999 then
+        up = math.abs(forward[1]) < 0.1 and {1,0,0} or {0,0,1}
+    end
+
+    local right = normalize(cross(up, forward))
+    local realUp = normalize(cross(forward, right))
 
     return eml.Mat3ToQuat({
         right[1], right[2], right[3], 
@@ -12,25 +23,66 @@ local function lookAt(targetPos, originPos, up)
     })
 end
 
+--- bone orientation in the model is different from the forward direction used for lookAt 
+--- need to apply a fixed rotation to align them
+--- and it's mirrored for left and right side, so also need to flip the rotation for left side
+--- or just update rotation relatively
+local fixQuat = eml.QuatRotateAxisAngle({0,0,0,1}, {0,0,1}, math.rad(90))
+fixQuat = eml.QuatRotateAxisAngle(fixQuat, {0,1,0}, math.rad(-90))
+
+local fixQuatLeft = eml.QuatRotateAxisAngle(fixQuat, {0,0,1}, math.rad(180))
+
+local function applyFix(quat, isLeft)
+    return eml.QuatMul(quat, isLeft and fixQuatLeft or fixQuat)
+end
+
+--[[
 --- @class IKMovableProxy
 --- @field GetWorldTranslate fun(self): vec3
 --- @field GetWorldRotation fun(self): quat
 --- @field SetWorldTranslate fun(self, pos:vec3)
 --- @field SetWorldRotation fun(self, rot:quat)
+]]
 
---- @class IKController
+local commandArgs = {
+    RB_PROP_AXIS_FX, 0,0,0, 0,0, ""
+}
+--- @param pos vec3
+--- @param onComplete fun(guid:GUIDSTRING)
+local function drawPoint(pos, onComplete)
+    commandArgs[2] = pos[1]
+    commandArgs[3] = pos[2]
+    commandArgs[4] = pos[3]
+    NetChannel.CallOsiris:RequestToServer({
+        Function = "CreateAt",
+        Args = commandArgs
+    }, function (response)
+        onComplete(response[1])
+    end)
+end
+
+--- @alias IKMovableProxy RB_MovableProxy
+
+--- @class IKControllerBase
+--- @field UpdatePosition boolean
+--- @field UpdateRotation boolean
+--- @field UpdateRotationRelatively boolean
+--- @field debugPoints table<number, GUIDSTRING>
+
+--- @class TwoBoneIKController : IKControllerBase
 --- @field Target IKMovableProxy
 --- @field Joint IKMovableProxy
 --- @field Origin IKMovableProxy
 --- @field PoleTarget IKMovableProxy
 --- @field LengthA number
 --- @field LengthB number
---- @field PoleAngle number
+--- @field PoleAngle number -- in radians
 --- @field Controller IKMovableProxy
+--- @field IsLeft boolean
 --- @field Update fun(self)
 --- @field Solve fun(originPos:vec3, targetPos:vec3, polePos:vec3, lenA:number, lenB:number, poleAngle:number): IKResult
---- @field new fun(origin:IKMovableProxy, joint:IKMovableProxy, target:IKMovableProxy, poleTarget:IKMovableProxy, controller:IKMovableProxy?): IKController
-IKController = {}
+--- @field new fun(origin:IKMovableProxy, joint:IKMovableProxy, target:IKMovableProxy, poleTarget:IKMovableProxy, controller:IKMovableProxy?): TwoBoneIKController
+TwoBoneIKController = {}
 
 --- @class IKResult
 --- @field JointPos vec3
@@ -42,13 +94,18 @@ IKController = {}
 --- @param target IKMovableProxy
 --- @param poleTarget IKMovableProxy
 --- @param controller IKMovableProxy?
-function IKController.new(origin, joint, target, poleTarget, controller)
-    local self = setmetatable({}, {__index = IKController})
+function TwoBoneIKController.new(origin, joint, target, poleTarget, controller)
+    local self = setmetatable({}, {__index = TwoBoneIKController})
     self.Target = target
     self.Controller = controller or target
     self.Joint = joint
     self.Origin = origin
     self.PoleTarget = poleTarget
+    self.UpdatePosition = false
+    self.UpdateRotation = true
+    self.UpdateRotationRelatively = true
+
+    self.debugPoints = {}
 
     local originPos = origin:GetWorldTranslate()
     local jointPos = joint:GetWorldTranslate()
@@ -68,24 +125,23 @@ end
 --- @param lenB number
 --- @param poleAngle number
 --- @return IKResult
-function IKController.Solve(originPos, targetPos, polePos, lenA, lenB, poleAngle)
+function TwoBoneIKController.Solve(originPos, targetPos, polePos, lenA, lenB, poleAngle)
     local toTarget = eml.Sub(targetPos, originPos)
     local distC = eml.Length(toTarget)
 
     distC = math.max(0.0001, math.min(lenA + lenB - 0.0001, distC))
-    
+
     -- law of cosines
     local cosA = (lenA^2 + distC^2 - lenB^2) / (2 * lenA * distC)
     cosA = eml.Clamp(cosA, -1, 1)
     local a = math.acos(cosA)
 
     local fwd = eml.Div(toTarget, distC)
-    
-    local toPole = eml.Sub(polePos, originPos)
-    local dot = eml.Dot(toPole, fwd)
-    local poleDir = eml.Normalize(eml.Sub(toPole, eml.Mul(fwd, dot)))
 
-    --- sometimes 
+    local toPole = eml.Sub(polePos, originPos)
+    local dP = eml.Dot(toPole, fwd)
+    local poleDir = eml.Normalize(eml.Sub(toPole, eml.Mul(fwd, dP)))
+
     if poleAngle ~= 0 then
         local rot = eml.QuatRotateAxisAngle({0,0,0,1}, fwd, poleAngle)
         poleDir = eml.QuatRotate(rot, poleDir)
@@ -95,7 +151,7 @@ function IKController.Solve(originPos, targetPos, polePos, lenA, lenB, poleAngle
     poleDir = eml.Normalize(poleDir)
 
     local jointPos = eml.Add(originPos, eml.Add(eml.Mul(fwd, lenA * math.cos(a)), eml.Mul(poleDir, lenA * math.sin(a))))
-    local realTargetPos = eml.Add(jointPos, eml.Normalize(eml.Mul(eml.Sub(targetPos, jointPos), lenB)))
+    local realTargetPos = eml.Add(jointPos, eml.Mul(eml.Normalize(eml.Sub(targetPos, jointPos)), lenB))
 
     return {
         JointPos = jointPos,
@@ -104,37 +160,69 @@ function IKController.Solve(originPos, targetPos, polePos, lenA, lenB, poleAngle
     }
 end
 
-function IKController:Update()
-    local originPos = self.Origin:GetWorldTranslate()
-    local targetPos = self.Controller:GetWorldTranslate()
-    local polePos = self.PoleTarget:GetWorldTranslate()
-    local result = IKController.Solve(originPos, targetPos, polePos, self.LengthA, self.LengthB, self.PoleAngle)
+function TwoBoneIKController:Update()
+    local originTransform = self.Origin:GetTransform()
+    local poleTransform = self.PoleTarget:GetTransform()
+    local goalTransform = self.Controller:GetTransform()
 
-    self.Joint:SetWorldTranslate(result.JointPos)
-    self.Target:SetWorldTranslate(result.TargetPos)
+    local result = TwoBoneIKController.Solve(originTransform.Translate, goalTransform.Translate, poleTransform.Translate, self.LengthA, self.LengthB, self.PoleAngle)
 
-    local up = result.PoleDir
-    local bones = {self.Origin, self.Joint, self.Target}
-    local parentsPos = {}
-    local childsPos = {}
-    for i = 1, #bones - 1 do
-        local parent = bones[i]
-        local child = bones[i + 1]
-
-        local parentPos = parentsPos[i] or parent:GetWorldTranslate()
-        local childPos = childsPos[i] or child:GetWorldTranslate()
-        parentsPos[i] = parentPos
-        childsPos[i] = childPos
-
-        local rot = lookAt(childPos, parentPos, up)
-
-        parent:SetWorldRotation(rot)
+    if self.UpdatePosition then
+        self.Joint:SetWorldTranslate(result.JointPos)
+        self.Target:SetWorldTranslate(result.TargetPos)
     end
+
+    if not self.UpdateRotation then return end
+
+    local p1 = result.PoleDir
+    local p2 = normalize(sub(result.TargetPos, originTransform.Translate))
+    local up = normalize(cross(p2, p1))
+
+    if self.UpdateRotationRelatively then
+        local jointTransform = self.Joint:GetTransform()
+        local targetTransform = self.Target:GetTransform()
+
+        local fwdA = normalize(sub(jointTransform.Translate, originTransform.Translate))
+        local fwdB = normalize(sub(targetTransform.Translate, jointTransform.Translate))
+
+        local newFwdA = normalize(sub(result.JointPos, originTransform.Translate))
+
+        local deltaRotA = eml.QuatFromToRotation(fwdA, newFwdA)
+        local originRot = eml.QuatMul(deltaRotA, originTransform.RotationQuat)
+
+        self.Origin:SetWorldRotation(originRot)
+
+        local newFwdB = normalize(sub(result.TargetPos, result.JointPos))
+
+        local deltaRotB = eml.QuatFromToRotation(fwdB, newFwdB)
+        local jointRot = eml.QuatMul(deltaRotB, jointTransform.RotationQuat)
+
+        self.Joint:SetWorldRotation(jointRot)
+
+        return
+    end
+
+    local originRot = lookAt(result.JointPos, originTransform.Translate, up)
+    local jointRot = lookAt(result.TargetPos, result.JointPos, up)
+
+    originRot = applyFix(originRot, self.IsLeft)
+    jointRot = applyFix(jointRot, self.IsLeft)
+
+    self.Origin:SetWorldRotation(originRot)
+    self.Joint:SetWorldRotation(jointRot)
 end
 
+function TwoBoneIKController:RegetLength()
+    local originPos = self.Origin:GetWorldTranslate()
+    local jointPos = self.Joint:GetWorldTranslate()
+    local targetPos = self.Target:GetWorldTranslate()
+
+    self.LengthA = eml.Length(eml.Sub(jointPos, originPos))
+    self.LengthB = eml.Length(eml.Sub(targetPos, jointPos))
+end
 
 --#region FABRIKController
---- @class FABRIKController
+--- @class FABRIKController : IKControllerBase
 --- @field Joints IKMovableProxy[]
 --- @field Goal IKMovableProxy
 --- @field Lengths number[]
@@ -154,6 +242,17 @@ function FABRIKController.new(joints, goal)
     self.Lengths = {}
     self.IterationLimit = 10
     self.IterationThreshold = 0.01
+    self.UpdatePosition = false
+    self.UpdateRotation = true
+    self.UpdateRotationRelatively = true
+
+    self.debugPoints = {}
+
+    for i, joint in ipairs(joints) do
+        drawPoint(joint:GetWorldTranslate(), function (guid)
+            self.debugPoints[i] = guid
+        end)
+    end
 
     for i = 1, #joints - 1 do
         local p = joints[i]:GetWorldTranslate()
@@ -163,6 +262,7 @@ function FABRIKController.new(joints, goal)
 
     return self
 end
+
 
 --- @param positions vec3[]
 --- @param lengths number[]
@@ -215,9 +315,10 @@ function FABRIKController:Update()
     local originPos = self.Joints[1]:GetWorldTranslate()
     local goalPos = self.Goal:GetWorldTranslate()
     --- @type Vec3[]
-    local positions = {} 
+    local positions = {}
     for i, joint in ipairs(self.Joints) do
-        positions[i] = joint:GetWorldTranslate()
+        local transform = joint:GetTransform()
+        positions[i] = transform.Translate
     end
 
     local toGoal = eml.Sub(goalPos, originPos)
@@ -233,169 +334,72 @@ function FABRIKController:Update()
         FABRIKController.Solve(positions, self.Lengths, goalPos, originPos, self.IterationThreshold, self.IterationLimit)
     end
 
-    for i = 2, #self.Joints do
-        self.Joints[i]:SetWorldTranslate(positions[i])
-        
-        local parent = self.Joints[i-1]
-        local up = {0,1,0} -- y up
+    --- @param i integer
+    --- @param transform Transform
+    local function updateDebugPoint(i, transform)
+        local scale = self.Lengths[i-1]/0.9 or 1
+        local scale = {scale, scale, scale}
+        if self.debugPoints[i] then
+            NetChannel.SetTransform:RequestToServer({
+                Guid = self.debugPoints[i],
+                Transforms = {
+                    [self.debugPoints[i]] = transform,
+                }
+            }, function (response)
+                local visual = Ext.Entity.Get(self.debugPoints[i - 1]).Visual
+                if visual and visual.Visual.ObjectDescs then
+                    for _, object in pairs(visual.Visual.ObjectDescs) do
+                        object.Renderable:SetWorldScale(scale)
+                    end
+                end
+            end)
+        end
+    end
 
+    local up = {0,-1,0}
+    --- @type table<integer, Transform>
+    local boneTransformCache = {}
+    for i = 2, #self.Joints do
+        if self.UpdatePosition then
+            self.Joints[i]:SetWorldTranslate(positions[i])
+        end
+
+        if not self.UpdateRotation then goto continue end
+
+        local parent = self.Joints[i-1]
+
+        if self.UpdateRotationRelatively then
+            boneTransformCache[i - 1] = boneTransformCache[i - 1] or parent:GetTransform()
+            local parentTransform = boneTransformCache[i - 1]
+            boneTransformCache[i] = boneTransformCache[i] or self.Joints[i]:GetTransform()
+            local jointTransform = boneTransformCache[i]
+
+            local fwdA = eml.Normalize(eml.Sub(jointTransform.Translate, parentTransform.Translate))
+            local newFwdA = eml.Normalize(eml.Sub(positions[i], positions[i-1]))
+
+            local deltaRotA = eml.QuatFromToRotation(fwdA, newFwdA)
+            local parentRot = eml.QuatMul(deltaRotA, parentTransform.RotationQuat)
+
+            parent:SetWorldRotation(parentRot)
+
+            if self.debugPoints and self.debugPoints[i - 1] then
+                updateDebugPoint(i - 1, {Translate = positions[i - 1], RotationQuat = parentRot})
+            end
+   
+            goto continue
+        end
+        
         local rot = lookAt(positions[i], positions[i-1], up)
 
+        rot = eml.QuatMul(rot, fixQuat)
+        rot = eml.QuatRotateAxisAngle(rot, {1,0,0}, math.rad(-90))
+
         parent:SetWorldRotation(rot)
+
+        if self.debugPoints and self.debugPoints[i - 1] then
+            updateDebugPoint(i - 1, {Translate = positions[i - 1], RotationQuat = rot})
+        end
+        ::continue::
     end
 end
 --#endregion
-
-local function visualizeItem(guid, length)
-    local ent = Ext.Entity.Get(guid)
-    if not ent then return end
-
-    local visualObj = ent.Visual.Visual.ObjectDescs
-
-    for _, obj in pairs(visualObj) do
-        if obj.Renderable.ActiveMaterial.MaterialName == GIZMO_TEXTURE.Z then
-            obj.Renderable.ActiveMaterial:SetVector4("Color", {0,0,1,1})
-            obj.Renderable:SetWorldScale({1,1,length/0.9 or 1})
-        else
-            obj.Renderable.ActiveMaterial:SetVector4("Color", {0,0,0,0})
-            obj.Renderable:SetWorldScale({0,0,0})
-        end
-    end
-end
-
-local spawnId = RB_PROP_AXIS_FX
-local controllerItem = "LOOT_TEST_Toy_Ball_Small_Scratch_10df0443-eef7-4765-be17-ce2dbb8b3eb5"
-RegisterConsoleCommand("ik_test", function ()
-    local bones = {}
-    local playerPos = _C().Transform.Transform.Translate
-    local args = {
-        spawnId, playerPos[1], playerPos[2], playerPos[3], 0,0, ""
-    }
-
-    for i=1,5 do
-        if i > 3 then -- poleTarget , controller 
-            args[1] = controllerItem
-        end
-        NetChannel.CallOsiris:RequestToServer({
-            Function = "CreateAt",
-            Args = args
-        }, function (response)
-            bones[i] = response[1]
-        end)
-    end
-
-    local function setupIK()
-        local transform = {
-            Translate = playerPos,
-            Rotate = Quat.Identity(),
-            Scale = Vec3(1,1,1)
-        }
-
-        local origin = ItemMovableProxy.new(bones[1])
-        local joint = ItemMovableProxy.new(bones[2])
-        local target = ItemMovableProxy.new(bones[3])
-        local poleTarget = ItemMovableProxy.new(bones[4])
-        local controller = ItemMovableProxy.new(bones[5])
-
-        --- @type Transform[]
-        local transforms = {}
-        for i = 1, 5 do
-            transforms[i] = RBUtils.DeepCopy(transform)
-        end
-
-        local boneLength = 0.9
-        transforms[2].Translate = transforms[2].Translate + Vec3(0, boneLength, 0) -- joint
-        transforms[3].Translate = transforms[3].Translate + Vec3(0, 2 * boneLength, 0) -- target
-        transforms[4].Translate = transforms[4].Translate + Vec3(1 * boneLength, 1 * boneLength, 0) -- pole target
-        transforms[5].Translate = transforms[5].Translate + Vec3(0, 3 * boneLength, 0) -- controller
-
-        local proxies = {origin, joint, target, poleTarget, controller}
-        for i, proxy in ipairs(proxies) do
-            proxy:SetTransform(transforms[i])
-        end
-
-        Timer:After(1000, function ()
-            for i, bone in pairs(bones) do
-                if i > 3 then break end
-                visualizeItem(bone, boneLength)
-            end
-            --- @diagnostic disable-next-line
-            local ik = IKController.new(origin, joint, target, poleTarget, controller)
-
-            Timer:Every(100, function ()
-                ik:Update()
-            end)
-        end)
-    end
-
-    RBUtils.WaitUntil(function () return #bones == 5 end, function ()
-        Timer:After(100, setupIK)
-    end)
-end)
-
-RegisterConsoleCommand("fabrik_test", function (_, args)
-    local parsed = RBStringUtils.Split(args, ",")
-    local jointsCnt = math.floor(tonumber(parsed[1]) or 5)
-    local iteLimit = math.floor(tonumber(parsed[2]) or 10)
-    local bones = {}
-    _P("Spawning bones for FABRIK test...")
-    _P("Params:")
-    _P("Joints count: "..jointsCnt)
-    _P("Iteration limit: "..iteLimit)
-
-    local playerPos = _C().Transform.Transform.Translate
-    local commandArgs = {
-        spawnId, playerPos[1], playerPos[2], playerPos[3], 0,0, ""
-    }
-
-    for i=1,jointsCnt do
-        if i == jointsCnt then
-            commandArgs[1] = controllerItem
-        end
-        NetChannel.CallOsiris:RequestToServer({
-            Function = "CreateAt",
-            Args = commandArgs
-        }, function (response)
-            bones[i] = response[1]
-        end)
-    end
-
-    local function setupFABRIK()
-        _P("Setting up FABRIK controller...")
-        local joints = {}
-        local transform = {
-            Translate = playerPos,
-            Rotate = Quat.Identity(),
-            Scale = Vec3(1,1,1)
-        }
-
-        local boneLength = 0.9
-        for i = 1, jointsCnt do
-            joints[i] = ItemMovableProxy.new(bones[i])
-            local jointTransform = RBUtils.DeepCopy(transform)
-            jointTransform.Translate = jointTransform.Translate + Vec3(0, (i - 1) * boneLength, 0)
-            joints[i]:SetTransform(jointTransform)
-        end
-
-        Timer:After(1000, function ()
-            local controller = joints[#joints]
-            joints[#joints] = nil
-            local fabrik = FABRIKController.new(joints, controller)
-            fabrik.IterationLimit = iteLimit
-
-            for i, bone in pairs(bones) do
-                if i == jointsCnt then break end
-                visualizeItem(bone, boneLength)
-            end
-
-            Timer:Every(10, function ()
-                fabrik:Update()
-            end)
-
-        end)
-    end
-
-    RBUtils.WaitUntil(function () return #bones == jointsCnt end, function ()
-        Timer:After(100, setupFABRIK)
-    end)
-end, "Tests FABRIK IK solver with specified joints count and iteration limit. Usage: fabrik_test <jointsCount>,<iterationLimit>")
