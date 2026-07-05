@@ -8,7 +8,7 @@
 --- @field RotateTo fun(guid:GUIDSTRING, rx:number, ry:number, rz:number, w:number):boolean
 --- @field ScaleTo fun(guid:GUIDSTRING, sx:number, sy:number, sz:number):boolean
 --- @field ToTransform fun(guid:GUIDSTRING, transform:Transform):boolean
---- @field PreviewTemplate fun(templateId:string, x:number, y:number, z:number, p:number, yaw:number, r:number, w:number, visualPreset:string):string?
+--- @field PreviewTemplate fun(templateId:string, x:number, y:number, z:number, p:number, yaw:number, r:number, w:number, visualPreset:string|RB_VisualPreset):string?
 OsirisHelpers = OsirisHelpers or {}
 
 function OsirisHelpers.Propify(guids)

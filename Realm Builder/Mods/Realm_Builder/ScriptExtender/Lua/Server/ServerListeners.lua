@@ -1,57 +1,3 @@
-local function spawnHandler(data)
-    local template = data.TemplateId
-    local entInfo = data.EntInfo or {}
-    local position = entInfo.Position
-    local rotation = entInfo.Rotation
-    if not position or #position ~= 3 then
-        position = { 0, 0, 0 }
-    end
-    if not rotation or #rotation ~= 4 then
-        rotation = { 0, 0, 0, 1 }
-    end
-    local rtype = data.Type
-
-    if rtype == "Preview" then
-        local previewItem = OsirisHelpers.PreviewTemplate(template, position[1], position[2], position[3], rotation[1],
-            rotation[2], rotation[3], rotation[4], entInfo and entInfo.VisualPreset, data.Duration or 5000)
-        if not previewItem then
-            return { Guid = nil, TemplateId = template }
-        end
-
-        if entInfo.Scale then
-            NetChannel.SetVisualTransform:Broadcast({ Guid = previewItem, Transforms = { [previewItem] = { Scale = entInfo.Scale } } })
-        end
-        return { Guid = previewItem, TemplateId = template }
-    end
-
-    local newGuid = EntityManager:CreateAt(template, position[1], position[2], position[3], rotation[1], rotation
-    [2], rotation[3], rotation[4])
-
-    if not newGuid then
-        return { Guid = nil, TemplateId = template }
-    end
-
-    EntityManager:SetEntity(newGuid, entInfo or {})
-
-    entInfo.Visible = true
-    entInfo.Guid = newGuid
-    entInfo.TemplateId = template
-
-    if entInfo.Scale then
-        NetChannel.SetVisualTransform:Broadcast({ Guid = newGuid, Transforms = { [newGuid] = { Scale = entInfo.Scale } } })
-    end
-
-    if entInfo.VisualPreset then
-        Timer:Ticks(30, function()
-            NetChannel.ApplyVisualPreset:Broadcast({ Guid= newGuid, TemplateName = RBStringUtils.TrimTail(template, 37), VisualPreset = entInfo.VisualPreset })
-        end)
-    end
-
-    NetChannel.Entities.Added:Broadcast({ Entities = { entInfo } })
-
-    return { Guid = newGuid }
-end
-
 local deleteHandler = function(data)
     local guids = RBUtils.NormalizeGuidList(data.Guid)
     local toCache = {}
@@ -132,6 +78,7 @@ NetChannel.SpawnPreview:SetRequestHandler(function(data, userID)
     return { Guid = preview, TemplateId = template }
 end)
 
+local firstTimeScan = true
 NetChannel.ManageEntity:SetHandler(function(data, userID)
     local action = data.Action
     if action == "Add" then
@@ -153,6 +100,12 @@ NetChannel.ManageEntity:SetHandler(function(data, userID)
     elseif action == "Load" then
         EntityManager:LoadFromModVar()
     elseif action == "Scan" then
+        if firstTimeScan then
+            EntityManager:LoadFromModVar()
+            firstTimeScan = false
+            return
+        end
+
         EntityManager:ScanForEntities()
     end
 end)
@@ -293,7 +246,6 @@ NetChannel.SetAttributes:SetHandler(function(data, userID)
     NetChannel.AttributeChanged:Broadcast({ Guid = toSet, Attributes = data.Attributes or {} })
 end)
 
-
 NetChannel.Bind:SetHandler(function(data, userID)
     if not BindManager then
         Warning("BindManager not initialized.")
@@ -322,8 +274,6 @@ NetChannel.Bind:SetHandler(function(data, userID)
     if data.Type == "UpdateOffset" then return end
     BindManager:BroadcastBindState(tobind)
 end)
-
-
 
 local gizmoUserStack = {}
 NetChannel.ManageGizmo:SetRequestHandler(function(data, userID)
@@ -677,4 +627,8 @@ NetChannel.ClientTimer:SetHandler(function (data, userID)
         return
     end
     Timer:ReceiveClientTimer(data.TimerID)
+end)
+
+NetChannel.StoreVisualPresets:SetHandler(function (data, userID)
+    EntityManager:StoreVisualPresets(data)
 end)

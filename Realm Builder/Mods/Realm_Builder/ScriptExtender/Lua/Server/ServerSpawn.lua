@@ -40,6 +40,11 @@ local function waitForTicks(cnt, user)
     cnt = cnt or 30
     isWaitingForResume = true
     local antiSpammer = nil
+
+    if not user then
+        user = _C().UserReservedFor.UserID
+    end
+
     Timer:ClientOnTicks(cnt, function(timerID)
         if antiSpammer then
             Timer:Cancel(antiSpammer)
@@ -145,11 +150,13 @@ function createCoroutine()
             --- @type {Data:SpawnData, RequestId:integer, UserId:integer}?
             local data = table.remove(queuedSpawnData, 1)
             if data then
-                local result = spawnHandler(data.Data, data.UserId)
-                NetChannel.Spawn:SendToClient({
-                    Guid = result.Guid,
-                    RequestId = data.RequestId,
-                }, data.UserId)
+                local result = spawnHandler(data.Data)
+                if data.RequestId and data.UserId then
+                    NetChannel.Spawn:SendToClient({
+                        Guid = result.Guid,
+                        RequestId = data.RequestId,
+                    }, data.UserId)
+                end
                 if not RBUtils.IsItemOrCharacterTemplate(data.Data.TemplateId) then
                     waitForTicks(30, data.UserId)
                     coroutine.yield()
@@ -202,3 +209,7 @@ RegisterConsoleCommand("rb_reboot_spawn_coroutine", function()
     createCoroutine()
     safeResume()
 end)
+
+ServerSpawnCoroutine = {
+    EnqueueSpawnData = enqueueSpawnData,
+}

@@ -9,8 +9,6 @@ function VisualHelpers.RegisterVisual(scenery)
     visualRegistry[scenery.Scenery.Uuid] = scenery
 end
 
-
-
 --- @param handle EntityHandle|GUIDSTRING
 --- @return Visual?
 function VisualHelpers.GetEntityVisual(handle)

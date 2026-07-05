@@ -1257,6 +1257,8 @@ function VisualTab:SaveCurrentState()
     return presetData
 end
 
+VisualTab.ExportVisualPreset = VisualTab.SaveCurrentState -- alias
+
 function VisualTab:Save(name, overwrite)
     local templateName = self.templateName or RBGetTemplateNameForGuid(self.guid)
 

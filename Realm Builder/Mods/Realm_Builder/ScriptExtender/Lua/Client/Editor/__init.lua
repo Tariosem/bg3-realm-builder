@@ -13,6 +13,4 @@ RBUtils.RequireFiles("Client/Editor/", {
     "EntityEffectEditor",
     "PlacementPreview",
     "OrbitalCamera",
-    "IKController",
-    "BoneTest"
 })

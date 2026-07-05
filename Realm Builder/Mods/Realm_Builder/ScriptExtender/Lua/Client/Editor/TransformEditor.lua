@@ -507,6 +507,7 @@ function TransformEditor:SetupGizmo()
     local picRotInv = nil --[[@as Quat?]]
     local cachedStartTransform = {} --[[@type table<RB_MovableProxy, Transform>]]
     local cachedParents = {} --[[@type table<RB_MovableProxy, RB_MovableProxy?>]]
+    local cachedLocalRot = {} --[[@type table<RB_MovableProxy, Quat>]]
     local cachedScaleAxes = {} --[[@as table<RB_MovableProxy, Vec3[]>]]
     local inTarget = {} --[[@as table<RB_MovableProxy, boolean>]]
     local recoverCanMoveFlag = nil --[[@as GUIDSTRING?]]
@@ -515,6 +516,7 @@ function TransformEditor:SetupGizmo()
         cachedStartTransform = {}
         cachedParents = {}
         cachedScaleAxes = {}
+        cachedLocalRot = {}
         inTarget = {}
     end
 
@@ -771,13 +773,18 @@ function TransformEditor:SetupGizmo()
             local newRot = nil
             if self.Space == "Local" then
                 local parent = cachedParents[proxy]
-                if parent and inTarget[parent] then -- parent is also in target
-                    local parentRot = cachedStartTransform[parent].RotationQuat
+                if parent then
                     local curParentRot = parent:GetWorldRotation()
 
-                    local invParentRot = Ext.Math.QuatInverse(parentRot)
+                    local localRot = cachedLocalRot[proxy]
+                    if not localRot then
+                        local parentRot = cachedStartTransform[parent].RotationQuat
+                        local invParentRot = Ext.Math.QuatInverse(parentRot)
 
-                    local localRot = Ext.Math.QuatMul(invParentRot, startRot)
+                        localRot = Ext.Math.QuatMul(invParentRot, startRot)
+                        cachedLocalRot[proxy] = localRot
+                    end
+
                     local newLocalRot = Ext.Math.QuatMul(localRot, quat)
                     
                     newRot = Ext.Math.QuatMul(curParentRot, newLocalRot)

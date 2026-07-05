@@ -11,6 +11,23 @@ NetChannel = NetChannel or {}
 --- @field Broadcast fun(channel:self , data:any)
 --- @field OnMessage fun(channel:self, data:LuaNetMessageEvent)
 
+--- @class TNetChannel<T>
+--- @field SetHandler fun(channel:self, handler: fun(data:T, userID:number))
+--- @field SetRequestHandler fun(channel:self, handler: fun(data:T, userID:number):any)
+--- @field RequestToServer fun(channel:self , data:T, callback: fun(response:any))
+--- @field SendToServer fun(channel:self , data:T)
+--- @field SendToClient fun(channel:self , data:T, user:number)
+--- @field RequestToClient fun(channel:self , data:T, user:number, callback: fun(response:any))
+--- @field Broadcast fun(channel:self , data:T)
+
+--- @class TRNetChannel<T, R>
+--- @field SetHandler fun(channel:self, handler: fun(data:T, userID:number):R)
+--- @field SetRequestHandler fun(channel:self, handler: fun(data:T, userID:number):R)
+--- @field RequestToServer fun(channel:self , data:T, callback: fun(response:R))
+--- @field RequestToClient fun(channel:self , data:T, user:number, callback: fun(response:R))
+--- @field SendToServer fun(channel:self , data:T)
+--- @field SendToClient fun(channel:self , data:T, user:number)
+--- @field Broadcast fun(channel:self , data:T)
 
 --- @class CallOsirisChannel<args, result> : NetChannel
 --- @field SendToServer fun(self, data: {Function: string, Args: args})
@@ -149,3 +166,7 @@ NetChannel.SetLighting = Ext.Net.CreateChannel(ModuleUUID, "SetLighting")
 --- @class SetResourceChannel : NetChannel
 --- @field SendToServer fun(channel:self , data: {ResourceType:ResourceBankType, ResourceUUID:string, Data:any})
 NetChannel.SetResource = Ext.Net.CreateChannel(ModuleUUID, "SetResource")
+
+--- @alias StoreVisualPresetsChannel TNetChannel<table<GUIDSTRING, RB_VisualPreset>>
+--- @type StoreVisualPresetsChannel
+NetChannel.StoreVisualPresets = Ext.Net.CreateChannel(ModuleUUID, "StoreVisualPresets")

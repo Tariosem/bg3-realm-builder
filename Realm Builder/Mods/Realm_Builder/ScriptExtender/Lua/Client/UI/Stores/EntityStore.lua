@@ -551,4 +551,16 @@ function EntityStore:GetExportCopy(guids)
     return results
 end
 
+function EntityStore:UploadVisualPresets()
+    --- @type table<GUIDSTRING, RB_VisualPreset>
+    local data = {}
+    for guid,_ in pairs(EntityDatas) do
+        local visualTab = VisualTab.FetchByGuid(guid)
+        if visualTab then
+            data[guid] = visualTab:ExportVisualPreset()
+        end
+    end
+    NetChannel.StoreVisualPresets:SendToServer(data)
+end
+
 EntityStore:SetupServerListeners()

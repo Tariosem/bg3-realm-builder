@@ -19,6 +19,8 @@ EntityManager = {
 --- @class EntitySave
 --- @field SavedEntities table<string, boolean>
 --- @field DeleteOnNextSession table<string, boolean>
+--- @field SavedTemplates table<string, string>
+--- @field SavedVisualPresets table<string, RB_VisualPreset>
 
 --- @return EntitySave
 local function getModVar()
@@ -26,8 +28,22 @@ local function getModVar()
     if not modVar.EntityManager then
         modVar.EntityManager = {
             SavedEntities = {},
-            DeleteOnNextSession = {}
+            DeleteOnNextSession = {},
+            SavedTemplates = {},
+            SavedVisualPresets = {},
         }
+    end
+    if not modVar.EntityManager.SavedEntities then
+        modVar.EntityManager.SavedEntities = {}
+    end
+    if not modVar.EntityManager.DeleteOnNextSession then
+        modVar.EntityManager.DeleteOnNextSession = {}
+    end
+    if not modVar.EntityManager.SavedTemplates then
+        modVar.EntityManager.SavedTemplates = {}
+    end
+    if not modVar.EntityManager.SavedVisualPresets then
+        modVar.EntityManager.SavedVisualPresets = {}
     end
     return modVar.EntityManager
 end
@@ -38,40 +54,47 @@ local function setModVar(modVar)
     Ext.Vars.DirtyModVariables(ModuleUUID)
 end
 
-Ext.Events.GameStateChanged:Subscribe(function (e)
-    --Debug("GameStateChanged: " .. tostring(e.FromState) .. " -> " .. tostring(e.ToState))
-    if e.FromState == "LoadLevel" then
-        EntityManager:LoadFromModVar()
-        NetChannel.ClearHistory:Broadcast({})
-    end
-end)
-
-Ext.Events.ResetCompleted:Subscribe(function ()
-    EntityManager:LoadFromModVar()
-    NetChannel.ClearHistory:Broadcast({})
-end)
-
 Ext.Events.Shutdown:Subscribe(function ()
     local modVars = getModVar()
-    for _,guid in pairs(modVars) do
-        if RB_FlagHelpers.HasFlag(guid, "IsGizmo") or RB_FlagHelpers.HasFlag(guid, "DeleteLater") then
-            Osi.RequestDeleteTemporary(guid)
+   
+    for guid, _ in pairs(modVars.DeleteOnNextSession) do
+        Osi.RequestDelete(guid)
+        Osi.RequestDeleteTemporary(guid)
+        modVars.SavedEntities[guid] = nil
+        modVars.DeleteOnNextSession[guid] = nil
+        modVars.SavedTemplates[guid] = nil
+    end
+
+    for guid, templteId in pairs(modVars.SavedTemplates) do
+        if not RBUtils.IsItemOrCharacterTemplate(templteId) then
             Osi.RequestDelete(guid)
+            Osi.RequestDeleteTemporary(guid)
+            modVars.SavedEntities[guid] = nil
+            modVars.DeleteOnNextSession[guid] = nil
+            modVars.SavedTemplates[guid] = nil
         end
     end
-    NetChannel.ClearHistory:Broadcast({})
+
+    local allFlagged = Ext.Vars.GetEntitiesWithVariable(RB_FLAG_FIELD)
+    for _,uuid in pairs(allFlagged) do
+        if RB_FlagHelpers.HasFlag(uuid, "IsGizmo") or RB_FlagHelpers.HasFlag(uuid, "DeleteLater") then
+            Osi.RequestDeleteTemporary(uuid)
+            Osi.RequestDelete(uuid)
+        end
+    end
+
+    setModVar(modVars)
 end)
-
-
 
 RegisterConsoleCommand("rb_dump_modvar", function ()
     local modVar = getModVar()
     RainbowDumpTable(modVar)
 end, "Dump the EntityManager mod variable to console.")
 
-function EntityManager:StoreGuid(guid)
+function EntityManager:StoreGuid(guid, templateId)
     local modVar = getModVar()
     modVar.SavedEntities[guid] = true
+    modVar.SavedTemplates[guid] = templateId or Osi.GetTemplate(guid)
     setModVar(modVar)
 end
 
@@ -151,33 +174,24 @@ function EntityManager:FreeEntity(guids)
     setModVar(modVar)
 end
 
-local readOnlyTemplateProperty = {
-    Id = true,
-    TemplateName = true,
-    ParentTemplateId = true,
-    TemplateHandle = true,
-    TemplateType = true,
-    Name = true,
-    Tags = true,
-    TemplateId = true,
-    DisplayName = true,
-    Icon = true,
-    ConstructionBend = true,
-    TileSet = true,
-    Tiles = true,
-    field_100 = true,
-    field_108 = true,
-}
-
-local function CopyTemplateProperties(fromTemplate, toTemplate)
-    for k,v in pairs(fromTemplate) do
-        if not readOnlyTemplateProperty[k] then 
-            toTemplate[k] = v
+--- @param guidToVisualPresets table<GUIDSTRING, RB_VisualPreset>
+function EntityManager:StoreVisualPresets(guidToVisualPresets)
+    local modVar = getModVar()
+    for guid, preset in pairs(guidToVisualPresets) do
+        if not guid or not preset then
+            Warning("Invalid guid or preset: " .. tostring(guid) .. ", " .. tostring(preset))
+        else
+            modVar.SavedVisualPresets[guid] = preset
         end
     end
+    setModVar(modVar)
 end
 
-local debugText = 
+local function CopyTemplateProperties(fromTemplate, toTemplate)
+    Ext.Types.Unserialize(toTemplate, Ext.Types.Serialize(fromTemplate))
+end
+
+local debugText =
 [[
     ===========================
     Create [%s] At (%.2f, %.2f, %.2f)
@@ -250,7 +264,7 @@ function EntityManager:CreateAt(templateId, x, y, z, rx, ry, rz, w)
     end
 
     local spawnTemplate = templateId --[[@as string?]]
-    local templateObj = Ext.Template.GetTemplate(RBUtils.TakeTailTemplate(templateId))
+    local templateObj = Ext.Template.GetRootTemplate(RBUtils.TakeTailTemplate(templateId))
     local tempoFlag = 0 --[[@as integer]]
     spawnTemplate, tempoFlag = self.TemplateTrick(templateObj, templateId)
     if not spawnTemplate then
@@ -264,6 +278,33 @@ function EntityManager:CreateAt(templateId, x, y, z, rx, ry, rz, w)
     end
     local templateType = templateObj and templateObj.TemplateType or "Visual"
     --Debug(debugText:format(tostring(templateType), x, y, z, tostring(templateId), tostring(newProp)))
+
+    --[[
+    if spawnTemplate ~= templateId then
+        local ent = Ext.Entity.Get(newGuid)
+        if not ent then return end
+        local cached = ent.ServerItem:CreateCacheTemplate()
+        if isTemplate then
+            CopyTemplateProperties(templateObj, cached)
+        else
+            local visualRes = Ext.Resource.Get(templateId, "Visual")
+            if visualRes then
+                cached.VisualTemplate = templateId
+                for i, boundData in pairs(cached.AIBounds or {}) do
+                    cached.AIBounds[i].Max = visualRes.BoundsMax
+                    cached.AIBounds[i].Min = visualRes.BoundsMin
+                end
+            else
+                local effectRes = Ext.Resource.Get(templateId, "Effect")
+                if effectRes then
+                    cached.EffectTemplate = templateId
+                else
+                    Error("Invalid TemplateId: " .. tostring(templateId))
+                end
+            end
+        end
+    end
+    ]]--
 
     OsirisHelpers.Propify(newGuid)
     RB_FlagHelpers.SetFlag(newGuid, "IsSpawned")
@@ -282,9 +323,7 @@ function EntityManager:CreateAt(templateId, x, y, z, rx, ry, rz, w)
     }
 
     self.SavedEntities[newGuid] = propData
-    self:StoreGuid(newGuid)
-
-    
+    self:StoreGuid(newGuid, templateId)
 
     local TemplateName = RBStringUtils.TrimTail(templateId, 37)
     if TemplateName == "" then
@@ -373,11 +412,10 @@ function EntityManager:AddEntity(guid)
     local propData = {
         TemplateId = templateId,
         Guid = guid,
-        Persistent = false,
     }
 
     self.SavedEntities[guid] = propData
-    self:StoreGuid(guid)
+    self:StoreGuid(guid, templateId)
 
     return guid
 end
@@ -394,6 +432,7 @@ function EntityManager:LoadFromModVar()
         Osi.RequestDeleteTemporary(guid)
         modVar.SavedEntities[guid] = nil
         modVar.DeleteOnNextSession[guid] = nil
+        modVar.SavedTemplates[guid] = nil
     end
 
     local allFlagged = Ext.Vars.GetEntitiesWithVariable(RB_FLAG_FIELD)
@@ -405,21 +444,39 @@ function EntityManager:LoadFromModVar()
     end
 
     for guid, _ in pairs(modVar.SavedEntities) do
-        local templateId = RBUtils.TakeTailTemplate(Osi.GetTemplate(guid))
-        if templateId == INVISIBLE_HELPER_SCENERY or templateId == INVISIBLE_HELPER_PREVIEW then
+        table.insert(existingEntities, guid)
+
+        if not RBUtils.IsItemOrCharacterTemplate(modVar.SavedTemplates[guid]) then
             Osi.RequestDelete(guid)
             Osi.RequestDeleteTemporary(guid)
             modVar.SavedEntities[guid] = nil
+            modVar.DeleteOnNextSession[guid] = nil
+            modVar.SavedTemplates[guid] = nil
             goto continue
         end
-        --[[if not self:AddEntity(guid) then
-            modVar.SavedEntities[guid] = nil
-        else
-            table.insert(existingEntities, guid)
-        end]]
+
+        self.SavedEntities[guid] = {
+            TemplateId = modVar.SavedTemplates[guid] or Osi.GetTemplate(guid),
+            Guid = guid,
+        }
+
+        if modVar.SavedVisualPresets then
+            NetChannel.ApplyVisualPreset:Broadcast({
+                Guid = guid,
+                Preset = modVar.SavedVisualPresets[guid],
+            })
+        end
+
         ::continue::
     end
-    --NetChannel.Entities.Added:Broadcast({Entities = self:GetEntities(existingEntities)})
+
+    for guid, _ in pairs(modVar.SavedTemplates) do
+        if not modVar.SavedEntities[guid] then
+            modVar.SavedTemplates[guid] = nil
+        end
+    end
+
+    NetChannel.Entities.Added:Broadcast({Entities = self:GetEntities(existingEntities)})
 
     setModVar(modVar)
 end
@@ -459,8 +516,9 @@ function EntityManager:GetAllEntitiesForClients()
     for _, prop in pairs(entityList) do
         local item = self:GetEntityForClients(prop.Guid)
         if item then
-            table.insert(items, item[1])
+            table.insert(items, item)
         else
+            Warning("Prop not found for guid: " .. tostring(prop.Guid))
         end
     end
     return items
@@ -469,6 +527,7 @@ end
 function EntityManager:GetEntityForClients(guid)
     local entityData = self.SavedEntities[guid]
     if not entityData then
+        Warning("Entity data not found for guid: " .. tostring(guid))
         return nil
     end
     local entity = Ext.Entity.Get(guid) --[[@as EntityHandle]]
@@ -490,8 +549,7 @@ function EntityManager:GetEntityForClients(guid)
         item.Gravity = serverItem.FreezeGravity == false
     end
 
-    local items = {item}
-    return items
+    return item
 end
 
 --- @param guids GUIDSTRING|GUIDSTRING[]
@@ -502,7 +560,7 @@ function EntityManager:GetEntities(guids)
     for _, guid in ipairs(list) do
         local entity = self:GetEntityForClients(guid)
         if entity then
-            table.insert(items, entity[1])
+            table.insert(items, entity)
         else
             Warning("Prop not found for guid: " .. tostring(guid))
         end
@@ -544,3 +602,20 @@ function EntityManager:DeleteEntitiesByTemplateId(templateId)
 
     self:DeleteEntities(toDelete)
 end
+
+RegisterConsoleCommand("broadcast_all_ents", function (command, args)
+    local allEntities = EntityManager:GetAllEntitiesForClients()
+    NetChannel.Entities.Added:Broadcast({Entities = allEntities})
+end)
+
+--[[
+    local t = Mods["Realm_Builder"].EntityManager
+    for guid, entityData in pairs(t.SavedEntities) do
+    _P("\nGuid: " .. guid)
+        ---@type EntityHandle
+        local entity = Ext.Entity.Get(guid)
+        _DS(entity.ServerItem.Template.Name)
+        _DS(entity.ServerItem.Template.TemplateStorageType)
+        _DS(entity.ServerItem.Template.VisualTemplate)
+    end
+]]--

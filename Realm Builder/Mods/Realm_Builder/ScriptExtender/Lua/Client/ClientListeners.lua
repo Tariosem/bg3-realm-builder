@@ -30,6 +30,19 @@ NetChannel.SetVisualTransform:SetHandler(function (data)
     end
 end)
 
+--- @type table<GUIDSTRING, {TemplateName: string, VisualPreset: RB_VisualPreset}> delayedApplyVisualPreset
+local delayedApplyVisualPreset = {}
+local sessionLoaded = false
+
+EventsSubscriber.RegisterOnSessionLoaded(function ()
+    sessionLoaded = true
+
+    for guid, data in pairs(delayedApplyVisualPreset) do
+        VisualTabHelpers.SetVisualEdit(guid, data.VisualPreset)
+    end
+    delayedApplyVisualPreset = {}
+end)
+
 NetChannel.ApplyVisualPreset:SetHandler(function(data, userID)
     local guid = data.Guid
     local templateName = data.TemplateName
@@ -48,6 +61,11 @@ NetChannel.ApplyVisualPreset:SetHandler(function(data, userID)
         end
     else
         presetData = preset
+    end
+
+    if not sessionLoaded then
+        delayedApplyVisualPreset[guid] = {TemplateName = templateName, VisualPreset = presetData}
+        return
     end
 
     VisualTabHelpers.SetVisualEdit(guid, presetData)

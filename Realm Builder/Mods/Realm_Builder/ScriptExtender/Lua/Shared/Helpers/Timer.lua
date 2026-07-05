@@ -244,11 +244,14 @@ function Timer:CancelAll()
 end
 
 local clientTimerId = 0
+--- @param ticks integer
+--- @param callback fun(timerID:integer)
+--- @param user integer
 function Timer:ClientOnTicks(ticks, callback, user)
     if Ext.IsClient() then
         return self:Ticks(ticks, callback)
     end
-    user = user or 1
+    user = user or _C().UserReservedFor.UserID
     clientTimerId = clientTimerId + 1
     local timerID = clientTimerId
     self._serverClientCallbacks[timerID] = callback
