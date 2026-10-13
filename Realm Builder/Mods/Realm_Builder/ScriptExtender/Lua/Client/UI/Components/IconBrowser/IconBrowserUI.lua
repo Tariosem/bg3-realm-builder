@@ -839,6 +839,10 @@ function IconBrowser:RenderCustomizationTab(popup, entry)
         end
     end
 
+    local function pulseInput(input)
+        GuiAnim.PulseBorder(input, 0.5)
+    end
+
     --- @param text ExtuiInputText
     local noteDebounceFunc = function(text)
         if not text.EnterReturnsTrue then return end
@@ -863,32 +867,16 @@ function IconBrowser:RenderCustomizationTab(popup, entry)
         self.dataManager:ChangeDataNote(entry.Uuid, newNote)
         autoSaveChanges()
         self.tempDisableSearch = false
+
+        pulseInput(noteInput)
     end
 
-    local computeSizeAndSet = function()
-        local newText = noteInput.Text
-        local splitted = RBStringUtils.SplitByString(newText, "\n")
-        local longest = 0
-        for _, line in ipairs(splitted) do
-            if #line > longest then
-                longest = #line
-            end
-        end
-
-        local width = math.max(150 * SCALE_FACTOR, longest * 24 * SCALE_FACTOR + 48)
-        local height = math.max(50 * SCALE_FACTOR, (#splitted * 32 * SCALE_FACTOR) + 24)
-
-        noteInput.SizeHint = { width, height }
-    end
 
     noteInput:Tooltip():AddText(GetLoca("[Enter] to save changes"))
-    noteInput.Multiline = true
     noteInput.EnterReturnsTrue = true
     noteInput.OnChange = function(e)
-        computeSizeAndSet()
         noteDebounceFunc(e)
     end
-    computeSizeAndSet()
 
     local groupInput = filterTab:AddInputText(GetLoca("Group"))
     groupInput:Tooltip():AddText(GetLoca("[Enter] to save changes"))
@@ -918,6 +906,8 @@ function IconBrowser:RenderCustomizationTab(popup, entry)
         autoSaveChanges()
         self:AddGroupFilter()
         self.tempDisableSearch = false
+
+        pulseInput(groupInput)
     end
 
     local tagsInput = filterTab:AddInputText(GetLoca("Tags"))
@@ -974,13 +964,22 @@ function IconBrowser:RenderCustomizationTab(popup, entry)
         if self.selectedTags[tag] or self.excludeTags[tag] then
             self:Search()
         end
+
+        pulseInput(tagsInput)
     end
 
     updateTags()
 
-    noteInput.ItemWidth = self.browserWidth * 0.4
-    groupInput.ItemWidth = self.browserWidth * 0.4
-    tagsInput.ItemWidth = self.browserWidth * 0.4
+    --- @param input ExtuiInputText
+    local function stylizeInput(input)
+        input.ItemWidth = self.browserWidth * 0.4
+        input:SetStyle("FrameBorderSize", 0.5)
+        input:SetColor("Border", { 1, 1, 1, 0.5 })
+    end
+
+    for _, input in pairs({ noteInput, groupInput, tagsInput }) do
+        stylizeInput(input)
+    end
 end
 
 function IconBrowser:Destroy()

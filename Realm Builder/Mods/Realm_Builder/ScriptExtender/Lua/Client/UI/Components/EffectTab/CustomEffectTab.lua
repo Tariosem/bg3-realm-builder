@@ -315,7 +315,8 @@ function CustomEffectTab:RenderEffectList(parent)
         managePopup:Open()
     end
 
-    local refreshListFn, rootTree = EffectTabComponents:AddEffectList(childWindow:AddGroup("Effects"), "Effects", effectListTable,
+    local effectsGroup = childWindow:AddGroup("Effects")
+    local refreshListFn, rootTree = EffectTabComponents:AddEffectList(effectsGroup, "Effects", effectListTable,
     function(tree, effectEntry, idx)
         local renderEditorFunc = function ()
             renderCustomEffectEditor(tree, effectEntry)
@@ -372,6 +373,13 @@ function CustomEffectTab:RenderEffectList(parent)
     end
     
     EffectTabComponents:AddEffectListPlusCircle(childWindow:AddGroup("NewEffects"), newEffectDropped)
+
+    effectsGroup.DragDropType = EffectDragDropFlag
+    effectsGroup.OnDragDrop = function (sel, drop)
+        local droppedEffect = drop.UserData and drop.UserData.Effect
+        if not droppedEffect then return end
+        newEffectDropped(droppedEffect)
+    end
 end
 
 function CustomEffectTab:Add(entry)

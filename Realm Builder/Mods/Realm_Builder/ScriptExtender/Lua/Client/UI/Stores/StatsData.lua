@@ -203,4 +203,6 @@ function ClearEffectToInfo()
     EffectToInfo = {}
 end
 
-ReInitStats()
+EventsSubscriber.RegisterOnStatsLoaded(function()
+    ReInitStats()
+end)

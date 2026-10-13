@@ -16,6 +16,7 @@
 --- @field tagTree TreeTable
 --- @field tagMap table<string, table<string, boolean>>
 --- @field groupMap table<string, table<string, boolean>>
+--- @field noteMap table<string, table<string, boolean>>
 --- @field groupCount table<string, number>
 --- @field tagCount table<string, number>
 --- @field __init fun(self)
@@ -29,6 +30,8 @@ function ManagerBase:__init()
 
     self.tagMap = {}
     self.groupMap = {}
+    self.noteMap = {}
+
     self.groupCount = {}
     self.tagCount = {}
 
@@ -101,6 +104,20 @@ function ManagerBase:ChangeDataNote(uuid, note)
         self.customizationData[uuid].Note = note
     end
 
+    if note then
+        self.noteMap[note] = self.noteMap[note] or {}
+        self.noteMap[note][uuid] = true
+    else
+        for oriNote, uuids in pairs(self.noteMap) do
+            if uuids[uuid] then
+                self.noteMap[oriNote][uuid] = nil
+                if not next(self.noteMap[oriNote]) then
+                    self.noteMap[oriNote] = nil
+                end
+                break
+            end
+        end
+    end
 end
 
 ---@return table<string, number> groupCount
@@ -308,6 +325,16 @@ function ManagerBase:Filter(Set)
         return self.Data
     end
 
+    if NoteText ~= "" then
+        for note, uuids in pairs(self.noteMap) do
+            if note:lower():find(NoteText:lower()) then
+                for uuid, _ in pairs(uuids) do
+                    candidates[uuid] = true
+                end
+            end
+        end
+    end
+
     if #IncludeTags > 0 then
         for _, tag in ipairs(IncludeTags) do
             local tagMap = self.tagMap[tag] or {}
@@ -404,7 +431,6 @@ function ManagerBase:Filter(Set)
 
     return results
 end
-
 
 function ManagerBase:ExportCustomizations()
     return self.customizationData

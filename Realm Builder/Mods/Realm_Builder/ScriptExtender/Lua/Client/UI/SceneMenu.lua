@@ -630,6 +630,7 @@ function SceneMenu:RenderPresetDetails(name)
     end
 
     title.OnClick = function()
+        title.Selected = true
         self.selectedPreset = name
         self:SetupContextMenu()
     end

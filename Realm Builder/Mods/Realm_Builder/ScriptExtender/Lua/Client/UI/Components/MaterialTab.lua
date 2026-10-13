@@ -401,10 +401,11 @@ function MaterialTab:RenderNumberProperty(node, propertyName, vecValue)
             range.max = 100
             range.step = 0.1
         end
+
+    
         local slider = ImguiElements.AddSliderWithStep(node, propertyName .. "##" .. self.MaterialName .. i,
             vecValue[i], range.min, range.max, range.step, isIndex)
         slider.ItemWidth = 400 * SCALE_FACTOR
-
 
         if colorPicker then
             slider.Visible = false

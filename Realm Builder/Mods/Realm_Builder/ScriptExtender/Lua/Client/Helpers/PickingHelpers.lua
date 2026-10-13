@@ -2,8 +2,9 @@ PickingUtils = {
 }
 
 --- @param ray Ray?
+--- @param excludeScenery boolean?
 --- @return GUIDSTRING|nil
-function PickingUtils.GetPickingGuid(ray)
+function PickingUtils.GetPickingGuid(ray, excludeScenery)
     ray = ray or ScreenToWorldRay()
     if not ray then return nil end
 
@@ -15,7 +16,7 @@ function PickingUtils.GetPickingGuid(ray)
             goto continue
         end
         local uuid = entity.Uuid and entity.Uuid.EntityUuid
-        if not uuid and entity.Scenery then
+        if not uuid and entity.Scenery and not excludeScenery then
             uuid = entity.Scenery.Uuid
             NearbyMap.RegisterScenery(entity)
             return uuid

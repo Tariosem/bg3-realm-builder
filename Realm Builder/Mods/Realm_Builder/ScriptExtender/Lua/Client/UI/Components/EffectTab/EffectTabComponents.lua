@@ -98,9 +98,16 @@ function effectTabComponents:AddCasterTargetSelector(parent, obj)
     tab.ColumnDefs[2] = { WidthStretch = true }
     tab.BordersInnerV = true
 
+    local caution = rightCell:AddText("Selected Caster -> Target Pairs (Click to Remove)")
+    caution.Font = "Tiny"
+    caution:SetColor("Text", {0.5, 0.5, 0.5, 1})
+
     local expanded = {}
     local function updatePresentation()
         ImguiHelpers.DestroyAllChildren(rightCell)
+        local caution = rightCell:AddText("Selected Caster -> Target Pairs (Click to Remove)")
+        caution.Font = "Tiny"
+        caution:SetColor("Text", {0.5, 0.5, 0.5, 1})
 
         makeCache(obj)
 
@@ -111,57 +118,47 @@ function effectTabComponents:AddCasterTargetSelector(parent, obj)
         end) do
             local casterName = nameCache[casterGuid] or casterGuid
             local casterIcon = iconCache[casterGuid] or RB_ICONS.Box
-            local casterTree = ImguiElements.AddTree(rightCell, casterName .. "##" .. casterGuid, expanded[casterGuid] ~= nil)
-            casterTree:AddTreeIcon(casterIcon)
 
-            casterTree.OnRightClick = function()
-                obj[casterGuid] = nil
-                casterTree:Destroy()
-            end
 
-            local function updateChildTree()
-                casterTree:ClearContent()
-                if #targetGuids == 0 then
-                    expanded[casterGuid] = nil
-                    casterTree:Destroy()
-                    return
-                end
+            for _, targetGuid in RBUtils.SortedPairs(targetGuids, function (a, b)
+                local nameA = nameCache[a] or a
+                local nameB = nameCache[b] or b
+                return nameA < nameB
+            end) do
+                local group = rightCell
 
-                for i, targetGuid in ipairs(targetGuids) do
-                    local targetName = nameCache[targetGuid] or targetGuid
-                    local targetIcon = iconCache[targetGuid] or RB_ICONS.Box
+                local sel = group:AddSelectable("##" .. casterGuid .. "->" .. targetGuid)
+                sel.AllowOverlap = true
+                local casterNameLabel = group:AddText(casterName)
+                local casterIconBtn = group:AddImage(casterIcon, IMAGESIZE.FRAME)
+                casterNameLabel.SameLine = true
+                casterIconBtn.SameLine = true
 
-                    local id = targetName .. "##" .. targetGuid .. "##" .. i
-                    local targetGroup = casterTree:AddGroup(id)
+                local toLabel = group:AddText(" -> ")
+                toLabel.SameLine = true
 
-                    local function remove()
-                        if not targetGuids[i] then
-                            return
+                local targetName = nameCache[targetGuid] or targetGuid
+                local targetIcon = iconCache[targetGuid] or RB_ICONS.Box
+
+                local targetNameLabel = group:AddText(targetName)
+                local targetIconBtn = group:AddImage(targetIcon, IMAGESIZE.FRAME)
+                targetNameLabel.SameLine = true
+                targetIconBtn.SameLine = true
+
+
+                sel.OnClick = function ()
+                    obj[casterGuid] = obj[casterGuid] or {}
+                    for i, guid in ipairs(obj[casterGuid]) do
+                        if guid == targetGuid then
+                            table.remove(obj[casterGuid], i)
+                            break
                         end
-                        table.remove(targetGuids, i)
-                        updateChildTree()
                     end
-
-                    local imgSel = ImguiElements.AddImageSelectable(targetGroup, id, targetIcon)
-                    imgSel.OnRightClick = function()
-                        remove()
+                    if #obj[casterGuid] == 0 then
+                        obj[casterGuid] = nil
                     end
+                    updatePresentation()
                 end
-            end
-
-            casterTree.OnExpand = function()
-                updateChildTree()
-                casterTree.OnExpand = function()
-                    expanded[casterGuid] = true
-                end
-                expanded[casterGuid] = true
-            end
-            if expanded[casterGuid] then
-                casterTree:OnExpand()
-            end
-
-            casterTree.OnCollapse = function()
-                expanded[casterGuid] = nil
             end
         end
 
@@ -194,7 +191,7 @@ function effectTabComponents:AddCasterTargetSelector(parent, obj)
     local targetPicker = NearbyCombo.new(leftAligned:AddNewLine("Pick Targets"))
     targetPicker.ExcludeCamera = true
     targetPicker.OnChange = function (sel, Guid, displayName)
-        if selectedCaster then
+        if selectedCaster and not table.find(obj[selectedCaster] or {}, Guid) then
             obj[selectedCaster] = obj[selectedCaster] or {}
             table.insert(obj[selectedCaster], Guid)
             updatePresentation()
@@ -236,6 +233,7 @@ function effectTabComponents:AddEffectListPlusCircle(parent, handleDrop)
     local uuidOrNameInput = group:AddInputText("##Effect_UuidOrName_Input_" .. parent.Label, "")
     uuidOrNameInput.Hint = "Enter Effect UUID or Name"
     uuidOrNameInput.SameLine = true
+    uuidOrNameInput.EnterReturnsTrue = true
 
     StyleHelpers.ApplyBorderlessImageButtonStyle(addButton)
 
@@ -261,6 +259,16 @@ function effectTabComponents:AddEffectListPlusCircle(parent, handleDrop)
 
         uuidOrNameInput.Text = ""
     end
+    addButton.OnHoverEnter = function ()
+        addButton.Tint = {1, 1, 1, 0.5}
+    end
+    addButton.OnHoverLeave = function ()
+        addButton.Tint = {1, 1, 1, 1}
+    end
+
+    uuidOrNameInput.OnChange = function (e)
+        if e.EnterReturnsTrue then addButton.OnClick() end
+    end
 
     local eles = { uuidOrNameInput, addButton }
     for _, ele in ipairs(eles) do
@@ -281,6 +289,7 @@ end
 --- @return fun(), RB_UI_Tree
 function effectTabComponents:AddEffectList(parent, label, effectList, contextRenderFunc, handleDrop)
     local rootTree = ImguiElements.AddTree(parent, label)
+    rootTree:SetOpen(true)
     
     local effectManager = RB_GLOBALS.MultiEffectManager
 
@@ -328,6 +337,9 @@ function effectTabComponents:AddEffectList(parent, label, effectList, contextRen
 
             childTree.CanDrag = true
             childTree.DragDropType = effectDragDropFlag
+            childTree.OnDragStart = function ()
+                childTree.DragPreview:AddText(effectEntry.EffectName)
+            end
             childTree.OnDragDrop = function (sel, drop)
                 handleDrop(drop.UserData and drop.UserData.Effect, i)
             end

@@ -468,8 +468,8 @@ function TransformToolbar:RegisterKeyInputEvents()
         end
     end)
 
-    local function registerToggleEvent(eventName, netType, field, valueOn, valueOff, mod)
-        local channel = netType == "SetAttributes" and NetChannel.SetAttributes or NetChannel.Bind
+    local function registerToggleEvent(eventName, field, mod)
+        local channel = NetChannel.SetAttributes
 
         mod:RegisterEvent(eventName, function(e)
             if e.Event ~= "KeyDown" then return end
@@ -480,28 +480,20 @@ function TransformToolbar:RegisterKeyInputEvents()
                     table.insert(targets, proxy.Guid)
                 end
             end
-            local paramsOn = { Guid = targets, Attributes = {}, Type = "SetAttributes" }
-            local paramsOff = { Guid = targets, Attributes = {}, Type = "SetAttributes" }
-            paramsOn.Attributes[field] = valueOn
-            paramsOff.Attributes[field] = valueOff
-            channel:SendToServer(paramsOn)
+            local params = { Guid = targets, Attributes = {}, Type = "SetAttributes" }
+            params.Attributes[field] = "Flip"
+            channel:SendToServer(params)
 
             HistoryManager:PushCommand({
-                Undo = function() channel:SendToServer(paramsOff) end,
-                Redo = function() channel:SendToServer(paramsOn) end,
+                Undo = function() channel:SendToServer(params) end,
+                Redo = function() channel:SendToServer(params) end,
                 Description = "Toggle " .. field,
             })
         end)
     end
-
-    --registerToggleEvent("LookAt", "SetType", "KeepLookingAt", true, false, buMod)
-    --registerToggleEvent("StopLookAt", "SetType", "KeepLookingAt", false, true, buMod)
-    --registerToggleEvent("Follow", "SetType", "FollowParent", true, false, buMod)
-    --registerToggleEvent("StopFollow", "SetType", "FollowParent", false, true, buMod)
-    registerToggleEvent("HideSelection", "SetAttributes", "Visible", false, true, ttMod)
-    registerToggleEvent("ShowSelection", "SetAttributes", "Visible", true, false, ttMod)
-    registerToggleEvent("ApplyGravity", "SetAttributes", "Gravity", true, false, ttMod)
-    registerToggleEvent("FreezeGravity", "SetAttributes", "Gravity", false, true, ttMod)
+    
+    registerToggleEvent("ToggleVisibility", "Visible", ttMod)
+    registerToggleEvent("ToggleGravity", "Gravity", ttMod)
 
     ttMod:RegisterEvent("Undo", function(e)
         if e.Event ~= "KeyDown" then return end
@@ -674,6 +666,7 @@ function TransformToolbar:RenderTopBar()
     local windowPos = { screenWidth * INIT_WINDOW_POS, 0 }
     local panel = WindowManager.RegisterWindow("generic", "RB Transform ToolBar", windowPos, windowSize)
     self.TopToolBar = panel
+    self.panel = panel
 
     panel.OnClose = function()
         RB_GLOBALS.TransformEditor:Clear()

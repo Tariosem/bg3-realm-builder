@@ -29,10 +29,8 @@ local KEYBIND_EVENT_RENDER_ORDER = {
         "ClearSelection",
         "DeleteSelection",
         "Duplicate",
-        "HideSelection",
-        "ShowSelection",
-        "ApplyGravity",
-        "FreezeGravity",
+        "ToggleVisibility",
+        "ToggleGravity",
         "SnapToGround",
         "SnapToHover",
         "LookAtCursor",
@@ -58,55 +56,7 @@ local KEYBIND_EVENT_RENDER_ORDER = {
     },
 }
 
-local localizedNames = {
-    GeneralShortcuts = "General Shortcuts",
-
-    OpenMainMenu = "Toggle Main Menu",
-    OpenBrowserMenu = "Toggle Browser Menu",
-    OpenTransformToolbar = "Toggle Transform Toolbar",
-    OpenVisualTab = "Open Visual Tab",
-    DeleteAllGizmos = "Clear All Gizmos",
-
-    TransformToolbar = "Transform Toolbar",
-
-    MultiSelect = "Multi Select",
-    BoxSelect = "Box Select",
-    Select = "Select",
-    ClearSelection = "Clear Selection",
-    DeleteSelection = "Delete Selection",
-    Duplicate = "Duplicate Selection",
-    HideSelection = "Hide Selection",
-    ShowSelection = "Show Selection",
-    ApplyGravity = "Apply Gravity",
-    FreezeGravity = "Freeze Gravity",
-    SnapToGround = "Snap To Ground",
-    OpenNearbyPopup = "Depth Selection Popup",
-    MoveToCursor = "Move To Cursor",
-    LookAtCursor = "Look At Cursor",
-    Move3DCursor = "Move 3D Cursor",
-    Snap3DCursor = "Snap 3D Cursor",
-    SnapToHover = "Snap To Hover",
-    Undo = "Undo",
-    Redo = "Redo",
-
-    TransformEditor = "Transform Editor",
-
-    CycleMode = "Cycle Mode",
-    Grab = "Grab",
-    Rotate = "Rotate",
-    Scale = "Scale",
-
-    BindUtility = "Bind Utility",
-
-    BindPopup = "Open Bind Popup",
-    BindTo = "Bind To Hover",
-    Unbind = "Unbind Selection",
-
-    CameraTool = "Camera Tool",
-
-    ToggleOrbitalCamera = "Toggle Orbital Camera",
-    ToggleCameraToolWindow = "Toggle Camera Tool Window",
-}
+local localizedNames = RB_KEYBIND_LOCALIZED_NAMES
 
 for key, text in pairs(localizedNames) do
     localizedNames[key] = GetLoca(text)
@@ -255,29 +205,7 @@ function KeybindMenu:RenderModule(module)
     end
 end
 
---- @param keybind Keybinding
-local function getPresentation(keybind)
-    if not keybind then
-        return "Unbound"
-    end
-    if not keybind.Key then
-        return "Unbound"
-    end
-
-    local parts = {}
-    if keybind.Modifiers then
-        for _, mod in pairs(keybind.Modifiers) do
-            table.insert(parts, Enums.ModfierToPresentation[mod] or mod)
-        end
-    end
-    table.insert(parts, Enums.InputCodeToPresentation[keybind.Key] or keybind.Key)
-
-    for i, part in ipairs(parts) do
-        parts[i] = "[" .. part .. "]"
-    end
-
-    return table.concat(parts, " + ")
-end
+local getPresentation = KeybindHelpers.GetPresentation
 
 local conflictNotif = Notification.new("Keybind Conflict")
 conflictNotif.Pivot = { 0.5, 0.5 }

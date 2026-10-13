@@ -63,6 +63,7 @@ function StatsTab:RenderEffectList(parent)
     local entry = self.entry
     local childWindow = parent:AddChildWindow("EffectListWindow")
     local effectList = ImguiElements.AddTree(childWindow, "Effects")
+    effectList:SetOpen(true)
 
     local activeList = activeEffectTypes[entry.StatsType] or {}
 
@@ -188,6 +189,12 @@ function StatsTab:RenderEffectTypeList(parent, effectType)
     subTree.DragDropType = EffectDragDropFlag
     --- @param dropped ExtuiStyledRenderable`
     subTree.OnDragDrop = function (sel, dropped)
+        handleDragDrop(dropped.UserData.Effect)
+        refreshListFn()
+    end
+
+    subTree.Panel.DragDropType = EffectDragDropFlag
+    subTree.Panel.OnDragDrop = function (sel, dropped)
         handleDragDrop(dropped.UserData.Effect)
         refreshListFn()
     end
@@ -364,6 +371,9 @@ function StatusTab:RenderSelector(parent)
     parent:AddSeparatorText("Apply To:")
 
     local rightGroup = parent:AddGroup("RightGroup")
+    local caution = rightGroup:AddText("Selected Targets (Click to Remove)")
+    caution.Font = "Tiny"
+    caution:SetColor("Text", {0.5, 0.5, 0.5, 1})
 
     local function refreshPresention() end
 
@@ -385,6 +395,9 @@ function StatusTab:RenderSelector(parent)
     end
 
     function refreshPresention()
+        local caution = rightGroup:AddText("Selected Targets (Click to Remove)")
+        caution.Font = "Tiny"
+        caution:SetColor("Text", {1, 0.5, 0.5, 1})
         ImguiHelpers.DestroyAllChildren(rightGroup)
         for guid, _ in pairs(self.Casters) do
             renderEntityEntry(guid)

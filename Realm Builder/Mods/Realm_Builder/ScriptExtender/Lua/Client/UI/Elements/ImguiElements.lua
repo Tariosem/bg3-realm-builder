@@ -262,6 +262,7 @@ function ImguiElements.AddSliderWithStep(parent, IDContext, defaultValue, min, m
         end
     })
 
+
     return sliderTable
 end
 
@@ -639,6 +640,15 @@ function ImguiElements.AddImageButton(parent, icon, sameLine)
     return button, group
 end
 
+--- @param parent ExtuiTreeParent
+--- @param label string
+--- @return ExtuiButton
+function ImguiElements.AddMiddleAlignedButton(parent, label, sameLine)
+    local tab = ImguiElements.AddCenterAlignTable(parent, "MiddleAlignedButtonTable")
+    
+    return tab:AddRow():AddCell().ParentElement:AddCell():AddButton(label)
+end
+
 ---@param parent ExtuiTreeParent
 ---@param size number?
 ---@return ExtuiGroup
@@ -649,6 +659,9 @@ function ImguiElements.AddIndent(parent, size)
     return rightGroup
 end
 
+--- @param parent ExtuiTreeParent
+--- @param label string
+--- @return ExtuiTable
 function ImguiElements.AddCenterAlignTable(parent, label)
     label = label or "CenterAlignTable"
     local table = parent:AddTable(label .. "##" .. math.random(1, 10000), 3)

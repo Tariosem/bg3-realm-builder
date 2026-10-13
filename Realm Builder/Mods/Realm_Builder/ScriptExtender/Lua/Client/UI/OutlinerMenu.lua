@@ -140,8 +140,7 @@ function OutlinerMenu:RenderMenu()
 
     --- @diagnostic disable-next-line
     self.bruteForceDeleteAllButton = ImguiElements.AddMenuButton(self.debugMenu, GetLoca("Deletes all props, can't undo"), bfDeleteAllOpe, self.isWindow)
-
-    
+ 
     StyleHelpers.ApplyDangerSelectableStyle(self.bruteForceDeleteAllButton)
 
     ImguiElements.AddMenuButton(self.debugMenu, GetLoca("Reapply All Visual Changes"), VisualTabHelpers.ReapplyAll, self.isWindow)

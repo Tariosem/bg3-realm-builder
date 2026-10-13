@@ -354,10 +354,17 @@ function KeybindManager:Save()
     return data
 end
 
+-- some deprecated functions
 local blacklist = {
     ["TransformEditor"] = {
         ["FollowTarget"] = true,
-    }
+    },
+    ["TransformToolbar"] = {
+        ["HideSelection"] = true,
+        ["ShowSelection"] = true,
+        ["ApplyGravity"] = true,
+        ["FreezeGravity"] = true,
+    },
 }
 
 function KeybindManager:Load(data)
@@ -462,6 +469,51 @@ function KeybindManager:CreateModule(moduleName)
     self:Enable(moduleName)
     return module
 end
+
+KeybindHelpers = KeybindHelpers or {}
+
+--- @param keybind Keybinding?
+--- @return string
+function KeybindHelpers.GetPresentation(keybind)
+    if not keybind then
+        return "Unbound"
+    end
+    if not keybind.Key then
+        return "Unbound"
+    end
+
+    local parts = {}
+    if keybind.Modifiers then
+        for _, mod in pairs(keybind.Modifiers) do
+            table.insert(parts, Enums.ModfierToPresentation[mod] or mod)
+        end
+    end
+    table.insert(parts, Enums.InputCodeToPresentation[keybind.Key] or keybind.Key)
+
+    for i, part in ipairs(parts) do
+        parts[i] = "[" .. part .. "]"
+    end
+
+    return table.concat(parts, " + ")
+end
+
+function KeybindHelpers.GetPresentationByEvent(module, eventName)
+    local keybind = KeybindManager:GetKeyByEvent(module, eventName)
+    return KeybindHelpers.GetPresentation(keybind)
+end
+
+function KeybindHelpers.DumpAllModules()
+    local bindings = KeybindManager:GetAllBindings()
+    for moduleName, moduleBindings in pairs(bindings) do
+        print("Module: " .. moduleName)
+        for _, bindingInfo in pairs(moduleBindings) do
+            local eventName = bindingInfo.EventName
+            local identifier = bindingInfo.Identifier
+            print("  Event: " .. eventName .. " -> " .. identifier)
+        end
+    end
+end
+
 
 EventsSubscriber.RegisterOnSessionLoaded(function()
     if not KeybindManager:LoadFromFile() then

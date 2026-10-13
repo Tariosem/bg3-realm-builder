@@ -357,6 +357,14 @@ function EntityManager:SetEntity(guid, entInfo)
         end
     end
 
+    if type(entInfo.Gravity) == "string" and entInfo.Gravity == "Flip" then
+        local ent = Ext.Entity.Get(guid)
+        if ent then
+            Osi.SetGravity(guid, ent.GravityDisabled and 0 or 1)
+            entInfo.Gravity = ent.GravityDisabled and true or false
+        end
+    end
+
     if type(entInfo.Visible) == "boolean" then
         if entInfo.Visible then
             Osi.SetVisible(guid, 1)
@@ -365,6 +373,14 @@ function EntityManager:SetEntity(guid, entInfo)
         end
         if self.SavedEntities[guid] then
             self.SavedEntities[guid].Visible = entInfo.Visible
+        end
+    end
+
+    if type(entInfo.Visible) == "string" and entInfo.Visible == "Flip" then
+        local ent = Ext.Entity.Get(guid)
+        if ent then
+            Osi.SetVisible(guid, Osi.IsInvisible(guid) == 1 and 1 or 0)
+            entInfo.Visible = Osi.IsInvisible(guid) == 1 and true or false
         end
     end
 

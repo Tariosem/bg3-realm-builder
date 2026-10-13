@@ -7,23 +7,25 @@
 --- @field FadeInType AnimationEasing
 --- @field FadeOutTime number ms
 --- @field FadeOutType AnimationEasing
---- @field timeRemaining number
+--- @field timeRemaining number ms
 --- @field Pivot number[] 0-1, index 1 is horizontal (0=left, 1=right), index 2 is vertical (0=top, 1=bottom)
 --- @field runningAnimation RunningAnimation?
 --- @field AnimDirection "Horizontal"|"Vertical"
---- @field Fps integer
---- @field AutoFadeOut boolean
---- @field AutoResize boolean
+--- @field Fps integer -- default 90
+--- @field AutoFadeOut boolean -- default true
+--- @field AutoResize boolean -- default true
 --- @field Width integer|nil
 --- @field Height integer|nil
---- @field Moveable boolean
---- @field FlickToDismiss boolean
---- @field ClickToDismiss boolean
+--- @field Moveable boolean -- default false
+--- @field FlickToDismiss boolean -- default false
+--- @field ClickToDismiss boolean -- default false
 --- @field FlickVelocityThreshold number Minimum velocity to trigger flick to dismiss
---- @field ChangeDirectionWhenFadeOut boolean
---- @field NeverShowAgain boolean
---- @field NoAnimation boolean
---- @field InstantDismiss boolean
+--- @field ChangeDirectionWhenFadeOut boolean -- default false
+--- @field NeverShowAgain boolean -- default false
+--- @field NoAnimation boolean -- default false
+--- @field InstantDismiss boolean -- default false
+--- @field DismissOnTitleClick boolean -- default true
+--- @field PivotOnLeftTop boolean -- default false
 --- @field Title string
 --- @field MessageRenderFunc fun(panel: ExtuiWindow) A function that takes the panel and adds content to it
 --- @field new fun(name:string):Notification
@@ -60,6 +62,7 @@ function Notification:__init(name)
     self.InstantDismiss = false
     self.Fps = 90
     self.Title = name
+    self.DismissOnTitleClick = true
     self.MessageRenderFunc = function(panel) panel:AddText("No Content") end
     self.OnDismiss = function() end
 end
@@ -125,21 +128,23 @@ function Notification:BuildContent()
     self.titleText:SetStyle("SeparatorTextAlign", 0.5)
 
     local titleText = self.titleText
-    titleText.OnHoverEnter = function()
-        local color = titleText:GetColor("Text") or {1,1,1,1}
-        titleText:SetColor("Text", {color[1], color[2], color[3], color[4] - 0.4})
-    end
-    titleText.OnHoverLeave = function()
-        local color = titleText:GetColor("Text") or {1,1,1,1}
-        titleText:SetColor("Text", {color[1], color[2], color[3], color[4] + 0.4})
-    end
-    titleText.OnClick = function()
-        if self.fadeOutTimer then
-            Timer:Cancel(self.fadeOutTimer)
-            self.fadeOutTimer = nil
+    if self.DismissOnTitleClick then
+        titleText.OnHoverEnter = function()
+            local color = titleText:GetColor("Text") or {1,1,1,1}
+            titleText:SetColor("Text", {color[1], color[2], color[3], color[4] - 0.4})
         end
-        if self.ClickToDismiss then return end
-        self:Dismiss()
+        titleText.OnHoverLeave = function()
+            local color = titleText:GetColor("Text") or {1,1,1,1}
+            titleText:SetColor("Text", {color[1], color[2], color[3], color[4] + 0.4})
+        end
+        titleText.OnClick = function()
+            if self.fadeOutTimer then
+                Timer:Cancel(self.fadeOutTimer)
+                self.fadeOutTimer = nil
+            end
+            if self.ClickToDismiss then return end
+            self:Dismiss()
+        end
     end
     titleText:SetColor("Text", {1,1,1,1})
     self.MessageRenderFunc(panel)
@@ -390,13 +395,19 @@ function Notification:CalcEndPosition(width, height, screenWidth, screenHeight)
     end
     local x, y
 
-    x = screenWidth * self.Pivot[1] - width / 2
+    if self.PivotOnLeftTop then
+        x = screenWidth * self.Pivot[1]
 
-    y = screenHeight * self.Pivot[2] - height / 2
+        y = screenHeight * self.Pivot[2]
+    else
+        x = screenWidth * self.Pivot[1] - width / 2
+
+        y = screenHeight * self.Pivot[2] - height / 2
+    end
 
     x = Ext.Math.Clamp(x, 0, screenWidth - width)
     y = Ext.Math.Clamp(y, 0, screenHeight - height)
-    
+        
 
     return x, y
 end

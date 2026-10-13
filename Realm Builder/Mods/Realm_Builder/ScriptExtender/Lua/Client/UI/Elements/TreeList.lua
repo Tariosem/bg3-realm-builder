@@ -616,13 +616,21 @@ function TreeList:SetupDragDropFns()
         end) do
             local cell = row:AddCell()
             local fixedCell = row:AddCell()
-            if self.tree:IsLeaf(ikey) then
-                self:RenderLeaf(ikey, cell, fixedCell) 
-            else
-                cell:AddImage(RB_ICONS.Collection, IMAGESIZE.ROW)
-                local ele = self:RenderTree(ikey, cell, fixedCell)
-                ele.SameLine = true
+            
+            -- don't know why but this crashes
+            --[[if false then
+                if self.tree:IsLeaf(ikey) then
+                    self:RenderLeaf(ikey, cell, fixedCell) 
+                else
+                    cell:AddImage(RB_ICONS.Collection, IMAGESIZE.ROW)
+                    local ele = self:RenderTree(ikey, cell, fixedCell)
+                    ele.SameLine = true
+                end
             end
+            ]]--
+
+            cell:AddSelectable(ikey)
+            
             local ref = self.nodeRefs[ikey]
             ref:SetStyle("Alpha", 0.5)
         end

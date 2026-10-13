@@ -87,7 +87,7 @@ function ImguiElements.RenderTokenTexts(parent, tokens, firstAlwaysSameLine)
             statImage.SameLine = token.SameLine == true
             label.SameLine = true
         else
-            label.SameLine = token.SameLine
+            label.SameLine = token.SameLine == true
         end
 
         if firstAlwaysSameLine and i == 1 then

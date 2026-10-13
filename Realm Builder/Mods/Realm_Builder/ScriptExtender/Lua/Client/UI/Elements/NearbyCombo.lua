@@ -69,7 +69,7 @@ function NearbyCombo:__init(parent, dontRender)
     self.SortFunc = defaultSortByName
     table.insert(allNearbyComboRefs, self)
 
-    self.Radius = 18
+    self.Radius = 9
 
     self.Options = nil
     self.Selected = nil

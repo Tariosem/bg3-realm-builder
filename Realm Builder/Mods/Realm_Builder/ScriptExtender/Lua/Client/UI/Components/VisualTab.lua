@@ -1679,7 +1679,7 @@ VisualTabHelpers = {}
 function VisualTabHelpers.GetCurrentVisualEdit(guid)
     local visualTab = visualTabCache[guid] --[[@as VisualTab]]
     if not visualTab then
-        Error("VisualTabUtils.GetCurrentVisualEdit - No VisualTab found for GUID: " .. guid)
+        Info("VisualTabHelpers.GetCurrentVisualEdit - No VisualTab found for GUID: " .. guid)
         return nil
     end
 
@@ -1688,7 +1688,7 @@ function VisualTabHelpers.GetCurrentVisualEdit(guid)
     end, debug.traceback)
 
     if not ok then
-        Error("VisualTabUtils.GetCurrentVisualEdit - Error while getting current visual edit: " .. result)
+        Error("VisualTabHelpers.GetCurrentVisualEdit - Error while getting current visual edit: " .. result)
         return nil
     end
 

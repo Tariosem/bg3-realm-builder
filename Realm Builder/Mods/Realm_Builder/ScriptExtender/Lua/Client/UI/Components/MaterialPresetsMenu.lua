@@ -1669,7 +1669,6 @@ function MaterialPresetsMenu:RenderCCPresetList(presetName, parent)
     table.sort(allRes, Comparator)
 
     local uuidToCells = {}
-    local renderThread = nil
     local outerSuspended = false
 
     local function renderRecentTable()
@@ -1685,7 +1684,6 @@ function MaterialPresetsMenu:RenderCCPresetList(presetName, parent)
     end
 
     local function renderAllResources()
-        local lastYieldTime = Ext.Timer.MicrosecTime()
         for skinType, row in pairs(rows) do
             row:Destroy()
             rows[skinType] = nil
@@ -1737,40 +1735,10 @@ function MaterialPresetsMenu:RenderCCPresetList(presetName, parent)
             end
 
             uuidToCells[res.ResourceUUID] = cell
-            if Ext.Timer.MicrosecTime() - lastYieldTime > 1 then
-                Ext.OnNextTick(function()
-                    if renderThread and coroutine.status(renderThread) == "suspended" then
-                        local sucr, err = coroutine.resume(renderThread)
-                        if not sucr then
-                            Warning("MaterialPresetsMenu: RenderCCPresetList: Error resuming render coroutine: " ..
-                                tostring(err))
-                            Ext.Debug.DumpStack()
-                        end
-                    else
-                        Warning(
-                            "MaterialPresetsMenu: RenderCCPresetList: render coroutine not in suspended state after yield, cannot resume.")
-                    end
-                end)
-                coroutine.yield()
-                lastYieldTime = Ext.Timer.MicrosecTime()
-            end
         end
     end
 
-    local function startRenderThread()
-        if renderThread and coroutine.status(renderThread) ~= "dead" then
-            outerSuspended = true
-        end
-
-        renderThread = coroutine.create(renderAllResources)
-        local ok, err = coroutine.resume(renderThread)
-        if not ok then
-            Error(debug.traceback(renderThread,
-                "MaterialPresetsMenu: RenderCCPresetList: Error starting render coroutine: " .. tostring(err)))
-        end
-    end
-
-    startRenderThread()
+    renderAllResources()
     renderRecentTable()
 
     local sortButton = leftSearchCell:AddButton("Hue##CCPresetSort")
@@ -1780,7 +1748,7 @@ function MaterialPresetsMenu:RenderCCPresetList(presetName, parent)
         uuidToCells = {}
         namePrior = not namePrior
         table.sort(allRes, Comparator)
-        startRenderThread()
+        renderAllResources()
         stooltip.Label = namePrior and "Sort presets by Name" or "Sort presets by Hue"
         sortButton.Label = namePrior and "Name##CCPresetSort" or "Hue##CCPresetSort"
     end

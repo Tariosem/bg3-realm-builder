@@ -26,7 +26,7 @@
 --- @field UpdateGizmo fun(self: TransformEditor)
 --- @field OnAction fun(self: TransformEditor, action: string)
 --- @field new fun(): TransformEditor
-TransformEditor = _Class("TransformEditor")
+local TransformEditor = _Class("TransformEditor")
 
 local TRANSFORMEDITOR_MAX_SELECTION_SIZE = 100
 

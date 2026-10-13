@@ -11,6 +11,9 @@
 --- @field FocusOnTab fun(self:RB_MainMenu, guid:string, doDetach:boolean|nil)
 RealmBuilderMainMenu = _Class("Menu")
 
+--- @type TutorialMenu
+local TutorialMenu = Ext.Require("Client/Editor/Tutorial.lua")
+
 function RealmBuilderMainMenu:__init()
     self.isValid = true
     self.panel = nil
@@ -288,6 +291,7 @@ function RealmBuilderMainMenu:Render()
 
         childWin.OnRightClick = tabDetachFunc
         
+        TutorialMenu.Add(self.tabBar)
     end)
 end
 

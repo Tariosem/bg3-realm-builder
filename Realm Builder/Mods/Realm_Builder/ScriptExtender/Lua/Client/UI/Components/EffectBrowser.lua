@@ -137,8 +137,9 @@ function EffectBrowser:RenderIcon(entry, cell)
     end
 
     iconImage.OnDragEnd = function()
-        Timer:Ticks(10, function (timerID)
-            local pick = PickingUtils.GetPickingGuid()
+        Timer:Ticks(30, function (timerID)
+            local pickEnt = PickingUtils.GetPickingGuid(nil, true)
+            local pick = pickEnt and pickEnt.Uuid and pickEnt.Uuid.EntityUuid or nil
             if not pick or pick == "" then
                 pick = self.selectedGuid or RBGetHostCharacter()
             end

@@ -7,8 +7,8 @@ function RootTemplateBrowser:SubclassInit()
     self.iconTooltipName = "TemplateName"
     self.iconPR = 2
     self.iconPC = 20
-    self.iconWidth = 600
-    self.browserWidth = self.iconPR * self.iconWidth + 20
+    self.iconWidth = 600 * SCALE_FACTOR
+    self.browserWidth = self.iconPR * self.iconWidth + 20 * SCALE_FACTOR
     self.browserHeight = self.iconPC * (36 * SCALE_FACTOR + self.cellsPadding[2]) + 240 * SCALE_FACTOR
     self.lastSize = { self.browserWidth * 1.5, self.browserHeight * 1.5 }
     self.disableIcon = true

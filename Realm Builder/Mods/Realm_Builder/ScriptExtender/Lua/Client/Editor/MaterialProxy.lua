@@ -32,7 +32,7 @@ MaterialEnums.MaterialParamType = {
 --- @field new fun(materialName: GUIDSTRING): MaterialProxy|nil
 --- @field GetResource fun(self): ResourceMaterialResource
 --- @field GetParameter fun(self, paramName: string): number|number[]|string|nil
---- @field SetParameter fun(self, paramName: string, value: number[]): boolean
+--- @field SetParameter fun(self, paramName: string, value: number|number[]|string): boolean
 --- @field GetValue fun(self, paramName: string): number|number[]|string|nil
 --- @field GetBaseValue fun(self, paramName: string): number|number[]|string|nil
 --- @field ResetParameter fun(self, paramName: string): boolean

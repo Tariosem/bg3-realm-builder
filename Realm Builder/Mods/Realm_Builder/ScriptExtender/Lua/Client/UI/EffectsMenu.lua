@@ -140,7 +140,7 @@ function EffectsMenu:RenderCustomEffects(parent)
     --- @type RB_ContextItem[]
     local contextItems = {
         {
-            Label = GetLoca("Hide from List"),
+            Label = GetLoca("Delete from List"),
             OnClick = function()
                 if not selectedEntry then return end
                 selectedEntry.Hidden = true
@@ -219,7 +219,10 @@ function EffectsMenu:RenderCustomEffects(parent)
             end
 
             effectButton.OnClick = onClick
-            effectSelectable.OnClick = onRightClick
+            effectSelectable.OnClick = function ()
+                effectSelectable.Selected = false
+                onClick()
+            end
             effectButton.OnRightClick = onRightClick
             effectSelectable.OnRightClick = onRightClick
 
