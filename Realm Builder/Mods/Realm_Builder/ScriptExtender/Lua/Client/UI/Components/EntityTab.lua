@@ -443,6 +443,9 @@ function EntityTab:RenderMonitorTab()
     end)
 
     self.monitorTimers = { positionTimer, rotationTimer, levelTimer, scaleTimer }
+
+    local renderer = RB_GLOBALS.MainMenu.transformBar:CreateBindPopup(self.guid)
+    renderer(monitorTab)
 end
 
 function EntityTab:RenderFilterTab()

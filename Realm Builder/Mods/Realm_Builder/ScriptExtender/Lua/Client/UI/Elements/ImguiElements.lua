@@ -411,12 +411,13 @@ end
 --- @param label string
 --- @param getter fun():number[]
 --- @param setter fun(value: number[])
---- @param config { IsInt: boolean, Range: { Min: number, Max: number, Step: number }, IsColor: boolean, OnReset: fun(), ResetValue: number[] }?
+--- @param config { IsInt: boolean, Range: { Min: number, Max: number, Step: number }, IsColor: boolean, OnReset: fun(), ResetValue: number[], UseDrag: boolean? }?
 --- @return function -- update function
 function ImguiElements.AddNumberSliders(parent, label, getter, setter, config)
     --- @type any[], ExtuiColorEdit
     local sliders, colorPicker = {}, nil
     config = config or {}
+    local useDragFunction = config.IsInt and "AddDragInt" or "AddDrag"
 
     local updateMethod = function()
         local value = getter()
@@ -473,9 +474,8 @@ function ImguiElements.AddNumberSliders(parent, label, getter, setter, config)
 
     local function renderSliders()
         for i = 1, initCnt do
-            local slider = ImguiElements.AddSliderWithStep(slidersCell, tostring(i), initValue[i], range.Min, range.Max,
-                range.Step,
-                isInt)
+            local slider = config.UseDrag and slidersCell[useDragFunction](slidersCell, "##" .. uuid .. i, initValue[i], range.Min, range.Max) 
+            or ImguiElements.AddSliderWithStep(slidersCell, tostring(i), initValue[i], range.Min, range.Max, range.Step, isInt)
             slider.OnChange = function()
                 local currentValues = {}
                 for j, s in ipairs(sliders) do
@@ -488,7 +488,9 @@ function ImguiElements.AddNumberSliders(parent, label, getter, setter, config)
                 setter(currentValues)
             end
             sliders[i] = slider
-            slider.HideResetButton = colorPicker and true or false
+            if not config.UseDrag then
+                slider.HideResetButton = colorPicker and true or false
+            end
         end
     end
 
@@ -497,10 +499,7 @@ function ImguiElements.AddNumberSliders(parent, label, getter, setter, config)
         colorPicker.NoAlpha = initCnt == 3
         colorPicker.AlphaBar = initCnt == 4
         colorPicker.Color = { initValue[1], initValue[2], initValue[3], initCnt == 4 and initValue[4] or 1 }
-        local resetBtn = ImguiElements.AddResetButton(slidersCell, true)
-        resetBtn.OnClick = function()
-            resetChange()
-        end
+        
 
         colorPicker.OnRightClick = function()
             resetChange()
@@ -529,8 +528,10 @@ function ImguiElements.AddNumberSliders(parent, label, getter, setter, config)
             end
         end
     end
-
-
+    local resetBtn = ImguiElements.AddResetButton(slidersCell, true)
+    resetBtn.OnClick = function()
+        resetChange()
+    end
     return updateMethod
 end
 
@@ -846,7 +847,7 @@ function ImguiElements.AddReadOnlyAttrTable(parent, contents)
 end
 
 --- @class AlignedTable : ExtuiTreeParent
---- @field AddSliderWithStep fun(self: AlignedTable, label: string, defaultValue: number, min: number, max: number, step: number, isInteger: boolean): ExtuiSliderInt|ExtuiSliderScalar, ExtuiTableCell
+--- @field AddSliderWithStep fun(self: AlignedTable, label: string, defaultValue: number, min: number, max: number, step: number, isInteger: boolean): ExtuiSliderInt|ExtuiSliderScalar, ExtuiTableCell, fun(visible:boolean) -- toggleVisible
 --- @field AddNearbyCombo fun(self: AlignedTable, label: string): NearbyCombo
 --- @field AddNewLine fun(self: AlignedTable, label: string): ExtuiTableCell
 
@@ -867,8 +868,13 @@ function ImguiElements.AddAlignedTable(parent)
             addLittleSpacer(nameCell)
             local valueCell = row:AddCell()
 
+            local function toggleVisible(visible)
+                valueCell.Visible = visible
+                nameCell.Visible = visible
+            end
+
             return ImguiElements.AddSliderWithStep(valueCell, "##" .. label .. "Slider", defaultValue,
-                min, max, step, isInteger), valueCell
+                min, max, step, isInteger), valueCell, toggleVisible
         end,
         AddNearbyCombo = function(_, label)
             --local row = tab:AddRow() --[[@as ExtuiTableRow]]
@@ -971,6 +977,7 @@ local eyeSlashUV = RB_ICON_UV01[eyeSlashIcon]
 --- @param visible boolean
 --- @param onToggle fun(v:boolean)
 --- @param id string
+--- @return ExtuiImageButton
 function ImguiElements.AddVisibleButton(parent, visible, onToggle, id)
     id = id or parent.IDContext or RBUtils.Uuid_v4()
 
@@ -990,5 +997,13 @@ function ImguiElements.AddVisibleButton(parent, visible, onToggle, id)
         end
     end
 
+    imageButton.UserData = {
+        IsVisible = function()
+            return visible
+        end
+    }
+
     return imageButton
 end
+
+ImguiElements.AddEyeButton = ImguiElements.AddVisibleButton

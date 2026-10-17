@@ -336,7 +336,7 @@ end
 --- @param propertyName string
 --- @param vecValue number|number[]
 function MaterialTab:RenderNumberProperty(node, propertyName, vecValue)
-    local sliders = {} --[[@type ExtuiSliderScalar[] ]]
+    local drags = {} --[[@type ExtuiDragInt[]|ExtuiDragScalar[] ]]
     local colorPicker = nil
     if type(vecValue) == "number" then
         vecValue = { vecValue }
@@ -345,22 +345,7 @@ function MaterialTab:RenderNumberProperty(node, propertyName, vecValue)
     local paramType = #vecValue
     if paramType >= 3 then
         colorPicker = node:AddColorEdit("##" .. self.MaterialName .. propertyName)
-        local resetButton = ImguiElements.AddResetButton(node, true)
-        resetButton.OnClick = function(sel)
-            self:ResetValue(propertyName)
-
-            local newValue = self:GetParameter(propertyName)
-            if newValue then
-                colorPicker.Color = RBUtils.ToVec4(newValue)
-                for i = 1, #newValue do
-                    if sliders[i] then
-                        sliders[i].Value = { newValue[i], 0, 0, 0 }
-                    end
-                end
-            end
-
-            self:UpdateParamState(propertyName, paramType)
-        end
+        
         colorPicker.Color = RBUtils.ToVec4(vecValue)
         colorPicker.AlphaBar = (paramType == 4)
         colorPicker.NoAlpha = (paramType == 3)
@@ -373,8 +358,8 @@ function MaterialTab:RenderNumberProperty(node, propertyName, vecValue)
                 newValue[j] = nil
             end
 
-            for i = 1, #sliders do
-                sliders[i].Value = { newValue[i], 0, 0, 0 }
+            for i = 1, #drags do
+                drags[i].Value = { newValue[i], 0, 0, 0 }
             end
 
             self:SetParameter(propertyName, newValue)
@@ -383,8 +368,8 @@ function MaterialTab:RenderNumberProperty(node, propertyName, vecValue)
         end
         colorPicker.OnRightClick = function(sel)
             for i = 1, paramType do
-                if sliders[i] then
-                    sliders[i].Visible = not sliders[i].Visible
+                if drags[i] then
+                    drags[i].Visible = not drags[i].Visible
                 end
             end
         end
@@ -393,6 +378,7 @@ function MaterialTab:RenderNumberProperty(node, propertyName, vecValue)
     local range = { min = -100, max = 100, step = 0.1 }
     for i = 1, paramType do
         local isIndex = propertyName:find("Index") ~= nil
+        local functionName = isIndex and "AddDragInt" or "AddDrag"
         if isIndex then
             range.min = 0
             range.step = 1
@@ -402,19 +388,17 @@ function MaterialTab:RenderNumberProperty(node, propertyName, vecValue)
             range.step = 0.1
         end
 
-    
-        local slider = ImguiElements.AddSliderWithStep(node, propertyName .. "##" .. self.MaterialName .. i,
-            vecValue[i], range.min, range.max, range.step, isIndex)
-        slider.ItemWidth = 400 * SCALE_FACTOR
+        --- @type ExtuiDragInt|ExtuiDragScalar
+        local drag = node[functionName](node, "##" .. self.MaterialName .. propertyName .. i, isIndex and math.floor(vecValue[i]) or vecValue[i], range.min, range.max)
+        drag.ItemWidth = 400 * SCALE_FACTOR
 
         if colorPicker then
-            slider.Visible = false
-            slider.HideResetButton = true
+            drag.Visible = false
         end
-        slider.OnChange = function(sel)
-            local newValue = { sliders[1].Value[1] }
+        drag.OnChange = function(sel)
+            local newValue = { drags[1].Value[1] }
             for j = 2, #vecValue do
-                newValue[j] = sliders[j].Value[1]
+                newValue[j] = drags[j].Value[1]
             end
             for j = #vecValue + 1, 4 do
                 newValue[j] = nil
@@ -430,7 +414,7 @@ function MaterialTab:RenderNumberProperty(node, propertyName, vecValue)
             self:UpdateParamState(propertyName, paramType)
         end
 
-        sliders[i] = slider
+        drags[i] = drag
     end
 
     local function reset()
@@ -442,8 +426,8 @@ function MaterialTab:RenderNumberProperty(node, propertyName, vecValue)
                 newValue = { newValue }
             end
             for i = 1, #newValue do
-                if sliders[i] then
-                    sliders[i].Value = { newValue[i], newValue[i], newValue[i], newValue[i] }
+                if drags[i] then
+                    drags[i].Value = { newValue[i], newValue[i], newValue[i], newValue[i] }
                 end
             end
             if colorPicker then
@@ -453,6 +437,10 @@ function MaterialTab:RenderNumberProperty(node, propertyName, vecValue)
 
         self:UpdateParamState(propertyName, paramType)
     end
+    local resetButton = ImguiElements.AddResetButton(node, true)
+    resetButton.OnClick = function(sel)
+        reset()
+    end
 
     local function updateSliders(newValue)
         if newValue then
@@ -460,8 +448,8 @@ function MaterialTab:RenderNumberProperty(node, propertyName, vecValue)
                 newValue = { newValue }
             end
             for i = 1, #vecValue do
-                if sliders[i] then
-                    sliders[i].Value = { newValue[i], newValue[i], newValue[i], newValue[i] }
+                if drags[i] then
+                    drags[i].Value = { newValue[i], newValue[i], newValue[i], newValue[i] }
                 end
             end
             if colorPicker then
@@ -475,7 +463,7 @@ function MaterialTab:RenderNumberProperty(node, propertyName, vecValue)
     self.ResetFuncs[propertyName] = reset
     self.UpdateFuncs[propertyName] = updateSliders
 
-    return sliders, colorPicker
+    return drags, colorPicker
 end
 
 --- @param node ExtuiTreeParent

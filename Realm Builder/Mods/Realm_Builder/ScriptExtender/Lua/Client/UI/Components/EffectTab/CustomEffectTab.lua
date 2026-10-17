@@ -53,16 +53,19 @@ local function renderCustomEffectEditor(parent, effectEntry)
 
     local scalarFields = {
         Scale = { min=0, max=10, step=0.1 },
-        Duration = { min=0, max=60000, step=100 }
+        Duration = { min=0, max=60000, step=100, displayName = "Duration (ms)" },
     }
 
-    if not effectEntry.isLoop then
-        scalarFields.Duration = nil
-    end
+    local scalarFieldsToggleVisible = {}
 
     for fieldName, params in pairs(scalarFields) do
-        aligned:AddSliderWithStep(fieldName, effectEntry[fieldName] or 0, params.min, params.max, params.step, false).OnChange = function (s)
+        local slider, _, fn = aligned:AddSliderWithStep(params.displayName or fieldName, effectEntry[fieldName] or 0, params.min, params.max, params.step, false)
+        slider.OnChange = function (s)
             effectEntry[fieldName] = s.Value[1]
+        end
+        scalarFieldsToggleVisible[fieldName] = fn
+        if fieldName == "Duration" then
+            fn(effectEntry.isLoop or false)
         end
     end
 
@@ -133,6 +136,9 @@ local function renderCustomEffectEditor(parent, effectEntry)
             local checkBox = alignedTab:AddCheckbox(displayName, effectEntry[attrName] or false)
             checkBox.OnChange = function ()
                 effectEntry[attrName] = checkBox.Checked
+                if attrName == "isLoop" then
+                    scalarFieldsToggleVisible.Duration(effectEntry[attrName] or false)
+                end
             end
         end
         debugTable.OnExpand = function() end

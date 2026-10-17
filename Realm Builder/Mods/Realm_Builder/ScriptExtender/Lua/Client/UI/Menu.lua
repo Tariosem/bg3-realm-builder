@@ -78,15 +78,22 @@ function RealmBuilderMainMenu:RegisterEvents()
             pickId = host
         end
 
+        --- @type VisualTab?
+        local vT = nil
         if pickId then
-            VisualTab.new(pickId, RBGetName(pickId), nil, nil):Render()
+            vT = VisualTab.new(pickId, RBGetName(pickId), nil, nil):Render()
         elseif pick.Visual then
             VisualHelpers.RegisterVisual(pick)
             if pick.Scenery then
-                VisualTab.CreateByEntity(pick, pick.Scenery.Uuid, "Scenery"):Render()
+                vT = VisualTab.CreateByEntity(pick, pick.Scenery.Uuid, "Scenery"):Render()
             else
                 --_D(pick:GetAllComponents())
             end
+        end
+
+        if vT then
+            vT.isAttach = false
+            vT:Refresh()
         end
     end)
 end
@@ -157,6 +164,7 @@ function RealmBuilderMainMenu:Render()
 
     local now = Ext.Timer.MonotonicTime()
     Timer:Ticks(1, function()
+        TutorialMenu.Add(self.tabBar)
         self.styleMenu = StyleMenu:Add(self.tabBar)
     end)
 
@@ -291,7 +299,7 @@ function RealmBuilderMainMenu:Render()
 
         childWin.OnRightClick = tabDetachFunc
         
-        TutorialMenu.Add(self.tabBar)
+        
     end)
 end
 

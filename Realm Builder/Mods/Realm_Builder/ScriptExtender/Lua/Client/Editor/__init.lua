@@ -13,5 +13,4 @@ RBUtils.RequireFiles("Client/Editor/", {
     "EntityEffectEditor",
     "PlacementPreview",
     "OrbitalCamera",
-    "Tutorial"
 })

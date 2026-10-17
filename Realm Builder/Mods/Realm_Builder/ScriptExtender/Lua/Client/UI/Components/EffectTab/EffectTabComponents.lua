@@ -69,25 +69,17 @@ local iconCache = {}
 
 local function makeCache(obj)
     for guid, guids in pairs(obj) do
-        if not nameCache[guid] then
-            nameCache[guid] = getName(guid)
-        end
-        if not iconCache[guid] then
-            iconCache[guid] = getIcon(guid) or RB_ICONS.Box
-        end
+        nameCache[guid] = getName(guid)
+        iconCache[guid] = getIcon(guid) or RB_ICONS.Box
         for _, targetGuid in ipairs(guids) do
-            if not nameCache[targetGuid] then
-                nameCache[targetGuid] = getName(targetGuid)
-            end
-            if not iconCache[targetGuid] then
-                iconCache[targetGuid] = getIcon(targetGuid) or RB_ICONS.Box
-            end
+            nameCache[targetGuid] = getName(targetGuid)
+            iconCache[targetGuid] = getIcon(targetGuid) or RB_ICONS.Box
         end
     end
 end
 
 --- @param parent RB_UI_Tree
---- @param obj table<GUIDSTRING, GUIDSTRING[]> -- [casterGUID] -> targetGUID[] (repeatable)
+--- @param obj table<GUIDSTRING, GUIDSTRING[]> -- [casterGUID] -> targetGUID[]
 function effectTabComponents:AddCasterTargetSelector(parent, obj)
     local tab = parent:AddTable("##" .. parent.Label, 2)
     local row = tab:AddRow()
@@ -102,7 +94,6 @@ function effectTabComponents:AddCasterTargetSelector(parent, obj)
     caution.Font = "Tiny"
     caution:SetColor("Text", {0.5, 0.5, 0.5, 1})
 
-    local expanded = {}
     local function updatePresentation()
         ImguiHelpers.DestroyAllChildren(rightCell)
         local caution = rightCell:AddText("Selected Caster -> Target Pairs (Click to Remove)")
@@ -120,14 +111,14 @@ function effectTabComponents:AddCasterTargetSelector(parent, obj)
             local casterIcon = iconCache[casterGuid] or RB_ICONS.Box
 
 
-            for _, targetGuid in RBUtils.SortedPairs(targetGuids, function (a, b)
+            for i, targetGuid in RBUtils.SortedPairs(targetGuids, function (a, b)
                 local nameA = nameCache[a] or a
                 local nameB = nameCache[b] or b
                 return nameA < nameB
             end) do
                 local group = rightCell
 
-                local sel = group:AddSelectable("##" .. casterGuid .. "->" .. targetGuid)
+                local sel = group:AddSelectable("##" .. casterGuid .. "->" .. targetGuid .. i)
                 sel.AllowOverlap = true
                 local casterNameLabel = group:AddText(casterName)
                 local casterIconBtn = group:AddImage(casterIcon, IMAGESIZE.FRAME)
@@ -148,12 +139,7 @@ function effectTabComponents:AddCasterTargetSelector(parent, obj)
 
                 sel.OnClick = function ()
                     obj[casterGuid] = obj[casterGuid] or {}
-                    for i, guid in ipairs(obj[casterGuid]) do
-                        if guid == targetGuid then
-                            table.remove(obj[casterGuid], i)
-                            break
-                        end
-                    end
+                    table.remove(obj[casterGuid], i)
                     if #obj[casterGuid] == 0 then
                         obj[casterGuid] = nil
                     end
@@ -191,7 +177,7 @@ function effectTabComponents:AddCasterTargetSelector(parent, obj)
     local targetPicker = NearbyCombo.new(leftAligned:AddNewLine("Pick Targets"))
     targetPicker.ExcludeCamera = true
     targetPicker.OnChange = function (sel, Guid, displayName)
-        if selectedCaster and not table.find(obj[selectedCaster] or {}, Guid) then
+        if selectedCaster then
             obj[selectedCaster] = obj[selectedCaster] or {}
             table.insert(obj[selectedCaster], Guid)
             updatePresentation()
@@ -301,17 +287,16 @@ function effectTabComponents:AddEffectList(parent, label, effectList, contextRen
         for i, effectEntry in ipairs(effectList) do
             local wasExpanded = expanded[effectEntry] ~= nil
             local function updateUI(disabled) end
-            local disabledBtn = ImguiElements.AddVisibleButton(rootTree, not effectEntry.Disabled, function(v)
+            local childTree = self:AddEffectEntry(rootTree, effectEntry, wasExpanded)
+            local disabledBtn = ImguiElements.AddVisibleButton(childTree.FixedCell, not effectEntry.Disabled, function(v)
                 updateUI(not v)
             end, label .. "##DisabledToggle##" .. i)
-            local childTree = self:AddEffectEntry(rootTree, effectEntry, wasExpanded)
-            childTree.SameLine = true
 
             function updateUI(disabled)
                 if disabled then
                     childTree:SetOpen(false)
                 end
-                childTree.Disabled = disabled
+                childTree.Panel.Disabled = disabled
                 effectEntry.Disabled = disabled
             end
 

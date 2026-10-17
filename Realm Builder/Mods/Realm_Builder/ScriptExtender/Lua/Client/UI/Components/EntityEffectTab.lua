@@ -263,7 +263,7 @@ function EntityEffectTab:RenderEffectComponentSliders(panel, key, propName, valu
     local compDisplayName = valueInfo.DisplayName or propName
 
     local updateMethod = ImguiElements.AddNumberSliders(panel, compDisplayName, getter, setter,
-        { IsInt = isInt, Range = range, OnReset = onReset, ResetValue = initValue, IsColor = valueInfo.IsColor })
+        { IsInt = isInt, Range = range, OnReset = onReset, ResetValue = initValue, IsColor = valueInfo.IsColor, UseDrag = true })
 
     self.updateFuncs[key][propName] = updateMethod
 end

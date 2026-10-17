@@ -192,11 +192,9 @@ function TransformOperator:Apply()
 
         delta = { axis[1], axis[2], axis[3], math.rad(num) }
     else -- Scale
-        local scaleVec = Vec3.new(1,1,1)
-        for i, _ in ipairs(scaleVec) do
-            if selectedAxis[IndexAxisMap[i]] then
-                scaleVec[i] = num
-            end
+        local scaleVec = {1,1,1}
+        for axisName, _ in pairs(selectedAxis) do
+            scaleVec[AxisIndexMap[axisName]] = num
         end
         delta = scaleVec 
     end

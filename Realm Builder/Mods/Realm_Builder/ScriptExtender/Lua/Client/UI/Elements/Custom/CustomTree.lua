@@ -19,6 +19,7 @@ local treeClosed = RB_ICON_UV01[treeClosedIcon]
 --- @field DestroyChildren fun()
 --- @field ToggleAll fun(self: RB_UI_Tree)
 --- @field Panel ExtuiGroup
+--- @field FixedCell ExtuiTableCell
 --- @field Indent number
 --- @field Framed boolean
 --- @field HideHeader boolean
@@ -49,7 +50,13 @@ function ImguiElements.AddTree(parent, label, open)
     local arrowReserved = headerGroup:AddImageButton("##" .. label .. uuid,
         open and RB_ICONS.Menu_Down or RB_ICONS.Menu_Right, IMAGESIZE.ROW)
     local iconReserved = headerGroup:AddGroup("##" .. label .. "_IconReserved_" .. uuid)
-    local selectable = headerGroup:AddSelectable(label .. "##" .. uuid .. "_Selectable")
+    local headerTab  = headerGroup:AddTable("##" .. label .. "_HeaderTab_" .. uuid, 2)
+    headerTab.ColumnDefs[1] = { WidthStretch = true }
+    headerTab.ColumnDefs[2] = { WidthFixed = true }
+    headerTab.SameLine = true
+    local headerRow = headerTab:AddRow()
+    local strechCell, fixedCell = headerRow:AddCell(), headerRow:AddCell()
+    local selectable = strechCell:AddSelectable(label .. "##" .. uuid .. "_Selectable")
     local indent = panelGroup:AddDummy(16 * SCALE_FACTOR, 1)
     local panel = panelGroup:AddGroup(label .. "_TreeGroup##uuid_" .. uuid)
     local isFramed = false
@@ -179,6 +186,7 @@ function ImguiElements.AddTree(parent, label, open)
         ClearContent = function()
             ImguiHelpers.DestroyAllChildren(panel)
         end,
+        FixedCell = fixedCell,
     }
 
     selectable.UserData = closure.__UserData

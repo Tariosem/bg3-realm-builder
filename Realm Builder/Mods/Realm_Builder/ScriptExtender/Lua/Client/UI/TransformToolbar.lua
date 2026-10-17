@@ -22,6 +22,8 @@ end
 function TransformToolbar:__init()
     self.Subscriptions = {}
     self.Selecting = {}
+    self.BindPopupCache = {}
+    self.BindPopupRenderer = {}
     self.Ignore = {
         Character = false,
         Scenery = false,
@@ -464,7 +466,7 @@ function TransformToolbar:RegisterKeyInputEvents()
         end
 
         for _, guid in ipairs(targets) do
-            self:CreateBindPopup(guid)
+            self:CreateBindPopup(guid, true)
         end
     end)
 
@@ -879,15 +881,22 @@ function TransformToolbar:RenderOtherConfigOptions(panel)
     end
 end
 
-function TransformToolbar:CreateBindPopup(guid)
-    self.BindPopupCache = self.BindPopupCache or {}
+function TransformToolbar:CreateBindPopup(guid, showImmediately)
     local notif = self.BindPopupCache[guid] or Notification.new(RBGetName(guid))
-    if not self.BindPopupCache[guid] then
-        self.BindPopupCache[guid] = notif
-    end
+
     local screenWidth, screenHeight = UIHelpers.GetScreenSize()
     local camera = RBGetCamera()
     local pivot = WorldToScreenPoint({ RBGetPosition(guid) }, camera, screenWidth, screenHeight)
+
+    if not self.BindPopupCache[guid] then
+        self.BindPopupCache[guid] = notif
+    else
+        if showImmediately then
+            notif:Show(notif.name, self.BindPopupRenderer[guid])
+        end
+        return self.BindPopupRenderer[guid]
+    end
+    
     if not pivot then pivot = { screenWidth / 2, screenHeight / 2 } end
     pivot = { pivot[1] / screenWidth, pivot[2] / screenHeight }
     notif.NoAnimation = true
@@ -895,7 +904,7 @@ function TransformToolbar:CreateBindPopup(guid)
     notif.Pivot = pivot
     notif.Moveable = true
 
-    ---@param panel ExtuiWindow
+    ---@param panel ExtuiTreeParent
     local function render(panel)
         local tab = panel:AddTable("BindPopup", 2)
         tab.ColumnDefs[1] = { WidthFixed = true }
@@ -905,7 +914,7 @@ function TransformToolbar:CreateBindPopup(guid)
 
         left:AddText("Bind To:")
 
-        local info = EntityStore:GetBindInfo(guid)
+        local info = EntityStore:GetBindInfo(guid) or {}
         local curParent = info and info.BindParent or nil
         local image = left:AddImage(RBGetIcon(curParent), IMAGESIZE.SMALL)
         image.SameLine = true
@@ -922,9 +931,6 @@ function TransformToolbar:CreateBindPopup(guid)
             if not selectedGuid or selectedGuid == "" then return end
             if selectedGuid == curParent then return end
             Commands.Bind({ guid }, selectedGuid)
-            image:Destroy()
-            image = left:AddImage(RBGetIcon(selectedGuid), IMAGESIZE.SMALL)
-            image.SameLine = true
         end
 
         local snapButton = right:AddButton("Snap To Parent")
@@ -951,17 +957,17 @@ function TransformToolbar:CreateBindPopup(guid)
             image.SameLine = true
         end
 
-        local function addBindCheckbox(panel, label, info, field, valueToChecked, checkedToValue)
-            local checked = valueToChecked(info[field])
+        local function addBindCheckbox(label, field)
+            local checked = info[field]
             local checkbox = panel:AddCheckbox(label, checked)
             checkbox.OnChange = function(e)
-                local newValue = checkedToValue(e.Checked)
+                local newValue = e.Checked
                 local attr = { [field] = newValue }
                 NetChannel.Bind:SendToServer({ Type = "SetAttributes", Guid = { guid }, Attributes = attr })
                 info[field] = newValue
                 HistoryManager:PushCommand({
                     Undo = function()
-                        local undoValue = checkedToValue(not e.Checked)
+                        local undoValue = not e.Checked
                         NetChannel.Bind:SendToServer({ Type = "SetAttributes", Guid = { guid }, Attributes = { [field] = undoValue } })
                         info[field] = undoValue
                     end,
@@ -976,10 +982,9 @@ function TransformToolbar:CreateBindPopup(guid)
             return checkbox
         end
 
-        local checkCheck = function(v) return v end
 
-        local lookAtCheck = addBindCheckbox(panel, "Keep Looking At", info, "KeepLookingAt", checkCheck, checkCheck)
-        local followCheck = addBindCheckbox(panel, "Follow Parent", info, "FollowParent", checkCheck, checkCheck)
+        local lookAtCheck = addBindCheckbox("Keep Looking At", "KeepLookingAt")
+        local followCheck = addBindCheckbox("Follow Parent", "FollowParent")
 
         local markerSelector = panel:AddPopup("Select Marker")
 
@@ -1020,6 +1025,7 @@ function TransformToolbar:CreateBindPopup(guid)
             end
             local d = data
             info = d
+            curParent = d.BindParent
             lookAtCheck.Checked = d.KeepLookingAt == true or false
             followCheck.Checked = d.FollowParent == true or false
             nearByCombo:SetSelected(d.BindParent)
@@ -1042,7 +1048,12 @@ function TransformToolbar:CreateBindPopup(guid)
         end
     end
 
-    notif:Show(notif.name, render)
+    if showImmediately then
+        notif:Show(notif.name, render)
+    end
+
+    self.BindPopupRenderer[guid] = render
+    return render
 end
 
 local function safeGetSceneryName(entity)
@@ -1064,6 +1075,7 @@ function TransformToolbar:CreateNearbyPopup()
     NearbyMap.UpdateNearbyMap()
 
     local hits = ScreenToWorldRay():IntersectAll(cursorMaxDistance) or {}
+    --- @type string?
     local selected = nil
     local simpleUnique = {}
 
@@ -1073,6 +1085,9 @@ function TransformToolbar:CreateNearbyPopup()
         local contextPopup = panel:AddPopup("NearbyEntitiesContextMenu")
         local contextMenu = ImguiElements.AddContextMenu(contextPopup)
         
+        --- @type table<string, ExtuiSelectable>
+        local guidToNameBtn = {}
+
         --- @param parent ExtuiTreeParent
         --- @param hit Hit
         local function renderHit(parent, hit)
@@ -1084,6 +1099,8 @@ function TransformToolbar:CreateNearbyPopup()
 
             if not guid then
                 if not sceneryComp then return end
+
+                if not ent.Visual or not ent.Visual.Visual then return end
 
                 NearbyMap.RegisterScenery(ent)
 
@@ -1105,6 +1122,7 @@ function TransformToolbar:CreateNearbyPopup()
             local group = parent:AddGroup(name .. "##" .. guid)
             local iconBtn = group:AddImageButton("Icon##" .. guid, icon, IMAGESIZE.SMALL)
             local nameBtn = group:AddSelectable(name .. "##" .. guid)
+            guidToNameBtn[guid] = nameBtn
 
             nameBtn.SpanAllColumns = false
 
@@ -1167,7 +1185,6 @@ function TransformToolbar:CreateNearbyPopup()
             {
                 Label = "Set Target",
                 OnClick = function(selectable)
-                    _P("Selected:", selected)
                     if not selected or selected == "" then return end
                     local proxy = nil
                     proxy = MovableProxy.CreateByGuid(selected)
@@ -1194,13 +1211,17 @@ function TransformToolbar:CreateNearbyPopup()
             }
         }
 
+        local hovered = Ext.Enums.GuiItemStatusFlags.HoveredRect
         for _, item in ipairs(contextItems) do
             local sle = contextMenu:AddItemPacked(item)
 
             if item.HotKey then
                 tempSubs[item.Label] = InputEvents.SubscribeKeyAndMouse(function(e)
-                    if e.Event ~= "KeyDown" then return end
                     if not selected or selected == "" then return end
+                    if not guidToNameBtn[selected] then return end
+                    if not ((guidToNameBtn[selected].StatusFlags & hovered) == hovered) then return end
+                    if e.Event ~= "KeyDown" then return end
+                    
 
                     item.OnClick(sle)
                 end, item.HotKey)
@@ -1214,6 +1235,7 @@ function TransformToolbar:CreateNearbyPopup()
 
     nearbyNotif:Show(nearbyNotif.name, render)
     nearbyNotif.OnDismiss = function()
+        
         for _, sub in pairs(tempSubs) do
             sub:Unsubscribe()
         end

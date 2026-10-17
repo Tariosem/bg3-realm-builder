@@ -14,7 +14,6 @@ local TutorialManager = {
 --- @field Position number[] 0-1
 --- @field Name string
 --- @field Description string
---- @field ParsedDescription RB_TextToken[]
 --- @field Confirm fun(self):boolean
 --- @field ConfirmByButton boolean
 --- @field WrapPos integer -- in characters
@@ -22,9 +21,10 @@ local TutorialManager = {
 local color_lookup = {
     RED = {1, 0, 0, 1},
     GREEN = {0, 1, 0, 1},
-    LIGHTBLUE = {0, 0.3, 0.7, 1},
+    LIGHTBLUE = {0.5, 0.5, 1, 1},
     LIGHTGREEN = {0.5, 1, 0.5, 1},
-    VIOLIET = {0.5, 0, 1, 1},
+    LIGHTRED = {1, 0.5, 0.5, 1},
+    VIOLIET = {0.8, 0.4, 1, 1},
     HIGHLIGHT = UI_COLORS.HighLight,
     H = UI_COLORS.HighLight,
     EMPHASIS = {0.8, 0.5, 0, 1},
@@ -44,7 +44,6 @@ local function parseDescriptionLine(raw)
     local tokens = {}
 
     local i = 1
-    
     while i <= #raw do
         local nextLeft = string.find(raw, "%[", i)
         local nextRight = string.find(raw, "%]", i)
@@ -81,7 +80,7 @@ local function parseDescriptionLine(raw)
                 i = right + 1
             elseif string.find(content, ":") then
                 local mod, event = string.match(content, "(%w+):(%w+)")
-                --- @class RB_TextToken
+                --- @type RB_TextToken
                 local token = {
                     Text = KeybindHelpers.GetPresentationByEvent(mod, event),
                     Color = UI_COLORS.HighLight,
@@ -89,8 +88,8 @@ local function parseDescriptionLine(raw)
                     Tooltip = function(panel)
                         local localizedMod = RB_KEYBIND_LOCALIZED_NAMES[mod] or mod
                         local localizedEvent = RB_KEYBIND_LOCALIZED_NAMES[event] or event
-                        panel:AddText(localizedMod .. " : " .. localizedEvent):SetColor("Text", {1, 1, 1, 1})
-                        panel:AddText("Can be changed in the Keybinds menu"):SetColor("Text", {1, 1, 1, 1})
+                        panel:AddText(localizedMod .. " : " .. localizedEvent)
+                        panel:AddText("Can be changed in the Keybinds menu")
                     end,
                     SameLine = true
                 }
@@ -132,7 +131,9 @@ local function parseDescription(raw, wrapPos)
         end
         local parsed = parseDescriptionLine(line)
         parsed = wrapTokens(parsed, wrapPos or 50)
-        parsed[1].SameLine = false
+        if parsed[1] then
+            parsed[1].SameLine = false
+        end
         for i, token in ipairs(parsed) do
             table.insert(lines, token)
         end
@@ -161,26 +162,12 @@ function TutorialManager:Start()
     self:Step(table.remove(self.CurrentQueue, 1))
 end
 
-local function dumpStacks()
-    print("[TutorialManager] CurrentQueue:")
-    for i, step in ipairs(TutorialManager.CurrentQueue) do
-        print(string.format("  %d: %s", i, step.Name))
-    end
-    print("[TutorialManager] HistoryStack:")
-    for i, step in ipairs(TutorialManager.HistoryStack) do
-        print(string.format("  %d: %s", i, step.Name))
-    end
-end
 
 --- @param step TutorialStep
 function TutorialManager:Step(step)
     if not step then
         self:Stop()
         return
-    end
-
-    if not step.ParsedDescription then
-        step.ParsedDescription = parseDescription(step.Description or "", step.WrapPos)
     end
 
     local renderText = ImguiElements.RenderTokenTexts
@@ -216,10 +203,10 @@ function TutorialManager:Step(step)
         end)
     end
     
+    local actualDes = parseDescription(step.Description or "", step.WrapPos)
     notif.Pivot = step.Position or {0.5, 0.2}
     notif.PivotOnLeftTop = not step.PivotOnMiddle
     notif:Show(step.Name, function(panel)
-        local actualDes = step.ParsedDescription 
         renderText(panel, actualDes)
  
         local lastLine = panel:AddTable("PrevOrNext", 4)
@@ -277,8 +264,8 @@ local transformEditorTut = {
         Position = { 0.1, 0.2 },
         Description = [[Hover over an item and press [TransformToolbar:Select] to select an item in the world.
     
-[FONT:Small][COLOR:LIGHTGREEN]Tips[/COLOR]: [TransformToolbar:OpenNearbyPopup] can help you select items that are behind other items.
-Hold [COLOR:HIGHLIGHT]Ctrl[/COLOR] to select multiple items,
+[FONT:Small][COLOR:HIGHLIGHT]Tips[/COLOR]: [TransformToolbar:OpenNearbyPopup] can help you select items that are behind other items.
+[COLOR:HIGHLIGHT]Hold Ctrl[/COLOR] to select multiple items,
 and [TransformToolbar:BoxSelect] to select a group of items.[/FONT]
 ]],
         Confirm = function ()
@@ -296,18 +283,18 @@ Use [TransformEditor:Grab] to move, [TransformEditor:Rotate] to rotate, and [Tra
 Use [TransformEditor:CycleMode] to cycle between move, rotate, scale and transform modes.
 Use [COLOR:HIGHLIGHT]X/Y/Z[/COLOR] keys to constrain the transformation to a specific axis.
 Use [COLOR:HIGHLIGHT]Shift + X/Y/Z[/COLOR] to constrain the transformation to a specific plane.
-Pressing [COLOR:HIGHLIGHT]Shift[/COLOR] for more precise movement.
+[COLOR:HIGHLIGHT]Hold Shift[/COLOR] for more precise movement.
 [COLOR:HIGHLIGHT]Right Click[/COLOR] to cancel the transformation.
 
 Check the [COLOR:LIGHTBLUE]Keybind[/COLOR] menu to see more short-cuts for the transform toolbar.
-Some of the keybinds are only available when the toolbar is opened.]],
+[COLOR:LIGHTRED]Caution[/COLOR]: Some of the keybinds are only available when the toolbar is opened.]],
         WrapPos = 60
     },
     {
         Name = "Change gizmo's behavior",
         Position = { 0.5, 0.05 },
         Description =
-[[^You can change the gizmo's behavior by the transform toolbar.
+[[^ You can change the gizmo's behavior by the transform toolbar.
 Such as changing the gizmo's orientation, or changing the gizmo's pivot point.
 ]]
     },
@@ -352,14 +339,13 @@ local spawnTut = {
     {
         Name = "Open the browser",
         PivotOnMiddle = true,
-        Description = "Click the [COLOR:LIGHTBLUE]Item/Scenery[/COLOR] button to open the Item/Scenery browser and continue.",
+        Description = "Click the [COLOR:LIGHTBLUE]Item[/COLOR] button to open the Item browser and continue.",
         Confirm = function (self)
             local mainMenu = RB_GLOBALS.MainMenu
             local browsers = mainMenu and mainMenu.browsers
             if not browsers then return false end
             local item = browsers.item
-            local scenery = browsers.scenery
-            return (item and item.panel and item.panel.Open) or (scenery and scenery.panel and scenery.panel.Open)
+            return item and item.panel and item.panel.Open
         end
     },
     {
@@ -382,7 +368,7 @@ The tag filters default to match all tags, but you can change that in the [COLOR
         PivotOnMiddle = true,
         WrapPos = 80,
         Description = [[You can manage the items you spawned by the [COLOR:UI]Outliner Menu[/COLOR].
-Open it by pressing [GeneralShortcuts:OpenMainMenu] and then click on the Outliner tab.
+Open it by pressing [GeneralShortcuts:OpenMainMenu] and then click on the [COLOR:LIGHTBLUE]Outliner[/COLOR] tab.
 
 In outliner menu, you can [COLOR:HIGHLIGHT]Click[/COLOR] on an item to select it,
 [COLOR:HIGHLIGHT]Ctrl + Click[/COLOR] to select multiple items, 
@@ -419,13 +405,27 @@ Where you can view and edit the selected item's properties.
         Name = "More about the visual tab",
         Position = { 0.56, 0.5 },
         Description = [[In visual tab, you can also save the item's visual properties as a preset
-Edit the item then type the name in the input box above, press [COLOR:HIGHLIGHT]Return[/COLOR] or click the [COLOR:LIGHTBLUE]Save[/COLOR] Button to save it.
-Once saved, you can select the preset from the combo box below and click [COLOR:LIGHTBLUE]Load[/COLOR] to apply the preset to the item.
 
-[COLOR:HIGHLIGHT]Right Click[/COLOR] on the material or effect to open the context menu, where hides several functions.
+[COLOR:LIGHTGREEN](1)[/COLOR] Edit the item then type the name in the input box above, press [COLOR:HIGHLIGHT]Return[/COLOR] or click the [COLOR:LIGHTBLUE]Save[/COLOR] Button to save it.
 
-[FONT:Small][COLOR:LIGHTGREEN]Tips[/COLOR]: When editing the item's properties, [COLOR:HIGHLIGHT]Right Click[/COLOR] on the sliders to open a popup where you can edit it's min max values, and step size.[/FONT]
-]],
+[COLOR:LIGHTGREEN](2)[/COLOR] Once saved, you can select the preset from the combo box below and click [COLOR:LIGHTBLUE]Load[/COLOR] to apply the preset to the item with the same template.
+
+[COLOR:HIGHLIGHT]Right Click[/COLOR] on the material or effect to open the context menu, where hides several functions.]]
+    },
+    {
+        Name = "Some Imgui tips",
+        Position = { 0.56, 0.5 },
+        Description = [[When editing the item's properties,
+For properties that use a drag as input (box with a center number)
+[COLOR:HIGHLIGHT]Hold Shift[/COLOR] to increase the precision to 10
+[COLOR:HIGHLIGHT]Hold Alt[/COLOR] to decrease the precision to 0.01,
+[COLOR:HIGHLIGHT]Ctrl + Click[/COLOR] to manually input the value.
+
+For properties that use a color picker (color box)
+[COLOR:HIGHLIGHT]Click[/COLOR] on the color box to open the color picker
+
+For properties that use a text input (this is specific to the textures)
+[COLOR:HIGHLIGHT]Click[/COLOR] on the [COLOR:LIGHTBLUE]=[/COLOR] next to the input box to open a Folder Explorer. ]],
     }
 }
 
@@ -448,6 +448,9 @@ All the items in the scene will be saved relative to the [COLOR:EMPHASIS]anchor[
 
 [COLOR:LIGHTGREEN]To load a scene[/COLOR], you need to choose an [COLOR:EMPHASIS]anchor[/COLOR] item, and the scene will be loaded relative to the [COLOR:EMPHASIS]anchor[/COLOR]'s position and rotation.
 
+[COLOR:LIGHTRED]Caution[/COLOR]: [COLOR:EMPHASIS]Anchor[/COLOR] will always default to be the character you're controlling when saving a scene, 
+whether you save theam through the context menu or in the [COLOR:UI]Scene Menu[/COLOR].
+
 Any visual changes you made to the items will also be saved in the scene]],
     },
     {
@@ -463,10 +466,12 @@ Any visual changes you made to the items will also be saved in the scene]],
     {
         Name = "Name and save the scene",
         PivotOnMiddle = true,
+        WrapPos = 80,
         Description = [[You can name the scene by typing in the input box above the anchor combo box and then save it by pressing [COLOR:HIGHLIGHT]Return[/COLOR] or clicking the [COLOR:HIGHLIGHT]Save[/COLOR] button.
         
 The scene will save everything that is currently listed in the [COLOR:UI]Outliner Menu[/COLOR],
-you can tick [COLOR:LIGHTBLUE]Visible Props Only[/COLOR] to only save the items that are currently visible in the world.]],
+you can tick [COLOR:LIGHTBLUE]Visible Props Only[/COLOR] to only save the items that are currently visible in the world.
+[COLOR:LIGHTRED]Caution[/COLOR]: Visibility is determined by the [COLOR:UI]Outliner Menu[/COLOR]'s eye icons.]],
     },
     {
         Name = "Preview the scene",
@@ -493,10 +498,11 @@ local effectTutorial = {
     {
         Name = "Open the effect menu",
         PivotOnMiddle = true,
-        Description = "Press [GeneralShortcuts:OpenMainMenu] to open the [COLOR:UI]Main Menu[/COLOR], then click on the Effect tab to open the [COLOR:UI]Effect Menu[/COLOR].",
+        Description = "Press [GeneralShortcuts:OpenMainMenu] to open the [COLOR:UI]Main Menu[/COLOR], then click on the [COLOR:LIGHTBLUE]Effects[/COLOR] tab to open the [COLOR:UI]Effect Menu[/COLOR].",
     },
     {
         Name = "Create an effect",
+        WrapPos = 80,
         PivotOnMiddle = true,
         Description = [[In the [COLOR:UI]Effect Menu[/COLOR], you can create a new effect by clicking the [COLOR:LIGHTBLUE]Create New Effect[/COLOR] button
 There are three types of effects you can create: 
@@ -530,7 +536,10 @@ But instead of Placement Preview, [COLOR:HIGHLIGHT]Drag and Drop[/COLOR] the eff
         Name = "Details of the effect",
         PivotOnMiddle = true,
         Description = [[[COLOR:HIGHLIGHT]Right Click[/COLOR] the effect in the browser, then click the [COLOR:LIGHTBLUE]Info[/COLOR] button will open a tab with more details about the effect.
-The tabs are similar to the custom effect's tabs, where you can view the effect's name, uuid, icon and composition in the Profile tab, and view the effect's composition in the Effects tab.
+    
+The tabs are similar to the custom effect's tabs, 
+where you can view the effect's name, uuid, icon and composition in the Profile tab, 
+and view the effect's composition in the Effects tab.
 ]]
     },
     {
@@ -558,13 +567,15 @@ You can add multiple effects to your custom effect.]],
         Name = "Edit the effect",
         PivotOnMiddle = true,
         WrapPos = 120,
-        Description = [[Once you add the effect to your custom effect, click on the effect, it should expand a panel with more options for editing the effect.
+        Description = [[Once you add the effect to your custom effect, click on the effect entry, it should expand a panel with more options for editing the effect.
 
-[FONT:Small][COLOR:LIGHTGREEN]Tips[/COLOR]: You can [COLOR:HIGHLIGHT]Right Click[/COLOR] on the arrow of the ui tree, it will always expand all the descandants of the ui tree.[/FONT]
+[FONT:Small][COLOR:HIGHLIGHT]Tips[/COLOR]: You can [COLOR:HIGHLIGHT]Right Click[/COLOR] on the arrow of the ui tree, it will always expand all the descandants of the ui tree.[/FONT]
 
 [COLOR:LIGHTGREEN]Bone Input[/COLOR]: allows you to specify which bone of the item/character the effect should be played on.
 The input can be a bone name, or a more indirect way to specify the bone, such as 'root' or 'head'.
 [COLOR:LIGHTGREEN]Example[/COLOR]: input [FONT:Tiny]righthand,leftHand[/FONT] then click the [COLOR:LIGHTBLUE]Left Arrow[/COLOR] button next to it to see the output: [FONT:Tiny]Dummy_R_HandFX,Dummy_L_HandFX[/FONT]
+[COLOR:LIGHTRED]Caution[/COLOR]: The bone input only accept format like [FONT:Tiny]bone1,bone2,bone3[/FONT], and 
+will not accept any other format, such as [FONT:Tiny]bone1 bone2 bone3[/FONT] or [FONT:Tiny]bone1;bone2;bone3[/FONT].
 
 If you dont want to play on item/character, you can also set the effect to play at the item/character's position.
 ]]
@@ -594,11 +605,12 @@ You can also set a delay for the effect to be loop-played.
         PivotOnMiddle = true,
         WrapPos = 120,
         Description = [[The spell and status effects are special types of effects that can be used.
+
 They're workaround for photo mode, since the game will create dummies for party memebers when you enter photo mode, 
 and the dummyies will not have any effects on them, so you can use the spell and status effects to play on your characters and keep the effects on them in photo mode.
 
 There are composed in a different way, it has multipe fields like 'StartEffect', 'EndEffect' and such.
-The way to edit them is the same as the custom effect, you can add effects to those fields by drag and drop.
+The way to edit them is the same as the custom effect, you can add effects to those fields by [COLOR:HIGHLIGHT]Drag and Drop[/COLOR]. 
 
 But the behavior may be different for multi-effct and other effects,
 
@@ -658,15 +670,15 @@ then the browser will generate a tag for your character to use.
 To refresh it, select your charcter again.]]
     },
     {
-        Name = "Visual Tab",
+        Name = "Visual Tab Shortcut",
         PivotOnMiddle = true,
         WrapPos = 80,
         Description = [[You can bind a key to [GeneralShortcuts:OpenVisualTab] to open the visual tab of the item your hovering over. You can also use this to temporarily change your character's visual.]]
     },
     {
-        Name = "More to come",
+        Name = "Thanks for downloading!",
         PivotOnMiddle = true,
-        Description = [[]],
+        Description = [[Hope you enjoy Realm Builder!]],
     }
 }
 
@@ -676,6 +688,7 @@ local TutorialMenu = {}
 
 --- @param tabbar ExtuiTabBar
 function TutorialMenu.Add(tabbar)
+    TutorialManager:Init()
     local parent = tabbar:AddTabItem("Tutorial")
 
     local space = 200 * SCALE_FACTOR

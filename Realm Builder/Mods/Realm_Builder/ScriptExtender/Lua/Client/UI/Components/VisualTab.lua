@@ -409,7 +409,7 @@ function VisualTab:Render(retryCnt)
         end
     end
 
-    if Ext.Debug.IsDeveloperMode() and entity.Visual and entity.Visual.Visual and #entity.Visual.Visual.Attachments > 0 then
+    if false and entity.Visual and entity.Visual.Visual and #entity.Visual.Visual.Attachments > 0 then
         self:RenderVertexMaskSection(self.editorWindow:AddCollapsingHeader(GetLoca("Vertex Mask")))
     end
 
@@ -940,6 +940,12 @@ function VisualTab:RenderAttachmentSection()
     end
 end
 
+local idx_cnt_lookup = {}
+
+local meshColor = ColorUtils.HexToRGBA("FFB98634")
+local modelColor = ColorUtils.HexToRGBA("FF27B040")
+local matColor = ColorUtils.HexToRGBA("FF27B0F0")
+
 function VisualTab:RenderAttachmentEditors()
     local visual = self:GetVisual(self.guid)
 
@@ -952,7 +958,7 @@ function VisualTab:RenderAttachmentEditors()
         local vres = attach.Visual.VisualResource
         if not vres then goto continue end
         local initVresId = vres.Guid
-        local source = vres and vres.SourceFile or "Unknown Model"
+        local source = vres and vres.SourceFile or "Unknown Mesh"
         local gr2FileName = RBStringUtils.GetLastPath(source)
 
         local displayName = vres.Slot
@@ -961,8 +967,23 @@ function VisualTab:RenderAttachmentEditors()
             displayName = gr2FileName
         end
 
+        local subEyes = {}
         local attachNode = ImguiElements.AddTree(self.attachmentsHeader, displayName .. "##" .. tostring(attIndex), false)
-        attachNode:AddTreeIcon(RB_ICONS.Box, IMAGESIZE.ROW).Tint = ColorUtils.HexToRGBA("FFB98634")
+        ImguiElements.AddEyeButton(attachNode.FixedCell, true, function (v)
+            local liveAttachment = VisualHelpers.GetAttachment(self.guid, attIndex)
+            if not liveAttachment then return end
+
+            for _, eye in pairs(subEyes) do
+                if eye.UserData and (eye.UserData.IsVisible() ~= v) then
+                    eye:OnClick()
+                end
+            end
+        end, "##" .. tostring(attIndex))
+
+        local meshTypeIcon = attachNode:AddTreeIcon(RB_ICONS.Box, IMAGESIZE.ROW)
+        meshTypeIcon.Tint = meshColor
+        meshTypeIcon.SameLine = true
+
 
         attachNode.OnRightClick = function()
             if IsInCharacterCreationMirror() then return end
@@ -990,7 +1011,7 @@ function VisualTab:RenderAttachmentEditors()
             RB_GLOBALS.TransformEditor:Select(proxies)
         end
 
-        local gr2Text = attachNode:AddHint("Model: " .. gr2FileName)
+        local gr2Text = attachNode:AddHint("Mesh: " .. gr2FileName)
         gr2Text:SetColor("Text", ColorUtils.HexToRGBA("FF6D6D6D"))
         gr2Text.SameLine = true
         gr2Text.Font = "Tiny"
@@ -1007,7 +1028,23 @@ function VisualTab:RenderAttachmentEditors()
 
             local objNode = parentNode:AddTree(modelName .. "##" .. tostring(attIndex) .. "::" .. tostring(descIndex),
                 false)
-            objNode:AddTreeIcon(RB_ICONS.Bounding_Box, IMAGESIZE.ROW).Tint = ColorUtils.HexToRGBA("FF27B040")
+            table.insert(subEyes, ImguiElements.AddEyeButton(objNode.FixedCell, true, function (v)
+                local liveObj = VisualHelpers.GetRenderable(self.guid, descIndex, attIndex)
+                if not liveObj then return end
+
+                local modelId = liveObj.Model.Id
+                if liveObj.Model and liveObj.Model.IndexCount and liveObj.Model.IndexCount > 0 then
+                    if not idx_cnt_lookup[modelId] then
+                        idx_cnt_lookup[modelId] = liveObj.Model.IndexCount
+                    end
+                    liveObj.Model.IndexCount = 0
+                else
+                    liveObj.Model.IndexCount = idx_cnt_lookup[modelId] or 0
+                end
+            end, "##" .. tostring(attIndex) .. "::" .. tostring(descIndex)))
+
+            local typeIcon = objNode:AddTreeIcon(RB_ICONS.Bounding_Box, IMAGESIZE.ROW)
+            typeIcon.Tint = modelColor
 
             local matName = obj.Renderable.ActiveMaterial.Material.Name
             local function getliveMat()
@@ -1113,21 +1150,35 @@ function VisualTab:RenderObjectEditor()
         local renderable = desc.Renderable --[[@as RenderableObject]]
         local material = renderable.ActiveMaterial --[[@as AppliedMaterial]]
 
-        local meshName = renderable.Model and renderable.Model.Name or "Unknown Mesh"
+        local modelName = renderable.Model and renderable.Model.Name or "Unknown Model"
         local linkId = renderable.Model and renderable.Model.LinkId or -1
-        if meshName == "" then
-            meshName = "Unknown Mesh"
+        if modelName == "" then
+            modelName = "Unknown Model"
         end
 
         --- @type ExtuiTreeParent
         local parentTree = self.materialHeader
-        if meshName:find("LOD") then
+        if modelName:find("LOD") then
             lodTree = lodTree or ImguiElements.AddTree(self.materialHeader, "LODs", false)
             parentTree = lodTree
         end
 
-        local materialNode = ImguiElements.AddTree(parentTree, meshName .. "##" .. tostring(descIndex), false)
-        materialNode:AddTreeIcon(RB_ICONS.Bounding_Box, IMAGESIZE.ROW).Tint = ColorUtils.HexToRGBA("FF268B39")
+        local materialNode = ImguiElements.AddTree(parentTree, modelName .. "##" .. tostring(descIndex), false)
+        ImguiElements.AddEyeButton(materialNode.FixedCell, true, function (v)
+            local liveObj = VisualHelpers.GetRenderable(self.guid, descIndex)
+            if not liveObj then return end
+
+            local modelId = liveObj.Model.Id
+            if liveObj.Model and liveObj.Model.IndexCount and liveObj.Model.IndexCount > 0 then
+                if not idx_cnt_lookup[modelId] then
+                    idx_cnt_lookup[modelId] = liveObj.Model.IndexCount
+                end
+                liveObj.Model.IndexCount = 0
+            else
+                liveObj.Model.IndexCount = idx_cnt_lookup[modelId] or 0
+            end
+        end, "##" .. tostring(descIndex))
+        materialNode:AddTreeIcon(RB_ICONS.Bounding_Box, IMAGESIZE.ROW).Tint = modelColor
 
         local function getliveMat()
             local visual = self:GetVisual(self.guid)
@@ -1574,6 +1625,12 @@ function VisualTab:Refresh(retryCnt)
     if self.isWindow and self.panel then
         self.lastPosition = self.panel.LastPosition
         self.lastSize = self.panel.LastSize
+        if self.lastSize[1] < VISUALTAB_WIDTH then
+            self.lastSize[1] = VISUALTAB_WIDTH
+        end
+        if self.lastSize[2] < VISUALTAB_HEIGHT then
+            self.lastSize[2] = VISUALTAB_HEIGHT
+        end
     end
 
     self.MaterialTabs = {}

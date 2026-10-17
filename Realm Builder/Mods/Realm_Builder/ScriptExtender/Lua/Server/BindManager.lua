@@ -163,13 +163,13 @@ function BindManager:UpdateBind(child)
     end
 
     if not EntityHelpers.EntityExists(child) then
-        Debug("Child entity no longer exists, unbinding: " .. tostring(child))
+        Info("Child entity no longer exists, unbinding: " .. tostring(child))
         self:Unbind(child)
         return
     end
 
     if not EntityHelpers.EntityExists(parent) then
-        Debug("Parent entity no longer exists, unbinding: " .. tostring(child))
+        Info("Parent entity no longer exists, unbinding: " .. tostring(child))
         self:Unbind(child)
         return
     end

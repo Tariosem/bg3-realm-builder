@@ -360,7 +360,7 @@ function OutlinerMenu:RenderTreeList()
         setupEyeHover(eyeImage, self.hiddenRoots[key])
         eyeImage.OnClick = self.TreeEyeOnClick
         eyeImage.UserData = {
-            Key = key
+            Key = key,
         }
         return treeSelectable
     end
@@ -591,7 +591,7 @@ function OutlinerMenu:CommonContext()
         local orginStates = {}
         local selected = self:DecideSelectedKeys()
 
-        for key,_ in pairs(self.propTreeList.selectedItems) do
+        for _, key in pairs(selected) do
             local prop = EntityStore:GetStoredData(key)
             if not prop then
                 orginStates[key] = self.hiddenRoots[key]
@@ -600,25 +600,21 @@ function OutlinerMenu:CommonContext()
             end
         end
 
-        local function doCommand(isUndo)
+        local function doCommand(notUndo)
             for _, key in pairs(selected) do
                 local prop = EntityStore:GetStoredData(key)
                 local state = orginStates[key]
+                if notUndo then 
+                    state = not state
+                end
                 if not prop then -- collection, simple toggle UI
                     if self.eyeImageRefs[key] then
-                        if isUndo then
-                            self.hiddenRoots[key] = state
-                        else
-                            self.hiddenRoots[key] = not state
-                        end
-                        self.eyeImageRefs[key].UserData.UpdateEye()
+                        self.hiddenRoots[key] = state
+                        self:UpdateTreeEyeIcon(key)
                     end
                     goto continue
                 end
 
-                if not isUndo then
-                    state = not state
-                end
                 local data = {
                     Guid = prop.Guid,
                     Attributes = {
@@ -633,14 +629,14 @@ function OutlinerMenu:CommonContext()
 
         HistoryManager:PushCommand({
             Redo = function()
-                doCommand(false)
+                doCommand(true)
             end,
             Undo = function()
-                doCommand(true)
+                doCommand(false)
             end,
             Description = "Toggle Visibility In Context Menu"
         })
-        doCommand(false)
+        doCommand(true)
     end
 
     local function delete()
@@ -1091,7 +1087,7 @@ function OutlinerMenu:FocusTab(guid, doDetach)
         return
     end
 
-     -- if the tab is already focused and it's not visible, we clear the focus
+     -- if the tab is already focused and it's not visible, clear the focus
     if guid == self.focus and entityTab.isVisible == false then
         self.focus = nil
     end
@@ -1106,12 +1102,12 @@ function OutlinerMenu:FocusTab(guid, doDetach)
         end
     end
 
-    local entityTab = self.entityTabs[guid]
+    entityTab = self.entityTabs[guid]
     if entityTab and entityTab.isValid then
         entityTab.isAttach = not doDetach
         if entityTab.isWindow then
             ImguiHelpers.FocusWindow(entityTab.panel)
-        else
+        elseif not entityTab.isVisible then
             entityTab:Refresh()
         end
         self.focus = guid

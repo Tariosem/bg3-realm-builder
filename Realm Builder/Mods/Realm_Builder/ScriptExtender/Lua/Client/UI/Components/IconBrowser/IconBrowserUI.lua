@@ -1049,6 +1049,7 @@ end
 function IconBrowser:Toggle()
     if not self.panel then
         self:Render()
+        self.panel:SetCollapsed(false)
         return
     end
 

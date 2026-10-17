@@ -141,23 +141,13 @@ function EntityStore:SetupServerListeners()
             BindDatas[guid].FollowParent = info.FollowParent
 
             if subs[guid] then
-                subs[guid](BindDatas[guid])
+                for _, fn in ipairs(subs[guid]) do
+                    fn(BindDatas[guid])
+                end
             end
 
             ::continue::
         end
-
-        popupNotif:Show("Bind Update", function (panel)
-            for _, info in ipairs(data.BindInfos) do
-                local guid = info.Guid
-                local parent = info.BindParent
-                panel:AddText(string.format("%s => %s", 
-                    RBGetName(guid) or guid, 
-                    RBGetName(parent) or (parent and parent or "Unbound"
-                )))
-                panel:AddText("Attributes: " .. (info.KeepLookingAt and "KeepLookingAt " or "") .. (info.FollowParent and "FollowParent" or ""))
-            end
-        end)
     end)
 end
 
@@ -171,11 +161,17 @@ function EntityStore:SubscribeToBindChanges(guid, callback)
     end
 
     local subs = self.BindSubscriptions
-    subs[guid] = callback
+    subs[guid] = subs[guid] or {}
+    table.insert(subs[guid], callback)
 
     local sub = {}
     local unsub = function()
-        subs[guid] = nil
+        for i, cb in ipairs(subs[guid]) do
+            if cb == callback then
+                table.remove(subs[guid], i)
+                break
+            end
+        end
     end
 
     return { Unsubscribe = unsub, ID = sub }

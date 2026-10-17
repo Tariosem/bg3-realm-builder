@@ -353,27 +353,24 @@ function NearbyCombo:RenderIcons()
         imageBtn.OnHoverEnter = function (btn)
             self.HoveringKey = entry.Guid
             imageBtn:Tooltip():AddText(displayName)
-            imageBtn.OnClick = function ()
-                if self.combo then
-                    ImguiHelpers.SetCombo(self.combo, entry.DisplayName, nil, true)
-                    self.Selected = entry.Guid
-                    self:UpdateImage()
-                end
-                if self.OnChange then
-                    self:OnChange(entry.Guid, entry.DisplayName)
-                end
-            end
-            imageBtn.OnRightClick = imageBtn.OnClick
-
-            
             imageBtn.OnHoverLeave = function (btn)
                 self.HoveringKey = nil
             end
-
             imageBtn.OnHoverEnter = function ()
                 self.HoveringKey = entry.Guid
             end
         end
+        imageBtn.OnClick = function ()
+            if self.combo then
+                ImguiHelpers.SetCombo(self.combo, entry.DisplayName, nil, true)
+                self.Selected = entry.Guid
+                self:UpdateImage()
+            end
+            if self.OnChange then
+                self:OnChange(entry.Guid, entry.DisplayName)
+            end
+        end
+        imageBtn.OnRightClick = imageBtn.OnClick
     end
 end
 

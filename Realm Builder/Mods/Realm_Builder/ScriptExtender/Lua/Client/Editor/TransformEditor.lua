@@ -220,7 +220,7 @@ function TransformEditor:HandleGizmo()
             pivotPos = latestProxy:GetWorldTranslate() or Vec3.new(GetHostPosition())
         else
             local validCount = 0
-            for i=#self.Target, 1, -1 do
+            for i = #self.Target, 1, -1 do
                 local proxy = self.Target[i]
                 if not proxy:IsValid() then
                     table.remove(self.Target, i)
@@ -723,6 +723,7 @@ function TransformEditor:SetupGizmo()
                     baseScale[3] * delta[3] }
             end
 
+            
             if individualPivotMode[self.PivotMode] or individualOriention[self.Space] then
                 proxy:SetWorldScale(newScale)
             elseif picPos then
@@ -757,7 +758,6 @@ function TransformEditor:SetupGizmo()
 
         local quat = Ext.Math.QuatRotateAxisAngle(Quat.Identity(), deltaAxis, deltaAngle)
         if not (individualPivotMode[self.PivotMode] or individualOriention[self.Space]) then
-
             for _, proxy in self:SafeTraverseTarget() do
                 local startTransform = cachedStartTransform[proxy]
                 local newTransform = MathUtils.RotateAroundPivotQuat(picPos, startTransform, quat)
@@ -786,7 +786,7 @@ function TransformEditor:SetupGizmo()
                     end
 
                     local newLocalRot = Ext.Math.QuatMul(localRot, quat)
-                    
+
                     newRot = Ext.Math.QuatMul(curParentRot, newLocalRot)
                 else
                     newRot = Ext.Math.QuatMul(startRot, quat)
@@ -807,15 +807,14 @@ function TransformEditor:SetupGizmo()
             else
                 newRot = Ext.Math.QuatMul(quat, startRot)
             end
-            
+
             proxy:SetWorldRotation(newRot)
             ::continue::
         end
-        
     end
 
     self.Gizmo.OnDragEnd = function(gizmo, isCancelled)
-        pcall(function (...)
+        pcall(function(...)
             if recoverCanMoveFlag then
                 local controller = Ext.Entity.Get(recoverCanMoveFlag)
                 if not controller then return end
@@ -882,8 +881,6 @@ function TransformEditor:SetupGizmo()
         end
 
         self.IsDragging = false
-
-        
     end
 
     self.Gizmo.OnAction = function(gizmo, action)
@@ -904,6 +901,5 @@ function TransformEditor:ShowAndEnableGizmo()
     end
     self.Disabled = false
 end
-
 
 RB_GLOBALS.TransformEditor = TransformEditor.new()
